@@ -1,0 +1,26 @@
+ODINC=odin
+ODIN_FLAGS=-vet-shadowing -vet-unused -vet-style -warnings-as-errors -error-pos-style:unix
+ODIN_DEBUG_FLAGS=-debug
+ODIN_RELEASE_FLAGS=-o:speed
+BUILD_DIR=..\..\build
+GLEW_VERSION=2.1.0
+
+game_of_life: $(BUILD_DIR)\game_of_life.exe
+
+$(BUILD_DIR)\game_of_life.exe: gl\glew.odin game_of_life.odin $(BUILD_DIR)\glew32s.lib
+	$(ODINC) build . -out:$@ $(ODIN_FLAGS) $(ODIN_DEBUG_FLAGS) -extra-linker-flags:"/LIBPATH:$(BUILD_DIR) opengl32.lib" -define:GLEW_STATIC=true
+
+gl\glew.odin: $(BUILD_DIR)\glew.runestone.ini bindings.json
+	$(BUILD_DIR)\runic_debug.exe bindings.json
+
+$(BUILD_DIR)\glew.runestone.ini: rune.json $(BUILD_DIR)\include\GL\glew.h
+	$(BUILD_DIR)\runic_debug.exe rune.json
+
+$(BUILD_DIR)\include\GL\glew.h:
+	wget -O $(BUILD_DIR)\glew.zip --no-check-certificate https://sourceforge.net/projects/glew/files/glew/$(GLEW_VERSION)/glew-$(GLEW_VERSION)-win32.zip/download
+	7z x $(BUILD_DIR)\glew.zip -o$(BUILD_DIR)
+	-@del /Q $(BUILD_DIR)\glew.zip
+	@move $(BUILD_DIR)\glew-$(GLEW_VERSION)\include $(BUILD_DIR)\include
+	@move $(BUILD_DIR)\glew-$(GLEW_VERSION)\lib\Release\x64\glew32s.lib $(BUILD_DIR)\glew32s.lib
+	@move $(BUILD_DIR)\glew-$(GLEW_VERSION)\lib\Release\x64\glew32.lib $(BUILD_DIR)\glew32.lib
+	-@rmdir /S /Q $(BUILD_DIR)\glew-$(GLEW_VERSION)

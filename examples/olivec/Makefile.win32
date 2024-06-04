@@ -1,0 +1,19 @@
+BUILD_DIR=..\..\build
+
+default: run
+
+$(BUILD_DIR)\olivec_example.exe: olivec_example.odin olivec\olivec.odin
+	odin build . -out:$@ -debug -error-pos-style:unix -extra-linker-flags=/LIBPATH:$(BUILD_DIR)
+
+olivec\olivec.odin: $(BUILD_DIR)\olivec.lib rune.json
+	$(BUILD_DIR)\runic_debug.exe
+
+$(BUILD_DIR)\olivec.lib: olive.c olivec_impl.c
+	-@mkdir $(BUILD_DIR)
+	zig cc -o $(BUILD_DIR)\olivec_impl.c.obj -c --std=c99 olivec_impl.c
+	lib /out:$@ $(BUILD_DIR)\olivec_impl.c.obj
+
+PHONY: run
+
+run: $(BUILD_DIR)\olivec_example.exe
+	$(BUILD_DIR)\olivec_example.exe

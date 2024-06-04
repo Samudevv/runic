@@ -1,0 +1,31 @@
+{
+  "version": 0,
+  "from": {
+    "language": "c",
+    "static.linux": "libolivec.a",
+    "shared.linux": "libolivec.so",
+    "static.windows": "olivec.lib",
+    "headers": [
+      "olive.c"
+    ],
+    "defines": {
+      "OLIVECDEF": "extern"
+    },
+    "ignore": {
+      "macros": [
+        "OLIVE_C_",
+        "OLIVEC_CANVAS_NULL"
+      ]
+    }
+  },
+  "to": {
+    "language": "odin",
+    "package": "olivec",
+    "trim_prefix": {
+      "functions": "olivec_",
+      "types": "Olivec_",
+      "constants": "OLIVEC_"
+    },
+    "out": "olivec/olivec.odin"
+  }
+}

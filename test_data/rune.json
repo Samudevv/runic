@@ -1,0 +1,38 @@
+{
+  "version": 0,
+  "from": {
+    "language": "c",
+    "shared": "libfoo.so",
+    "headers": [
+      "foo.h",
+      "foz.h",
+      "bar.h"
+    ],
+    "headers.macosx": [
+      "plat_macosx.h"
+    ],
+    "headers.macosx.aarch64": [
+      "plat_macosx_aarch64.h"
+    ],
+    "includedirs": [
+      "include"
+    ],
+    "defines": {
+      "MYFOO": 2
+    },
+    "preprocessor": "gcc"
+  },
+  "to": {
+    "language": "odin",
+    "static_switch": "FOO_STATIC",
+    "package": "foo",
+    "trim_prefix": {
+      "functions": "foo_",
+      "variables": "bar_",
+      "types": "baz_"
+    },
+    "trim_suffix": {
+      "types": "_t"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "version": 0,
+  "from": {
+    "language": "c",
+    "shared.linux": "libGLEW.so",
+    "static.windows": "glew32s.lib",
+    "shared.windows": "glew32.lib",
+    "headers": [
+      "/usr/include/GL/glew.h"
+    ],
+    "headers.windows": [
+      "..\\..\\build\\include\\GL\\glew.h"
+    ],
+    "defines": {
+      "GLEW_BUILD": 1,
+      "GLEW_GET_VAR(x)": "x"
+    },
+    "ignore": {
+      "macros": [
+        "_*",
+        "*APIENTRY*",
+        "GLAPI",
+        "GL_VERSION_*",
+        "GLEWAPI",
+        "GLEW_VAR_EXPORT",
+        "GLEW_FUN_EXPORT",
+        "MAX_VERTEX_TEXTURE_IMAGE_UNITS_ARB"
+      ],
+      "types": "GLvoid"
+    }
+  },
+  "to": "../../build/glew.runestone.ini"
+}

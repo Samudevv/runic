@@ -6,6 +6,12 @@
 #define B 2
 #define C 3
 
+#ifdef _WIN32
+#define ODIN_WINDOWS
+#else
+#define ODIN_POSIX
+#endif
+
 #ifdef ODIN_WINDOWS
 #define PLAT windows
 #else

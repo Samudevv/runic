@@ -28,6 +28,7 @@ import "core:strconv"
 import "core:strings"
 import "root:errors"
 import om "root:ordered_map"
+import "root:runic"
 
 Header :: struct {
     typedefs:  [dynamic]Variable,
@@ -48,6 +49,7 @@ Parser :: struct {
 }
 
 parse_file :: proc(
+    plat: runic.Platform,
     path: string,
     input: Maybe(io.Reader) = nil,
     defines := [][2]string{},
@@ -124,6 +126,7 @@ parse_file :: proc(
 
         if preprocess {
             preprocess_file(
+                plat,
                 strings.to_reader(&pp_reader, strings.to_string(ppp_buffer)),
                 bytes.buffer_to_stream(&src_buffer),
                 pp_program = pp_program,

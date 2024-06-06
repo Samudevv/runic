@@ -86,6 +86,7 @@ generate_runestone :: proc(
         p: parser.Parser
         defer parser.destroy_parser(&p)
         p = parser.parse_file(
+            plat,
             runic.relative_to_file(rune_file_name, hd, arena_alloc),
             includedirs = rf.includedirs[:],
             defines = defines[:],

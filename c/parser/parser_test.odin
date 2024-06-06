@@ -23,12 +23,15 @@ import "core:fmt"
 import "core:os"
 import "core:testing"
 import om "root:ordered_map"
+import "root:runic"
 
 @(test)
 test_builtin :: proc(t: ^testing.T) {
     using testing
 
-    parser, err := parse_file("test_data/builtin.h")
+    plat := runic.platform_from_host()
+
+    parser, err := parse_file(plat, "test_data/builtin.h")
     defer destroy_parser(&parser)
     if !expect_value(t, err, nil) do return
 
@@ -72,7 +75,9 @@ test_builtin :: proc(t: ^testing.T) {
 test_struct :: proc(t: ^testing.T) {
     using testing
 
-    parser, err := parse_file("test_data/struct.h")
+    plat := runic.platform_from_host()
+
+    parser, err := parse_file(plat, "test_data/struct.h")
     defer destroy_parser(&parser)
     if !expect_value(t, err, nil) do return
 
@@ -91,7 +96,9 @@ test_struct :: proc(t: ^testing.T) {
 test_enum :: proc(t: ^testing.T) {
     using testing
 
-    parser, err := parse_file("test_data/enum.h")
+    plat := runic.platform_from_host()
+
+    parser, err := parse_file(plat, "test_data/enum.h")
     defer destroy_parser(&parser)
     if !expect_value(t, err, nil) do return
 
@@ -168,7 +175,9 @@ test_enum :: proc(t: ^testing.T) {
 test_union :: proc(t: ^testing.T) {
     using testing
 
-    parser, err := parse_file("test_data/union.h")
+    plat := runic.platform_from_host()
+
+    parser, err := parse_file(plat, "test_data/union.h")
     defer destroy_parser(&parser)
     if !expect_value(t, err, nil) do return
 
@@ -191,7 +200,9 @@ test_union :: proc(t: ^testing.T) {
 test_function :: proc(t: ^testing.T) {
     using testing
 
-    parser, err := parse_file("test_data/function.h")
+    plat := runic.platform_from_host()
+
+    parser, err := parse_file(plat, "test_data/function.h")
     defer destroy_parser(&parser)
     if !expect_value(t, err, nil) do return
 
@@ -247,7 +258,9 @@ test_function :: proc(t: ^testing.T) {
 test_function_pointer :: proc(t: ^testing.T) {
     using testing
 
-    parser, err := parse_file("test_data/function_pointer.h")
+    plat := runic.platform_from_host()
+
+    parser, err := parse_file(plat, "test_data/function_pointer.h")
     defer destroy_parser(&parser)
     if !expect_value(t, err, nil) do return
 
@@ -301,7 +314,9 @@ test_function_pointer :: proc(t: ^testing.T) {
 test_pointer :: proc(t: ^testing.T) {
     using testing
 
-    parser, err := parse_file("test_data/pointer.h")
+    plat := runic.platform_from_host()
+
+    parser, err := parse_file(plat, "test_data/pointer.h")
     defer destroy_parser(&parser)
     if !expect_value(t, err, nil) do return
 
@@ -371,7 +386,9 @@ test_pointer :: proc(t: ^testing.T) {
 test_array :: proc(t: ^testing.T) {
     using testing
 
-    parser, err := parse_file("test_data/array.h")
+    plat := runic.platform_from_host()
+
+    parser, err := parse_file(plat, "test_data/array.h")
     defer destroy_parser(&parser)
     if !expect_value(t, err, nil) do return
 
@@ -425,7 +442,9 @@ test_array :: proc(t: ^testing.T) {
 test_gnu_attribute :: proc(t: ^testing.T) {
     using testing
 
-    parser, err := parse_file("test_data/gnu_attribute.h")
+    plat := runic.platform_from_host()
+
+    parser, err := parse_file(plat, "test_data/gnu_attribute.h")
     defer destroy_parser(&parser)
     if !expect_value(t, err, nil) do return
 
@@ -455,7 +474,9 @@ test_gnu_attribute :: proc(t: ^testing.T) {
 test_macros :: proc(t: ^testing.T) {
     using testing
 
-    parser, err := parse_file("test_data/macros.h")
+    plat := runic.platform_from_host()
+
+    parser, err := parse_file(plat, "test_data/macros.h")
     defer destroy_parser(&parser)
     if !expect_value(t, err, nil) do return
 
@@ -470,7 +491,7 @@ test_macros :: proc(t: ^testing.T) {
     if !expect_value(t, len(variables), 0) {
         return
     }
-    if !expect_value(t, om.length(macros), 19) {
+    if !expect_value(t, om.length(macros), 20) {
         return
     }
 
@@ -481,7 +502,13 @@ test_macros :: proc(t: ^testing.T) {
     expect_value(t, om.get(macros, "A").(MacroVar).value.?, "1")
     expect_value(t, om.get(macros, "B").(MacroVar).value.?, "2")
     expect_value(t, om.get(macros, "C").(MacroVar).value.?, "3")
-    expect_value(t, om.get(macros, "PLAT").(MacroVar).value.?, "posix")
+    when ODIN_OS == .Windows {
+        expect_value(t, om.get(macros, "PLAT").(MacroVar).value.?, "windows")
+        expect_value(t, om.get(macros, "ODIN_WINDOWS").(MacroVar).value, nil)
+    } else {
+        expect_value(t, om.get(macros, "PLAT").(MacroVar).value.?, "posix")
+        expect_value(t, om.get(macros, "ODIN_POSIX").(MacroVar).value, nil)
+    }
 
     expect_value(
         t,
@@ -609,6 +636,25 @@ test_macros :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_macros_windows_x86_64 :: proc(t: ^testing.T) {
+    using testing
+
+    plat := runic.Platform {
+        os   = .Windows,
+        arch = .x86_64,
+    }
+
+    parser, err := parse_file(plat, "test_data/macros.h")
+    defer destroy_parser(&parser)
+    if !expect_value(t, err, nil) do return
+
+    using parser
+
+    expect_value(t, om.get(macros, "PLAT").(MacroVar).value.?, "windows")
+    expect_value(t, om.get(macros, "ODIN_WINDOWS").(MacroVar).value, nil)
+}
+
+@(test)
 test_prepreprocess :: proc(t: ^testing.T) {
     using testing
 
@@ -639,6 +685,8 @@ when ODIN_OS == .Windows {
 test_preprocess :: proc(t: ^testing.T) {
     using testing
 
+    plat := runic.platform_from_host()
+
     out_f, os_err := os.open(
         "test_data/macros.pp.h",
         os.O_CREATE | os.O_WRONLY | os.O_TRUNC,
@@ -654,6 +702,7 @@ test_preprocess :: proc(t: ^testing.T) {
     if !expect_value(t, os_err, 0) do return
 
     err := preprocess_file(
+        plat,
         os.stream_from_handle(input),
         os.stream_from_handle(out_f),
     )
@@ -673,6 +722,8 @@ test_preprocess :: proc(t: ^testing.T) {
 test_ppp_and_pp :: proc(t: ^testing.T) {
     using testing
 
+    plat := runic.platform_from_host()
+
     ppp_buffer: bytes.Buffer
     defer bytes.buffer_destroy(&ppp_buffer)
 
@@ -689,14 +740,16 @@ test_ppp_and_pp :: proc(t: ^testing.T) {
     if !expect_value(t, os_err, 0) do return
     defer os.close(out)
 
-    if err := preprocess_file(bytes.reader_to_stream(&pp_reader), os.stream_from_handle(out)); !expect_value(t, err, nil) do return
+    if err := preprocess_file(plat, bytes.reader_to_stream(&pp_reader), os.stream_from_handle(out)); !expect_value(t, err, nil) do return
 }
 
 @(test)
 test_include :: proc(t: ^testing.T) {
     using testing
 
-    parser, err := parse_file("test_data/include.h")
+    plat := runic.platform_from_host()
+
+    parser, err := parse_file(plat, "test_data/include.h")
     defer destroy_parser(&parser)
     if !expect_value(t, err, nil) do return
 

@@ -29,6 +29,7 @@ import "core:path/filepath"
 import "core:strings"
 import "root:errors"
 import "root:exec"
+import "root:runic"
 
 PREPREPROCESS_PREFIX :: "__PPP__"
 MACRO_VAR :: PREPREPROCESS_PREFIX + "macro_var"
@@ -42,6 +43,7 @@ PREPROCESS_PROGRAM :: "zig"
 PREPROCESS_FLAGS :: []string{"cc", "-E", "-w", "--std=c99", "-xc", "-"}
 
 preprocess_file :: proc(
+    plat: runic.Platform,
     input: io.Reader,
     out: io.Writer,
     pp_program := PREPROCESS_PROGRAM,
@@ -68,6 +70,25 @@ preprocess_file :: proc(
     for i in pp_includes {
         append(&pp_call, strings.concatenate({"-I", i}, arena_alloc))
     }
+
+    append(&pp_call, "-target")
+
+    os_str, arch_str: string
+
+    switch plat.os {
+    case .Linux:
+        os_str = "linux"
+    case .Windows:
+        os_str = "windows"
+    }
+    switch plat.arch {
+    case .x86_64:
+        arch_str = "x86_64"
+    case .arm64:
+        arch_str = "aarch64"
+    }
+
+    append(&pp_call, strings.concatenate({arch_str, "-", os_str}, arena_alloc))
 
     pp_build: strings.Builder
     strings.builder_init(&pp_build, arena_alloc)
@@ -420,4 +441,3 @@ reserve_random_file :: proc(format: string) -> string {
         }
     }
 }
-

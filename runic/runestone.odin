@@ -137,6 +137,7 @@ Symbol :: struct {
 
 Runestone :: struct {
     version:    uint,
+    platform:   Platform,
     lib_shared: Maybe(string),
     lib_static: Maybe(string),
     symbols:    om.OrderedMap(string, Symbol),
@@ -202,6 +203,32 @@ parse_runestone :: proc(
 
         version, ok = strconv.parse_uint(version_str, 10)
         errors.wrap(ok) or_return
+
+        os_str, ok2 := om.get(sect, "os")
+        errors.wrap(ok2) or_return
+
+        switch os_str {
+        case "Linux":
+            platform.os = .Linux
+        case "Windows":
+            platform.os = .Windows
+        case:
+            err = errors.message("invalid os \"{}\"", os_str)
+            return
+        }
+
+        arch_str, ok3 := om.get(sect, "arch")
+        errors.wrap(ok3) or_return
+
+        switch arch_str {
+        case "x86_64":
+            platform.arch = .x86_64
+        case "arm64":
+            platform.arch = .arm64
+        case:
+            err = errors.message("invalid arch \"{}\"", arch_str)
+            return
+        }
     }
 
     when ODIN_DEBUG {
@@ -440,6 +467,12 @@ write_runestone :: proc(rs: Runestone, wd: io.Writer) -> io.Error {
     io.write_string(wd, "version = ") or_return
     io.write_uint(wd, rs.version) or_return
     io.write_string(wd, "\n\n") or_return
+
+    io.write_string(wd, "os = ") or_return
+    fmt.wprintln(wd, rs.platform.os)
+    io.write_string(wd, "arch = ") or_return
+    fmt.wprintln(wd, rs.platform.arch)
+    io.write_rune(wd, '\n') or_return
 
     io.write_string(wd, "[lib]\n") or_return
 

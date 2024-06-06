@@ -17,7 +17,6 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package runic
 
-import "core:fmt"
 import "core:io"
 import "core:os"
 import "core:strings"
@@ -26,6 +25,9 @@ import om "root:ordered_map"
 
 EXAMPLE_RUNESTONE :: `
 version = 0
+
+os = Linux
+arch = x86_64
 
 [lib]
 shared = libfoo.so
@@ -82,14 +84,14 @@ test_example_runestone :: proc(t: ^testing.T) {
 
     rs, err := parse_runestone(strings.reader_to_stream(&rd))
     defer runestone_destroy(&rs)
-    if err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if !expect_value(t, err, nil) do return
 
     using rs
 
     expect_value(t, version, 0)
+
+    expect_value(t, platform.os, OS.Linux)
+    expect_value(t, platform.arch, Architecture.x86_64)
 
     expect_value(t, lib_shared.?, "libfoo.so")
     expect_value(t, lib_static.?, "libfoo.a")

@@ -90,6 +90,8 @@ main :: proc() {
             os.exit(1)
         }
 
+        from_rs.platform = plat
+
         if err != nil {
             fmt.eprintfln(
                 "failed to generate runestone from language {}: {}",
@@ -118,6 +120,18 @@ main :: proc() {
         from_rs, err = runic.parse_runestone(os.stream_from_handle(rs_file))
         if err != nil {
             fmt.eprintfln("failed to parse runestone: {}", err)
+            os.exit(1)
+        }
+
+        if from_rs.platform.os != plat.os ||
+           from_rs.platform.arch != plat.arch {
+            fmt.eprintfln(
+                "Runestone has different platform than target\nTarget    = {}.{}\nRunestone = {}.{}",
+                plat.os,
+                plat.arch,
+                from_rs.platform.os,
+                from_rs.platform.arch,
+            )
             os.exit(1)
         }
 

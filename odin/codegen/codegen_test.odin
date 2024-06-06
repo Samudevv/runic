@@ -35,9 +35,13 @@ test_to_odin_codegen :: proc(t: ^testing.T) {
     defer runtime.arena_destroy(&arena)
     context.allocator = runtime.arena_allocator(&arena)
 
-    plat := runic.platform_from_host()
+    plat := runic.Platform {
+        os   = .Linux,
+        arch = .x86_64,
+    }
 
-    ODIN_EXPECTED :: `package foo_pkg
+    ODIN_EXPECTED :: `//+build linux amd64
+package foo_pkg
 
 odin_Anon0_bindings :: struct {
     x: f32,
@@ -228,7 +232,7 @@ main :: proc() {}`
         os.write_string(file, "main :: proc() {}")
     }
 
-    if c_err := libc.system("odin check test_data/bindings.odin -file"); !expect_value(t, c_err, 0) do return
+    if c_err := libc.system("odin check test_data/bindings.odin -file -vet"); !expect_value(t, c_err, 0) do return
 
     contents, os_err := os.read_entire_file("test_data/bindings.odin")
     if !expect(t, os_err) do return

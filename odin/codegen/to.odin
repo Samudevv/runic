@@ -36,7 +36,21 @@ generate_bindings :: proc(
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
 
-    io.write_string(wd, "package ") or_return
+    io.write_string(wd, "//+build ") or_return
+    switch plat.os {
+    case .Linux:
+        io.write_string(wd, "linux ") or_return
+    case .Windows:
+        io.write_string(wd, "windows ") or_return
+    }
+    switch plat.arch {
+    case .x86_64:
+        io.write_string(wd, "amd64") or_return
+    case .arm64:
+        io.write_string(wd, "arm64") or_return
+    }
+
+    io.write_string(wd, "\npackage ") or_return
 
     // Make sure that package name is not invalid
     package_name := rn.package_name

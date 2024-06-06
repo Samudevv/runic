@@ -21,6 +21,7 @@ import ccdg "c/codegen"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
+import "core:strings"
 import "errors"
 import odincdg "odin/codegen"
 import "runic"
@@ -40,12 +41,62 @@ main :: proc() {
     defer free_all(errors.error_allocator)
 
     rune_file_name := "./rune.json"
+    plat := runic.platform_from_host()
 
-    if len(os.args) == 2 {
-        rune_file_name = os.args[1]
-    } else if len(os.args) != 1 {
-        fmt.eprintln("invalid arguments")
-        os.exit(1)
+    if len(os.args) > 1 {
+        last_arg: string
+
+        arg_loop: for arg in os.args[1:] {
+            if strings.has_prefix(arg, "--") {
+                switch strings.trim_prefix(arg, "--") {
+                case "os", "plat":
+                    last_arg = "os"
+                case "arch":
+                    last_arg = "arch"
+                case:
+                    fmt.eprintfln("invalid flag \"{}\"", arg)
+                    os.exit(1)
+                }
+            } else if strings.has_prefix(arg, "-") {
+                switch strings.trim_prefix(arg, "-") {
+                case "p":
+                    last_arg = "os"
+                case "a":
+                    last_arg = "arch"
+                case:
+                    fmt.eprintfln("invalid flag \"{}\"", arg)
+                    os.exit(1)
+                }
+            } else {
+                switch last_arg {
+                case "os":
+                    switch strings.to_lower(arg, context.temp_allocator) {
+                    case "linux":
+                        plat.os = .Linux
+                    case "windows":
+                        plat.os = .Windows
+                    case:
+                        fmt.eprintfln("invalid os \"{}\"", arg)
+                        os.exit(1)
+                    }
+                case "arch":
+                    switch strings.to_lower(arg, context.temp_allocator) {
+                    case "x86_64", "amd64":
+                        plat.arch = .x86_64
+                    case "arm64", "aarch64":
+                        plat.arch = .arm64
+                    case:
+                        fmt.eprintfln("invalid architecture \"{}\"", arg)
+                        os.exit(1)
+                    }
+                case:
+                    rune_file_name = arg
+                    break arg_loop
+                }
+
+                last_arg = ""
+            }
+        }
     }
 
     rune_file, os_err := os.open(rune_file_name)
@@ -68,8 +119,6 @@ main :: proc() {
         fmt.eprintfln("rune version {} is not supported", rune.version)
         os.exit(1)
     }
-
-    plat := runic.platform_from_host()
 
     from_rs: runic.Runestone
     defer runic.runestone_destroy(&from_rs)

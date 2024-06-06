@@ -17,8 +17,11 @@ $(BUILD_DIR)/game_of_life: gl/glew.odin game_of_life.odin
 gl/glew.odin: $(BUILD_DIR)/glew.runestone.ini bindings.json
 	$(BUILD_DIR)/runic_debug bindings.json
 
-$(BUILD_DIR)/glew.runestone.ini: rune.json
+$(BUILD_DIR)/glew.runestone.ini: rune.json $(BUILD_DIR)/GL
 	$(BUILD_DIR)/runic_debug rune.json
+
+$(BUILD_DIR)/GL:
+	ln -s /usr/include/GL $@
 
 clean:
 	rm -f $(BUILD_DIR)/game_of_life

@@ -37,7 +37,7 @@ From :: struct {
     ignore:                 IgnoreSet,
     // C
     headers:                [dynamic]string,
-    headers_linux:          [dynamic]string,
+    headers_linux:          [dynamic]string `json:"headers.linux"`,
     headers_windows:        [dynamic]string `json:"headers.windows"`,
     headers_macosx:         [dynamic]string `json:"headers.macosx"`,
     headers_macosx_aarch64: [dynamic]string `json:"headers.macosx.aarch64"`,

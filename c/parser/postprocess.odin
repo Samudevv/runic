@@ -19,7 +19,6 @@ package parser
 
 import "base:runtime"
 import ctz "core:c/frontend/tokenizer"
-import "core:fmt"
 import "core:strings"
 import "root:errors"
 import om "root:ordered_map"

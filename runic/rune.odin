@@ -42,7 +42,11 @@ From :: struct {
     headers_macosx:         [dynamic]string `json:"headers.macosx"`,
     headers_macosx_aarch64: [dynamic]string `json:"headers.macosx.aarch64"`,
     includedirs:            [dynamic]string,
+    includedirs_linux:      [dynamic]string `json:"includedirs.linux"`,
+    includedirs_windows:    [dynamic]string `json:"includedirs.windows"`,
     defines:                map[string]json.Value,
+    defines_linux:          map[string]json.Value `json:"defines.linux"`,
+    defines_windows:        map[string]json.Value `json:"defines.windows"`,
     preprocessor:           SingleList,
     // Odin
     packages:               [dynamic]string,

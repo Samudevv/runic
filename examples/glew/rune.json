@@ -15,6 +15,9 @@
       "GLEW_BUILD": 1,
       "GLEW_GET_VAR(x)": "x"
     },
+    "includedirs.linux": [
+      "/usr/include"
+    ],
     "ignore": {
       "macros": [
         "_*",

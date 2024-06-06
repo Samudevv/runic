@@ -48,9 +48,17 @@ generate_runestone :: proc(
 
     runic.set_library(plat, &rs, rf)
 
+    rune_defines := runic.platform_value(
+        map[string]json.Value,
+        plat,
+        all = rf.defines,
+        linux = rf.defines_linux,
+        windows = rf.defines_windows,
+    )
+
     defines := make([dynamic][2]string, arena_alloc)
 
-    for name, value in rf.defines {
+    for name, value in rune_defines {
         str_value := json_value_to_string(value, arena_alloc) or_return
         append(&defines, [2]string{name, str_value})
     }
@@ -85,10 +93,19 @@ generate_runestone :: proc(
     for hd in headers {
         p: parser.Parser
         defer parser.destroy_parser(&p)
+
+        includedirs := runic.platform_value(
+            [dynamic]string,
+            plat,
+            all = rf.includedirs,
+            linux = rf.includedirs_linux,
+            windows = rf.includedirs_windows,
+        )
+
         p = parser.parse_file(
             plat,
             runic.relative_to_file(rune_file_name, hd, arena_alloc),
-            includedirs = rf.includedirs[:],
+            includedirs = includedirs[:],
             defines = defines[:],
             pp_program = pp_program,
             pp_flags = pp_flags,
@@ -559,10 +576,7 @@ parser_variable_to_runic_type :: proc(
                 if m_name == nil do m_name = fmt.aprintf("memb{}", count)
 
                 #partial switch s in m_type.spec {
-                case runic.Struct,
-                     runic.Union,
-                     runic.Enum,
-                     runic.FunctionPointer:
+                case runic.Struct, runic.Union, runic.Enum, runic.FunctionPointer:
                     append(anon_types, s)
                     m_type.spec = runic.Anon(len(anon_types^) - 1)
                 }
@@ -616,10 +630,7 @@ parser_variable_to_runic_type :: proc(
                 if m_name == nil do m_name = fmt.aprintf("unio{}", count)
 
                 #partial switch s in m_type.spec {
-                case runic.Struct,
-                     runic.Union,
-                     runic.Enum,
-                     runic.FunctionPointer:
+                case runic.Struct, runic.Union, runic.Enum, runic.FunctionPointer:
                     append(anon_types, s)
                     m_type.spec = runic.Anon(len(anon_types^) - 1)
                 }

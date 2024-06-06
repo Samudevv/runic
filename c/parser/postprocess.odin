@@ -43,15 +43,6 @@ post_process :: proc(ps: ^Parser) {
             )
 
             if eval_err != nil {
-                when ODIN_DEBUG {
-                    fmt.eprintfln(
-                        "POST PROCESS :: macro eval err {}=\"{}\" {}",
-                        mv.name,
-                        mv.value.?,
-                        eval_err,
-                    )
-                }
-
                 continue
             }
 
@@ -170,14 +161,6 @@ evaluate_macro_var :: proc(
                     )
 
                     if eval_err != nil {
-                        when ODIN_DEBUG {
-                            fmt.eprintfln(
-                                "POST PROCESS :: macro var eval err {}=\"{}\" {}",
-                                mc_name,
-                                v.value.?,
-                                eval_err,
-                            )
-                        }
                         continue token_loop
                     }
 
@@ -291,14 +274,6 @@ parse_macro_func_call :: proc(
                         )
 
                         if eval_err != nil {
-                            when ODIN_DEBUG {
-                                fmt.eprintfln(
-                                    "POST PROCESS :: macro func arg eval err {}=\"{}\" {}",
-                                    mc_name,
-                                    v.value.?,
-                                    eval_err,
-                                )
-                            }
                             strings.write_string(&arg, token.lit)
                             continue token_loop
                         }

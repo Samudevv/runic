@@ -38,6 +38,7 @@ Import :: struct {
 }
 
 generate_runestone :: proc(
+    plat: runic.Platform,
     rune_file_name: string,
     rf: runic.From,
 ) -> (
@@ -53,7 +54,7 @@ generate_runestone :: proc(
     rs.anon_types = make([dynamic]runic.TypeSpecifier, rs_arena_alloc)
     rs.constants = om.make(string, runic.Constant, allocator = rs_arena_alloc)
 
-    runic.set_library(&rs, rf)
+    runic.set_library(plat, &rs, rf)
 
     rs.symbols = om.make(string, runic.Symbol, allocator = rs_arena_alloc)
 
@@ -894,39 +895,7 @@ type_identifier_to_type_specifier :: proc(
         t = Bool32
     case "b64":
         t = Bool64
-    case "i128",
-         "u128",
-         "i16le",
-         "i32le",
-         "i64le",
-         "i128le",
-         "u16le",
-         "u32le",
-         "u64le",
-         "u128le",
-         "i16be",
-         "i32be",
-         "i64be",
-         "i128be",
-         "u16be",
-         "u32be",
-         "u64be",
-         "u128be",
-         "f16le",
-         "f32le",
-         "f64le",
-         "f16be",
-         "f32be",
-         "f64be",
-         "complex32",
-         "complex64",
-         "complex128",
-         "quaternion64",
-         "quaternion128",
-         "quaternion256",
-         "string",
-         "typeid",
-         "any":
+    case "i128", "u128", "i16le", "i32le", "i64le", "i128le", "u16le", "u32le", "u64le", "u128le", "i16be", "i32be", "i64be", "i128be", "u16be", "u32be", "u64be", "u128be", "f16le", "f32le", "f64le", "f16be", "f32be", "f64be", "complex32", "complex64", "complex128", "quaternion64", "quaternion128", "quaternion256", "string", "typeid", "any":
         err = errors.message("{} is not supported", ident)
     case:
         t = strings.clone(ident, allocator)

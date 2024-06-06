@@ -31,6 +31,7 @@ import om "root:ordered_map"
 import "root:runic"
 
 generate_runestone :: proc(
+    plat: runic.Platform,
     rune_file_name: string,
     rf: runic.From,
 ) -> (
@@ -45,7 +46,7 @@ generate_runestone :: proc(
 
     isz := int_sizes() or_return
 
-    runic.set_library(&rs, rf)
+    runic.set_library(plat, &rs, rf)
 
     defines := make([dynamic][2]string, arena_alloc)
 
@@ -55,6 +56,8 @@ generate_runestone :: proc(
     }
 
     headers := runic.platform_value(
+        [dynamic]string,
+        plat,
         rf.headers,
         rf.headers_linux,
         rf.headers_windows,

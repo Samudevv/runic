@@ -26,10 +26,12 @@ import "core:testing"
 test_c_generate_runestone :: proc(t: ^testing.T) {
     using testing
 
+    plat := runic.platform_from_host()
+
     from := runic.From {
         shared         = "libtest_data.so",
         shared_windows = "test_data.dll",
-        headers        = {
+        headers        =  {
             "test_data/array.h",
             "test_data/builtin.h",
             "test_data/enum.h",
@@ -44,7 +46,7 @@ test_c_generate_runestone :: proc(t: ^testing.T) {
 
     to := runic.To{}
 
-    rs, rs_err := generate_runestone("./stdin", from)
+    rs, rs_err := generate_runestone(plat, "./stdin", from)
     defer runic.runestone_destroy(&rs)
     if !expect_value(t, rs_err, nil) do return
 
@@ -68,7 +70,7 @@ test_c_generate_runestone :: proc(t: ^testing.T) {
     if !expect_value(t, os_err, 0) do return
     defer os.close(binds)
 
-    e_err := generate_bindings(rs, to, os.stream_from_handle(binds))
+    e_err := generate_bindings(plat, rs, to, os.stream_from_handle(binds))
     if !expect_value(t, e_err, nil) do return
 }
 

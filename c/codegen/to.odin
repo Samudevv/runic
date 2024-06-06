@@ -26,6 +26,7 @@ import om "root:ordered_map"
 import "root:runic"
 
 generate_bindings :: proc(
+    plat: runic.Platform,
     rs: runic.Runestone,
     rn: runic.To,
     wd: io.Writer,

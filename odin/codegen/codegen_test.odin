@@ -35,6 +35,8 @@ test_to_odin_codegen :: proc(t: ^testing.T) {
     defer runtime.arena_destroy(&arena)
     context.allocator = runtime.arena_allocator(&arena)
 
+    plat := runic.platform_from_host()
+
     ODIN_EXPECTED :: `package foo_pkg
 
 odin_Anon0_bindings :: struct {
@@ -220,7 +222,7 @@ main :: proc() {}`
         if !expect_value(t, os_err, 0) do return
         defer os.close(file)
 
-        err := generate_bindings(rs, rn, os.stream_from_handle(file))
+        err := generate_bindings(plat, rs, rn, os.stream_from_handle(file))
         if !expect_value(t, err, io.Error.None) do return
 
         os.write_string(file, "main :: proc() {}")
@@ -239,6 +241,8 @@ main :: proc() {}`
 test_from_odin_codegen :: proc(t: ^testing.T) {
     using testing
 
+    plat := runic.platform_from_host()
+
     rune_file, os_err := os.open("test_data/foozy/rune.json")
     if !expect_value(t, os_err, 0) do return
     defer os.close(rune_file)
@@ -247,6 +251,7 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
     if !expect_value(t, rn_err, nil) do return
 
     rs, rs_err := generate_runestone(
+        plat,
         "test_data/foozy/rune.json",
         rn.from.(runic.From),
     )
@@ -263,6 +268,7 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
     defer os.close(out_file)
 
     ccdg_err := ccdg.generate_bindings(
+        plat,
         rs,
         rn.to.(runic.To),
         os.stream_from_handle(out_file),

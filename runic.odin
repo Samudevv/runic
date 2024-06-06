@@ -69,6 +69,8 @@ main :: proc() {
         os.exit(1)
     }
 
+    plat := runic.platform_from_host()
+
     from_rs: runic.Runestone
     defer runic.runestone_destroy(&from_rs)
 
@@ -76,9 +78,13 @@ main :: proc() {
     case runic.From:
         switch from.language {
         case "c":
-            from_rs, err = ccdg.generate_runestone(rune_file_name, from)
+            from_rs, err = ccdg.generate_runestone(plat, rune_file_name, from)
         case "odin":
-            from_rs, err = odincdg.generate_runestone(rune_file_name, from)
+            from_rs, err = odincdg.generate_runestone(
+                plat,
+                rune_file_name,
+                from,
+            )
         case:
             fmt.eprintfln("from language {} is not supported", from.language)
             os.exit(1)
@@ -161,6 +167,7 @@ main :: proc() {
         case "odin":
             err = errors.wrap(
                 odincdg.generate_bindings(
+                    plat,
                     from_rs,
                     to,
                     os.stream_from_handle(out_file),
@@ -169,6 +176,7 @@ main :: proc() {
         case "c":
             err = errors.wrap(
                 ccdg.generate_bindings(
+                    plat,
                     from_rs,
                     to,
                     os.stream_from_handle(out_file),
@@ -180,11 +188,20 @@ main :: proc() {
         }
 
         if err != nil {
-            fmt.eprintfln("failed to generate bindings ({}) for \"{}\": {}", out_file_name, to.language, err)
+            fmt.eprintfln(
+                "failed to generate bindings ({}) for \"{}\": {}",
+                out_file_name,
+                to.language,
+                err,
+            )
             os.exit(1)
         }
 
-        fmt.printfln("Successfully generated bindings for \"{}\" ({})", to.language, out_file_name)
+        fmt.printfln(
+            "Successfully generated bindings for \"{}\" ({})",
+            to.language,
+            out_file_name,
+        )
     case string:
         rs_file: os.Handle = ---
         rs_file, os_err = os.open(

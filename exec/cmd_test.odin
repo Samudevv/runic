@@ -17,6 +17,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package exec
 
+import "base:runtime"
 import "core:os"
 import "core:strings"
 import "core:testing"
@@ -28,7 +29,8 @@ when ODIN_OS == .Linux {
         using testing
 
         out: strings.Builder
-        strings.builder_init_none(&out)
+        strings.builder_init(&out)
+        defer strings.builder_destroy(&out)
 
         _, err := command(
             "man",
@@ -104,7 +106,8 @@ when ODIN_OS == .Linux {
         using testing
 
         out: strings.Builder
-        strings.builder_init_none(&out)
+        strings.builder_init(&out)
+        defer strings.builder_destroy(&out)
         in_stm: strings.Reader
 
         _, err := command(
@@ -123,7 +126,8 @@ when ODIN_OS == .Linux {
         using testing
 
         out: strings.Builder
-        strings.builder_init_none(&out)
+        strings.builder_init(&out)
+        defer strings.builder_destroy(&out)
 
         _, err := command(
             "echo",
@@ -140,6 +144,10 @@ when ODIN_OS == .Linux {
     @(test)
     test_env :: proc(t: ^testing.T) {
         using testing
+
+        arena: runtime.Arena
+        defer runtime.arena_destroy(&arena)
+        context.allocator = runtime.arena_allocator(&arena)
 
         {
             out: strings.Builder
@@ -196,6 +204,7 @@ when ODIN_OS == .Linux {
 
         data, ok := os.read_entire_file("test_data/write_to_handle")
         if !expect(t, ok) do return
+        defer delete(data)
 
         expect_value(t, string(data), "cogito ergo sum\n")
     }

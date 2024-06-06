@@ -44,14 +44,21 @@ Expression :: union {
     NumberExpression,
 }
 
-parse_expression :: proc(s: string) -> (Expression, bool) #optional_ok {
+parse_expression :: proc(
+    s: string,
+    allocator := context.allocator,
+) -> (
+    Expression,
+    bool,
+) #optional_ok {
     etz := create_expression_tokenizer(s)
-    return parse_expression_token(&etz, 0)
+    return parse_expression_token(&etz, 0, allocator)
 }
 
 parse_expression_token :: proc(
     etz: ^ExpressionTokenizer,
     priority: int,
+    allocator := context.allocator,
 ) -> (
     Expression,
     bool,
@@ -69,7 +76,7 @@ parse_expression_token :: proc(
         left = t
     case OpenParenthesis:
         ok: bool = ---
-        left, ok = parse_expression_token(etz, 0)
+        left, ok = parse_expression_token(etz, 0, allocator)
         if !ok do return nil, false
     case:
         return nil, false
@@ -91,13 +98,17 @@ parse_expression_token :: proc(
 
         if operator_priority[op] > priority {
             ok: bool = ---
-            right, ok = parse_expression_token(etz, operator_priority[op])
+            right, ok = parse_expression_token(
+                etz,
+                operator_priority[op],
+                allocator,
+            )
             if !ok do return nil, false
 
             left = OperatorExpression {
-                left  = new_clone(left),
+                left  = new_clone(left, allocator),
                 op    = op,
-                right = new_clone(right),
+                right = new_clone(right, allocator),
             }
 
             e: ExpressionEnd = ---

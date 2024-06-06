@@ -194,6 +194,7 @@ parse_file :: proc(
 
             include_path := strings.clone(
                 strings.trim_suffix(strings.trim_prefix(token.lit, `"`), `"`),
+                rs_arena_alloc,
             )
 
             hd := IncludedHeader {
@@ -1002,7 +1003,14 @@ parse_constant_integer_expression :: proc(
     }
 
     if len(expr) != 0 {
-        parsed_expr, ok := parse_expression(expr)
+        arena: runtime.Arena
+        defer runtime.arena_destroy(&arena)
+
+        parsed_expr, ok := parse_expression(
+            expr,
+            runtime.arena_allocator(&arena),
+        )
+
         if !ok {
             cie = strings.clone(expr, allocator)
         } else {

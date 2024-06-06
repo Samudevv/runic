@@ -98,6 +98,7 @@ delete :: #force_inline proc(
 ) -> runtime.Allocator_Error {
     delete_map(m.indices, loc) or_return
     delete_dynamic_array(m.data, loc) or_return
+    return .None
 }
 
 delete_key :: #force_inline proc(

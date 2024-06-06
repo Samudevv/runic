@@ -24,6 +24,7 @@ test_ordered_map :: proc(t: ^testing.T) {
     using testing
 
     omap := make(string, f32)
+    defer delete(omap)
 
     insert(&omap, "1", 0)
     insert(&omap, "5", 4)

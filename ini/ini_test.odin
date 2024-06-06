@@ -1,11 +1,16 @@
 package ini
 
+import "base:runtime"
 import "core:testing"
 import om "root:ordered_map"
 
 @(test)
 test_ini :: proc(t: ^testing.T) {
     using testing
+
+    arena: runtime.Arena
+    defer runtime.arena_destroy(&arena)
+    context.allocator = runtime.arena_allocator(&arena)
 
     ini_file, err := parse("test_data/ini_test.ini")
     if !expect_value(t, err, nil) do return
@@ -17,11 +22,11 @@ test_ini :: proc(t: ^testing.T) {
 
     expect_value(t, om.get(ini_file[""], "version"), "0")
 
-    expect_value(t, om.get(ini_file["first_section"], "foo") , "\"bar\"")
+    expect_value(t, om.get(ini_file["first_section"], "foo"), "\"bar\"")
     expect_value(t, om.get(ini_file["first_section"], "pa"), "\"5=6\"")
     expect_value(t, om.get(ini_file["first_section"], "\"funny=sad\""), "zuz")
 
-    expect_value(t, om.get(ini_file["second_section"], "0") , "3")
+    expect_value(t, om.get(ini_file["second_section"], "0"), "3")
     expect_value(t, om.get(ini_file["second_section"], "pär"), "pöü")
     expect_value(t, om.get(ini_file["second_section"], "🤣"), "😥")
 }

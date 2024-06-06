@@ -17,7 +17,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package odin_codegen
 
-import "../../runic"
+import "base:runtime"
 import "core:c/libc"
 import "core:io"
 import "core:os"
@@ -25,10 +25,15 @@ import "core:strings"
 import "core:testing"
 import ccdg "root:c/codegen"
 import om "root:ordered_map"
+import "root:runic"
 
 @(test)
 test_to_odin_codegen :: proc(t: ^testing.T) {
     using testing
+
+    arena: runtime.Arena
+    defer runtime.arena_destroy(&arena)
+    context.allocator = runtime.arena_allocator(&arena)
 
     ODIN_EXPECTED :: `package foo_pkg
 
@@ -269,8 +274,10 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
 
     real_data, ok = os.read_entire_file("test_data/foozy/foozy.h")
     if !expect(t, ok) do return
+    defer delete(real_data)
     expected_data, ok = os.read_entire_file("test_data/foozy/foozy.expected.h")
     if !expect(t, ok) do return
+    defer delete(expected_data)
 
     real_string, _ := strings.replace(string(real_data), "\r", "", -1)
     expected_string, _ := strings.replace(string(expected_data), "\r", "", -1)

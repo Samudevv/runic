@@ -17,6 +17,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package parser
 
+import "base:runtime"
 import "core:bytes"
 import "core:fmt"
 import "core:os"
@@ -29,10 +30,7 @@ test_builtin :: proc(t: ^testing.T) {
 
     parser, err := parse_file("test_data/builtin.h")
     defer destroy_parser(&parser)
-    if err != nil {
-        logf(t, "{}", err)
-        fail(t)
-    }
+    if !expect_value(t, err, nil) do return
 
     using parser
 
@@ -76,10 +74,7 @@ test_struct :: proc(t: ^testing.T) {
 
     parser, err := parse_file("test_data/struct.h")
     defer destroy_parser(&parser)
-    if err != nil {
-        logf(t, "{}", err)
-        fail(t)
-    }
+    if !expect_value(t, err, nil) do return
 
     using parser
 
@@ -88,7 +83,7 @@ test_struct :: proc(t: ^testing.T) {
 
     for td in typedefs {
         _, ok := td.(Var).type.(Struct)
-        expect(t, ok, fmt.aprintf("{}", td))
+        expect(t, ok)
     }
 }
 
@@ -98,10 +93,7 @@ test_enum :: proc(t: ^testing.T) {
 
     parser, err := parse_file("test_data/enum.h")
     defer destroy_parser(&parser)
-    if err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if !expect_value(t, err, nil) do return
 
     using parser
 
@@ -114,7 +106,7 @@ test_enum :: proc(t: ^testing.T) {
 
     for td in typedefs[:3] {
         _, ok := td.(Var).type.(Enum)
-        expect(t, ok, fmt.aprintf("{}", td))
+        expect(t, ok)
     }
 
     e0 := typedefs[0].(Var).type.(Enum)
@@ -178,10 +170,7 @@ test_union :: proc(t: ^testing.T) {
 
     parser, err := parse_file("test_data/union.h")
     defer destroy_parser(&parser)
-    if err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if !expect_value(t, err, nil) do return
 
     using parser
 
@@ -204,10 +193,7 @@ test_function :: proc(t: ^testing.T) {
 
     parser, err := parse_file("test_data/function.h")
     defer destroy_parser(&parser)
-    if err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if !expect_value(t, err, nil) do return
 
     using parser
 
@@ -263,10 +249,7 @@ test_function_pointer :: proc(t: ^testing.T) {
 
     parser, err := parse_file("test_data/function_pointer.h")
     defer destroy_parser(&parser)
-    if err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if !expect_value(t, err, nil) do return
 
     using parser
 
@@ -320,10 +303,7 @@ test_pointer :: proc(t: ^testing.T) {
 
     parser, err := parse_file("test_data/pointer.h")
     defer destroy_parser(&parser)
-    if err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if !expect_value(t, err, nil) do return
 
     using parser
 
@@ -393,10 +373,7 @@ test_array :: proc(t: ^testing.T) {
 
     parser, err := parse_file("test_data/array.h")
     defer destroy_parser(&parser)
-    if err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if !expect_value(t, err, nil) do return
 
     using parser
 
@@ -450,10 +427,7 @@ test_gnu_attribute :: proc(t: ^testing.T) {
 
     parser, err := parse_file("test_data/gnu_attribute.h")
     defer destroy_parser(&parser)
-    if err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if !expect_value(t, err, nil) do return
 
     using parser
 
@@ -483,13 +457,9 @@ test_macros :: proc(t: ^testing.T) {
 
     parser, err := parse_file("test_data/macros.h")
     defer destroy_parser(&parser)
-    if err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if !expect_value(t, err, nil) do return
 
     using parser
-
 
     if !expect_value(t, len(functions), 3) {
         return
@@ -577,13 +547,16 @@ test_macros :: proc(t: ^testing.T) {
         macro_func = om.get(macros, "SUPER_FUNC").(MacroFunc),
         args       = [dynamic]string{"\"Value0\"", "\"Value1\"", "\"Value2\""},
     }
+    defer delete(exe_call.args)
 
     exe: string = ---
-    exe, err = evaluate_macro_func_call(exe_call, macros, includes[:])
-    if err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    exe, err = evaluate_macro_func_call(
+        exe_call,
+        macros,
+        includes[:],
+        runtime.arena_allocator(&parser.arena),
+    )
+    if !expect_value(t, err, nil) do return
 
     expect_value(
         t,
@@ -653,10 +626,7 @@ test_prepreprocess :: proc(t: ^testing.T) {
         "test_data/macros.h",
         os.stream_from_handle(out_f),
     )
-    if err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if !expect_value(t, err, nil) do return
 }
 
 when ODIN_OS == .Windows {
@@ -687,13 +657,11 @@ test_preprocess :: proc(t: ^testing.T) {
         os.stream_from_handle(input),
         os.stream_from_handle(out_f),
     )
-    if err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if !expect_value(t, err, nil) do return
 
     data, ok := os.read_entire_file("test_data/macros.pp.h")
     if !expect(t, ok) do return
+    defer delete(data)
 
     if !expect_value(t, string(data), TEST_PREPROCESS_EXPECTED) {
         expect_data := transmute([]byte)string(TEST_PREPROCESS_EXPECTED)
@@ -708,13 +676,7 @@ test_ppp_and_pp :: proc(t: ^testing.T) {
     ppp_buffer: bytes.Buffer
     defer bytes.buffer_destroy(&ppp_buffer)
 
-    if err := prepreprocess_file(
-        "test_data/macros.h",
-        bytes.buffer_to_stream(&ppp_buffer),
-    ); err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if err := prepreprocess_file("test_data/macros.h", bytes.buffer_to_stream(&ppp_buffer)); !expect_value(t, err, nil) do return
 
     pp_reader: bytes.Reader
     bytes.reader_init(&pp_reader, bytes.buffer_to_bytes(&ppp_buffer))
@@ -727,13 +689,7 @@ test_ppp_and_pp :: proc(t: ^testing.T) {
     if !expect_value(t, os_err, 0) do return
     defer os.close(out)
 
-    if err := preprocess_file(
-        bytes.reader_to_stream(&pp_reader),
-        os.stream_from_handle(out),
-    ); err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if err := preprocess_file(bytes.reader_to_stream(&pp_reader), os.stream_from_handle(out)); !expect_value(t, err, nil) do return
 }
 
 @(test)
@@ -742,10 +698,7 @@ test_include :: proc(t: ^testing.T) {
 
     parser, err := parse_file("test_data/include.h")
     defer destroy_parser(&parser)
-    if err != nil {
-        fail_now(t, fmt.aprint(err))
-        return
-    }
+    if !expect_value(t, err, nil) do return
 
     using parser
 
@@ -853,6 +806,10 @@ test_expression_tokenizer :: proc(t: ^testing.T) {
 @(test)
 test_const_folding :: proc(t: ^testing.T) {
     using testing
+
+    arena: runtime.Arena
+    defer runtime.arena_destroy(&arena)
+    context.allocator = runtime.arena_allocator(&arena)
 
     {
         EXPR :: "3 + 4 * 5"
@@ -962,4 +919,3 @@ test_const_folding :: proc(t: ^testing.T) {
         expect_value(t, evaluate_expression(expr), 0b010010)
     }
 }
-

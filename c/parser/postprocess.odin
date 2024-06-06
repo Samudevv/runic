@@ -69,6 +69,7 @@ evaluate_macro_var :: proc(
     macro_value: string,
     macros: om.OrderedMap(string, Macro),
     includes: []IncludedHeader,
+    allocator := context.allocator,
 ) -> (
     value_str: string,
     err: errors.Error,
@@ -76,10 +77,11 @@ evaluate_macro_var :: proc(
 
     macro_arena: runtime.Arena
     defer runtime.arena_destroy(&macro_arena)
+    arena_alloc := runtime.arena_allocator(&macro_arena)
 
     token: ^ctz.Token = ---
     {
-        context.allocator = runtime.arena_allocator(&macro_arena)
+        context.allocator = arena_alloc
 
         tz: ctz.Tokenizer
         file := ctz.add_new_file(&tz, "macro", transmute([]u8)macro_value, 1)
@@ -89,7 +91,7 @@ evaluate_macro_var :: proc(
     errors.assert(token != nil) or_return
 
     nv: strings.Builder
-    strings.builder_init_none(&nv)
+    strings.builder_init(&nv, allocator)
 
     last_offset: int
 
@@ -138,6 +140,7 @@ evaluate_macro_var :: proc(
                     mc,
                     macros,
                     includes,
+                    arena_alloc,
                 ) or_return
             } else {
                 mc_name := token.lit
@@ -164,6 +167,7 @@ evaluate_macro_var :: proc(
                         v.value.?,
                         macros,
                         includes,
+                        arena_alloc,
                     )
 
                     if eval_err != nil {
@@ -201,6 +205,10 @@ parse_macro_func_call :: proc(
 ) {
     token = _token.next
     if token.kind == .EOF do return mc, token, errors_eof(token)
+
+    arena: runtime.Arena
+    defer runtime.arena_destroy(&arena)
+    arena_alloc := runtime.arena_allocator(&arena)
 
     args: [dynamic]string
 
@@ -280,6 +288,7 @@ parse_macro_func_call :: proc(
                             v.value.?,
                             macros,
                             includes,
+                            arena_alloc,
                         )
 
                         if eval_err != nil {
@@ -329,6 +338,7 @@ evaluate_macro_func_call :: proc(
     mc: MacroFuncCall,
     macros: om.OrderedMap(string, Macro),
     includes: []IncludedHeader,
+    allocator := context.allocator,
 ) -> (
     eval: string,
     err: errors.Error,
@@ -339,7 +349,8 @@ evaluate_macro_func_call :: proc(
     errors.assert(len(args) == len(parameters)) or_return
 
     buf: strings.Builder
-    strings.builder_init_none(&buf)
+    strings.builder_init(&buf)
+    defer strings.builder_destroy(&buf)
 
     for b in body {
         switch v in b {
@@ -347,12 +358,15 @@ evaluate_macro_func_call :: proc(
             strings.write_string(&buf, v)
         case MacroInsertion:
             for _ in 0 ..< v.spaces do strings.write_rune(&buf, ' ')
-            strings.write_string(&buf, fmt.aprint(args[v.parameter]))
+            strings.write_string(&buf, args[v.parameter])
         }
     }
 
-    eval = strings.to_string(buf)
-    eval = evaluate_macro_var(eval, macros, includes) or_return
+    eval = evaluate_macro_var(
+        strings.to_string(buf),
+        macros,
+        includes,
+        allocator,
+    ) or_return
     return
 }
-

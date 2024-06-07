@@ -74,30 +74,27 @@ test_c_generate_runestone :: proc(t: ^testing.T) {
     if !expect_value(t, e_err, nil) do return
 }
 
-when ODIN_OS == .Linux {
-    @(test)
-    test_int_sizes :: proc(t: ^testing.T) {
-        using testing
+@(test)
+test_int_sizes :: proc(t: ^testing.T) {
+    using testing
 
-        is, err := int_sizes()
-        if !expect_value(t, err, nil) do return
+    is := int_sizes_from_platform({os = .Linux, arch = .x86_64})
 
-        expect_value(t, is.char, 1)
-        expect_value(t, is.short, 2)
-        expect_value(t, is.Int, 4)
-        expect_value(t, is.long, 8)
-        expect_value(t, is.longlong, 8)
-        expect_value(t, is.float, 4)
-        expect_value(t, is.double, 8)
-        expect_value(t, is.long_double, 16)
-        expect_value(t, is._Bool, 1)
-        expect_value(t, is.float_Complex, 8)
-        expect_value(t, is.double_Complex, 16)
-        expect_value(t, is.long_double_Complex, 32)
+    expect_value(t, is.char, 1)
+    expect_value(t, is.short, 2)
+    expect_value(t, is.Int, 4)
+    expect_value(t, is.long, 8)
+    expect_value(t, is.longlong, 8)
+    expect_value(t, is.float, 4)
+    expect_value(t, is.double, 8)
+    expect_value(t, is.long_double, 16)
+    expect_value(t, is._Bool, 1)
+    expect_value(t, is.float_Complex, 8)
+    expect_value(t, is.double_Complex, 16)
+    expect_value(t, is.long_double_Complex, 32)
 
-        expect_value(t, int_type(is.char, true), runic.Builtin.SInt8)
-        expect_value(t, int_type(is.char, false), runic.Builtin.UInt8)
-        expect_value(t, int_type(is.Int, true), runic.Builtin.SInt32)
-        expect_value(t, int_type(is.Int, false), runic.Builtin.UInt32)
-    }
+    expect_value(t, int_type(is.char, true), runic.Builtin.SInt8)
+    expect_value(t, int_type(is.char, false), runic.Builtin.UInt8)
+    expect_value(t, int_type(is.Int, true), runic.Builtin.SInt32)
+    expect_value(t, int_type(is.Int, false), runic.Builtin.UInt32)
 }

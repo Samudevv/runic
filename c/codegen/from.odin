@@ -44,7 +44,7 @@ generate_runestone :: proc(
 
     rs_arena_alloc := runtime.arena_allocator(&rs.arena)
 
-    isz := int_sizes() or_return
+    isz := int_sizes_from_platform(plat)
 
     runic.set_library(plat, &rs, rf)
 
@@ -819,7 +819,7 @@ Int_Sizes :: struct {
     long_double_Complex: uint,
 }
 
-int_sizes :: proc() -> (is: Int_Sizes, err: errors.Error) {
+int_sizes_from_host :: proc() -> (is: Int_Sizes, err: errors.Error) {
     rd: strings.Reader
     rd_str := strings.to_reader(&rd, INT_SIZES_C)
 
@@ -876,6 +876,52 @@ int_sizes :: proc() -> (is: Int_Sizes, err: errors.Error) {
     is.double_Complex, _ = strconv.parse_uint(sizes[10])
     is.long_double_Complex, _ = strconv.parse_uint(sizes[11])
 
+    return
+}
+
+int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
+    switch plat.os {
+    case .Linux:
+        switch plat.arch {
+        case .x86_64, .arm64:
+            return(
+                 {
+                    char = 1,
+                    short = 2,
+                    Int = 4,
+                    long = 8,
+                    longlong = 8,
+                    float = 4,
+                    double = 8,
+                    long_double = 16,
+                    _Bool = 1,
+                    float_Complex = 8,
+                    double_Complex = 16,
+                    long_double_Complex = 32,
+                } \
+            )
+        }
+    case .Windows:
+        switch plat.arch {
+        case .x86_64, .arm64:
+            return(
+                 {
+                    char = 1,
+                    short = 2,
+                    Int = 4,
+                    long = 4,
+                    longlong = 8,
+                    float = 4,
+                    double = 8,
+                    long_double = 8,
+                    _Bool = 1,
+                    float_Complex = 8,
+                    double_Complex = 16,
+                    long_double_Complex = 16,
+                } \
+            )
+        }
+    }
     return
 }
 

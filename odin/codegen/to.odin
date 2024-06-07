@@ -175,14 +175,17 @@ generate_bindings :: proc(
 
         io.write_string(wd, "} else {\n    ") or_return
 
-        lib_shared := rs.lib_shared.?
-        // TODO: Better handling of platforms
-        when ODIN_OS == .Linux {
+        lib_shared: string = ---
+        switch plat.os {
+        case .Linux:
+            lib_shared = rs.lib_shared.?
             if strings.has_prefix(lib_shared, "lib") &&
                strings.has_suffix(lib_shared, ".so") {
                 lib_shared = strings.trim_prefix(lib_shared, "lib")
                 lib_shared = strings.trim_suffix(lib_shared, ".so")
             }
+        case .Windows:
+            lib_shared = rs.lib_shared.?
         }
 
         fmt.wprintf(
@@ -196,8 +199,8 @@ generate_bindings :: proc(
     } else {
         fmt.wprintf(wd, "foreign import {}_runic \"system:", package_name)
 
-        // TODO: Better handling of platforms
-        when ODIN_OS == .Linux {
+        switch plat.os {
+        case .Linux:
             if shared, ok := rs.lib_shared.?; ok {
                 if strings.has_prefix(shared, "lib") &&
                    strings.has_suffix(shared, ".so") {
@@ -214,7 +217,7 @@ generate_bindings :: proc(
             } else {
                 io.write_string(wd, rs.lib_static.?) or_return
             }
-        } else when ODIN_OS == .Windows {
+        case .Windows:
             if shared, ok := rs.lib_shared.?; ok {
                 io.write_string(wd, shared) or_return
             } else {

@@ -153,6 +153,7 @@ generate_runestone :: proc(
                     if stm.type != nil {
                         type_err: errors.Error = ---
                         decl_type, type_err = type_to_type(
+                            plat,
                             stm.type,
                             first_name,
                             &rs.types,
@@ -217,6 +218,7 @@ generate_runestone :: proc(
                             if !exported do continue
 
                             fn, fn_err := proc_type_to_function(
+                                plat,
                                 value.type,
                                 name,
                                 &rs.types,
@@ -327,6 +329,7 @@ generate_runestone :: proc(
                             )
                         case:
                             type, type_err := type_to_type(
+                                plat,
                                 value_expr,
                                 name,
                                 &rs.types,
@@ -400,6 +403,7 @@ generate_runestone :: proc(
 }
 
 proc_type_to_function :: proc(
+    plat: runic.Platform,
     p: ^odina.Proc_Type,
     name: Maybe(string),
     types: ^om.OrderedMap(string, runic.Type),
@@ -427,6 +431,7 @@ proc_type_to_function :: proc(
         }
 
         type := type_to_type(
+            plat,
             param_field.type,
             first_name,
             types,
@@ -476,6 +481,7 @@ proc_type_to_function :: proc(
         }
 
         type := type_to_type(
+            plat,
             result_field.type,
             first_name,
             types,
@@ -565,6 +571,7 @@ name_to_name :: proc(name: ^odina.Expr) -> (nm: string, err: errors.Error) {
 }
 
 type_to_type :: proc(
+    plat: runic.Platform,
     t: ^odina.Expr,
     name: Maybe(string),
     types: ^om.OrderedMap(string, runic.Type),
@@ -579,6 +586,7 @@ type_to_type :: proc(
     #partial switch type_expr in t.derived_expr {
     case ^odina.Ident:
         type.spec = type_identifier_to_type_specifier(
+            plat,
             type_expr.name,
             allocator,
         ) or_return
@@ -600,6 +608,7 @@ type_to_type :: proc(
                         runic.Type{spec = runic.Unknown(prefix_type_name)},
                     )
                     type = lookup_type_in_package(
+                        plat,
                         type_name,
                         pkg,
                         types,
@@ -614,6 +623,7 @@ type_to_type :: proc(
         }
     case ^odina.Pointer_Type:
         type = type_to_type(
+            plat,
             type_expr.elem,
             name,
             types,
@@ -629,6 +639,7 @@ type_to_type :: proc(
         }
     case ^odina.Array_Type:
         type = type_to_type(
+            plat,
             type_expr.elem,
             name,
             types,
@@ -656,6 +667,7 @@ type_to_type :: proc(
         append(&type.array_info, runic.Array{size = size})
     case ^odina.Multi_Pointer_Type:
         type = type_to_type(
+            plat,
             type_expr.elem,
             name,
             types,
@@ -676,6 +688,7 @@ type_to_type :: proc(
             e.type = .SInt64
         } else {
             et := type_to_type(
+                plat,
                 type_expr.base_type,
                 name,
                 types,
@@ -731,6 +744,7 @@ type_to_type :: proc(
     case ^odina.Struct_Type:
         if type_expr.is_raw_union {
             u := struct_type_to_union(
+                plat,
                 type_expr,
                 types,
                 anon_types,
@@ -742,6 +756,7 @@ type_to_type :: proc(
             return
         }
         s := struct_type_to_struct(
+            plat,
             type_expr,
             types,
             anon_types,
@@ -770,6 +785,7 @@ type_to_type :: proc(
 
         if pkg.name == "builtin" {
             type = type_to_type(
+                plat,
                 &type_expr.field.node,
                 type_name,
                 types,
@@ -781,6 +797,7 @@ type_to_type :: proc(
             return
         } else {
             type = lookup_type_of_import(
+                plat,
                 imports,
                 pkg.name,
                 type_name,
@@ -801,6 +818,7 @@ type_to_type :: proc(
         type.spec = type_name
     case ^odina.Helper_Type:
         type, err = type_to_type(
+            plat,
             type_expr.type,
             name,
             types,
@@ -811,6 +829,7 @@ type_to_type :: proc(
         )
     case ^odina.Proc_Type:
         func := proc_type_to_function(
+            plat,
             type_expr,
             name,
             types,
@@ -838,6 +857,7 @@ type_to_type :: proc(
 }
 
 type_identifier_to_type_specifier :: proc(
+    plat: runic.Platform,
     ident: string,
     allocator := context.allocator,
 ) -> (
@@ -848,10 +868,15 @@ type_identifier_to_type_specifier :: proc(
 
     switch ident {
     case "int":
-        // TODO: use architecture to get correct size
-        t = SInt64
+        switch plat.arch {
+        case .x86_64, .arm64:
+            t = SInt64
+        }
     case "uint":
-        t = UInt64
+        switch plat.arch {
+        case .x86_64, .arm64:
+            t = UInt64
+        }
     case "i8":
         t = SInt8
     case "i16":
@@ -885,8 +910,10 @@ type_identifier_to_type_specifier :: proc(
     case "rawptr":
         t = RawPtr
     case "bool":
-        // TODO: check size of bool based on architecture and platform
-        t = Bool64
+        switch plat.arch {
+        case .x86_64, .arm64:
+            t = Bool64
+        }
     case "b8":
         t = Bool8
     case "b16":
@@ -905,6 +932,7 @@ type_identifier_to_type_specifier :: proc(
 }
 
 struct_type_to_union :: proc(
+    plat: runic.Platform,
     st: ^odina.Struct_Type,
     types: ^om.OrderedMap(string, runic.Type),
     anon_types: ^[dynamic]runic.TypeSpecifier,
@@ -916,6 +944,7 @@ struct_type_to_union :: proc(
     err: errors.Error,
 ) {
     s := struct_type_to_struct(
+        plat,
         st,
         types,
         anon_types,
@@ -928,6 +957,7 @@ struct_type_to_union :: proc(
 }
 
 struct_type_to_struct :: proc(
+    plat: runic.Platform,
     st: ^odina.Struct_Type,
     types: ^om.OrderedMap(string, runic.Type),
     anon_types: ^[dynamic]runic.TypeSpecifier,
@@ -951,6 +981,7 @@ struct_type_to_struct :: proc(
         }
 
         type := type_to_type(
+            plat,
             field.type,
             first_name,
             types,
@@ -1177,6 +1208,7 @@ parse_import :: proc(
 }
 
 lookup_type_of_import :: proc(
+    plat: runic.Platform,
     imports: ^map[string]Import,
     pkg, type_name: string,
     types: ^om.OrderedMap(string, runic.Type),
@@ -1227,6 +1259,7 @@ lookup_type_of_import :: proc(
     }
 
     type, err = lookup_type_in_package(
+        plat,
         type_name,
         imp.pkg,
         types,
@@ -1238,6 +1271,7 @@ lookup_type_of_import :: proc(
 }
 
 lookup_type_in_package :: proc(
+    plat: runic.Platform,
     type_name: string,
     pkg: ^odina.Package,
     types: ^om.OrderedMap(string, runic.Type),
@@ -1267,6 +1301,7 @@ lookup_type_in_package :: proc(
                         value_expr := stm.values[idx]
 
                         type, err = type_to_type(
+                            plat,
                             value_expr,
                             name,
                             types,

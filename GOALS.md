@@ -5,9 +5,7 @@
 + [ ] MacOS support
 + [ ] BSD support
 + [ ] complex bindings example (e.g. cairo)
-+ exec
-  + [ ] Implement `pipe_commands` more low level
-+ [ ] Make odin integers sizes based on platform and architecture
++ [x] Make odin integers sizes based on platform and architecture
 
 ## 0.3 (?)
 

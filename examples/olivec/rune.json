@@ -5,7 +5,7 @@
     "static.linux": "libolivec.a",
     "shared.linux": "libolivec.so",
     "static.windows": "olivec.lib",
-    "static.macos": "libolivec.a",
+    "static.macos": "olivec",
     "headers": [
       "olive.c"
     ],

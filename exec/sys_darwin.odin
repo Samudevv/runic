@@ -23,9 +23,19 @@ import "core:sys/darwin"
 
 foreign import libc "system:c"
 
+@(default_calling_convention = "c")
 foreign libc {
     @(link_name = "environ")
     environ: [^]cstring
+
+    @(link_name = "fork")
+    cfork :: proc() -> i32 ---
+
+    @(link_name = "pipe")
+    cpipe :: proc(pipedd: ^RWPipe) -> i32 ---
+
+    @(link_name = "dup2")
+    cdup2 :: proc(from, to: os.Handle) -> i32 ---
 }
 
 STDIN_FILENO :: 0
@@ -34,12 +44,12 @@ STDERR_FILENO :: 2
 
 Pid :: distinct i32
 
-fork :: proc "contextless" () -> (Pid, bool) #optional_ok {
-    pid := cast(i32)intrinsics.syscall(darwin.unix_offset_syscall(.fork))
+fork :: #force_inline proc "contextless" () -> (Pid, bool) #optional_ok {
+    pid := cfork()
     return Pid(pid), pid >= 0
 }
 
-execve :: proc "contextless" (
+execve :: #force_inline proc "contextless" (
     name: cstring,
     argv: [^]cstring,
     env: [^]cstring,
@@ -47,27 +57,17 @@ execve :: proc "contextless" (
     return darwin.syscall_execve(name, argv, env) >= 0
 }
 
-dup2 :: proc "contextless" (
-    from, to: os.Handle,
-) -> (
-    os.Handle,
-    bool,
-) #optional_ok {
-    ret := cast(i32)intrinsics.syscall(
-        darwin.unix_offset_syscall(.dup2),
-        uintptr(from),
-        uintptr(to),
-    )
-    return cast(os.Handle)ret, ret >= 0
+dup2 :: #force_inline proc "contextless" (from, to: os.Handle) -> bool {
+    return cdup2(from, to) >= 0
 }
 
-pipe :: proc "contextless" () -> Maybe(RWPipe) {
+pipe :: #force_inline proc "contextless" () -> Maybe(RWPipe) {
     p: RWPipe = ---
-    if darwin.syscall_pipe(cast([^]i32)&p) < 0 do return nil
+    if cpipe(&p) < 0 do return nil
     return p
 }
 
-wait4 :: proc "contextless" (
+wait4 :: #force_inline proc "contextless" (
     pid: Pid,
     status: ^u32,
     options: i32 = 0,

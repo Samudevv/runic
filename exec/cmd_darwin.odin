@@ -44,15 +44,15 @@ start_child_process :: proc(
     if pid == 0 {
         if po, ok := pipeout.?; ok {
             if po.r != po.w do os.close(po.r)
-            if _, dup2_ok := dup2(po.w, STDOUT_FILENO); !dup2_ok do return cp, errors.empty()
+            if dup2_ok := dup2(po.w, STDOUT_FILENO); !dup2_ok do return cp, errors.empty()
         }
         if pe, ok := pipeerr.?; ok {
             if pe.r != pe.w do os.close(pe.r)
-            if _, dup2_ok := dup2(pe.w, STDERR_FILENO); !dup2_ok do return cp, errors.empty()
+            if dup2_ok := dup2(pe.w, STDERR_FILENO); !dup2_ok do return cp, errors.empty()
         }
         if pi, ok := pipein.?; ok {
             if pi.r != pi.w do os.close(pi.w)
-            if _, dup2_ok := dup2(pi.r, STDIN_FILENO); !dup2_ok do return cp, errors.empty()
+            if dup2_ok := dup2(pi.r, STDIN_FILENO); !dup2_ok do return cp, errors.empty()
         }
 
         argv := make([]cstring, len(args) + 2, allocator)
@@ -120,8 +120,8 @@ cleanup_child_process :: proc(_: ChildProcess) {
 
 @(private)
 get_exit_code :: proc(cp: ChildProcess) -> (status: int, err: errors.Error) {
-    if cp.status^ & 0x7f != 0 do return 1, errors.empty()
-    return int((cp.status^ & 0xff00) >> 8), nil
+    if cp.status^ & 0o177 != 0 do return 1, errors.message("status={}", cp.status^)
+    return int(cp.status^ >> 8), nil
 }
 
 @(private)

@@ -21,8 +21,7 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 
-when ODIN_OS == .Linux || ODIN_OS == .Darwin {
-
+when ODIN_OS == .Linux {
     @(test)
     test_stderr :: proc(t: ^testing.T) {
         using testing
@@ -347,5 +346,223 @@ when ODIN_OS == .Linux || ODIN_OS == .Darwin {
                 strings.equal_fold(path, "C:\\windows\\system32\\cmd.exe"),
             )
         }
+    }
+} else when ODIN_OS == .Darwin {
+    @(test)
+    test_hello :: proc(t: ^testing.T) {
+        using testing
+
+        status, err := command("echo", {"hello from macos"})
+        if !expect_value(t, err, nil) do return
+
+        expect_value(t, status, 0)
+    }
+
+    @(test)
+    test_pipe :: proc(t: ^testing.T) {
+        using testing
+
+        p := pipe()
+        expect(t, p != nil)
+
+        test_str := "Hello from pipe"
+
+        w_n, w_err := os.write(p.?.w, transmute([]u8)test_str)
+        expect(t, w_n != 0)
+        expect_value(t, w_err, 0)
+
+        os.close(p.?.w)
+
+        data: [256]u8
+        r_n, r_err := os.read(p.?.r, data[:])
+        expect_value(t, r_n, w_n)
+        expect_value(t, r_err, 0)
+        expect_value(t, transmute(string)data[:len(test_str)], test_str)
+    }
+
+    @(test)
+    test_dup2 :: proc(t: ^testing.T) {
+        using testing
+
+        p := pipe()
+        expect(t, p != nil)
+
+        expect(t, dup2(p.?.w, STDERR_FILENO))
+
+        test_str := "Hello from pipe"
+
+        w_n, w_err := os.write(os.stderr, transmute([]u8)test_str)
+        expect(t, w_n != 0)
+        expect_value(t, w_err, 0)
+
+        os.close(p.?.w)
+
+        data: [256]u8
+        r_n, r_err := os.read(p.?.r, data[:])
+        expect_value(t, r_n, w_n)
+        expect_value(t, r_err, 0)
+        expect_value(t, transmute(string)data[:len(test_str)], test_str)
+    }
+
+    @(test)
+    test_stderr :: proc(t: ^testing.T) {
+        using testing
+
+        out: strings.Builder
+        strings.builder_init(&out)
+        defer strings.builder_destroy(&out)
+
+        _, err := command(
+            "man",
+            {"i_dont_exist"},
+            stderr = strings.to_stream(&out),
+            env = Env.None,
+        )
+        if !expect_value(t, err, nil) do return
+
+        expect_value(
+            t,
+            strings.to_string(out),
+            "No manual entry for i_dont_exist\n",
+        )
+    }
+
+    @(test)
+    test_pipe_commands :: proc(t: ^testing.T) {
+        using testing
+        out: strings.Builder
+        status, err := pipe_commands(
+             {
+                {"printf", "#1\n#2\n3\n4\n#5"},
+                {"sed", "/^#/d"},
+                {"grep", "-n", "."},
+            },
+            stdout = strings.to_stream(&out),
+            env = Env.None,
+        )
+
+        if !expect_value(t, err, nil) do return
+        expect_value(t, status, 0)
+        expect_value(t, strings.to_string(out), "1:3\n2:4\n")
+    }
+    @(test)
+    test_status :: proc(t: ^testing.T) {
+        using testing
+
+        {
+            status, err := command("/bin/sh", {"-c", "exit 0"})
+            if !expect_value(t, err, nil) do return
+
+            expect_value(t, status, 0)
+        }
+        {
+            status, err := command("/bin/sh", {"-c", "exit 1"})
+            if !expect_value(t, err, nil) do return
+
+            expect_value(t, status, 1)
+        }
+        {
+            status, err := command("/bin/sh", {"-c", "exit 10"})
+            if !expect_value(t, err, nil) do return
+
+            expect_value(t, status, 10)
+        }
+        {
+            status, err := command("/bin/sh", {"-c", "exit 123"})
+            if !expect_value(t, err, nil) do return
+
+            expect_value(t, status, 123)
+        }
+        {
+            status, err := command("/bin/sh", {"-c", "exit 255"})
+            if !expect_value(t, err, nil) do return
+
+            expect_value(t, status, 255)
+        }
+    }
+
+    @(test)
+    test_stdin :: proc(t: ^testing.T) {
+        using testing
+
+        out: strings.Builder
+        strings.builder_init(&out)
+        defer strings.builder_destroy(&out)
+        in_stm: strings.Reader
+
+        _, err := command(
+            "cat",
+            stdout = strings.to_stream(&out),
+            stdin = strings.to_reader(&in_stm, "Hello World from cat"),
+            env = Env.None,
+        )
+        if !expect_value(t, err, nil) do return
+
+        expect_value(t, strings.to_string(out), "Hello World from cat")
+    }
+
+    @(test)
+    test_stdout :: proc(t: ^testing.T) {
+        using testing
+
+        out: strings.Builder
+        strings.builder_init(&out)
+        defer strings.builder_destroy(&out)
+
+        _, err := command(
+            "echo",
+            {"Hello", "World", "from", "echo"},
+            stdout = strings.to_stream(&out),
+            env = Env.None,
+        )
+        if !expect_value(t, err, nil) do return
+
+        expect_value(t, strings.to_string(out), "Hello World from echo\n")
+
+    }
+
+    @(test)
+    test_env :: proc(t: ^testing.T) {
+        using testing
+
+        {
+            out: strings.Builder
+            strings.builder_init(&out)
+            defer strings.builder_destroy(&out)
+
+            status, err := command(
+                "env",
+                stdout = strings.to_stream(&out),
+                env = []string{"TEST=test_env"},
+            )
+            if !expect_value(t, err, nil) do return
+
+            expect_value(t, status, 0)
+            expect_value(t, strings.to_string(out), "TEST=test_env\n")
+        }
+    }
+
+    @(test)
+    test_write_to_handle :: proc(t: ^testing.T) {
+        using testing
+
+        file, os_err := os.open(
+            "test_data/write_to_handle",
+            os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
+            0o644,
+        )
+        if !expect_value(t, os_err, 0) do return
+
+        status, err := command("echo", {"cogito ergo sum"}, stdout = file)
+        os.close(file)
+        if !expect_value(t, err, nil) do return
+
+        expect_value(t, status, 0)
+
+        data, ok := os.read_entire_file("test_data/write_to_handle")
+        if !expect(t, ok) do return
+        defer delete(data)
+
+        expect_value(t, string(data), "cogito ergo sum\n")
     }
 }

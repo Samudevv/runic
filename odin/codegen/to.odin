@@ -42,6 +42,8 @@ generate_bindings :: proc(
         io.write_string(wd, "linux ") or_return
     case .Windows:
         io.write_string(wd, "windows ") or_return
+    case .Macos:
+        io.write_string(wd, "darwin") or_return
     }
     switch plat.arch {
     case .x86_64:
@@ -186,6 +188,9 @@ generate_bindings :: proc(
             }
         case .Windows:
             lib_shared = rs.lib_shared.?
+        case .Macos:
+            lib_shared = rs.lib_shared.?
+            // TODO
         }
 
         fmt.wprintf(
@@ -223,6 +228,13 @@ generate_bindings :: proc(
             } else {
                 io.write_string(wd, rs.lib_static.?) or_return
             }
+        case .Macos:
+            if shared, ok := rs.lib_shared.?; ok {
+                io.write_string(wd, shared) or_return
+            } else {
+                io.write_string(wd, rs.lib_static.?) or_return
+            }
+            // TODO
         }
 
         io.write_string(wd, "\"\n\n") or_return

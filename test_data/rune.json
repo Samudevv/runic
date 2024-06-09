@@ -8,11 +8,8 @@
       "foz.h",
       "bar.h"
     ],
-    "headers.macosx": [
-      "plat_macosx.h"
-    ],
-    "headers.macosx.aarch64": [
-      "plat_macosx_aarch64.h"
+    "headers.macos": [
+      "plat_macos.h"
     ],
     "includedirs": [
       "include"

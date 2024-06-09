@@ -207,11 +207,17 @@ parse_runestone :: proc(
         os_str, ok2 := om.get(sect, "os")
         errors.wrap(ok2) or_return
 
+        switch platform.os {
+        case .Linux, .Windows, .Macos:
+        // Just a reminder to update this when platforms change
+        }
         switch os_str {
         case "Linux":
             platform.os = .Linux
         case "Windows":
             platform.os = .Windows
+        case "Macos":
+            platform.os = .Macos
         case:
             err = errors.message("invalid os \"{}\"", os_str)
             return
@@ -220,6 +226,10 @@ parse_runestone :: proc(
         arch_str, ok3 := om.get(sect, "arch")
         errors.wrap(ok3) or_return
 
+        switch platform.arch {
+        case .x86_64, .arm64:
+        // Just a reminder to update this when platforms change
+        }
         switch arch_str {
         case "x86_64":
             platform.arch = .x86_64

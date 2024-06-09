@@ -28,6 +28,7 @@ Platform :: struct {
 OS :: enum {
     Linux,
     Windows,
+    Macos,
 }
 
 Architecture :: enum {
@@ -40,6 +41,8 @@ host_os :: proc() -> OS {
         os := OS.Linux
     } else when ODIN_OS == .Windows {
         os := OS.Windows
+    } else when ODIN_OS == .Darwin {
+        os := OS.Macos
     } else {
         panic("OS is not supported")
     }
@@ -64,13 +67,15 @@ platform_from_host :: proc() -> Platform {
 platform_value :: proc(
     $T: typeid,
     plat: Platform,
-    all, linux, windows: T,
+    all, linux, windows, macos: T,
 ) -> T {
     switch plat.os {
     case .Linux:
         if len(linux) != 0 do return linux
     case .Windows:
         if len(windows) != 0 do return windows
+    case .Macos:
+        if len(macos) != 0 do return macos
     }
     return all
 }
@@ -79,16 +84,18 @@ set_library :: proc(plat: Platform, rs: ^Runestone, from: From) {
     static_name := platform_value(
         string,
         plat,
-        from.static,
-        from.static_linux,
-        from.static_windows,
+        all = from.static,
+        linux = from.static_linux,
+        windows = from.static_windows,
+        macos = from.static_macos,
     )
     shared_name := platform_value(
         string,
         plat,
-        from.shared,
-        from.shared_linux,
-        from.shared_windows,
+        all = from.shared,
+        linux = from.shared_linux,
+        windows = from.shared_windows,
+        macos = from.shared_macos,
     )
 
     rs_arena_alloc := runtime.arena_allocator(&rs.arena)

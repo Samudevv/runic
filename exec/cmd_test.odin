@@ -21,7 +21,7 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 
-when ODIN_OS == .Linux {
+when ODIN_OS == .Linux || ODIN_OS == .Darwin {
 
     @(test)
     test_stderr :: proc(t: ^testing.T) {

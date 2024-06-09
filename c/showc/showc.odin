@@ -23,8 +23,11 @@ import "core:io"
 import "core:os"
 import "core:strings"
 import om "root:ordered_map"
+import "root:runic"
 
 main :: proc() {
+    plat := runic.platform_from_host()
+
     in_file_name: string
     in_handle: os.Handle
     in_stream: Maybe(io.Reader)
@@ -53,6 +56,7 @@ main :: proc() {
     }
 
     ps, err := parser.parse_file(
+        plat,
         in_file_name,
         in_stream,
         prepreprocess = prepreprocess,

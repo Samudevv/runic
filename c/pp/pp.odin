@@ -22,8 +22,11 @@ import "core:fmt"
 import "core:io"
 import "core:os"
 import "root:errors"
+import "root:runic"
 
 main :: proc() {
+    plat := runic.platform_from_host()
+
     in_file_name: string
     in_handle: os.Handle
     in_stream: io.Reader
@@ -47,10 +50,13 @@ main :: proc() {
         in_stream = os.stream_from_handle(in_handle)
     }
 
-    err := parser.preprocess_file(in_stream, os.stream_from_handle(os.stdout))
+    err := parser.preprocess_file(
+        plat,
+        in_stream,
+        os.stream_from_handle(os.stdout),
+    )
     if err != nil {
         fmt.eprintfln("failed to prepreprocess: {}", err)
         os.exit(1)
     }
 }
-

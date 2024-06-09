@@ -105,6 +105,7 @@ start_child_process :: proc(
     if pe, ok := pipeerr.?; ok && pe.r != pe.w do os.close(pe.w)
     if pi, ok := pipein.?; ok && pi.r != pi.w do os.close(pi.r)
 
+    cp.pid = pid
     cp.status = new(u32, allocator)
     return
 }

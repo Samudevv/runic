@@ -191,8 +191,8 @@ generate_bindings :: proc(
         case .Macos:
             lib_shared = rs.lib_shared.?
             if strings.has_prefix(lib_shared, "lib") &&
-               (strings.has_prefix(lib_shared, ".so") ||
-                       strings.has_prefix(lib_shared, ".dylib")) {
+               (strings.has_suffix(lib_shared, ".so") ||
+                       strings.has_suffix(lib_shared, ".dylib")) {
                 lib_shared = strings.trim_prefix(lib_shared, "lib")
                 lib_shared = strings.trim_suffix(lib_shared, ".so")
                 lib_shared = strings.trim_suffix(lib_shared, ".dylib")

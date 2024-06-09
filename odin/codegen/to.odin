@@ -43,7 +43,7 @@ generate_bindings :: proc(
     case .Windows:
         io.write_string(wd, "windows ") or_return
     case .Macos:
-        io.write_string(wd, "darwin") or_return
+        io.write_string(wd, "darwin ") or_return
     }
     switch plat.arch {
     case .x86_64:

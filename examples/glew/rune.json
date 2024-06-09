@@ -17,6 +17,11 @@
       "GLEW_BUILD": 1,
       "GLEW_GET_VAR(x)": "x"
     },
+    "defines.macos": {
+      "GLEW_BUILD": 1,
+      "GLEW_GET_VAR(x)": "x",
+      "GLEW_NO_GLU": 1
+    },
     "includedirs": [
       "../../build/"
     ],

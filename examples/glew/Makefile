@@ -13,7 +13,7 @@ BUILD_DIR := $(shell realpath ../../build)
 ifeq ($(PLAT_OS), Linux)
 LINK_FLAGS := -lEGL -lGL -lGLU -lOpenGL
 else ifeq ($(PLAT_OS), Darwin)
-LINK_FLAGS := -L$(brew --prefix glew)/lib -framework OpenGL
+LINK_FLAGS := -framework OpenGL
 else ifeq ($(PLAT_OS), FreeBSD)
 LINK_FLAGS := -lGL
 endif

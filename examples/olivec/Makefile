@@ -1,6 +1,17 @@
+PLAT_OS := $(shell uname)
+
 BUILD_DIR := $(shell realpath ../../build)
 ODIN_ROOT := $(shell dirname $(shell which odin))
+ifeq ($(PLAT_OS), Darwin)
+STBLIB := $(ODIN_ROOT)/vendor/stb/lib/darwin/stb_image.a
+else
 STBLIB := $(ODIN_ROOT)/vendor/stb/lib/stb_image.a
+endif
+ifeq ($(PLAT_OS), FreeBSD)
+MAKE := gmake
+else
+MAKE := make
+endif
 
 default: run
 
@@ -16,7 +27,7 @@ $(BUILD_DIR)/libolivec.a: olive.c olivec_impl.c
 	ar r $@ $(BUILD_DIR)/olivec_impl.c.o
 
 $(STBLIB):
-	CC='gcc' make -C $(ODIN_ROOT)/vendor/stb/src
+	$(MAKE) -C $(ODIN_ROOT)/vendor/stb/src
 
 PHONY: clean run
 
@@ -24,4 +35,4 @@ run: $(BUILD_DIR)/olivec_example
 	$(BUILD_DIR)/olivec_example
 
 clean:
-	rm -rf olivec/ $(BUILD_DIR)/libolivec.a $(BUILD_DIR)/olivec_impl.c.o $(BUILD_DIR)/libstb_image.a $(BUILD_DIR)/std_image.o
+	rm -rf olivec/ $(BUILD_DIR)/libolivec.a $(BUILD_DIR)/olivec_impl.c.o

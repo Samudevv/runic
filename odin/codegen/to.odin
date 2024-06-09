@@ -190,7 +190,13 @@ generate_bindings :: proc(
             lib_shared = rs.lib_shared.?
         case .Macos:
             lib_shared = rs.lib_shared.?
-            // TODO
+            if strings.has_prefix(lib_shared, "lib") &&
+               (strings.has_prefix(lib_shared, ".so") ||
+                       strings.has_prefix(lib_shared, ".dylib")) {
+                lib_shared = strings.trim_prefix(lib_shared, "lib")
+                lib_shared = strings.trim_suffix(lib_shared, ".so")
+                lib_shared = strings.trim_suffix(lib_shared, ".dylib")
+            }
         }
 
         fmt.wprintf(
@@ -230,11 +236,18 @@ generate_bindings :: proc(
             }
         case .Macos:
             if shared, ok := rs.lib_shared.?; ok {
+                if strings.has_prefix(shared, "lib") &&
+                   (strings.has_suffix(shared, ".so") ||
+                           strings.has_suffix(shared, ".dylib")) {
+                    shared = strings.trim_prefix(shared, "lib")
+                    shared = strings.trim_suffix(shared, ".so")
+                    shared = strings.trim_suffix(shared, ".dylib")
+                }
                 io.write_string(wd, shared) or_return
             } else {
+                // TODO
                 io.write_string(wd, rs.lib_static.?) or_return
             }
-            // TODO
         }
 
         io.write_string(wd, "\"\n\n") or_return

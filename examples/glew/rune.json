@@ -5,7 +5,9 @@
     "shared.linux": "libGLEW.so",
     "static.windows": "glew32s.lib",
     "shared.windows": "glew32.lib",
-    "headers.linux": [
+    "static.macos": "/usr/local/opt/glew/lib/libGLEW.a",
+    "shared.macos": "libGLEW.dylib",
+    "headers": [
       "../../build/GL/glew.h"
     ],
     "headers.windows": [
@@ -15,9 +17,10 @@
       "GLEW_BUILD": 1,
       "GLEW_GET_VAR(x)": "x"
     },
-    "includedirs.linux": [
+    "includedirs": [
       "../../build/"
     ],
+    "includedirs.windows": [],
     "ignore": {
       "macros": [
         "_*",

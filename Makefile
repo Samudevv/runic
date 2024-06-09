@@ -1,3 +1,5 @@
+PLAT_OS := $(shell uname)
+
 ODINC = odin
 ODIN_JOBS ?= 1
 ODIN_TESTS ?= nil
@@ -9,7 +11,16 @@ ODIN_FLAGS ?=  \
 	-error-pos-style:unix \
 	-collection:root=.
 ODIN_DEBUG_FLAGS ?= -debug
+ifeq ($(PLAT_OS), Darwin)
+ODIN_RELEASE_FLAGS ?= -o:speed
+else
 ODIN_RELEASE_FLAGS ?= -o:speed -extra-linker-flags=-static
+endif
+ifeq ($(PLAT_OS), FreeBSD)
+MAKE := gmake
+else
+MAKE := make
+endif
 
 ifneq ($(ODIN_TESTS), nil)
 	ODIN_TEST_FLAG := -test-name:$(ODIN_TESTS)
@@ -53,10 +64,16 @@ build/runic_debug: $(MAIN_DS)
 	@mkdir -p $(shell dirname $@)
 	$(ODINC) build . $(ODIN_FLAGS) -out:$@ $(ODIN_DEBUG_FLAGS) -thread-count:$(ODIN_JOBS)
 
+ifeq ($(PLAT_OS), "Darwin")
+build/runic: $(MAIN_DS)
+	@mkdir -p $(shell dirname $@)
+	$(ODINC) build . $(ODIN_FLAGS) -out:$@ $(ODIN_RELEASE_FLAGS) -thread-count:$(ODIN_JOBS)
+else
 build/runic: $(MAIN_DS)
 	@mkdir -p $(shell dirname $@)
 	$(ODINC) build . $(ODIN_FLAGS) -out:$@ $(ODIN_RELEASE_FLAGS) -thread-count:$(ODIN_JOBS)
 	strip -s $@
+endif
 
 build/runic_test: $(MAIN_DS)
 	@mkdir -p $(shell dirname $@)
@@ -68,8 +85,8 @@ build/exec_test: $(MAIN_DS)
 
 clean:
 	rm -rf build
-	make -C examples/olivec clean
-	make -C examples/glew clean
+	$(MAKE) -C examples/olivec clean
+	$(MAKE) -C examples/glew clean
 
 test: build/runic_test
 	build/runic_test
@@ -83,16 +100,11 @@ check:
 check_macos:
 	$(ODINC) check . $(ODIN_FLAGS) -thread-count:$(ODIN_JOBS) -target:darwin_amd64
 
-release_dynamic:
-	@mkdir -p build
-	$(ODINC) build . $(ODIN_FLAGS) -out:build/runic -o:speed -thread-count:$(ODIN_JOBS)
-	strip -s build/runic
-
 example/olivec: debug
-	@make -C examples/olivec
+	@$(MAKE) -C examples/olivec
 
 example/glew: debug
-	@make -C examples/glew
+	@$(MAKE) -C examples/glew
 
 build/d/%.d: %.odin
 	@mkdir -p $(shell dirname $@)

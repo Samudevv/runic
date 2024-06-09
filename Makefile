@@ -83,6 +83,11 @@ check:
 check_macos:
 	$(ODINC) check . $(ODIN_FLAGS) -thread-count:$(ODIN_JOBS) -target:darwin_amd64
 
+release_dynamic:
+	@mkdir -p build
+	$(ODINC) build . $(ODIN_FLAGS) -out:build/runic -o:speed -thread-count:$(ODIN_JOBS)
+	strip -s build/runic
+
 example/olivec: debug
 	@make -C examples/olivec
 

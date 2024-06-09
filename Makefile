@@ -73,6 +73,9 @@ test: build/runic_test
 check:
 	$(ODINC) check . $(ODIN_FLAGS) -thread-count:$(ODIN_JOBS)
 
+check_macos:
+	$(ODINC) check . $(ODIN_FLAGS) -thread-count:$(ODIN_JOBS) -target:darwin_amd64
+
 example/olivec: debug
 	@make -C examples/olivec
 

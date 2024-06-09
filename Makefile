@@ -62,6 +62,10 @@ build/runic_test: $(MAIN_DS)
 	@mkdir -p $(shell dirname $@)
 	$(ODINC) test . $(ODIN_FLAGS) -all-packages -out:$@ $(ODIN_DEBUG_FLAGS) -thread-count:$(ODIN_JOBS) $(ODIN_TEST_FLAG)
 
+build/exec_test: $(MAIN_DS)
+	@mkdir -p $(shell dirname $@)
+	$(ODINC) test exec $(ODIN_FLAGS) -out:$@ $(ODIN_DEBUG_FLAGS) -thread-count:$(ODIN_JOBS) $(ODIN_TEST_FLAG)
+
 clean:
 	rm -rf build
 	make -C examples/olivec clean
@@ -69,6 +73,9 @@ clean:
 
 test: build/runic_test
 	build/runic_test
+
+test_exec: build/exec_test
+	build/exec_test
 
 check:
 	$(ODINC) check . $(ODIN_FLAGS) -thread-count:$(ODIN_JOBS)

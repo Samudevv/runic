@@ -25,7 +25,7 @@ import "core:path/filepath"
 import "olivec"
 import stb "vendor:stb/image"
 
-when ODIN_OS == .Linux {
+when ODIN_OS == .Linux || ODIN_OS == .Darwin {
     foreign import olivec2 "system:libolivec.a"
 } else when ODIN_OS == .Windows {
     foreign import olivec2 "system:olivec.lib"

@@ -55,6 +55,7 @@ generate_runestone :: proc(
         linux = rf.defines_linux,
         windows = rf.defines_windows,
         macos = rf.defines_macos,
+        bsd = rf.defines_bsd,
     )
 
     defines := make([dynamic][2]string, arena_alloc)
@@ -71,6 +72,7 @@ generate_runestone :: proc(
         linux = rf.headers_linux,
         windows = rf.headers_windows,
         macos = rf.headers_macos,
+        bsd = rf.headers_bsd,
     )
 
     pp_program := parser.PREPROCESS_PROGRAM
@@ -103,6 +105,7 @@ generate_runestone :: proc(
             linux = rf.includedirs_linux,
             windows = rf.includedirs_windows,
             macos = rf.includedirs_macos,
+            bsd = rf.includedirs_bsd,
         )
 
         p = parser.parse_file(
@@ -884,7 +887,7 @@ int_sizes_from_host :: proc() -> (is: Int_Sizes, err: errors.Error) {
 
 int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
     switch plat.os {
-    case .Linux, .Macos:
+    case .Linux, .Macos, .BSD:
         switch plat.arch {
         case .x86_64, .arm64:
             return(

@@ -44,6 +44,8 @@ generate_bindings :: proc(
         io.write_string(wd, "windows ") or_return
     case .Macos:
         io.write_string(wd, "darwin ") or_return
+    case .BSD:
+        io.write_string(wd, "freebsd, openbsd, netbsd\n//+build ") or_return
     }
     switch plat.arch {
     case .x86_64:
@@ -179,7 +181,7 @@ generate_bindings :: proc(
 
         lib_shared: string = ---
         switch plat.os {
-        case .Linux:
+        case .Linux, .BSD:
             lib_shared = rs.lib_shared.?
             if strings.has_prefix(lib_shared, "lib") &&
                strings.has_suffix(lib_shared, ".so") {
@@ -211,7 +213,7 @@ generate_bindings :: proc(
         fmt.wprintf(wd, "foreign import {}_runic \"system:", package_name)
 
         switch plat.os {
-        case .Linux:
+        case .Linux, .BSD:
             if shared, ok := rs.lib_shared.?; ok {
                 if strings.has_prefix(shared, "lib") &&
                    strings.has_suffix(shared, ".so") {

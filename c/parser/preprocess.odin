@@ -82,6 +82,8 @@ preprocess_file :: proc(
         os_str = "windows"
     case .Macos:
         os_str = "macos"
+    case .BSD:
+        os_str = "freebsd"
     }
     switch plat.arch {
     case .x86_64:

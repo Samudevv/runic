@@ -208,7 +208,7 @@ parse_runestone :: proc(
         errors.wrap(ok2) or_return
 
         switch platform.os {
-        case .Linux, .Windows, .Macos:
+        case .Linux, .Windows, .Macos, .BSD:
         // Just a reminder to update this when platforms change
         }
         switch os_str {
@@ -218,6 +218,8 @@ parse_runestone :: proc(
             platform.os = .Windows
         case "Macos":
             platform.os = .Macos
+        case "BSD":
+            platform.os = .BSD
         case:
             err = errors.message("invalid os \"{}\"", os_str)
             return

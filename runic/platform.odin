@@ -29,6 +29,7 @@ OS :: enum {
     Linux,
     Windows,
     Macos,
+    BSD,
 }
 
 Architecture :: enum {
@@ -43,8 +44,11 @@ host_os :: proc() -> OS {
         os := OS.Windows
     } else when ODIN_OS == .Darwin {
         os := OS.Macos
+    } else when ODIN_OS ==
+        .FreeBSD || ODIN_OS == .OpenBSD || ODIN_OS == .NetBSD {
+        os := OS.BSD
     } else {
-        panic("OS is not supported")
+        #panic("OS is not supported")
     }
     return os
 }
@@ -55,7 +59,7 @@ host_arch :: proc() -> Architecture {
     } else when ODIN_ARCH == .arm64 {
         arch := Architecture.arm64
     } else {
-        panic("Architecture is not supported")
+        #panic("Architecture is not supported")
     }
     return arch
 }
@@ -67,7 +71,7 @@ platform_from_host :: proc() -> Platform {
 platform_value :: proc(
     $T: typeid,
     plat: Platform,
-    all, linux, windows, macos: T,
+    all, linux, windows, macos, bsd: T,
 ) -> T {
     switch plat.os {
     case .Linux:
@@ -76,6 +80,8 @@ platform_value :: proc(
         if len(windows) != 0 do return windows
     case .Macos:
         if len(macos) != 0 do return macos
+    case .BSD:
+        if len(bsd) != 0 do return bsd
     }
     return all
 }
@@ -88,6 +94,7 @@ set_library :: proc(plat: Platform, rs: ^Runestone, from: From) {
         linux = from.static_linux,
         windows = from.static_windows,
         macos = from.static_macos,
+        bsd = from.static_bsd,
     )
     shared_name := platform_value(
         string,
@@ -96,6 +103,7 @@ set_library :: proc(plat: Platform, rs: ^Runestone, from: From) {
         linux = from.shared_linux,
         windows = from.shared_windows,
         macos = from.shared_macos,
+        bsd = from.shared_bsd,
     )
 
     rs_arena_alloc := runtime.arena_allocator(&rs.arena)

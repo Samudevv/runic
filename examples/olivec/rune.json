@@ -2,8 +2,8 @@
   "version": 0,
   "from": {
     "language": "c",
-    "static.linux": "libolivec.a",
-    "shared.linux": "libolivec.so",
+    "static": "libolivec.a",
+    "shared": "libolivec.so",
     "static.windows": "olivec.lib",
     "static.macos": "olivec",
     "headers": [

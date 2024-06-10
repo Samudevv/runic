@@ -2,7 +2,7 @@
   "version": 0,
   "from": {
     "language": "c",
-    "shared.linux": "libGLEW.so",
+    "shared": "libGLEW.so",
     "static.windows": "glew32s.lib",
     "shared.windows": "glew32.lib",
     "static.macos": "/usr/local/opt/glew/lib/libGLEW.a",

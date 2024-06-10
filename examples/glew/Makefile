@@ -15,7 +15,7 @@ LINK_FLAGS := -lEGL -lGL -lGLU -lOpenGL
 else ifeq ($(PLAT_OS), Darwin)
 LINK_FLAGS := -framework OpenGL
 else ifeq ($(PLAT_OS), FreeBSD)
-LINK_FLAGS := -lGL
+LINK_FLAGS := -L/usr/local/lib -lGL
 endif
 
 game_of_life: $(BUILD_DIR)/game_of_life
@@ -32,6 +32,9 @@ $(BUILD_DIR)/glew.runestone.ini: rune.json $(BUILD_DIR)/GL
 ifeq ($(PLAT_OS), Darwin)
 $(BUILD_DIR)/GL:
 	ln -s $(shell brew --prefix glew)/include/GL $@
+else ifeq ($(PLAT_OS), FreeBSD)
+$(BUILD_DIR)/GL:
+	ln -s /usr/local/include/GL $@
 else
 $(BUILD_DIR)/GL:
 	ln -s /usr/include/GL $@

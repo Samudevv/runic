@@ -53,7 +53,7 @@ StreamData :: struct {
     hd:     os.Handle,
     stream: io.Stream,
     err:    io.Error,
-    wg:     ^sync.Wait_Group,
+    wg:     ^sync.Barrier,
 }
 
 Stream :: union {
@@ -142,20 +142,26 @@ command :: proc(
 
     write_pipe :: proc(data: rawptr) {
         strd := cast(^StreamData)data
-        defer sync.wait_group_done(strd.wg)
+        defer sync.barrier_wait(strd.wg)
         defer os.close(strd.hd)
         _, strd.err = io.copy(strd.stream, os.stream_from_handle(strd.hd))
         if strd.err == .Unknown do strd.err = .None
     }
     read_pipe :: proc(data: rawptr) {
         strd := cast(^StreamData)data
-        defer sync.wait_group_done(strd.wg)
+        defer sync.barrier_wait(strd.wg)
         defer os.close(strd.hd)
         _, strd.err = io.copy(os.stream_from_handle(strd.hd), strd.stream)
         if strd.err == .Unknown do strd.err = .None
     }
 
-    wg: sync.Wait_Group
+    wg: sync.Barrier
+    barrier_count := 1
+    if po, ok := pipeout.?; ok && po.r != po.w do barrier_count += 1
+    if pe, ok := pipeerr.?; ok && pe.r != pe.w do barrier_count += 1
+    if pi, ok := pipein.?; ok && pi.r != pi.w do barrier_count += 1
+
+    sync.barrier_init(&wg, barrier_count)
 
     if po, ok := pipeout.?; ok && po.r != po.w {
         context.allocator = arena_alloc
@@ -165,7 +171,6 @@ command :: proc(
             stream = stdout.(io.Stream),
             wg     = &wg,
         }
-        sync.wait_group_add(&wg, 1)
         append(
             &stream_threads,
             thread.create_and_start_with_data(&stream_datas[0], write_pipe),
@@ -179,7 +184,6 @@ command :: proc(
             stream = stderr.(io.Stream),
             wg     = &wg,
         }
-        sync.wait_group_add(&wg, 1)
         append(
             &stream_threads,
             thread.create_and_start_with_data(&stream_datas[1], write_pipe),
@@ -193,14 +197,13 @@ command :: proc(
             stream = stdin.(io.Stream),
             wg     = &wg,
         }
-        sync.wait_group_add(&wg, 1)
         append(
             &stream_threads,
             thread.create_and_start_with_data(&stream_datas[2], read_pipe),
         )
     }
 
-    sync.wait_group_wait(&wg)
+    sync.barrier_wait(&wg)
     for td in stream_threads do thread.join(td)
     wait_for_child_process(child_process)
 
@@ -383,4 +386,3 @@ executable_extensions :: proc(
 
     return path_extensions[:], true
 }
-

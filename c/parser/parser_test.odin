@@ -660,7 +660,7 @@ test_prepreprocess :: proc(t: ^testing.T) {
 
     out_f, os_err := os.open(
         "test_data/macros.ppp.h",
-        os.O_CREATE | os.O_WRONLY,
+        os.O_CREATE | os.O_WRONLY | os.O_TRUNC,
         0o644,
     )
     if !expect_value(t, os_err, 0) {

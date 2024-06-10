@@ -129,11 +129,16 @@ main :: proc() {
         case "c":
             from_rs, err = ccdg.generate_runestone(plat, rune_file_name, from)
         case "odin":
-            from_rs, err = odincdg.generate_runestone(
-                plat,
-                rune_file_name,
-                from,
-            )
+            when ODIN_OS == .FreeBSD {
+                fmt.eprintfln("from odin is not supported on FreeBSD")
+                os.exit(1)
+            } else {
+                from_rs, err = odincdg.generate_runestone(
+                    plat,
+                    rune_file_name,
+                    from,
+                )
+            }
         case:
             fmt.eprintfln("from language {} is not supported", from.language)
             os.exit(1)

@@ -65,7 +65,7 @@ dup2 :: proc "contextless" (from, to: os.Handle) -> bool {
     return ret >= 0
 }
 
-pipe2 :: proc "contextless" () -> Maybe(RWPipe) {
+pipe :: proc "contextless" () -> Maybe(RWPipe) {
     p: RWPipe = ---
     ret := cast(i32)intrinsics.syscall(SYS_pipe2, uintptr(&p))
     if ret < 0 do return nil

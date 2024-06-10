@@ -24,7 +24,7 @@ import "root:errors"
 
 @(private)
 ChildProcess :: struct {
-    pid:    linux.Pid,
+    pid:    Pid,
     status: ^u32,
 }
 
@@ -39,21 +39,21 @@ start_child_process :: proc(
     cp: ChildProcess,
     err: errors.Error,
 ) {
-    pid, pid_err := fork()
-    if pid_err != .NONE do return cp, errors.empty()
+    pid, fork_ok := fork()
+    if !fork_ok do return cp, errors.empty()
 
     if pid == 0 {
         if po, ok := pipeout.?; ok {
             if po.r != po.w do os.close(po.r)
-            if !dup(po.w, STDOUT_FILENO) do return cp, errors.empty()
+            if !dup2(po.w, STDOUT_FILENO) do return cp, errors.empty()
         }
         if pe, ok := pipeerr.?; ok {
             if pe.r != pe.w do os.close(pe.r)
-            if !dup(pe.w, STDERR_FILENO) do return cp, errors.empty()
+            if !dup2(pe.w, STDERR_FILENO) do return cp, errors.empty()
         }
         if pi, ok := pipein.?; ok {
             if pi.r != pi.w do os.close(pi.w)
-            if !dup(pi.r, STDIN_FILENO) do return cp, errors.empty()
+            if !dup2(pi.r, STDIN_FILENO) do return cp, errors.empty()
         }
 
         argv := make([]cstring, len(args) + 2, allocator)
@@ -95,8 +95,8 @@ start_child_process :: proc(
             envp[len(envp) - 1] = nil
         }
 
-        e_err := execve(argv[0], raw_data(argv), raw_data(envp))
-        assert(e_err == .NONE)
+        execve_ok := execve(argv[0], raw_data(argv), raw_data(envp))
+        assert(execve_ok)
         return cp, errors.empty()
     }
 
@@ -111,7 +111,7 @@ start_child_process :: proc(
 
 @(private)
 wait_for_child_process :: proc(child_process: ChildProcess) -> errors.Error {
-    if _, w_err := linux.wait4(child_process.pid, child_process.status, nil, nil); w_err != .NONE do return errors.empty()
+    if !wait4(child_process.pid, child_process.status) do return errors.empty()
     return nil
 }
 
@@ -126,9 +126,8 @@ get_exit_code :: proc(
     status: int,
     err: errors.Error,
 ) {
-    if !linux.WIFEXITED(child_process.status^) do return 1, errors.empty()
-
-    status = int(linux.WEXITSTATUS(child_process.status^))
+    if child_process.status^ & 0x7f != 0 do return 1, errors.empty()
+    status = int(child_process.status^ & 0xff00 >> 8)
     return
 }
 

@@ -100,6 +100,9 @@ check:
 check_macos:
 	$(ODINC) check . $(ODIN_FLAGS) -thread-count:$(ODIN_JOBS) -target:darwin_amd64
 
+check_bsd:
+	$(ODINC) check . $(ODIN_FLAGS) -thread-count:$(ODIN_JOBS) -target:freebsd_amd64
+
 example/olivec: debug
 	@$(MAKE) -C examples/olivec
 

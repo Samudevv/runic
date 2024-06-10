@@ -347,7 +347,8 @@ when ODIN_OS == .Linux {
             )
         }
     }
-} else when ODIN_OS == .Darwin {
+} else when ODIN_OS ==
+    .Darwin || ODIN_OS == .FreeBSD || ODIN_OS == .OpenBSD || ODIN_OS == .NetBSD {
     @(test)
     test_hello :: proc(t: ^testing.T) {
         using testing

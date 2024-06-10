@@ -24,15 +24,18 @@ import "core:os"
 
 foreign import libc "system:c"
 
+@(default_calling_convention = "c")
 foreign libc {
     @(link_name = "environ")
     environ: [^]cstring
+
+    @(link_name = "pipe")
+    cpipe :: proc(pipedd: ^RWPipe) -> i32 ---
 }
 
 SYS_fork :: uintptr(2)
 SYS_wait4 :: uintptr(7)
 SYS_dup2 :: uintptr(90)
-SYS_pipe2 :: uintptr(542)
 SYS_execve :: uintptr(59)
 
 STDIN_FILENO :: 0
@@ -67,7 +70,7 @@ dup2 :: proc "contextless" (from, to: os.Handle) -> bool {
 
 pipe :: proc "contextless" () -> Maybe(RWPipe) {
     p: RWPipe = ---
-    ret := cast(i32)intrinsics.syscall(SYS_pipe2, uintptr(&p))
+    ret := cpipe(&p)
     if ret < 0 do return nil
     return p
 }
@@ -87,4 +90,3 @@ wait4 :: proc "contextless" (
     )
     return ret >= 0
 }
-

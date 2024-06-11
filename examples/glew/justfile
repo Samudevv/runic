@@ -1,0 +1,66 @@
+set windows-shell := ['powershell.exe']
+
+ODIN_FLAGS := (
+  '-vet-shadowing ' +
+  '-vet-unused ' +
+  '-vet-style ' +
+  '-warnings-as-errors ' +
+  '-error-pos-style:unix'
+)
+ODIN_DEBUG_FLAGS := '-debug'
+ODIN_RELEASE_FLAGS := '-o:speed'
+BUILD_DIR := justfile_directory() / '..' / '..' / 'build'
+LINK_FLAGS := if os() == 'linux' {
+  '-lEGL -lGL -lGLU -lOpenGL'
+} else if os() == 'macos' {
+  '-framework OpenGL'
+} else if os() == 'windows' {
+  '/LIBPATH:' + BUILD_DIR + ' opengl32.lib'
+} else {
+  '-L/usr/local/lib -lGL'
+}
+EXE_EXT := if os() == 'windows' {'.exe'} else {''}
+GLEW_VERSION := '2.1.0'
+
+default: game_of_life
+
+game_of_life ODIN_JOBS=num_cpus(): bindings
+  odin build . -out:"{{ BUILD_DIR / 'game_of_life' + EXE_EXT }}" {{ ODIN_FLAGS }} {{ ODIN_DEBUG_FLAGS }} "-extra-linker-flags:{{ LINK_FLAGS }}" -thread-count:{{ ODIN_JOBS }} -define:GLEW_STATIC=true
+
+bindings: glew
+  {{ BUILD_DIR / 'runic_debug' }} rune.json
+  {{ BUILD_DIR / 'runic_debug' }} bindings.json
+
+[windows]
+glew:
+  wget.exe -O "{{ BUILD_DIR / 'glew.zip' }}" --no-check-certificate https://sourceforge.net/projects/glew/files/glew/{{ GLEW_VERSION }}/glew-{{ GLEW_VERSION }}-win32.zip/download
+  7z -y x "{{ BUILD_DIR / 'glew.zip' }}" -o"{{ BUILD_DIR }}"
+  Remove-Item -Path "{{ BUILD_DIR / 'glew.zip' }}" -Force -ErrorAction SilentlyContinue
+  if (-not (Test-Path -Path "{{ BUILD_DIR / 'include' }}")) { Move-Item "{{ BUILD_DIR / 'glew-' + GLEW_VERSION / 'include' }}" "{{ BUILD_DIR / 'include' }}" }
+  if (-not (Test-Path -Path "{{ BUILD_DIR / 'glew32s.lib' }}")) { Move-Item "{{ BUILD_DIR / 'glew-' + GLEW_VERSION / 'lib' / 'Release' / 'x64' / 'glew32s.lib' }}" "{{ BUILD_DIR / 'glew32s.lib' }}" }
+  if (-not (Test-Path -Path "{{ BUILD_DIR / 'glew32.lib' }}")) { Move-Item "{{ BUILD_DIR / 'glew-' + GLEW_VERSION / 'lib' / 'Release' / 'x64' / 'glew32.lib' }}" "{{ BUILD_DIR / 'glew32.lib' }}" }
+  Remove-Item -Path "{{ BUILD_DIR / 'glew-' + GLEW_VERSION }}" -Force -Recurse -ErrorAction SilentlyContinue
+
+GLEW_SYMLINK := if os() == 'macos' {
+  'ln -s "' + `brew --prefix glew` / 'include' / 'GL" "' + BUILD_DIR / 'GL"'
+} else if os() == 'linux' {
+  'ln -s /usr/include/GL "' + BUILD_DIR / 'GL"'
+} else {
+  'ln -s /usr/local/include/GL "' + BUILD_DIR / 'GL"'
+}
+[unix]
+glew:
+  @rm -f "{{ BUILD_DIR / 'GL' }}"
+  {{ GLEW_SYMLINK }}
+
+[unix]
+clean:
+  rm -f "{{ BUILD_DIR / 'game_of_life' }}"
+  rm -f "{{ BUILD_DIR / 'glew.runestone.ini' }}"
+  rm -rf gl
+
+[windows]
+clean:
+  if (Test-Path -Path "{{ BUILD_DIR / 'game_of_life.exe' }}") { Remove-Item -Path "{{ BUILD_DIR / 'game_of_life.exe' }}" -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path "{{ BUILD_DIR / 'glew.runestone.ini' }}") { Remove-Item -Path "{{ BUILD_DIR / 'glew.runestone.ini' }}" -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path gl) { Remove-Item -Path gl -Recurse -Force -ErrorAction SilentlyContinue }

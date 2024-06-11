@@ -1,0 +1,54 @@
+set windows-shell := ['powershell.exe']
+
+BUILD_DIR := justfile_directory() / '..' / '..' / 'build'
+ODIN_FLAGS := (
+  '-debug ' +
+  '-error-pos-style:unix ' +
+  '-define:OLIVEC_STATIC=true ' +
+  '-extra-linker-flags:' + if os_family() == 'unix' {'-L' + BUILD_DIR} else {'/LIBPATH:' + BUILD_DIR}
+)
+EXE_EXT := if os_family() == 'unix' {''} else {'.exe'}
+MAKE := if os() == 'linux' {'make'} else {'gmake'}
+
+default: run
+
+run: build
+  {{ BUILD_DIR / 'olivec_example' }}
+
+build: bindings stb_image olivec
+  odin build . -out:"{{ BUILD_DIR / 'olivec_example' + EXE_EXT }}" {{ ODIN_FLAGS }}
+
+bindings:
+  {{ BUILD_DIR / 'runic_debug' }}
+
+[unix]
+olivec:
+  zig cc -o "{{ BUILD_DIR / 'olivec_impl.c.o' }}" -c --std=c99 olivec_impl.c
+  ar r "{{ BUILD_DIR / 'libolivec.a' }}" "{{ BUILD_DIR / 'olivec_impl.c.o' }}"
+
+[windows]
+olivec:
+  zig cc -o "{{ BUILD_DIR / 'olivec_impl.c.obj' }}" -c --std=c99 olivec_impl.c
+  lib /out:"{{ BUILD_DIR / 'olivec.lib' }}" "{{ BUILD_DIR / 'olivec_impl.c.obj' }}"
+
+STBIMAGE_MAKE := if os() != 'macos' {
+  MAKE + ' -C ' + '"' + `dirname $(which odin)` / 'vendor' / 'stb' / 'src' + '"'
+} else {
+  ''
+}
+[unix]
+stb_image:
+  {{ STBIMAGE_MAKE }}
+
+[windows]
+stb_image:
+
+[unix]
+clean:
+  rm -rf olivec/ "{{ BUILD_DIR / 'libolivec.a' }}" "{{ BUILD_DIR / 'olivec_impl.c.o' }}"
+
+[windows]
+clean:
+  if (Test-Path -Path olivec) { Remove-Item -Path olivec -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path "{{ BUILD_DIR / 'olivec.lib' }}") { Remove-Item -Path "{{ BUILD_DIR / 'olivec.lib' }}" -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path "{{ BUILD_DIR / 'olivec_impl.c.obj' }}") { Remove-Item -Path "{{ BUILD_DIR / 'olivec_impl.c.obj' }}" -Recurse -Force -ErrorAction SilentlyContinue }

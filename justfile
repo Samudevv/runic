@@ -27,9 +27,17 @@ debug ODIN_JOBS=num_cpus():
   @{{ CREATE_BUILD_DIR }}
   odin build . {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'runic_debug' + EXE_EXT }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }}
 
-test ODIN_TESTS='' PACKAGE='.' ODIN_JOBS=num_cpus():
+test ODIN_TESTS='' PACKAGE='.' ODIN_JOBS=num_cpus(): (win_cat ODIN_JOBS)
   @{{ CREATE_BUILD_DIR }}
   odin test {{ PACKAGE }} {{ ODIN_FLAGS }} -all-packages -out:"{{ BUILD_DIR / 'runic_test' + EXE_EXT }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }} {{ if ODIN_TESTS == '' {''} else {'-test-name:' + ODIN_TESTS} }}
+
+[unix]
+win_cat ODIN_JOBS=num_cpus():
+
+[windows]
+win_cat ODIN_JOBS=num_cpus():
+  @{{ CREATE_BUILD_DIR }}
+  odin build test_data/win_cat.odin -file {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'win_cat.exe' }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }}
 
 showc ODIN_JOBS=num_cpus():
   @{{ CREATE_BUILD_DIR }}

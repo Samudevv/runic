@@ -53,9 +53,17 @@ generate_runestone :: proc(
         plat,
         all = rf.defines,
         linux = rf.defines_linux,
+        linux_x86_64 = rf.defines_linux_x86_64,
+        linux_arm64 = rf.defines_linux_arm64,
         windows = rf.defines_windows,
+        windows_x86_64 = rf.defines_windows_x86_64,
+        windows_arm64 = rf.defines_windows_arm64,
         macos = rf.defines_macos,
+        macos_x86_64 = rf.defines_macos_x86_64,
+        macos_arm64 = rf.defines_macos_arm64,
         bsd = rf.defines_bsd,
+        bsd_x86_64 = rf.defines_bsd_x86_64,
+        bsd_arm64 = rf.defines_bsd_arm64,
     )
 
     defines := make([dynamic][2]string, arena_alloc)
@@ -70,9 +78,17 @@ generate_runestone :: proc(
         plat,
         all = rf.headers,
         linux = rf.headers_linux,
+        linux_x86_64 = rf.headers_linux_x86_64,
+        linux_arm64 = rf.headers_linux_arm64,
         windows = rf.headers_windows,
+        windows_x86_64 = rf.headers_windows_x86_64,
+        windows_arm64 = rf.headers_windows_arm64,
         macos = rf.headers_macos,
+        macos_x86_64 = rf.headers_macos_x86_64,
+        macos_arm64 = rf.headers_macos_x86_64,
         bsd = rf.headers_bsd,
+        bsd_x86_64 = rf.headers_bsd_x86_64,
+        bsd_arm64 = rf.headers_bsd_arm64,
     )
 
     pp_program := parser.PREPROCESS_PROGRAM
@@ -103,9 +119,17 @@ generate_runestone :: proc(
             plat,
             all = rf.includedirs,
             linux = rf.includedirs_linux,
+            linux_x86_64 = rf.includedirs_linux_x86_64,
+            linux_arm64 = rf.includedirs_linux_arm64,
             windows = rf.includedirs_windows,
+            windows_x86_64 = rf.includedirs_windows_x86_64,
+            windows_arm64 = rf.includedirs_windows_arm64,
             macos = rf.includedirs_macos,
+            macos_x86_64 = rf.includedirs_macos_x86_64,
+            macos_arm64 = rf.includedirs_macos_arm64,
             bsd = rf.includedirs_bsd,
+            bsd_x86_64 = rf.includedirs_bsd_x86_64,
+            bsd_arm64 = rf.includedirs_bsd_arm64,
         )
 
         p = parser.parse_file(

@@ -58,7 +58,25 @@ generate_runestone :: proc(
 
     rs.symbols = om.make(string, runic.Symbol, allocator = rs_arena_alloc)
 
-    for pack in rf.packages {
+    packages := runic.platform_value(
+        [dynamic]string,
+        plat,
+        all = rf.packages,
+        linux = rf.packages_linux,
+        linux_x86_64 = rf.packages_linux_x86_64,
+        linux_arm64 = rf.packages_linux_arm64,
+        windows = rf.packages_windows,
+        windows_x86_64 = rf.packages_windows_x86_64,
+        windows_arm64 = rf.packages_windows_arm64,
+        macos = rf.packages_macos,
+        macos_x86_64 = rf.packages_macos_x86_64,
+        macos_arm64 = rf.packages_macos_arm64,
+        bsd = rf.packages_bsd,
+        bsd_x86_64 = rf.packages_bsd_x86_64,
+        bsd_arm64 = rf.packages_bsd_arm64,
+    )
+
+    for pack in packages {
         pack_name, pack_ok := runic.relative_to_file(
             rune_file_name,
             pack,

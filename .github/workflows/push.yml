@@ -7,10 +7,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13]
-    name: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || 'windows-x86_64' }}
+        os: [ubuntu-latest, windows-latest, macos-10, macos-14]
+    name: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-10' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-arm64' || 'windows-x86_64' }}
     env:
-      plat: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || 'windows-x86_64' }}
+      plat: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-10' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-arm64' || 'windows-x86_64' }}
 
 
     steps:
@@ -40,7 +40,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt install libglew-dev libglfw3-dev
       - name: Install just, glew, zig
-        if: matrix.os == 'macos-13'
+        if: startsWith(matrix.os, 'macos') == true
         run: brew install just glew zig
 
       - name: Test
@@ -62,12 +62,18 @@ jobs:
       - name: Build runic release
         run: .\build.cmd
         if: matrix.os == 'windows-latest'
+      - name: Rename runic artifact
+        run: mv build/runic build/runic.${{ env.plat }}
+        if: matrix.os != 'windows-latest'
+      - name: Rename runic artifact
+        run: Rename-Item -Path build/runic.exe -NewName build/runic.${{ env.plat }}.exe
+        if: matrix.os == 'windows-latest'
 
       - uses: actions/upload-artifact@v4
         if: matrix.os != 'windows-latest'
         with:
           name: runic-${{ env.plat }}
-          path: ${{ github.workspace }}/build/runic
+          path: ${{ github.workspace }}/build/runic.${{ env.plat }}
           if-no-files-found: warn
           overwrite: true
           compression-level: 0
@@ -75,7 +81,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         with:
           name: runic-${{ env.plat }}
-          path: ${{ github.workspace }}/build/runic.exe
+          path: ${{ github.workspace }}/build/runic.${{ env.plat }}.exe
           if-no-files-found: warn
           overwrite: true
           compression-level: 0

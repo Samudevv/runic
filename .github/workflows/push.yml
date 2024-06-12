@@ -66,7 +66,7 @@ jobs:
         run: mv build/runic build/runic.${{ env.plat }}
         if: matrix.os != 'windows-latest'
       - name: Rename runic artifact
-        run: Rename-Item -Path build/runic.exe -NewName build/runic.${{ env.plat }}.exe
+        run: Rename-Item -Path build/runic.exe -NewName runic.${{ env.plat }}.exe
         if: matrix.os == 'windows-latest'
 
       - uses: actions/upload-artifact@v4

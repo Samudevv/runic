@@ -7,10 +7,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-11, macos-14]
-    name: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-11' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-arm64' || 'windows-x86_64' }}
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
+    name: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-arm64' || 'windows-x86_64' }}
     env:
-      plat: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-11' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-arm64' || 'windows-x86_64' }}
+      plat: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-arm64' || 'windows-x86_64' }}
 
 
     steps:

@@ -2,8 +2,8 @@
 
 ## 0.2 (September)
 
-+ [ ] MacOS support
-+ [ ] BSD support
++ [x] MacOS support
++ [x] BSD support
 + [ ] complex bindings example (e.g. cairo)
 + [x] Make odin integers sizes based on platform and architecture
 

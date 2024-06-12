@@ -40,7 +40,6 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, f.shared, "libfoo.so")
     expect_value(t, len(f.headers), 3)
     expect_value(t, len(f.headers_macos), 1)
-    expect_value(t, f.preprocessor.(string), "gcc")
 
     to := rn.to.(To)
     expect_value(t, to.static_switch, "FOO_STATIC")

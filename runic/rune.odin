@@ -95,7 +95,6 @@ From :: struct {
     defines_bsd:                map[string]json.Value `json:"defines.bsd"`,
     defines_bsd_x86_64:         map[string]json.Value `json:"defines.bsd.x86_64"`,
     defines_bsd_arm64:          map[string]json.Value `json:"defines.bsd.arm64"`,
-    preprocessor:               SingleList,
     // Odin
     packages:                   [dynamic]string,
     packages_linux:             [dynamic]string `json:"packages.linux"`,

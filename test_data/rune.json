@@ -16,8 +16,7 @@
     ],
     "defines": {
       "MYFOO": 2
-    },
-    "preprocessor": "gcc"
+    }
   },
   "to": {
     "language": "odin",

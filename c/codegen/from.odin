@@ -93,22 +93,6 @@ generate_runestone :: proc(
 
     pp_program := parser.PREPROCESS_PROGRAM
     pp_flags := parser.PREPROCESS_FLAGS
-    if rf.preprocessor != nil {
-        switch pp in rf.preprocessor {
-        case string:
-            pp_program = pp
-            pp_flags = []string{}
-        case [dynamic]string:
-            errors.assert(len(pp) != 0) or_return
-
-            pp_program = pp[0]
-            if len(pp) > 1 {
-                pp_flags = pp[1:]
-            } else {
-                pp_flags = []string{}
-            }
-        }
-    }
 
     for hd in headers {
         p: parser.Parser

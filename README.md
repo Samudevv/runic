@@ -31,18 +31,15 @@ First make sure that all submodules are checked out. Then following dependencies
 
 + [odin](https://odin-lang.org)
 + [zig](https://ziglang.org) (*required as a preprocessor for C*)
-+ Linux
-  + make
-+ Windows
-  + nmake (*optionally required to use Makefile*)
++ [just](https://just.systems/)
 
-Arch Linux: `sudo pacman -S --needed zig base-devel` <br>
-Ubuntu: `sudo apt install build-essential`
+Arch Linux: `sudo pacman -S --needed zig base-devel just` <br>
+Ubuntu: `sudo apt install build-essential just`
 
 ### Linux
 
 ```console
-make
+just
 ```
 
 This will build a release build of runic and write the resulting binary to `build/runic`
@@ -53,6 +50,11 @@ This will build a release build of runic and write the resulting binary to `buil
 .\build.cmd
 ```
 
+or
+```console
+just
+```
+
 This will build a release build of runic and write the resulting binary to `build\runic.exe`
 
 ## Examples
@@ -61,25 +63,17 @@ This repository contains some examples which show how the tool can be used.
 
 + [olivec](examples/olivec) <br> This example creates odin bindings to the rendering library [olive.c](https://github.com/tsoding/olive.c) and a program that uses said library to render an example image. Build it using:
   ```console
-  make example/olivec
+  just example olivec
   ```
 
-  or on Windows:
-  ```console
-  nmake /F Makefile.win32 example/olivec
-  ```
 + [glew](examples/glew) <br> This example creates odin bindings to the [glew](https://glew.sourceforge.net/) library which is an OpenGL extension loading library. The example uses it to create a game of life implementation. Build it using:
   ```console
-  make example/glew
-  ```
-  or on Windows:
-  ```console
-  nmake /F Makefile.win32 example/glew
+  just example glew
   ```
 
   **Dependencies**:
-  + Arch Linux: `sudo pacman -S --needed glew`
-  + Ubuntu: `sudo apt install libglew-dev`
+  + Arch Linux: `sudo pacman -S --needed glew glfw`
+  + Ubuntu: `sudo apt install libglew-dev libglfw3-dev`
   + Windows: wget, 7zip (can be installed using `winget install wget 7zip` or `choco install wget 7zip`)
 
 ## Runestone

@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-13]
     name: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || 'windows-x86_64' }}
     env:
       plat: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || 'windows-x86_64' }}
@@ -18,9 +18,13 @@ jobs:
         with:
           submodules: true
       - uses: korandoru/setup-zig@v1
+        name: Install zig
         if: matrix.os == 'ubuntu-latest'
         with:
           zig-version: 0.12.0
+      - uses: extractions/setup-just@v2
+        name: Install just
+        if: matrix.os == 'ubuntu-latest'
       - uses: laytan/setup-odin@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -32,9 +36,9 @@ jobs:
         if: matrix.os == 'windows-latest'
         with:
           args: install wget 7zip just zig
-      - name: Install just, glew, glfw
+      - name: Install glew, glfw
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt install just libglew-dev libglfw3-dev
+        run: sudo apt install libglew-dev libglfw3-dev
       - name: Install just, glew, zig
         if: matrix.os == 'macos-13'
         run: brew install just glew zig

@@ -10,7 +10,6 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     name: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || 'windows-x86_64' }}
     env:
-      ODIN_JOBS: 4
       plat: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || 'windows-x86_64' }}
 
 
@@ -19,52 +18,43 @@ jobs:
         with:
           submodules: true
       - uses: korandoru/setup-zig@v1
+        if: matrix.os == 'ubuntu-latest'
         with:
           zig-version: 0.12.0
       - uses: laytan/setup-odin@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          release: dev-2024-05
+          release: dev-2024-06
       - uses: ilammy/msvc-dev-cmd@v1
         if: matrix.os == 'windows-latest'
-
       - uses: crazy-max/ghaction-chocolatey@v3
-        name: Install wget, 7zip
+        name: Install wget, 7zip, just, zig
         if: matrix.os == 'windows-latest'
         with:
-          args: install wget 7zip
-
-      - name: Test
-        run: make test
+          args: install wget 7zip just zig
+      - name: Install just, glew, glfw
         if: matrix.os == 'ubuntu-latest'
+        run: sudo apt install just libglew-dev libglfw3-dev
+      - name: Install just, glew, zig
+        if: matrix.os == 'macos-13'
+        run: brew install just glew zig
+
       - name: Test
         uses: nick-fields/retry@v3
-        if: matrix.os == 'windows-latest'
         with:
-          command: nmake /F Makefile.win32 test
+          command: just test
           timeout_minutes: 2
           retry_wait_seconds: 1
           max_attempts: 5
 
-      - name: Install dependencies
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt install libglew-dev libglfw3-dev
       - name: example/olivec
-        if: matrix.os == 'ubuntu-latest'
-        run: make example/olivec
-      - name: example/olivec
-        if: matrix.os == 'windows-latest'
-        run: nmake /F Makefile.win32 example/olivec
+        run: just example olivec
       - name: example/glew
-        if: matrix.os == 'ubuntu-latest'
-        run: make example/glew
-      - name: example/glew
-        if: matrix.os == 'windows-latest'
-        run: nmake /F Makefile.win32 example/glew
+        run: just example glew
 
       - name: Build runic release
-        run: make
-        if: matrix.os == 'ubuntu-latest'
+        run: just
+        if: matrix.os != 'windows-latest'
       - name: Build runic release
         run: .\build.cmd
         if: matrix.os == 'windows-latest'

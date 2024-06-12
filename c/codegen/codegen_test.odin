@@ -43,6 +43,7 @@ test_c_generate_runestone :: proc(t: ^testing.T) {
             "test_data/pointer.h",
         },
     }
+    defer delete(from.headers)
 
     to := runic.To{}
 

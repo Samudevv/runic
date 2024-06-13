@@ -3,9 +3,9 @@
   "from": {
     "language": "c",
     "shared": "libGLEW.so",
-    "static.windows": "glew32s.lib",
-    "shared.windows": "glew32.lib",
-    "static.macos": "/usr/local/opt/glew/lib/libGLEW.a",
+    "static.windows": "..\\..\\build\\glew32s.lib",
+    "shared.windows": "..\\..\\build\\glew32.lib",
+    "static.macos": "libGLEW.a",
     "shared.macos": "libGLEW.dylib",
     "headers": [
       "../../build/GL/glew.h"

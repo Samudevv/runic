@@ -15,7 +15,7 @@ LINK_FLAGS := if os() == 'linux' {
 } else if os() == 'macos' {
   '-framework OpenGL'
 } else if os() == 'windows' {
-  '/LIBPATH:' + BUILD_DIR + ' opengl32.lib'
+  'opengl32.lib'
 } else {
   '-L/usr/local/lib -lGL'
 }

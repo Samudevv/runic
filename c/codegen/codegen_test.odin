@@ -59,7 +59,11 @@ test_c_generate_runestone :: proc(t: ^testing.T) {
     if !expect_value(t, os_err, 0) do return
     defer os.close(file)
 
-    io_err := runic.write_runestone(rs, os.stream_from_handle(file))
+    io_err := runic.write_runestone(
+        rs,
+        os.stream_from_handle(file),
+        "test_data/generate_runestone.ini",
+    )
     if !expect_value(t, io_err, io.Error.None) do return
 
     binds: os.Handle = ---

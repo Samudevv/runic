@@ -21,6 +21,7 @@ import "base:runtime"
 import ctz "core:c/frontend/tokenizer"
 import "core:fmt"
 import "core:io"
+import "core:path/filepath"
 import "core:strconv"
 import "core:strings"
 import "root:errors"
@@ -172,6 +173,7 @@ ArraySize :: union {
 
 parse_runestone :: proc(
     in_stm: io.Reader,
+    file_path: string,
 ) -> (
     rs: Runestone,
     err: errors.Error,
@@ -256,18 +258,19 @@ parse_runestone :: proc(
         static, static_ok := om.get(sect, "static")
 
         if shared_ok {
+            // TODO: path should be able to contain a space
             errors.assert(
                 !strings.contains(shared, " "),
                 "Only one library can be specified",
             ) or_return
-            lib_shared = shared
+            lib_shared = relative_to_file(file_path, shared, needs_dir = true)
         }
         if static_ok {
             errors.assert(
                 !strings.contains(static, " "),
                 "Only one library can be specified",
             ) or_return
-            lib_static = static
+            lib_static = relative_to_file(file_path, static, needs_dir = true)
         }
 
         errors.assert(
@@ -475,7 +478,11 @@ runestone_destroy :: proc(rs: ^Runestone) {
     runtime.arena_destroy(&rs.arena)
 }
 
-write_runestone :: proc(rs: Runestone, wd: io.Writer) -> io.Error {
+write_runestone :: proc(
+    rs: Runestone,
+    wd: io.Writer,
+    file_path: string,
+) -> io.Error {
     io.write_string(wd, "version = ") or_return
     io.write_uint(wd, rs.version) or_return
     io.write_string(wd, "\n\n") or_return
@@ -490,12 +497,38 @@ write_runestone :: proc(rs: Runestone, wd: io.Writer) -> io.Error {
 
     if shared, ok := rs.lib_shared.?; ok {
         io.write_string(wd, "shared = ") or_return
-        io.write_string(wd, shared) or_return
+
+        if filepath.is_abs(shared) {
+            dir_name := filepath.dir(file_path)
+            defer delete(dir_name)
+            rel_shared, err := filepath.rel(dir_name, shared)
+            if err == .None && len(rel_shared) < len(shared) {
+                io.write_string(wd, rel_shared) or_return
+            } else {
+                io.write_string(wd, shared) or_return
+            }
+        } else {
+            io.write_string(wd, shared) or_return
+        }
+
         io.write_rune(wd, '\n') or_return
     }
     if static, ok := rs.lib_static.?; ok {
         io.write_string(wd, "static = ") or_return
-        io.write_string(wd, static) or_return
+
+        if filepath.is_abs(static) {
+            dir_name := filepath.dir(file_path)
+            defer delete(dir_name)
+            rel_static, err := filepath.rel(dir_name, static)
+            if err == .None && len(rel_static) < len(static) {
+                io.write_string(wd, rel_static) or_return
+            } else {
+                io.write_string(wd, static) or_return
+            }
+        } else {
+            io.write_string(wd, static) or_return
+        }
+
         io.write_rune(wd, '\n') or_return
     }
     io.write_rune(wd, '\n') or_return

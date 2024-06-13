@@ -82,7 +82,7 @@ test_example_runestone :: proc(t: ^testing.T) {
     strings.reader_init(&rd, string(EXAMPLE_RUNESTONE))
 
 
-    rs, err := parse_runestone(strings.reader_to_stream(&rd))
+    rs, err := parse_runestone(strings.reader_to_stream(&rd), "/example")
     defer runestone_destroy(&rs)
     if !expect_value(t, err, nil) do return
 
@@ -173,7 +173,11 @@ test_example_runestone :: proc(t: ^testing.T) {
     if !expect_value(t, os_err, 0) do return
     defer os.close(out_file)
 
-    io_err := write_runestone(rs, os.stream_from_handle(out_file))
+    io_err := write_runestone(
+        rs,
+        os.stream_from_handle(out_file),
+        "test_data/example_runestone.ini",
+    )
     if !expect_value(t, io_err, io.Error.None) do return
 
     if !expect_value(t, om.length(constants), 4) do return

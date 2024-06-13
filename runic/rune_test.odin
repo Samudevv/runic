@@ -28,7 +28,7 @@ test_rune :: proc(t: ^testing.T) {
     if !expect_value(t, os_err, 0) do return
     defer os.close(file)
 
-    rn, err := parse_rune(os.stream_from_handle(file))
+    rn, err := parse_rune(os.stream_from_handle(file), "test_data/rune.json")
     defer rune_destroy(&rn)
     if !expect_value(t, err, nil) do return
 

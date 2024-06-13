@@ -19,8 +19,8 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 package odin_codegen
 
 import "core:os"
-import "core:testing"
 import "core:strings"
+import "core:testing"
 import ccdg "root:c/codegen"
 import "root:runic"
 
@@ -34,7 +34,10 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
     if !expect_value(t, os_err, 0) do return
     defer os.close(rune_file)
 
-    rn, rn_err := runic.parse_rune(os.stream_from_handle(rune_file))
+    rn, rn_err := runic.parse_rune(
+        os.stream_from_handle(rune_file),
+        "test_data/foozy/rune.json",
+    )
     if !expect_value(t, rn_err, nil) do return
 
     rs, rs_err := generate_runestone(

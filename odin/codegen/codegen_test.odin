@@ -224,7 +224,13 @@ main :: proc() {}`
         if !expect_value(t, os_err, 0) do return
         defer os.close(file)
 
-        err := generate_bindings(plat, rs, rn, os.stream_from_handle(file))
+        err := generate_bindings(
+            plat,
+            rs,
+            rn,
+            os.stream_from_handle(file),
+            "test_data/bindings.odin",
+        )
         if !expect_value(t, err, io.Error.None) do return
 
         os.write_string(file, "main :: proc() {}")

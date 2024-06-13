@@ -20,6 +20,7 @@ package odin_codegen
 import "base:runtime"
 import "core:fmt"
 import "core:io"
+import "core:path/filepath"
 import "core:slice"
 import "core:strings"
 import "root:errors"
@@ -31,6 +32,7 @@ generate_bindings :: proc(
     rs: runic.Runestone,
     rn: runic.To,
     wd: io.Writer,
+    file_path: string,
 ) -> io.Error {
     arena: runtime.Arena
     defer runtime.arena_destroy(&arena)
@@ -158,6 +160,9 @@ generate_bindings :: proc(
     if om.length(rs.types) != 0 do io.write_rune(wd, '\n') or_return
 
     if rs.lib_shared != nil && rs.lib_static != nil {
+        static := rs.lib_static.?
+        shared := rs.lib_shared.?
+
         static_switch := rn.static_switch
         if len(static_switch) == 0 {
             static_switch = strings.concatenate(
@@ -170,74 +175,44 @@ generate_bindings :: proc(
         io.write_string(wd, static_switch) or_return
         io.write_string(wd, ", false) {\n    ") or_return
 
-        fmt.wprintf(
-            wd,
-            "foreign import {}_runic \"system:{}\"\n",
-            package_name,
-            rs.lib_static,
-        )
+        io.write_string(wd, "foreign import ") or_return
+        io.write_string(wd, package_name) or_return
+        io.write_string(wd, "_runic \"") or_return
 
-        io.write_string(wd, "} else {\n    ") or_return
-
-        lib_shared: string = ---
-        switch plat.os {
-        case .Linux, .BSD:
-            lib_shared = rs.lib_shared.?
-            if strings.has_prefix(lib_shared, "lib") &&
-               strings.has_suffix(lib_shared, ".so") {
-                lib_shared = strings.trim_prefix(lib_shared, "lib")
-                lib_shared = strings.trim_suffix(lib_shared, ".so")
+        rel_static: string
+        defer delete(rel_static)
+        if filepath.is_abs(static) {
+            dir_name := filepath.dir(file_path)
+            defer delete(dir_name)
+            err: filepath.Relative_Error = ---
+            rel_static, err = filepath.rel(dir_name, static)
+            if err == .None && len(rel_static) < len(static) {
+                static = rel_static
             }
-        case .Windows:
-            lib_shared = rs.lib_shared.?
-        case .Macos:
-            lib_shared = rs.lib_shared.?
-            if strings.has_prefix(lib_shared, "lib") &&
-               (strings.has_suffix(lib_shared, ".so") ||
-                       strings.has_suffix(lib_shared, ".dylib")) {
-                lib_shared = strings.trim_prefix(lib_shared, "lib")
-                lib_shared = strings.trim_suffix(lib_shared, ".so")
-                lib_shared = strings.trim_suffix(lib_shared, ".dylib")
-            }
+        } else {
+            io.write_string(wd, "system:") or_return
         }
 
-        fmt.wprintf(
-            wd,
-            "foreign import {}_runic \"system:{}\"\n",
-            package_name,
-            lib_shared,
-        )
+        io.write_string(wd, static) or_return
 
-        io.write_string(wd, "}\n\n") or_return
-    } else {
-        fmt.wprintf(wd, "foreign import {}_runic \"system:", package_name)
+        io.write_string(wd, "\"\n} else {\n    foreign import ") or_return
+        io.write_string(wd, package_name) or_return
+        io.write_string(wd, "_runic \"") or_return
 
-        switch plat.os {
-        case .Linux, .BSD:
-            if shared, ok := rs.lib_shared.?; ok {
-                if strings.has_prefix(shared, "lib") &&
-                   strings.has_suffix(shared, ".so") {
-                    io.write_string(
-                        wd,
-                        strings.trim_suffix(
-                            strings.trim_prefix(shared, "lib"),
-                            ".so",
-                        ),
-                    ) or_return
-                } else {
-                    io.write_string(wd, shared) or_return
-                }
-            } else {
-                io.write_string(wd, rs.lib_static.?) or_return
+        rel_shared: string
+        defer delete(rel_shared)
+        if filepath.is_abs(shared) {
+            dir_name := filepath.dir(file_path)
+            defer delete(dir_name)
+            err: filepath.Relative_Error = ---
+            rel_shared, err = filepath.rel(dir_name, shared)
+            if err == .None && len(rel_shared) < len(shared) {
+                shared = rel_shared
             }
-        case .Windows:
-            if shared, ok := rs.lib_shared.?; ok {
-                io.write_string(wd, shared) or_return
-            } else {
-                io.write_string(wd, rs.lib_static.?) or_return
-            }
-        case .Macos:
-            if shared, ok := rs.lib_shared.?; ok {
+        } else {
+            switch plat.os {
+            case .Windows:
+            case .Linux, .Macos, .BSD:
                 if strings.has_prefix(shared, "lib") &&
                    (strings.has_suffix(shared, ".so") ||
                            strings.has_suffix(shared, ".dylib")) {
@@ -245,12 +220,58 @@ generate_bindings :: proc(
                     shared = strings.trim_suffix(shared, ".so")
                     shared = strings.trim_suffix(shared, ".dylib")
                 }
-                io.write_string(wd, shared) or_return
-            } else {
-                // TODO
-                io.write_string(wd, rs.lib_static.?) or_return
             }
+
+            io.write_string(wd, "system:") or_return
         }
+
+        io.write_string(wd, shared) or_return
+
+        io.write_string(wd, "\"\n}\n\n") or_return
+    } else {
+        io.write_string(wd, "foreign import ") or_return
+        io.write_string(wd, package_name) or_return
+        io.write_string(wd, "_runic \"") or_return
+
+        lib_name: string = ---
+        is_shared: bool = ---
+
+        if shared, ok := rs.lib_shared.?; ok {
+            is_shared = true
+            lib_name = shared
+        } else {
+            is_shared = false
+            lib_name = rs.lib_static.?
+        }
+
+        rel_lib: string
+        defer delete(rel_lib)
+        if filepath.is_abs(lib_name) {
+            dir_name := filepath.dir(file_path)
+            defer delete(dir_name)
+            err: filepath.Relative_Error = ---
+            rel_lib, err = filepath.rel(dir_name, lib_name)
+            if err == .None && len(rel_lib) < len(lib_name) {
+                lib_name = rel_lib
+            }
+        } else {
+            switch plat.os {
+            case .Windows:
+            case .Linux, .Macos, .BSD:
+                if is_shared &&
+                   strings.has_prefix(lib_name, "lib") &&
+                   (strings.has_suffix(lib_name, ".so") ||
+                           strings.has_suffix(lib_name, ".dylib")) {
+                    lib_name = strings.trim_prefix(lib_name, "lib")
+                    lib_name = strings.trim_suffix(lib_name, ".so")
+                    lib_name = strings.trim_suffix(lib_name, ".dylib")
+                }
+            }
+
+            io.write_string(wd, "system:") or_return
+        }
+
+        io.write_string(wd, lib_name) or_return
 
         io.write_string(wd, "\"\n\n") or_return
     }

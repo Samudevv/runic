@@ -107,7 +107,10 @@ main :: proc() {
     defer os.close(rune_file)
 
     err: errors.Error
-    rune, rune_err := runic.parse_rune(os.stream_from_handle(rune_file))
+    rune, rune_err := runic.parse_rune(
+        os.stream_from_handle(rune_file),
+        rune_file_name,
+    )
     err = errors.wrap(rune_err)
     defer runic.rune_destroy(&rune)
     if err != nil {
@@ -171,7 +174,10 @@ main :: proc() {
         }
         defer os.close(rs_file)
 
-        from_rs, err = runic.parse_runestone(os.stream_from_handle(rs_file))
+        from_rs, err = runic.parse_runestone(
+            os.stream_from_handle(rs_file),
+            rs_file_name,
+        )
         if err != nil {
             fmt.eprintfln("failed to parse runestone: {}", err)
             os.exit(1)
@@ -239,6 +245,7 @@ main :: proc() {
                     from_rs,
                     to,
                     os.stream_from_handle(out_file),
+                    out_file_name,
                 ),
             )
         case "c":
@@ -284,7 +291,7 @@ main :: proc() {
         defer os.close(rs_file)
 
         if err = errors.wrap(
-            runic.write_runestone(from_rs, os.stream_from_handle(rs_file)),
+            runic.write_runestone(from_rs, os.stream_from_handle(rs_file), to),
         ); err != nil {
             fmt.eprintfln("failed to write runestone: {}", err)
             os.exit(1)

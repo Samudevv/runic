@@ -180,7 +180,7 @@ SingleList :: union {
     [dynamic]string,
 }
 
-parse_rune :: proc(rd: io.Reader) -> (rn: Rune, err: union {
+parse_rune :: proc(rd: io.Reader, file_path: string) -> (rn: Rune, err: union {
         io.Error,
         json.Unmarshal_Error,
     }) {
@@ -209,6 +209,170 @@ parse_rune :: proc(rd: io.Reader) -> (rn: Rune, err: union {
         }
 
         rn.to = to
+    }
+
+    if from, ok := rn.from.(From); ok {
+        rn_arena_alloc := runtime.arena_allocator(&rn.arena)
+
+        from.static = relative_to_file(
+            file_path,
+            from.static,
+            rn_arena_alloc,
+            true,
+        )
+        from.static_linux = relative_to_file(
+            file_path,
+            from.static_linux,
+            rn_arena_alloc,
+            true,
+        )
+        from.static_linux_x86_64 = relative_to_file(
+            file_path,
+            from.static_linux_x86_64,
+            rn_arena_alloc,
+            true,
+        )
+        from.static_linux_arm64 = relative_to_file(
+            file_path,
+            from.static_linux_arm64,
+            rn_arena_alloc,
+            true,
+        )
+        from.static_windows = relative_to_file(
+            file_path,
+            from.static_windows,
+            rn_arena_alloc,
+            true,
+        )
+        from.static_windows_x86_64 = relative_to_file(
+            file_path,
+            from.static_windows_x86_64,
+            rn_arena_alloc,
+            true,
+        )
+        from.static_windows_arm64 = relative_to_file(
+            file_path,
+            from.static_windows_arm64,
+            rn_arena_alloc,
+            true,
+        )
+        from.static_macos = relative_to_file(
+            file_path,
+            from.static_macos,
+            rn_arena_alloc,
+            true,
+        )
+        from.static_macos_x86_64 = relative_to_file(
+            file_path,
+            from.static_macos_x86_64,
+            rn_arena_alloc,
+            true,
+        )
+        from.static_macos_arm64 = relative_to_file(
+            file_path,
+            from.static_macos_arm64,
+            rn_arena_alloc,
+            true,
+        )
+        from.static_bsd = relative_to_file(
+            file_path,
+            from.static_bsd,
+            rn_arena_alloc,
+            true,
+        )
+        from.static_bsd_x86_64 = relative_to_file(
+            file_path,
+            from.static_bsd_x86_64,
+            rn_arena_alloc,
+            true,
+        )
+        from.static_bsd_arm64 = relative_to_file(
+            file_path,
+            from.static_bsd_arm64,
+            rn_arena_alloc,
+            true,
+        )
+
+        from.shared = relative_to_file(
+            file_path,
+            from.shared,
+            rn_arena_alloc,
+            true,
+        )
+        from.shared_linux = relative_to_file(
+            file_path,
+            from.shared_linux,
+            rn_arena_alloc,
+            true,
+        )
+        from.shared_linux_x86_64 = relative_to_file(
+            file_path,
+            from.shared_linux_x86_64,
+            rn_arena_alloc,
+            true,
+        )
+        from.shared_linux_arm64 = relative_to_file(
+            file_path,
+            from.shared_linux_arm64,
+            rn_arena_alloc,
+            true,
+        )
+        from.shared_windows = relative_to_file(
+            file_path,
+            from.shared_windows,
+            rn_arena_alloc,
+            true,
+        )
+        from.shared_windows_x86_64 = relative_to_file(
+            file_path,
+            from.shared_windows_x86_64,
+            rn_arena_alloc,
+            true,
+        )
+        from.shared_windows_arm64 = relative_to_file(
+            file_path,
+            from.shared_windows_arm64,
+            rn_arena_alloc,
+            true,
+        )
+        from.shared_macos = relative_to_file(
+            file_path,
+            from.shared_macos,
+            rn_arena_alloc,
+            true,
+        )
+        from.shared_macos_x86_64 = relative_to_file(
+            file_path,
+            from.shared_macos_x86_64,
+            rn_arena_alloc,
+            true,
+        )
+        from.shared_macos_arm64 = relative_to_file(
+            file_path,
+            from.shared_macos_arm64,
+            rn_arena_alloc,
+            true,
+        )
+        from.shared_bsd = relative_to_file(
+            file_path,
+            from.shared_bsd,
+            rn_arena_alloc,
+            true,
+        )
+        from.shared_bsd_x86_64 = relative_to_file(
+            file_path,
+            from.shared_bsd_x86_64,
+            rn_arena_alloc,
+            true,
+        )
+        from.shared_bsd_arm64 = relative_to_file(
+            file_path,
+            from.shared_bsd_arm64,
+            rn_arena_alloc,
+            true,
+        )
+
+        rn.from = from
     }
 
     return
@@ -442,11 +606,12 @@ process_constant_name :: proc(
 relative_to_file :: proc(
     rune_file_name, file_name: string,
     allocator := context.allocator,
+    needs_dir := false,
 ) -> (
     string,
     bool,
 ) #optional_ok {
-    if filepath.is_abs(file_name) do return strings.clone(file_name, allocator), true
+    if filepath.is_abs(file_name) || (needs_dir && (!strings.contains(file_name, "/") && !strings.contains(file_name, "\\"))) do return strings.clone(file_name, allocator), true
 
     rune_dir := filepath.dir(rune_file_name, allocator)
     defer delete(rune_dir, allocator)

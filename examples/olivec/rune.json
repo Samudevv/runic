@@ -17,14 +17,5 @@
       ]
     }
   },
-  "to": {
-    "language": "odin",
-    "package": "olivec",
-    "trim_prefix": {
-      "functions": "olivec_",
-      "types": "Olivec_",
-      "constants": "OLIVEC_"
-    },
-    "out": "olivec/olivec.odin"
-  }
+  "to": "../../build/olivec.runestone.ini"
 }

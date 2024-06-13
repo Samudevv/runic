@@ -1,0 +1,14 @@
+{
+  "version": 0,
+  "from": "../../build/olivec.runestone.ini",
+  "to": {
+    "language": "odin",
+    "package": "olivec",
+    "trim_prefix": {
+      "functions": "olivec_",
+      "types": "Olivec_",
+      "constants": "OLIVEC_"
+    },
+    "out": "olivec/olivec.odin"
+  }
+}

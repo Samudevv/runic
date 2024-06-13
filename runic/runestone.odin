@@ -768,8 +768,18 @@ parse_type_token :: proc(
             type.spec = Builtin.Float32
         case "Float64":
             type.spec = Builtin.Float64
+        case "Float128":
+            type.spec = Builtin.Float128
         case "String":
             type.spec = Builtin.String
+        case "Bool8":
+            type.spec = Builtin.Bool8
+        case "Bool16":
+            type.spec = Builtin.Bool16
+        case "Bool32":
+            type.spec = Builtin.Bool32
+        case "Bool64":
+            type.spec = Builtin.Bool64
         case "Struct":
             token = token.next
 
@@ -893,7 +903,10 @@ parse_type_token :: proc(
             }
             token = token.next
 
-            errors.assert(token.lit == "AttrEnd", "#AttrEnd expected") or_return
+            errors.assert(
+                token.lit == "AttrEnd",
+                "#AttrEnd expected",
+            ) or_return
 
             token = token.next
         }

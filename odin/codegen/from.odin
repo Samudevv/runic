@@ -54,6 +54,7 @@ generate_runestone :: proc(
     rs.anon_types = make([dynamic]runic.TypeSpecifier, rs_arena_alloc)
     rs.constants = om.make(string, runic.Constant, allocator = rs_arena_alloc)
 
+    rs.platform = plat
     runic.set_library(plat, &rs, rf)
 
     rs.symbols = om.make(string, runic.Symbol, allocator = rs_arena_alloc)

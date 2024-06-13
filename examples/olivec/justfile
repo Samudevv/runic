@@ -19,7 +19,8 @@ build: bindings stb_image olivec
   odin build . -out:"{{ BUILD_DIR / 'olivec_example' + EXE_EXT }}" {{ ODIN_FLAGS }}
 
 bindings:
-  {{ BUILD_DIR / 'runic_debug' }}
+  {{ BUILD_DIR / 'runic_debug' }} rune.json
+  {{ BUILD_DIR / 'runic_debug' }} bindings.json
 
 [unix]
 olivec:

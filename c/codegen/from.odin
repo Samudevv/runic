@@ -46,6 +46,7 @@ generate_runestone :: proc(
 
     isz := int_sizes_from_platform(plat)
 
+    rs.platform = plat
     runic.set_library(plat, &rs, rf)
 
     rune_defines := runic.platform_value(

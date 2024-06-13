@@ -190,6 +190,14 @@ generate_bindings :: proc(
                 static = rel_static
             }
         } else {
+            #partial switch plat.os {
+            case .Macos:
+                if strings.has_prefix(static, "lib") &&
+                   strings.has_suffix(static, ".a") {
+                    static = strings.trim_prefix(static, "lib")
+                    static = strings.trim_suffix(static, ".a")
+                }
+            }
             io.write_string(wd, "system:") or_return
         }
 
@@ -258,13 +266,23 @@ generate_bindings :: proc(
             switch plat.os {
             case .Windows:
             case .Linux, .Macos, .BSD:
-                if is_shared &&
-                   strings.has_prefix(lib_name, "lib") &&
-                   (strings.has_suffix(lib_name, ".so") ||
-                           strings.has_suffix(lib_name, ".dylib")) {
-                    lib_name = strings.trim_prefix(lib_name, "lib")
-                    lib_name = strings.trim_suffix(lib_name, ".so")
-                    lib_name = strings.trim_suffix(lib_name, ".dylib")
+                if is_shared {
+                    if strings.has_prefix(lib_name, "lib") &&
+                       (strings.has_suffix(lib_name, ".so") ||
+                               strings.has_suffix(lib_name, ".dylib")) {
+                        lib_name = strings.trim_prefix(lib_name, "lib")
+                        lib_name = strings.trim_suffix(lib_name, ".so")
+                        lib_name = strings.trim_suffix(lib_name, ".dylib")
+                    }
+                } else {
+                    #partial switch plat.os {
+                    case .Macos:
+                        if strings.has_prefix(lib_name, "lib") &&
+                           strings.has_suffix(lib_name, ".a") {
+                            lib_name = strings.trim_prefix(lib_name, "lib")
+                            lib_name = strings.trim_suffix(lib_name, ".a")
+                        }
+                    }
                 }
             }
 

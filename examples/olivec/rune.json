@@ -3,9 +3,7 @@
   "from": {
     "language": "c",
     "static": "libolivec.a",
-    "shared": "libolivec.so",
     "static.windows": "olivec.lib",
-    "static.macos": "olivec",
     "headers": [
       "olive.c"
     ],

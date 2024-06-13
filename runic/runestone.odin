@@ -285,7 +285,7 @@ parse_runestone :: proc(
 
     symbols_section: {
         sect, ok := ini_file["symbols"]
-        errors.wrap(ok) or_return
+        errors.wrap(ok, "no symbols") or_return
         defer delete_key(&ini_file, "symbols")
 
         symbols = om.make(string, Symbol)
@@ -298,7 +298,7 @@ parse_runestone :: proc(
             arr, alloc_err := strings.split(name, ".", arena_alloc)
             errors.wrap(alloc_err) or_return
 
-            if len(arr) != 2 do return rs, errors.message("len(arr) == {}", len(arr))
+            if len(arr) != 2 do return rs, errors.message("\"{}\" none or too much dots in symbol name. a symbol needs the pattern var.name or func.name", name)
 
             symbol_type = arr[0]
             symbol_name = arr[1]
@@ -893,7 +893,7 @@ parse_type_token :: proc(
             }
             token = token.next
 
-            errors.assert(token.lit == "AttrEnd") or_return
+            errors.assert(token.lit == "AttrEnd", "#AttrEnd expected") or_return
 
             token = token.next
         }

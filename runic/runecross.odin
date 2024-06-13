@@ -17,10 +17,12 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package runic
 
+import "core:fmt"
 import "core:slice"
 import "root:errors"
 import om "root:ordered_map"
 
+// TODO: add file paths of runestones
 Runecross :: struct {
     general: Runestone,
     cross:   map[Platform]Runestone,
@@ -61,6 +63,19 @@ cross_the_runes :: proc(
     rc.general.constants = om.make(string, Constant)
 
     for plat1, stone1 in origin {
+        {
+            stone2 := rc.cross[plat1]
+            fmt.printfln(
+                "plat={} lib_static={} lib_shared={}",
+                plat1,
+                stone1.lib_static,
+                stone1.lib_shared,
+            )
+            stone2.lib_static = stone1.lib_static
+            stone2.lib_shared = stone1.lib_shared
+            rc.cross[plat1] = stone2
+        }
+
         // TODO: anonymous types
         // types
         for entry1 in stone1.types.data {
@@ -163,6 +178,15 @@ cross_the_runes :: proc(
     }
 
     return
+}
+
+runecross_is_simple :: proc(rc: Runecross) -> bool {
+    return(
+        om.length(rc.general.types) == 0 &&
+        om.length(rc.general.symbols) == 0 &&
+        om.length(rc.general.constants) == 0 &&
+        len(rc.cross) == 1 \
+    )
 }
 
 is_same_constant :: proc(c1, c2: Constant) -> bool {

@@ -123,31 +123,33 @@ main :: proc() {
         os.exit(1)
     }
 
-    from_rs: runic.Runestone
-    defer runic.runestone_destroy(&from_rs)
+    from_rc: runic.Runecross
+    from_rc.cross = make(map[runic.Platform]runic.Runestone)
 
     switch from in rune.from {
     case runic.From:
         switch from.language {
         case "c":
-            from_rs, err = ccdg.generate_runestone(plat, rune_file_name, from)
+            rs: runic.Runestone = ---
+            rs, err = ccdg.generate_runestone(plat, rune_file_name, from)
+            from_rc.cross[plat] = rs
         case "odin":
             when ODIN_OS == .FreeBSD {
                 fmt.eprintfln("from odin is not supported on FreeBSD")
                 os.exit(1)
             } else {
-                from_rs, err = odincdg.generate_runestone(
+                rs: runic.Runestone = ---
+                rs, err = odincdg.generate_runestone(
                     plat,
                     rune_file_name,
                     from,
                 )
+                from_rc.cross[plat] = rs
             }
         case:
             fmt.eprintfln("from language {} is not supported", from.language)
             os.exit(1)
         }
-
-        from_rs.platform = plat
 
         if err != nil {
             fmt.eprintfln(
@@ -174,7 +176,8 @@ main :: proc() {
         }
         defer os.close(rs_file)
 
-        from_rs, err = runic.parse_runestone(
+        rs: runic.Runestone = ---
+        rs, err = runic.parse_runestone(
             os.stream_from_handle(rs_file),
             rs_file_name,
         )
@@ -183,22 +186,59 @@ main :: proc() {
             os.exit(1)
         }
 
-        if from_rs.platform.os != plat.os ||
-           from_rs.platform.arch != plat.arch {
+        if rs.platform.os != plat.os || rs.platform.arch != plat.arch {
             fmt.eprintfln(
                 "Runestone has different platform than target\nTarget    = {}.{}\nRunestone = {}.{}",
                 plat.os,
                 plat.arch,
-                from_rs.platform.os,
-                from_rs.platform.arch,
+                rs.platform.os,
+                rs.platform.arch,
             )
             os.exit(1)
         }
 
         fmt.printfln("Successfully parsed runestone ({})", from)
+
+        from_rc.cross[plat] = rs
     case [dynamic]string:
-        fmt.eprintln("string array in from is not implemented")
-        os.exit(1)
+        stones: [dynamic]runic.Runestone
+        defer delete(stones)
+
+        for file_path in from {
+            rs: runic.Runestone = ---
+            rs_file: os.Handle = ---
+            rs_file_name := runic.relative_to_file(
+                rune_file_name,
+                file_path,
+                context.temp_allocator,
+            )
+
+            rs_file, os_err = os.open(rs_file_name)
+            if err = errors.wrap(os_err); err != nil {
+                fmt.eprintfln("failed to open runestone file: {}", err)
+                os.exit(1)
+            }
+            defer os.close(rs_file)
+
+            rs, err = runic.parse_runestone(
+                os.stream_from_handle(rs_file),
+                file_path,
+            )
+            if err != nil {
+                fmt.eprintfln("failed to parse runestone: {}", err)
+                os.exit(1)
+            }
+
+            fmt.printfln("Successfully parsed runestone ({})", file_path)
+
+            append(&stones, rs)
+        }
+
+        from_rc, err = runic.cross_the_runes(stones)
+        if err != nil {
+            fmt.eprintfln("failed to cross the runes: {}", err)
+            os.exit(1)
+        }
     }
 
     switch to in rune.to {
@@ -241,18 +281,18 @@ main :: proc() {
         case "odin":
             err = errors.wrap(
                 odincdg.generate_bindings(
-                    plat,
-                    from_rs,
+                    from_rc,
                     to,
                     os.stream_from_handle(out_file),
                     out_file_name,
                 ),
             )
         case "c":
+            // TODO: update for Runecross
             err = errors.wrap(
                 ccdg.generate_bindings(
                     plat,
-                    from_rs,
+                    from_rc.cross[plat],
                     to,
                     os.stream_from_handle(out_file),
                 ),
@@ -291,7 +331,7 @@ main :: proc() {
         defer os.close(rs_file)
 
         if err = errors.wrap(
-            runic.write_runestone(from_rs, os.stream_from_handle(rs_file), to),
+            runic.write_runestone(from_rc.cross[plat], os.stream_from_handle(rs_file), to),
         ); err != nil {
             fmt.eprintfln("failed to write runestone: {}", err)
             os.exit(1)

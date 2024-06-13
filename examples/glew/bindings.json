@@ -1,6 +1,8 @@
 {
   "version": 0,
-  "from": "../../build/glew.runestone.ini",
+  "from": [
+    "../../build/glew.runestone.ini"
+  ],
   "to": {
     "language": "odin",
     "package": "gl",

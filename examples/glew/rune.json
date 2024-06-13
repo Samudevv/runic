@@ -10,9 +10,6 @@
     "headers": [
       "../../build/GL/glew.h"
     ],
-    "headers.windows": [
-      "..\\..\\build\\include\\GL\\glew.h"
-    ],
     "defines": {
       "GLEW_BUILD": 1,
       "GLEW_GET_VAR(x)": "x"

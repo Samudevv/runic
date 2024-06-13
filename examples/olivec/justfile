@@ -31,11 +31,13 @@ olivec:
   zig cc -o "{{ BUILD_DIR / 'olivec_impl.c.obj' }}" -c --std=c99 olivec_impl.c
   lib /out:"{{ BUILD_DIR / 'olivec.lib' }}" "{{ BUILD_DIR / 'olivec_impl.c.obj' }}"
 
-STBIMAGE_MAKE := if os() != 'macos' {
+STBIMAGE_MAKE := if os_family() == 'unix' {
+if os() != 'macos' {
   MAKE + ' -C ' + '"' + `dirname $(which odin)` / 'vendor' / 'stb' / 'src' + '"'
 } else {
   ''
 }
+} else { '' }
 [unix]
 stb_image:
   {{ STBIMAGE_MAKE }}

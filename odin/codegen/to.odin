@@ -201,7 +201,10 @@ generate_bindings :: proc(
             io.write_string(wd, "system:") or_return
         }
 
+        was_alloc: bool = ---
+        static, was_alloc = strings.replace_all(static, "\\", "/")
         io.write_string(wd, static) or_return
+        if was_alloc do delete(static)
 
         io.write_string(wd, "\"\n} else {\n    foreign import ") or_return
         io.write_string(wd, package_name) or_return
@@ -233,7 +236,9 @@ generate_bindings :: proc(
             io.write_string(wd, "system:") or_return
         }
 
+        shared, was_alloc = strings.replace_all(shared, "\\", "/")
         io.write_string(wd, shared) or_return
+        if was_alloc do delete(shared)
 
         io.write_string(wd, "\"\n}\n\n") or_return
     } else {
@@ -289,7 +294,10 @@ generate_bindings :: proc(
             io.write_string(wd, "system:") or_return
         }
 
+        was_alloc: bool = ---
+        lib_name, was_alloc = strings.replace_all(lib_name, "\\", "\\\\")
         io.write_string(wd, lib_name) or_return
+        if was_alloc do delete(lib_name)
 
         io.write_string(wd, "\"\n\n") or_return
     }

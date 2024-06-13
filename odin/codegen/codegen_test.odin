@@ -224,9 +224,12 @@ main :: proc() {}`
         if !expect_value(t, os_err, 0) do return
         defer os.close(file)
 
+        rc: runic.Runecross
+        rc.cross = make(map[runic.Platform]runic.Runestone)
+        rc.cross[plat] = rs
+
         err := generate_bindings(
-            plat,
-            rs,
+            rc,
             rn,
             os.stream_from_handle(file),
             "test_data/bindings.odin",

@@ -611,10 +611,19 @@ relative_to_file :: proc(
     string,
     bool,
 ) #optional_ok {
-    if filepath.is_abs(file_name) || (needs_dir && (!strings.contains(file_name, "/") && !strings.contains(file_name, "\\"))) do return strings.clone(file_name, allocator), true
+    if len(file_name) == 0 do return file_name, true
+    if filepath.is_abs(file_name) || (needs_dir && !strings.contains(file_name, "/") && !strings.contains(file_name, "\\")) do return strings.clone(file_name, allocator), true
 
     rune_dir := filepath.dir(rune_file_name, allocator)
     defer delete(rune_dir, allocator)
+
+    if !filepath.is_abs(rune_dir) {
+        abs_rune_dir, ok := filepath.abs(rune_dir, allocator)
+        if ok {
+            delete(rune_dir, allocator)
+            rune_dir = abs_rune_dir
+        }
+    }
 
     rel_path := filepath.join({rune_dir, file_name}, allocator)
     return rel_path, true

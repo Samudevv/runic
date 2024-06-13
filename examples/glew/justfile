@@ -36,7 +36,7 @@ glew:
   wget.exe -O "{{ BUILD_DIR / 'glew.zip' }}" --no-check-certificate https://sourceforge.net/projects/glew/files/glew/{{ GLEW_VERSION }}/glew-{{ GLEW_VERSION }}-win32.zip/download
   7z -y x "{{ BUILD_DIR / 'glew.zip' }}" -o"{{ BUILD_DIR }}"
   Remove-Item -Path "{{ BUILD_DIR / 'glew.zip' }}" -Force -ErrorAction SilentlyContinue
-  if (-not (Test-Path -Path "{{ BUILD_DIR / 'GL' }}")) { Move-Item "{{ BUILD_DIR / 'glew-' + GLEW_VERSION / 'include' / 'GL' }}" "{{ BUILD_DIR / 'include' / 'GL' }}" }
+  if (-not (Test-Path -Path "{{ BUILD_DIR / 'GL' }}")) { Move-Item "{{ BUILD_DIR / 'glew-' + GLEW_VERSION / 'include' / 'GL' }}" "{{ BUILD_DIR / 'GL' }}" }
   if (-not (Test-Path -Path "{{ BUILD_DIR / 'glew32s.lib' }}")) { Move-Item "{{ BUILD_DIR / 'glew-' + GLEW_VERSION / 'lib' / 'Release' / 'x64' / 'glew32s.lib' }}" "{{ BUILD_DIR / 'glew32s.lib' }}" }
   if (-not (Test-Path -Path "{{ BUILD_DIR / 'glew32.lib' }}")) { Move-Item "{{ BUILD_DIR / 'glew-' + GLEW_VERSION / 'lib' / 'Release' / 'x64' / 'glew32.lib' }}" "{{ BUILD_DIR / 'glew32.lib' }}" }
   Remove-Item -Path "{{ BUILD_DIR / 'glew-' + GLEW_VERSION }}" -Force -Recurse -ErrorAction SilentlyContinue

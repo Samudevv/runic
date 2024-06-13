@@ -75,6 +75,10 @@ main :: proc() {
                         plat.os = .Linux
                     case "windows":
                         plat.os = .Windows
+                    case "macos":
+                        plat.os = .Macos
+                    case "bsd":
+                        plat.os = .BSD
                     case:
                         fmt.eprintfln("invalid os \"{}\"", arg)
                         os.exit(1)
@@ -163,21 +167,27 @@ main :: proc() {
             os.exit(1)
         }
 
-        fmt.printfln("Successfully parsed language \"{}\"", from.language)
+        fmt.eprintfln("Successfully parsed language \"{}\"", from.language)
     case string:
         rs_file: os.Handle = ---
-        rs_file_name := runic.relative_to_file(
-            rune_file_name,
-            from,
-            context.temp_allocator,
-        )
+        rs_file_name: string = ---
+        if from == "stdin" {
+            rs_file = os.stdin
+            rs_file_name = "/stdin"
+        } else {
+            rs_file_name = runic.relative_to_file(
+                rune_file_name,
+                from,
+                context.temp_allocator,
+            )
 
-        rs_file, os_err = os.open(rs_file_name)
-        if err = errors.wrap(os_err); err != nil {
-            fmt.eprintfln("failed to open runestone file: {}", err)
-            os.exit(1)
+            rs_file, os_err = os.open(rs_file_name)
+            if err = errors.wrap(os_err); err != nil {
+                fmt.eprintfln("failed to open runestone file: {}", err)
+                os.exit(1)
+            }
         }
-        defer os.close(rs_file)
+        defer if from != "stdin" do os.close(rs_file)
 
         rs: runic.Runestone = ---
         rs, err = runic.parse_runestone(
@@ -200,7 +210,7 @@ main :: proc() {
             os.exit(1)
         }
 
-        fmt.printfln("Successfully parsed runestone ({})", from)
+        fmt.eprintfln("Successfully parsed runestone ({})", from)
 
         from_rc.cross[plat] = rs
     case [dynamic]string:
@@ -232,7 +242,7 @@ main :: proc() {
                 os.exit(1)
             }
 
-            fmt.printfln("Successfully parsed runestone ({})", file_path)
+            fmt.eprintfln("Successfully parsed runestone ({})", file_path)
 
             append(&stones, rs)
         }
@@ -315,23 +325,31 @@ main :: proc() {
             os.exit(1)
         }
 
-        fmt.printfln(
+        fmt.eprintfln(
             "Successfully generated bindings for \"{}\" ({})",
             to.language,
             out_file_name,
         )
     case string:
         rs_file: os.Handle = ---
-        rs_file, os_err = os.open(
-            runic.relative_to_file(rune_file_name, to, context.temp_allocator),
-            os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
-            0o644,
-        )
-        if err = errors.wrap(os_err); err != nil {
-            fmt.eprintfln("failed to open to runestone file: {}", err)
-            return
+        if to == "stdout" {
+            rs_file = os.stdout
+        } else {
+            rs_file, os_err = os.open(
+                runic.relative_to_file(
+                    rune_file_name,
+                    to,
+                    context.temp_allocator,
+                ),
+                os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
+                0o644,
+            )
+            if err = errors.wrap(os_err); err != nil {
+                fmt.eprintfln("failed to open to runestone file: {}", err)
+                return
+            }
         }
-        defer os.close(rs_file)
+        defer if to != "stdout" do os.close(rs_file)
 
         if err = errors.wrap(
             runic.write_runestone(
@@ -344,6 +362,6 @@ main :: proc() {
             os.exit(1)
         }
 
-        fmt.printfln("Successfully generated runestone ({})", to)
+        fmt.eprintfln("Successfully generated runestone ({})", to)
     }
 }

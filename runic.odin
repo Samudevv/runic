@@ -124,7 +124,10 @@ main :: proc() {
     }
 
     from_rc: runic.Runecross
-    from_rc.cross = make(map[runic.Platform]runic.Runestone)
+    from_rc.cross = make(
+        map[runic.Platform]runic.Runestone,
+        allocator = context.temp_allocator,
+    )
 
     switch from in rune.from {
     case runic.From:
@@ -331,7 +334,11 @@ main :: proc() {
         defer os.close(rs_file)
 
         if err = errors.wrap(
-            runic.write_runestone(from_rc.cross[plat], os.stream_from_handle(rs_file), to),
+            runic.write_runestone(
+                from_rc.cross[plat],
+                os.stream_from_handle(rs_file),
+                to,
+            ),
         ); err != nil {
             fmt.eprintfln("failed to write runestone: {}", err)
             os.exit(1)

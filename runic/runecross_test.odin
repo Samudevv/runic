@@ -71,3 +71,74 @@ test_is_same :: proc(t: ^testing.T) {
     expect(t, !is_same(om.get(rs1.symbols, "a"), om.get(rs2.symbols, "b")))
     expect(t, !is_same(om.get(rs1.symbols, "c"), om.get(rs2.symbols, "c")))
 }
+
+
+LINUX_RUNESTONE :: `
+version = 0
+
+os = Linux
+arch = x86_64
+
+[lib]
+shared = liblinux.so
+
+[types]
+BigInt = #SInt64
+
+[symbols]
+func.write_out = #Void data #RawPtr num #UInt64
+func.say_hello = #Void
+func.multiply = #Void value BigInt
+`
+
+WINDOWS_RUNESTONE :: `
+version = 0
+
+os = Windows
+arch = x86_64
+
+[lib]
+shared = windows.lib
+
+[types]
+BigInt = #SInt32
+
+[symbols]
+func.write_out = #Void data #RawPtr
+func.say_hello = #Void
+func.multiply = #Void value BigInt
+`
+
+@(test)
+test_runecross :: proc(t: ^testing.T) {
+    using testing
+
+    linux_rd, windows_rd: strings.Reader
+    strings.reader_init(&linux_rd, LINUX_RUNESTONE)
+    strings.reader_init(&windows_rd, WINDOWS_RUNESTONE)
+
+    linux_stone, linux_err := parse_runestone(
+        strings.reader_to_stream(&linux_rd),
+        "/linux",
+    )
+    if !expect_value(t, linux_err, nil) do return
+    windows_stone, windows_err := parse_runestone(
+        strings.reader_to_stream(&windows_rd),
+        "/windows",
+    )
+    if !expect_value(t, windows_err, nil) do return
+
+    cross, cross_err := cross_the_runes({linux_stone, windows_stone})
+    if !expect_value(t, cross_err, nil) do return
+
+    expect_value(t, om.length(cross.general.types), 0)
+    expect_value(t, om.length(cross.general.symbols), 2)
+
+    linux_cross := cross.cross[Platform{.Linux, .x86_64}]
+    expect_value(t, om.length(linux_cross.types), 1)
+    expect_value(t, om.length(linux_cross.symbols), 1)
+
+    windows_cross := cross.cross[Platform{.Windows, .x86_64}]
+    expect_value(t, om.length(windows_cross.types), 1)
+    expect_value(t, om.length(windows_cross.symbols), 1)
+}

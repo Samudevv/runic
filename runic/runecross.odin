@@ -17,6 +17,154 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package runic
 
+import "core:slice"
+import "root:errors"
+import om "root:ordered_map"
+
+Runecross :: struct {
+    general: Runestone,
+    cross:   map[Platform]Runestone,
+}
+
+cross_the_runes :: proc(
+    stones: [dynamic]Runestone,
+) -> (
+    rc: Runecross,
+    err: errors.Error,
+) {
+    errors.assert(len(stones) != 0, "no runestones specified") or_return
+    if len(stones) == 1 {
+        rc.general = stones[0]
+        return
+    }
+
+    origin := make(map[Platform]Runestone)
+    defer delete(origin)
+
+    for stone in stones {
+        if _, ok := origin[stone.platform]; ok {
+            err = errors.message(
+                "duplicate runestone for platform {}.{}",
+                stone.platform.os,
+                stone.platform.arch,
+            )
+            return
+        }
+
+        origin[stone.platform] = stone
+    }
+
+    half_stones := len(origin) / 2
+
+    rc.general.types = om.make(string, Type)
+    rc.general.symbols = om.make(string, Symbol)
+    rc.general.constants = om.make(string, Constant)
+
+    for plat1, stone1 in origin {
+        // TODO: anonymous types
+        // types
+        for entry1 in stone1.types.data {
+            name1, type1 := entry1.key, entry1.value
+            if om.contains(rc.general.types, name1) do continue
+
+            same_platforms := 1
+            for plat2, stone2 in origin {
+                if plat1 == plat2 do continue
+
+                if type2, ok := om.get(stone2.types, name1); ok {
+                    if is_same(type1, type2) {
+                        same_platforms += 1
+                    }
+                }
+            }
+
+            if same_platforms <= half_stones {
+                stone2 := rc.cross[plat1]
+                defer rc.cross[plat1] = stone2
+
+                if stone2.types.indices == nil {
+                    stone2.types = om.make(string, Type)
+                }
+
+                om.insert(&stone2.types, name1, type1)
+            } else {
+                om.insert(&rc.general.types, name1, type1)
+            }
+        }
+
+        // symbols
+        for entry1 in stone1.symbols.data {
+            name1, symbol1 := entry1.key, entry1.value
+            if symbol2, ok := om.get(rc.general.symbols, name1); ok {
+                for alias in symbol1.aliases {
+                    if !slice.contains(symbol2.aliases[:], alias) {
+                        append(&symbol2.aliases, alias)
+                    }
+                }
+
+                om.insert(&rc.general.symbols, name1, symbol2)
+                continue
+            }
+
+            same_platforms := 1
+            for plat2, stone2 in origin {
+                if plat1 == plat2 do continue
+
+                if symbol2, ok := om.get(stone2.symbols, name1); ok {
+                    if is_same(symbol1, symbol2) {
+                        same_platforms += 1
+                    }
+                }
+            }
+
+            if same_platforms <= half_stones {
+                stone2 := rc.cross[plat1]
+                defer rc.cross[plat1] = stone2
+
+                if stone2.symbols.indices == nil {
+                    stone2.symbols = om.make(string, Symbol)
+                }
+
+                om.insert(&stone2.symbols, name1, symbol1)
+            } else {
+                om.insert(&rc.general.symbols, name1, symbol1)
+            }
+        }
+
+        // constants
+        for entry1 in stone1.constants.data {
+            name1, constant1 := entry1.key, entry1.value
+            if om.contains(rc.general.constants, name1) do continue
+
+            same_platforms := 1
+            for plat2, stone2 in origin {
+                if plat1 == plat2 do continue
+
+                if constant2, ok := om.get(stone2.constants, name1); ok {
+                    if is_same(constant1, constant2) {
+                        same_platforms += 1
+                    }
+                }
+            }
+
+            if same_platforms <= half_stones {
+                stone2 := rc.cross[plat1]
+                defer rc.cross[plat1] = stone2
+
+                if stone2.constants.indices == nil {
+                    stone2.constants = om.make(string, Constant)
+                }
+
+                om.insert(&stone2.constants, name1, constant1)
+            } else {
+                om.insert(&rc.general.constants, name1, constant1)
+            }
+        }
+    }
+
+    return
+}
+
 is_same_constant :: proc(c1, c2: Constant) -> bool {
     switch v1 in c1.value {
     case i64:
@@ -83,7 +231,7 @@ is_same_function :: proc(f1, f2: Function) -> bool {
         if p1.name != p2.name || !is_same(p1.type, p2.type) do return false
     }
 
-    return false
+    return true
 }
 
 is_same_type_specifier :: proc(s1, s2: TypeSpecifier) -> bool {
@@ -97,8 +245,10 @@ is_same_type_specifier :: proc(s1, s2: TypeSpecifier) -> bool {
 
         for m1, idx in t1.members {
             #no_bounds_check m2 := t2.members[idx]
-            return m1.name == m2.name && is_same(m1.type, m2.type)
+            if m1.name != m2.name || !is_same(m1.type, m2.type) do return false
         }
+
+        return true
     case Enum:
         t2 := s2.(Enum) or_return
         if t1.type != t2.type || len(t1.entries) != len(t2.entries) do return false
@@ -125,8 +275,10 @@ is_same_type_specifier :: proc(s1, s2: TypeSpecifier) -> bool {
 
         for m1, idx in t1.members {
             #no_bounds_check m2 := t2.members[idx]
-            return m1.name == m2.name && is_same(m1.type, m2.type)
+            if m1.name != m2.name || !is_same(m1.type, m2.type) do return false
         }
+
+        return true
     case string:
         t2 := s2.(string) or_return
         return t1 == t2
@@ -155,6 +307,8 @@ is_same_type :: proc(t1, t2: Type) -> bool {
 }
 
 is_same_symbol :: proc(s1, s2: Symbol) -> bool {
+    if s1.remap != s2.remap do return false
+
     switch v1 in s1.value {
     case Type:
         v2 := s2.value.(Type) or_return

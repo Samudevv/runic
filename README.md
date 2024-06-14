@@ -81,6 +81,9 @@ This repository contains some examples which show how the tool can be used.
 ```ini
 version = 0
 
+os = Linux
+arch = x86_64
+
 [lib]
 shared = libfoo.so
 static = libfoo.a
@@ -101,20 +104,18 @@ foo_var = foo_varZZXX6
 [alias]
 oof = foo
 
-[anonymous_types]
-0 = #Struct desc str apple #UInt8
-1 = #Struct x #SInt32 y #SInt32
-
 [types]
 i32 = #SInt32
 str = #UInt8 #Attr Ptr 1 #AttrEnd
-output = #Struct x #SInt32 y #SInt32 name str pear #Anon 0
+anon_0 = #Struct desc str apple #UInt8
+output = #Struct x #SInt32 y #SInt32 name str pear anon_0
 output_flags = #Enum #SInt32 SHOWN 0 HIDDEN 1 OFF ARR_CAP ON "1+2"
 numbers = #Float32 #Attr Arr ARR_SIZE #AttrEnd
 transform = #Float64 #Attr ReadOnly Arr 4 ReadOnly Arr 4 WriteOnly #AttrEnd
 outer = #Float32 #Attr Ptr 1 Arr 2 #AttrEnd
 times = #SInt32 #Attr Arr "5*6/3*(8%9)" #AttrEnd
-super_ptr = #Anon 1 #Attr Ptr 1 #AttrEnd
+anon_1 = #Struct x #SInt32 y #SInt32
+super_ptr = anon_1 #Attr Ptr 1 #AttrEnd
 
 [methods]
 output.print_name = output_print_name
@@ -126,7 +127,7 @@ APP_NAME = "Hello World" #SInt8 #Attr Ptr 1 #AttrEnd
 LENGTH = 267.3450000000000273 #Float64
 ```
 
-A runestone is a (modified) ini file containing information about the contents of one library file which can either be a static or a shared library. Thint to replace the C header files which are usually used to define the symbols of a library file. The format is meant to be easily parsable even if a parser is written from scratch.
+A runestone is a (modified) ini file containing information about the contents of one library file which can either be a static or a shared library. Meant to replace the C header files which are usually used to define the symbols of a library file. The format is meant to be easily parsable even if a parser is written from scratch.
 
 ## Rune
 
@@ -135,7 +136,7 @@ A runestone is a (modified) ini file containing information about the contents o
   "version": 0,
   "from": {
     "language": "c",
-    "static.linux": "libolivec.a",
+    "static": "libolivec.a",
     "static.windows": "olivec.lib",
     "headers": [
       "olive.c"

@@ -186,31 +186,6 @@ generate_bindings_from_runestone :: proc(
 
     if om.length(rs.constants) != 0 do io.write_rune(wd, '\n') or_return
 
-    for ty, idx in rs.anon_types {
-        anon: strings.Builder
-        defer strings.builder_destroy(&anon)
-        as := strings.to_stream(&anon)
-
-        type_name := fmt.aprintf("Anon{}", idx, allocator = arena_alloc)
-        type_name = runic.process_type_name(
-            type_name,
-            rn,
-            allocator = arena_alloc,
-        )
-        io.write_string(as, type_name) or_return
-        io.write_string(as, " :: ") or_return
-        type_err := write_type(as, type_name, runic.Type{spec = ty}, rn)
-        if type_err != nil {
-            fmt.eprintfln("{}: {}", type_name, type_err)
-            continue
-        }
-        io.write_string(as, "\n") or_return
-
-        io.write_string(wd, strings.to_string(anon)) or_return
-    }
-
-    if len(rs.anon_types) != 0 do io.write_rune(wd, '\n') or_return
-
     for entry in rs.types.data {
         type_build: strings.Builder
         defer strings.builder_destroy(&type_build)
@@ -729,14 +704,6 @@ write_type :: proc(
         )
 
         io.write_string(wd, processed) or_return
-    case runic.Anon:
-        anon_name := fmt.aprintf("Anon{}", spec, allocator = arena_alloc)
-        anon_name = runic.process_type_name(
-            anon_name,
-            rn,
-            allocator = arena_alloc,
-        )
-        io.write_string(wd, anon_name) or_return
     case runic.Unknown:
         io.write_string(wd, "rawptr") or_return
     case runic.FunctionPointer:

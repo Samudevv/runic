@@ -21,6 +21,7 @@ import "base:runtime"
 import "core:c/libc"
 import "core:io"
 import "core:os"
+import "core:path/filepath"
 import "core:testing"
 import om "root:ordered_map"
 import "root:runic"
@@ -41,15 +42,14 @@ test_to_odin_codegen :: proc(t: ^testing.T) {
     ODIN_EXPECTED :: `//+build linux amd64
 package foo_pkg
 
-odin_Anon0_bindings :: struct {
+odin_anon_0_bindings :: struct {
     x: f32,
     y: f32,
 }
-odin_Anon1_bindings :: struct {
+odin_anon_1_bindings :: struct {
     x: ^f32,
     y: ^f32,
 }
-
 odin_struct_bindings :: struct {
     context_: ^i32,
     baz: ^^[10]^^f64,
@@ -59,7 +59,7 @@ odin_complex_ptr_bindings :: [13][10][5]i32
 when #config(FOO_PKG_STATIC, false) {
     foreign import foo_pkg_runic "system:libfoo.a"
 } else {
-    foreign import foo_pkg_runic "system:./libfoo.so"
+    foreign import foo_pkg_runic "libfoo.so"
 }
 
 @(default_calling_convention = "c")
@@ -68,7 +68,7 @@ foreign foo_pkg_runic {
     odin_add_int_bindings :: proc(a: i32, b: i32) -> i32 ---
 
     @(link_name = "foo_sub_float_funcZZtu73")
-    odin_sub_float_bindings :: proc(a: odin_Anon0_bindings, b: odin_Anon1_bindings) -> f32 ---
+    odin_sub_float_bindings :: proc(a: odin_anon_0_bindings, b: odin_anon_1_bindings) -> f32 ---
 
     @(link_name = "foo_div_func")
     odin_div_bindings :: proc(a: [^]odin_struct_bindings, b: [^]odin_struct_bindings) -> f32 ---
@@ -79,9 +79,15 @@ odin_not_the_sub_bindings :: odin_add_int_bindings
 
 main :: proc() {}`
 
+    abs_test_data, abs_ok := filepath.abs("test_data")
+    if !expect(t, abs_ok) do return
+    defer delete(abs_test_data)
+    lib_shared := filepath.join({abs_test_data, "libfoo.so"})
+    defer delete(lib_shared)
+
     rs := runic.Runestone {
         version = 0,
-        lib_shared = "./libfoo.so",
+        lib_shared = lib_shared,
         lib_static = "libfoo.a",
         symbols = om.OrderedMap(string, runic.Symbol) {
             data =  {
@@ -110,8 +116,8 @@ main :: proc() {}`
                         value = runic.Function {
                             return_type = {spec = runic.Builtin.Float32},
                             parameters =  {
-                                {name = "a", type = {spec = runic.Anon(0)}},
-                                {name = "b", type = {spec = runic.Anon(1)}},
+                                {name = "a", type = {spec = string("anon_0")}},
+                                {name = "b", type = {spec = string("anon_1")}},
                             },
                         },
                         remap = "foo_sub_float_funcZZtu73",
@@ -146,6 +152,46 @@ main :: proc() {}`
         types = om.OrderedMap(string, runic.Type) {
             data =  {
                  {
+                    key = "anon_0",
+                    value =  {
+                        spec = runic.Struct {
+                            members =  {
+                                 {
+                                    name = "x",
+                                    type = {spec = runic.Builtin.Float32},
+                                },
+                                 {
+                                    name = "y",
+                                    type = {spec = runic.Builtin.Float32},
+                                },
+                            },
+                        },
+                    },
+                },
+                 {
+                    key = "anon_1",
+                    value =  {
+                        spec = runic.Struct {
+                            members =  {
+                                 {
+                                    name = "x",
+                                    type =  {
+                                        spec = runic.Builtin.Float32,
+                                        pointer_info = {count = 1},
+                                    },
+                                },
+                                 {
+                                    name = "y",
+                                    type =  {
+                                        spec = runic.Builtin.Float32,
+                                        pointer_info = {count = 1},
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                 {
                     key = "foo_struct_t",
                     value =  {
                         spec = runic.Struct {
@@ -178,32 +224,6 @@ main :: proc() {}`
                 },
             },
         },
-        anon_types =  {
-            runic.Struct {
-                members =  {
-                    {name = "x", type = {spec = runic.Builtin.Float32}},
-                    {name = "y", type = {spec = runic.Builtin.Float32}},
-                },
-            },
-            runic.Struct {
-                members =  {
-                     {
-                        name = "x",
-                        type =  {
-                            spec = runic.Builtin.Float32,
-                            pointer_info = {count = 1},
-                        },
-                    },
-                     {
-                        name = "y",
-                        type =  {
-                            spec = runic.Builtin.Float32,
-                            pointer_info = {count = 1},
-                        },
-                    },
-                },
-            },
-        },
     }
 
     rn := runic.To {
@@ -215,9 +235,15 @@ main :: proc() {}`
         add_suffix = runic.AddSet{"_bindings", "_bindings", "_bindings", ""},
     }
 
+    abs_file_name: string = ---
+    defer delete(abs_file_name)
     {
+        abs_file_ok: bool = ---
+        abs_file_name, abs_file_ok = filepath.abs("test_data/bindings.odin")
+        if !expect(t, abs_file_ok) do return
+
         file, os_err := os.open(
-            "test_data/bindings.odin",
+            abs_file_name,
             os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
             0o644,
         )
@@ -232,7 +258,7 @@ main :: proc() {}`
             rc,
             rn,
             os.stream_from_handle(file),
-            "test_data/bindings.odin",
+            abs_file_name,
         )
         if !expect_value(t, err, io.Error.None) do return
 
@@ -241,7 +267,7 @@ main :: proc() {}`
 
     if c_err := libc.system("odin check test_data/bindings.odin -file -vet"); !expect_value(t, c_err, 0) do return
 
-    contents, os_err := os.read_entire_file("test_data/bindings.odin")
+    contents, os_err := os.read_entire_file(abs_file_name)
     if !expect(t, os_err) do return
 
     bindings := string(contents)

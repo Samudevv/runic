@@ -74,7 +74,6 @@ cross_the_runes :: proc(
             rc.cross[plat1] = stone2
         }
 
-        // TODO: anonymous types
         // types
         for entry1 in stone1.types.data {
             name1, type1 := entry1.key, entry1.value
@@ -303,10 +302,6 @@ is_same_type_specifier :: proc(s1, s2: TypeSpecifier) -> bool {
         return true
     case string:
         t2 := s2.(string) or_return
-        return t1 == t2
-    case Anon:
-        // TODO: Think about what happens if anon types are different. Do all Anons become invalid?
-        t2 := s2.(Anon) or_return
         return t1 == t2
     case Unknown:
         _, ok := s2.(Unknown)

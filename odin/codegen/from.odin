@@ -51,7 +51,6 @@ generate_runestone :: proc(
     rs_arena_alloc := runtime.arena_allocator(&rs.arena)
 
     rs.types = om.make(string, runic.Type, allocator = rs_arena_alloc)
-    rs.anon_types = make([dynamic]runic.TypeSpecifier, rs_arena_alloc)
     rs.constants = om.make(string, runic.Constant, allocator = rs_arena_alloc)
 
     rs.platform = plat
@@ -76,6 +75,8 @@ generate_runestone :: proc(
         bsd_x86_64 = rf.packages_bsd_x86_64,
         bsd_arm64 = rf.packages_bsd_arm64,
     )
+
+    anon_counter: int
 
     for pack in packages {
         pack_name, pack_ok := runic.relative_to_file(
@@ -176,7 +177,7 @@ generate_runestone :: proc(
                             stm.type,
                             first_name,
                             &rs.types,
-                            &rs.anon_types,
+                            &anon_counter,
                             &imports,
                             nil,
                             rs_arena_alloc,
@@ -241,7 +242,7 @@ generate_runestone :: proc(
                                 value.type,
                                 name,
                                 &rs.types,
-                                &rs.anon_types,
+                                &anon_counter,
                                 &imports,
                                 nil,
                                 rs_arena_alloc,
@@ -352,7 +353,7 @@ generate_runestone :: proc(
                                 value_expr,
                                 name,
                                 &rs.types,
-                                &rs.anon_types,
+                                &anon_counter,
                                 &imports,
                                 nil,
                                 rs_arena_alloc,
@@ -426,7 +427,7 @@ proc_type_to_function :: proc(
     p: ^odina.Proc_Type,
     name: Maybe(string),
     types: ^om.OrderedMap(string, runic.Type),
-    anon_types: ^[dynamic]runic.TypeSpecifier,
+    anon_counter: ^int,
     imports: ^map[string]Import,
     current_package: Maybe(^odina.Package),
     allocator := context.allocator,
@@ -454,15 +455,17 @@ proc_type_to_function :: proc(
             param_field.type,
             first_name,
             types,
-            anon_types,
+            anon_counter,
             imports,
             current_package,
             allocator,
         ) or_return
         #partial switch spec in type.spec {
-        case runic.Enum, runic.Struct, runic.Union:
-            type.spec = runic.Anon(len(anon_types^))
-            append(anon_types, spec)
+        case runic.Enum, runic.Struct, runic.Union, runic.FunctionPointer:
+            anon_name := fmt.aprintf("anon_{}", anon_counter^)
+            anon_counter^ += 1
+            om.insert(types, anon_name, runic.Type{spec = type.spec})
+            type.spec = anon_name
         }
 
         if type.pointer_info.count != 0 {
@@ -504,15 +507,21 @@ proc_type_to_function :: proc(
             result_field.type,
             first_name,
             types,
-            anon_types,
+            anon_counter,
             imports,
             current_package,
             allocator,
         ) or_return
         #partial switch spec in type.spec {
-        case runic.Enum, runic.Struct, runic.Union:
-            type.spec = runic.Anon(len(anon_types^))
-            append(anon_types, spec)
+        case runic.Enum, runic.Struct, runic.Union, runic.FunctionPointer:
+            anon_name := fmt.aprintf(
+                "anon_{}",
+                anon_counter^,
+                allocator = allocator,
+            )
+            anon_counter^ += 1
+            om.insert(types, anon_name, runic.Type{spec = type.spec})
+            type.spec = anon_name
         }
 
         if len(result_field.names) == 0 {
@@ -594,7 +603,7 @@ type_to_type :: proc(
     t: ^odina.Expr,
     name: Maybe(string),
     types: ^om.OrderedMap(string, runic.Type),
-    anon_types: ^[dynamic]runic.TypeSpecifier,
+    anon_counter: ^int,
     imports: ^map[string]Import,
     current_package: Maybe(^odina.Package),
     allocator := context.allocator,
@@ -631,7 +640,7 @@ type_to_type :: proc(
                         type_name,
                         pkg,
                         types,
-                        anon_types,
+                        anon_counter,
                         allocator,
                     ) or_return
                     om.insert(types, prefix_type_name, type)
@@ -646,7 +655,7 @@ type_to_type :: proc(
             type_expr.elem,
             name,
             types,
-            anon_types,
+            anon_counter,
             imports,
             current_package,
             allocator,
@@ -662,7 +671,7 @@ type_to_type :: proc(
             type_expr.elem,
             name,
             types,
-            anon_types,
+            anon_counter,
             imports,
             current_package,
             allocator,
@@ -690,7 +699,7 @@ type_to_type :: proc(
             type_expr.elem,
             name,
             types,
-            anon_types,
+            anon_counter,
             imports,
             current_package,
             allocator,
@@ -711,7 +720,7 @@ type_to_type :: proc(
                 type_expr.base_type,
                 name,
                 types,
-                anon_types,
+                anon_counter,
                 imports,
                 current_package,
                 allocator,
@@ -766,7 +775,7 @@ type_to_type :: proc(
                 plat,
                 type_expr,
                 types,
-                anon_types,
+                anon_counter,
                 imports,
                 current_package,
                 allocator,
@@ -778,7 +787,7 @@ type_to_type :: proc(
             plat,
             type_expr,
             types,
-            anon_types,
+            anon_counter,
             imports,
             current_package,
             allocator,
@@ -808,7 +817,7 @@ type_to_type :: proc(
                 &type_expr.field.node,
                 type_name,
                 types,
-                anon_types,
+                anon_counter,
                 imports,
                 nil,
                 allocator,
@@ -821,7 +830,7 @@ type_to_type :: proc(
                 pkg.name,
                 type_name,
                 types,
-                anon_types,
+                anon_counter,
                 allocator,
             ) or_return
         }
@@ -841,7 +850,7 @@ type_to_type :: proc(
             type_expr.type,
             name,
             types,
-            anon_types,
+            anon_counter,
             imports,
             current_package,
             allocator,
@@ -852,7 +861,7 @@ type_to_type :: proc(
             type_expr,
             name,
             types,
-            anon_types,
+            anon_counter,
             imports,
             current_package,
             allocator,
@@ -954,7 +963,7 @@ struct_type_to_union :: proc(
     plat: runic.Platform,
     st: ^odina.Struct_Type,
     types: ^om.OrderedMap(string, runic.Type),
-    anon_types: ^[dynamic]runic.TypeSpecifier,
+    anon_counter: ^int,
     imports: ^map[string]Import,
     current_package: Maybe(^odina.Package),
     allocator := context.allocator,
@@ -966,7 +975,7 @@ struct_type_to_union :: proc(
         plat,
         st,
         types,
-        anon_types,
+        anon_counter,
         imports,
         current_package,
         allocator,
@@ -979,7 +988,7 @@ struct_type_to_struct :: proc(
     plat: runic.Platform,
     st: ^odina.Struct_Type,
     types: ^om.OrderedMap(string, runic.Type),
-    anon_types: ^[dynamic]runic.TypeSpecifier,
+    anon_counter: ^int,
     imports: ^map[string]Import,
     current_package: Maybe(^odina.Package),
     allocator := context.allocator,
@@ -1004,15 +1013,17 @@ struct_type_to_struct :: proc(
             field.type,
             first_name,
             types,
-            anon_types,
+            anon_counter,
             imports,
             current_package,
             allocator,
         ) or_return
         #partial switch spec in type.spec {
-        case runic.Enum, runic.Struct, runic.Union:
-            type.spec = runic.Anon(len(anon_types^))
-            append(anon_types, spec)
+        case runic.Enum, runic.Struct, runic.Union, runic.FunctionPointer:
+            anon_name := fmt.aprintf("anon_{}", anon_counter^)
+            anon_counter^ += 1
+            om.insert(types, anon_name, runic.Type{spec = type.spec})
+            type.spec = anon_name
         }
 
         for name_expr in field.names {
@@ -1231,7 +1242,7 @@ lookup_type_of_import :: proc(
     imports: ^map[string]Import,
     pkg, type_name: string,
     types: ^om.OrderedMap(string, runic.Type),
-    anon_types: ^[dynamic]runic.TypeSpecifier,
+    anon_counter: ^int,
     allocator := context.allocator,
 ) -> (
     type: runic.Type,
@@ -1282,7 +1293,7 @@ lookup_type_of_import :: proc(
         type_name,
         imp.pkg,
         types,
-        anon_types,
+        anon_counter,
         allocator,
     )
 
@@ -1294,7 +1305,7 @@ lookup_type_in_package :: proc(
     type_name: string,
     pkg: ^odina.Package,
     types: ^om.OrderedMap(string, runic.Type),
-    anon_types: ^[dynamic]runic.TypeSpecifier,
+    anon_counter: ^int,
     allocator := context.allocator,
 ) -> (
     type: runic.Type,
@@ -1324,7 +1335,7 @@ lookup_type_in_package :: proc(
                             value_expr,
                             name,
                             types,
-                            anon_types,
+                            anon_counter,
                             &local_imports,
                             pkg,
                             allocator,

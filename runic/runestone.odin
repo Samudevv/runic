@@ -75,8 +75,6 @@ Enum :: struct {
     entries: [dynamic]EnumEntry,
 }
 
-Anon :: uint
-
 Unknown :: distinct string
 
 PointerInfo :: struct {
@@ -143,7 +141,6 @@ Runestone :: struct {
     lib_static: Maybe(string),
     symbols:    om.OrderedMap(string, Symbol),
     types:      om.OrderedMap(string, Type),
-    anon_types: [dynamic]TypeSpecifier,
     constants:  om.OrderedMap(string, Constant),
     arena:      runtime.Arena,
 }
@@ -154,7 +151,6 @@ TypeSpecifier :: union {
     Enum,
     Union,
     string,
-    Anon,
     Unknown,
     FunctionPointer,
 }
@@ -356,31 +352,6 @@ parse_runestone :: proc(
 
             append(&symbol.aliases, alias_name)
             om.insert(&symbols, symbol_name, symbol)
-        }
-    }
-
-    when ODIN_DEBUG {
-        fmt.eprintln("section anonymous_types")
-    }
-
-    anonymous_types: {
-        sect, ok := ini_file["anonymous_types"]
-        if !ok do break anonymous_types
-        defer delete_key(&ini_file, "anonymous_types")
-
-        for value in sect.data {
-            anon_def := value.value
-            type := parse_type(anon_def) or_return
-
-            #partial switch _ in type.spec {
-            case Struct, Enum, Union:
-                break
-            case:
-                err = errors.message("invalid anonymous type")
-                return
-            }
-
-            append(&anon_types, type.spec)
         }
     }
 
@@ -607,17 +578,6 @@ write_runestone :: proc(
 
     if some_alias do io.write_rune(wd, '\n') or_return
 
-    if len(rs.anon_types) != 0 {
-        io.write_string(wd, "[anonymous_types]\n") or_return
-        for anon, idx in rs.anon_types {
-            io.write_int(wd, idx) or_return
-            io.write_string(wd, " = ") or_return
-            write_type_specifier(wd, anon) or_return
-            io.write_rune(wd, '\n') or_return
-        }
-        io.write_rune(wd, '\n') or_return
-    }
-
     if om.length(rs.types) != 0 {
         io.write_string(wd, "[types]\n") or_return
 
@@ -801,14 +761,6 @@ parse_type_token :: proc(
             u, token = parse_union_token(token) or_return
             type.spec = u
             return
-        case "Anon":
-            token = token.next
-            errors.assert(token.kind == .Number) or_return
-
-            idx, ok := strconv.parse_uint(token.lit, 10)
-            errors.wrap(ok) or_return
-
-            type.spec = cast(Anon)idx
         case "Unknown":
             token = token.next
             errors.assert(token.kind == .Ident) or_return
@@ -1229,9 +1181,6 @@ write_type_specifier :: proc(wd: io.Writer, ts: TypeSpecifier) -> io.Error {
     case FunctionPointer:
         io.write_string(wd, "#FuncPtr ") or_return
         write_function(wd, t^) or_return
-    case Anon:
-        io.write_string(wd, "#Anon ") or_return
-        io.write_uint(wd, t) or_return
     case Unknown:
         io.write_string(wd, "#Unknown ") or_return
         io.write_string(wd, string(t)) or_return

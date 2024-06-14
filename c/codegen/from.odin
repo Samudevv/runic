@@ -95,6 +95,8 @@ generate_runestone :: proc(
     pp_program := parser.PREPROCESS_PROGRAM
     pp_flags := parser.PREPROCESS_FLAGS
 
+    anon_counter: int
+
     for hd in headers {
         p: parser.Parser
         defer parser.destroy_parser(&p)
@@ -130,7 +132,12 @@ generate_runestone :: proc(
         custom_types: [dynamic]string
 
         typedef_loop: for td in p.typedefs {
-            tp, name := parser_variable_to_runic_type(td, &rs.anon_types, isz)
+            tp, name := parser_variable_to_runic_type(
+                td,
+                &rs.types,
+                isz,
+                &anon_counter,
+            )
             if name != nil {
                 if runic.single_list_glob(rf.ignore.types, name.?) {
                     continue
@@ -158,8 +165,9 @@ generate_runestone :: proc(
 
             v_type, v_name := parser_variable_to_runic_type(
                 vr,
-                &rs.anon_types,
+                &rs.types,
                 isz,
+                &anon_counter,
             )
 
             if v_name == nil || runic.single_list_glob(rf.ignore.variables, v_name.?) do continue
@@ -190,7 +198,12 @@ generate_runestone :: proc(
         }
 
         for fc in p.functions {
-            rnfn := parser_function_to_runic_function(fc, &rs.anon_types, isz)
+            rnfn := parser_function_to_runic_function(
+                fc,
+                &rs.types,
+                isz,
+                &anon_counter,
+            )
             if fc.name == nil || runic.single_list_glob(rf.ignore.functions, fc.name.?) do continue
 
             if b, ok := rnfn.return_type.spec.(runic.Builtin);
@@ -246,8 +259,9 @@ generate_runestone :: proc(
                     if found {
                         tp, name := parser_variable_to_runic_type(
                             td,
-                            &rs.anon_types,
+                            &rs.types,
                             isz,
+                            &anon_counter,
                         )
                         if name != nil {
 
@@ -269,9 +283,6 @@ generate_runestone :: proc(
         for &entry in rs.types.data {
             type := &entry.value
             type.spec = validate_unknown_types(type.spec, rs.types)
-        }
-        for &type_spec in rs.anon_types {
-            type_spec = validate_unknown_types(type_spec, rs.types)
         }
         for &entry in rs.symbols.data {
             switch &v in entry.value.value {
@@ -483,8 +494,9 @@ struct_check_unknown_types :: proc(
 
 parser_variable_to_runic_type :: proc(
     var: parser.Variable,
-    anon_types: ^[dynamic]runic.TypeSpecifier,
+    types: ^om.OrderedMap(string, runic.Type),
     isz: Int_Sizes,
+    anon_counter: ^int,
 ) -> (
     tp: runic.Type,
     name: Maybe(string),
@@ -585,15 +597,18 @@ parser_variable_to_runic_type :: proc(
             for m in ty.members {
                 m_type, m_name := parser_variable_to_runic_type(
                     m,
-                    anon_types,
+                    types,
                     isz,
+                    anon_counter,
                 )
                 if m_name == nil do m_name = fmt.aprintf("memb{}", count)
 
                 #partial switch s in m_type.spec {
                 case runic.Struct, runic.Union, runic.Enum, runic.FunctionPointer:
-                    append(anon_types, s)
-                    m_type.spec = runic.Anon(len(anon_types^) - 1)
+                    anon_name := fmt.aprintf("anon_{}", anon_counter^)
+                    anon_counter^ += 1
+                    om.insert(types, anon_name, runic.Type{spec = m_type.spec})
+                    m_type.spec = anon_name
                 }
 
                 append(
@@ -639,15 +654,18 @@ parser_variable_to_runic_type :: proc(
             for m in ty.members {
                 m_type, m_name := parser_variable_to_runic_type(
                     m,
-                    anon_types,
+                    types,
                     isz,
+                    anon_counter,
                 )
                 if m_name == nil do m_name = fmt.aprintf("unio{}", count)
 
                 #partial switch s in m_type.spec {
                 case runic.Struct, runic.Union, runic.Enum, runic.FunctionPointer:
-                    append(anon_types, s)
-                    m_type.spec = runic.Anon(len(anon_types^) - 1)
+                    anon_name := fmt.aprintf("anon_{}", anon_counter^)
+                    anon_counter^ += 1
+                    om.insert(types, anon_name, runic.Type{spec = m_type.spec})
+                    m_type.spec = anon_name
                 }
 
 
@@ -693,7 +711,7 @@ parser_variable_to_runic_type :: proc(
             }
         }
     case parser.Function:
-        rf := parser_function_to_runic_function(t, anon_types, isz)
+        rf := parser_function_to_runic_function(t, types, isz, anon_counter)
 
         if b, ok := rf.return_type.spec.(runic.Builtin); ok && b == .Untyped {
             return
@@ -731,8 +749,9 @@ parser_variable_to_runic_type :: proc(
 
 parser_function_to_runic_function :: proc(
     fc: parser.Function,
-    anon_types: ^[dynamic]runic.TypeSpecifier,
+    types: ^om.OrderedMap(string, runic.Type),
     isz: Int_Sizes,
+    anon_counter: ^int,
 ) -> (
     rf: runic.Function,
 ) {
@@ -740,8 +759,9 @@ parser_function_to_runic_function :: proc(
 
     f_type, _ := parser_variable_to_runic_type(
         fc.return_type^,
-        anon_types,
+        types,
         isz,
+        anon_counter,
     )
 
     if b, ok := f_type.spec.(runic.Builtin); ok && b == .Untyped {
@@ -753,13 +773,20 @@ parser_function_to_runic_function :: proc(
 
     count: uint
     for p in fc.parameters {
-        m_type, m_name := parser_variable_to_runic_type(p, anon_types, isz)
+        m_type, m_name := parser_variable_to_runic_type(
+            p,
+            types,
+            isz,
+            anon_counter,
+        )
         if m_name == nil do m_name = fmt.aprintf("param{}", count)
 
         #partial switch s in m_type.spec {
         case runic.Struct, runic.Enum, runic.Union, runic.FunctionPointer:
-            append(anon_types, s)
-            m_type.spec = runic.Anon(len(anon_types^) - 1)
+            anon_name := fmt.aprintf("anon_{}", anon_counter^)
+            om.insert(types, anon_name, runic.Type{spec = m_type.spec})
+            anon_counter^ += 1
+            m_type.spec = anon_name
         }
 
         append(&params, runic.Member{name = m_name.?, type = m_type})

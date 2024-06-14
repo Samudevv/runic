@@ -6,22 +6,6 @@ static const char* FOO_VALUE_STR = "5";
 static const char* FOO_VALUE_LONG_STR = "five";
 #define FOO_FLOAT 5.5999999999999996
 
-struct Anon0 {
-int64_t z;
-};
-struct Anon1 {
-int64_t y;
-struct Anon0 cba;
-};
-struct Anon2 {
-int64_t a;
-int64_t b;
-};
-union Anon3 {
-uint32_t x;
-int32_t y;
-};
-
 typedef int64_t* int_ptr;
 typedef int64_t multi_int[10];
 typedef int64_t (*multi_int_ptr)[10];
@@ -50,9 +34,16 @@ union your_foo {
 uint32_t x;
 int32_t y;
 };
+struct anon_0 {
+int64_t z;
+};
+struct anon_1 {
+int64_t y;
+struct anon_0 cba;
+};
 struct nested {
 int64_t x;
-struct Anon1 abc;
+struct anon_1 abc;
 };
 typedef int32_t sausage;
 #define Weißwurst ((sausages)0)
@@ -70,6 +61,14 @@ struct multi_foo_result {
 int64_t c;
 int64_t d;
 };
+struct anon_2 {
+int64_t a;
+int64_t b;
+};
+union anon_3 {
+uint32_t x;
+int32_t y;
+};
 
 extern super_multi your_var;
 extern float* mumu;
@@ -83,7 +82,7 @@ extern struct multi_foo_result multi_foo(const int64_t a, const int64_t b);
 extern uint32_t super_foo(const struct my_foo a);
 extern void print_pants(const enum pants a);
 extern void print_sausages(const sausages b);
-extern union Anon3 multi_sausage(struct Anon2**const over);
+extern union anon_3 multi_sausage(struct anon_2**const over);
 
 #define foozy_bar bar
 #define foozy_parse_int parse_int

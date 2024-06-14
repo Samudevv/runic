@@ -49,20 +49,18 @@ foo_var = foo_varZZXX6
 [alias]
 oof = foo
 
-[anonymous_types]
-0 = #Struct desc str apple #UInt8
-1 = #Struct x #SInt32 y #SInt32
-
 [types]
 i32 = #SInt32
 str = #UInt8 #Attr Ptr 1 #AttrEnd
-output = #Struct x #SInt32 y #SInt32 name str pear #Anon 0
+anon_0 = #Struct desc str apple #UInt8
+output = #Struct x #SInt32 y #SInt32 name str pear anon_0
 output_flags = #Enum #SInt32 SHOWN 0 HIDDEN 1 OFF ARR_CAP ON "1+2"
 numbers = #Float32 #Attr Arr ARR_SIZE #AttrEnd
 transform = #Float64 #Attr ReadOnly Arr 4 ReadOnly Arr 4 WriteOnly #AttrEnd
 outer = #Float32 #Attr Ptr 1 Arr 2 #AttrEnd
 times = #SInt32 #Attr Arr "5*6/3*(8%9)" #AttrEnd
-super_ptr = #Anon 1 #Attr Ptr 1 #AttrEnd
+anon_1 = #Struct x #SInt32 y #SInt32
+super_ptr = anon_1 #Attr Ptr 1 #AttrEnd
 
 [methods]
 output.print_name = output_print_name
@@ -147,9 +145,7 @@ test_example_runestone :: proc(t: ^testing.T) {
         Builtin.UInt8,
     )
 
-    expect_value(t, len(anon_types), 2)
-
-    expect_value(t, om.length(types), 9)
+    expect_value(t, om.length(types), 11)
     expect_value(t, om.get(types, "super_ptr").pointer_info.count, 1)
     expect_value(t, len(om.get(types, "numbers").array_info), 1)
     expect_value(

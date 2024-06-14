@@ -70,7 +70,7 @@ generate_bindings :: proc(
             io.write_string(wd, "const ") or_return
         }
         errors.wrap(
-            write_variable(wd, rn, name, const.type, rs.types, rs.anon_types),
+            write_variable(wd, rn, name, const.type, rs.types),
         ) or_return
         if const.value != nil {
             io.write_string(wd, " = ") or_return
@@ -94,45 +94,6 @@ generate_bindings :: proc(
         io.write_rune(wd, '\n') or_return
     }
 
-    for anon, idx in rs.anon_types {
-        name := fmt.aprintf("Anon{}", idx)
-        name = runic.process_type_name(name, rn)
-
-        if e, ok := anon.(runic.Enum); ok {
-            if e.type != .SInt32 {
-                write_type_specifier(
-                    wd,
-                    rn,
-                    e,
-                    rs.types,
-                    rs.anon_types,
-                    name,
-                ) or_return
-                io.write_rune(wd, '\n') or_return
-                io.write_string(wd, "typedef ") or_return
-                write_type_specifier(
-                    wd,
-                    rn,
-                    e.type,
-                    rs.types,
-                    rs.anon_types,
-                ) or_return
-                io.write_rune(wd, ' ') or_return
-                io.write_string(wd, name) or_return
-                io.write_string(wd, ";\n") or_return
-                continue
-            }
-        }
-        errors.wrap(
-            write_type_specifier(wd, rn, anon, rs.types, rs.anon_types, name),
-        ) or_return
-        io.write_string(wd, ";\n") or_return
-    }
-
-    if len(rs.anon_types) != 0 {
-        io.write_rune(wd, '\n') or_return
-    }
-
     for entry in rs.types.data {
         name, type := entry.key, entry.value
         name = runic.process_type_name(name, rn)
@@ -144,7 +105,6 @@ generate_bindings :: proc(
                     rn,
                     e,
                     rs.types,
-                    rs.anon_types,
                     name,
                 ) or_return
                 io.write_rune(wd, '\n') or_return
@@ -154,7 +114,6 @@ generate_bindings :: proc(
                     rn,
                     e.type,
                     rs.types,
-                    rs.anon_types,
                 ) or_return
                 io.write_rune(wd, ' ') or_return
                 io.write_string(wd, name) or_return
@@ -171,7 +130,7 @@ generate_bindings :: proc(
         if needs_typedef {
             io.write_string(wd, "typedef ") or_return
             errors.wrap(
-                write_variable(wd, rn, name, type, rs.types, rs.anon_types),
+                write_variable(wd, rn, name, type, rs.types),
             ) or_return
         } else {
             errors.wrap(
@@ -180,7 +139,6 @@ generate_bindings :: proc(
                     rn,
                     type.spec,
                     rs.types,
-                    rs.anon_types,
                     name,
                 ),
             ) or_return
@@ -211,7 +169,7 @@ generate_bindings :: proc(
         case runic.Type:
             io.write_string(wd, "extern ") or_return
             errors.wrap(
-                write_variable(wd, rn, name, value, rs.types, rs.anon_types),
+                write_variable(wd, rn, name, value, rs.types),
             ) or_return
             io.write_string(wd, ";\n") or_return
         case runic.Function:
@@ -225,7 +183,6 @@ generate_bindings :: proc(
                     name,
                     value.return_type,
                     rs.types,
-                    rs.anon_types,
                 ),
             ) or_return
             errors.wrap(
@@ -235,7 +192,6 @@ generate_bindings :: proc(
                     value.parameters,
                     value.variadic,
                     rs.types,
-                    rs.anon_types,
                 ),
             ) or_return
             io.write_string(funcs, ";\n") or_return
@@ -288,7 +244,6 @@ write_variable :: proc(
     name: string,
     type: runic.Type,
     types: om.OrderedMap(string, runic.Type),
-    anon_types: [dynamic]runic.TypeSpecifier,
 ) -> union {
         io.Error,
         errors.Error,
@@ -305,7 +260,6 @@ write_variable :: proc(
                 rn,
                 fptr.return_type.spec,
                 types,
-                anon_types,
             ),
         ) or_return
 
@@ -341,7 +295,6 @@ write_variable :: proc(
                 fptr.parameters,
                 fptr.variadic,
                 types,
-                anon_types,
             ),
         ) or_return
         return nil
@@ -364,7 +317,6 @@ write_variable :: proc(
             rn,
             type.spec,
             types,
-            anon_types,
             name,
         ) or_return
         append(&type_spec_slot, strings.to_string(type_spec))
@@ -416,7 +368,6 @@ write_type_specifier :: proc(
     rn: runic.To,
     spec: runic.TypeSpecifier,
     types: om.OrderedMap(string, runic.Type),
-    anon_types: [dynamic]runic.TypeSpecifier,
     name: string = "",
 ) -> union {
         io.Error,
@@ -480,7 +431,6 @@ write_type_specifier :: proc(
                     runic.process_variable_name(m.name, rn),
                     m.type,
                     types,
-                    anon_types,
                 ),
             ) or_return
             io.write_string(wd, ";\n") or_return
@@ -529,7 +479,6 @@ write_type_specifier :: proc(
                         rn,
                         s.type,
                         types,
-                        anon_types,
                     ) or_return
                 }
                 io.write_rune(wd, ')') or_return
@@ -564,7 +513,6 @@ write_type_specifier :: proc(
                     runic.process_variable_name(m.name, rn),
                     m.type,
                     types,
-                    anon_types,
                 ),
             ) or_return
             io.write_string(wd, ";\n") or_return
@@ -583,20 +531,6 @@ write_type_specifier :: proc(
         }
 
         io.write_string(wd, runic.process_variable_name(s, rn)) or_return
-    case runic.Anon:
-        #partial switch e in anon_types[s] {
-        case runic.Struct:
-            io.write_string(wd, "struct ") or_return
-        case runic.Union:
-            io.write_string(wd, "union ") or_return
-        case runic.Enum:
-            if e.type == .SInt32 do io.write_string(wd, "enum ") or_return
-        }
-
-        io.write_string(
-            wd,
-            runic.process_variable_name(fmt.aprintf("Anon{}", s), rn),
-        ) or_return
     case runic.Unknown:
         io.write_string(wd, "void") or_return
     case runic.FunctionPointer:
@@ -611,7 +545,6 @@ write_function_parameters :: proc(
     params: [dynamic]runic.Member,
     variadic: bool,
     types: om.OrderedMap(string, runic.Type),
-    anon_types: [dynamic]runic.TypeSpecifier,
 ) -> union {
         io.Error,
         errors.Error,
@@ -626,7 +559,6 @@ write_function_parameters :: proc(
                 runic.process_variable_name(param.name, rn),
                 param.type,
                 types,
-                anon_types,
             ),
         ) or_return
 

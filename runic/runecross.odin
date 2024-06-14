@@ -201,6 +201,10 @@ is_same_constant :: proc(c1, c2: Constant) -> bool {
 }
 
 is_same_array_size :: proc(as1, as2: ArraySize) -> bool {
+    if as1 == nil {
+        return as2 == nil
+    }
+
     switch s1 in as1 {
     case u64:
         s2 := as2.(u64) or_return

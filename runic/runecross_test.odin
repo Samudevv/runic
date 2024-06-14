@@ -84,6 +84,12 @@ shared = liblinux.so
 
 [types]
 BigInt = #SInt64
+PFNGLDELETEARRAYSETSEXTPROC = #FuncPtr #Void n GLsizei arrayset #RawPtr #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLWINDOWRECTANGLESEXTPROC = #FuncPtr #Void mode GLenum count GLsizei box GLint #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLPROGRAMNAMEDPARAMETER4DVNVPROC = #FuncPtr #Void id GLuint len GLsizei name GLubyte #Attr ReadOnly Ptr 1 #AttrEnd v GLdouble #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLPROGRAMNAMEDPARAMETER4FVNVPROC = #FuncPtr #Void id GLuint len GLsizei name GLubyte #Attr ReadOnly Ptr 1 #AttrEnd v GLfloat #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLWEIGHTPATHSNVPROC = #FuncPtr #Void resultPath GLuint numPaths GLsizei paths GLuint #Attr ReadOnly Arr 0 #AttrEnd weights GLfloat #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLGETINTEGERUI64I_VNVPROC = #FuncPtr #Void value GLenum index GLuint result GLuint64EXT #Attr Arr 0 #AttrEnd
 
 [symbols]
 func.write_out = #Void data #RawPtr num #UInt64
@@ -102,6 +108,12 @@ shared = windows.lib
 
 [types]
 BigInt = #SInt32
+PFNGLDELETEARRAYSETSEXTPROC = #FuncPtr #Void n GLsizei arrayset #RawPtr #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLWINDOWRECTANGLESEXTPROC = #FuncPtr #Void mode GLenum count GLsizei box GLint #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLPROGRAMNAMEDPARAMETER4DVNVPROC = #FuncPtr #Void id GLuint len GLsizei name GLubyte #Attr ReadOnly Ptr 1 #AttrEnd v GLdouble #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLPROGRAMNAMEDPARAMETER4FVNVPROC = #FuncPtr #Void id GLuint len GLsizei name GLubyte #Attr ReadOnly Ptr 1 #AttrEnd v GLfloat #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLWEIGHTPATHSNVPROC = #FuncPtr #Void resultPath GLuint numPaths GLsizei paths GLuint #Attr ReadOnly Arr 0 #AttrEnd weights GLfloat #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLGETINTEGERUI64I_VNVPROC = #FuncPtr #Void value GLenum index GLuint result GLuint64EXT #Attr Arr 0 #AttrEnd
 
 [symbols]
 func.write_out = #Void data #RawPtr
@@ -131,7 +143,7 @@ test_runecross :: proc(t: ^testing.T) {
     cross, cross_err := cross_the_runes({linux_stone, windows_stone})
     if !expect_value(t, cross_err, nil) do return
 
-    expect_value(t, om.length(cross.general.types), 0)
+    expect_value(t, om.length(cross.general.types), 6)
     expect_value(t, om.length(cross.general.symbols), 2)
 
     linux_cross := cross.cross[Platform{.Linux, .x86_64}]

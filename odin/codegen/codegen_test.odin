@@ -18,11 +18,11 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 package odin_codegen
 
 import "base:runtime"
-import "core:c/libc"
 import "core:io"
 import "core:os"
 import "core:path/filepath"
 import "core:testing"
+import "root:exec"
 import om "root:ordered_map"
 import "root:runic"
 
@@ -263,7 +263,7 @@ main :: proc() {}`
         os.write_string(file, "main :: proc() {}")
     }
 
-    if c_err := libc.system("odin check test_data/bindings.odin -file -vet"); !expect_value(t, c_err, 0) do return
+    if status, c_err := exec.command("odin", {"check", "test_data/bindings.odin", "-file", "-vet"}); !expect_value(t, c_err, nil) || !expect_value(t, status, 0) do return
 
     contents, os_err := os.read_entire_file(abs_file_name)
     if !expect(t, os_err) do return

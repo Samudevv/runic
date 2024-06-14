@@ -238,9 +238,7 @@ main :: proc() {}`
     abs_file_name: string = ---
     defer delete(abs_file_name)
     {
-        abs_file_ok: bool = ---
-        abs_file_name, abs_file_ok = filepath.abs("test_data/bindings.odin")
-        if !expect(t, abs_file_ok) do return
+        abs_file_name = filepath.join({abs_test_data, "bindings.odin"})
 
         file, os_err := os.open(
             abs_file_name,

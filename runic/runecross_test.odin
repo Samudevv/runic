@@ -140,17 +140,20 @@ test_runecross :: proc(t: ^testing.T) {
     )
     if !expect_value(t, windows_err, nil) do return
 
-    cross, cross_err := cross_the_runes({linux_stone, windows_stone})
+    cross, cross_err := cross_the_runes(
+        {"/linux", "/windows"},
+        {linux_stone, windows_stone},
+    )
     if !expect_value(t, cross_err, nil) do return
 
     expect_value(t, om.length(cross.general.types), 6)
     expect_value(t, om.length(cross.general.symbols), 2)
 
-    linux_cross := cross.cross[Platform{.Linux, .x86_64}]
+    linux_cross := om.get(cross.cross, Platform{.Linux, .x86_64})
     expect_value(t, om.length(linux_cross.types), 1)
     expect_value(t, om.length(linux_cross.symbols), 1)
 
-    windows_cross := cross.cross[Platform{.Windows, .x86_64}]
+    windows_cross := om.get(cross.cross, Platform{.Windows, .x86_64})
     expect_value(t, om.length(windows_cross.types), 1)
     expect_value(t, om.length(windows_cross.symbols), 1)
 }

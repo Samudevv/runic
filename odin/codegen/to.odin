@@ -31,16 +31,13 @@ generate_bindings :: proc(
     rc: runic.Runecross,
     rn: runic.To,
     wd: io.Writer,
-    file_path: string,
 ) -> io.Error {
     arena: runtime.Arena
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
 
     if runic.runecross_is_simple(rc) {
-        keys, _ := slice.map_keys(rc.cross)
-        defer delete(keys)
-        plat := keys[0]
+        plat := rc.cross.data[0].key
 
         io.write_string(wd, "//+build ") or_return
         switch plat.os {
@@ -92,12 +89,13 @@ generate_bindings :: proc(
             rc.general,
             rn,
             wd,
-            file_path,
+            "/general",
             package_name,
         ) or_return
     }
 
-    for plat, stone in rc.cross {
+    for entry in rc.cross.data {
+        plat, stone := entry.key, entry.value
         if !runic.runecross_is_simple(rc) {
             io.write_string(wd, "when (ODIN_OS == .") or_return
 
@@ -131,7 +129,7 @@ generate_bindings :: proc(
             stone,
             rn,
             wd,
-            file_path,
+            stone.file_path,
             package_name,
         ) or_return
 

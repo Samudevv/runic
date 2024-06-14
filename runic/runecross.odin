@@ -21,31 +21,39 @@ import "core:slice"
 import "root:errors"
 import om "root:ordered_map"
 
-// TODO: add file paths of runestones
-// TODO: move to ordered map for cross
 // TODO: memory management
 Runecross :: struct {
     general: Runestone,
-    cross:   map[Platform]Runestone,
+    cross:   om.OrderedMap(Platform, RunestoneWithFile),
+}
+
+RunestoneWithFile :: struct {
+    file_path:   string,
+    using stone: Runestone,
 }
 
 cross_the_runes :: proc(
+    file_paths: [dynamic]string,
     stones: [dynamic]Runestone,
 ) -> (
     rc: Runecross,
     err: errors.Error,
 ) {
     errors.assert(len(stones) != 0, "no runestones specified") or_return
+    errors.assert(
+        len(file_paths) == len(stones),
+        "file_paths and stones should have the same length",
+    ) or_return
     if len(stones) == 1 {
         rc.general = stones[0]
         return
     }
 
-    origin := make(map[Platform]Runestone)
-    defer delete(origin)
+    origin := om.make(Platform, RunestoneWithFile)
+    defer om.delete(origin)
 
-    for stone in stones {
-        if _, ok := origin[stone.platform]; ok {
+    for stone, idx in stones {
+        if om.contains(origin, stone.platform) {
             err = errors.message(
                 "duplicate runestone for platform {}.{}",
                 stone.platform.os,
@@ -54,22 +62,28 @@ cross_the_runes :: proc(
             return
         }
 
-        origin[stone.platform] = stone
+        om.insert(
+            &origin,
+            stone.platform,
+            RunestoneWithFile{file_path = file_paths[idx], stone = stone},
+        )
     }
 
     rc.general.types = om.make(string, Type)
     rc.general.symbols = om.make(string, Symbol)
     rc.general.constants = om.make(string, Constant)
 
-    for plat1, stone1 in origin {
+    for entry0 in origin.data {
+        plat1, stone1 := entry0.key, entry0.value
+
         {
             // TODO: don't always do this just when it's different for platforms
-            stone2 := rc.cross[plat1]
+            stone2 := om.get(rc.cross, plat1)
             stone2.version = stone1.version
             stone2.platform = plat1
             stone2.lib_static = stone1.lib_static
             stone2.lib_shared = stone1.lib_shared
-            rc.cross[plat1] = stone2
+            om.insert(&rc.cross, plat1, stone2)
         }
 
         // types
@@ -78,7 +92,8 @@ cross_the_runes :: proc(
             if om.contains(rc.general.types, name1) do continue
 
             same_platforms := 1
-            for plat2, stone2 in origin {
+            for entry2 in origin.data {
+                plat2, stone2 := entry2.key, entry2.value
                 if plat1 == plat2 do continue
 
                 if type2, ok := om.get(stone2.types, name1); ok {
@@ -88,9 +103,9 @@ cross_the_runes :: proc(
                 }
             }
 
-            if same_platforms != len(origin) {
-                stone2 := rc.cross[plat1]
-                defer rc.cross[plat1] = stone2
+            if same_platforms != om.length(origin) {
+                stone2 := om.get(rc.cross, plat1)
+                defer om.insert(&rc.cross, plat1, stone2)
 
                 if stone2.types.indices == nil {
                     stone2.types = om.make(string, Type)
@@ -117,7 +132,8 @@ cross_the_runes :: proc(
             }
 
             same_platforms := 1
-            for plat2, stone2 in origin {
+            for entry2 in origin.data {
+                plat2, stone2 := entry2.key, entry2.value
                 if plat1 == plat2 do continue
 
                 if symbol2, ok := om.get(stone2.symbols, name1); ok {
@@ -127,9 +143,9 @@ cross_the_runes :: proc(
                 }
             }
 
-            if same_platforms != len(origin) {
-                stone2 := rc.cross[plat1]
-                defer rc.cross[plat1] = stone2
+            if same_platforms != om.length(origin) {
+                stone2 := om.get(rc.cross, plat1)
+                defer om.insert(&rc.cross, plat1, stone2)
 
                 if stone2.symbols.indices == nil {
                     stone2.symbols = om.make(string, Symbol)
@@ -147,7 +163,8 @@ cross_the_runes :: proc(
             if om.contains(rc.general.constants, name1) do continue
 
             same_platforms := 1
-            for plat2, stone2 in origin {
+            for entry2 in origin.data {
+                plat2, stone2 := entry2.key, entry2.value
                 if plat1 == plat2 do continue
 
                 if constant2, ok := om.get(stone2.constants, name1); ok {
@@ -157,9 +174,9 @@ cross_the_runes :: proc(
                 }
             }
 
-            if same_platforms != len(origin) {
-                stone2 := rc.cross[plat1]
-                defer rc.cross[plat1] = stone2
+            if same_platforms != om.length(origin) {
+                stone2 := om.get(rc.cross, plat1)
+                defer om.insert(&rc.cross, plat1, stone2)
 
                 if stone2.constants.indices == nil {
                     stone2.constants = om.make(string, Constant)
@@ -180,7 +197,7 @@ runecross_is_simple :: proc(rc: Runecross) -> bool {
         om.length(rc.general.types) == 0 &&
         om.length(rc.general.symbols) == 0 &&
         om.length(rc.general.constants) == 0 &&
-        len(rc.cross) == 1 \
+        om.length(rc.cross) == 1 \
     )
 }
 

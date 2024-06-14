@@ -24,6 +24,7 @@ import "core:path/filepath"
 import "core:strings"
 import "errors"
 import odincdg "odin/codegen"
+import om "ordered_map"
 import "runic"
 
 DEFAULT_TO_FILE_NAME :: "runic.to"
@@ -128,8 +129,9 @@ main :: proc() {
     }
 
     from_rc: runic.Runecross
-    from_rc.cross = make(
-        map[runic.Platform]runic.Runestone,
+    from_rc.cross = om.make(
+        runic.Platform,
+        runic.RunestoneWithFile,
         allocator = context.temp_allocator,
     )
 
@@ -139,7 +141,14 @@ main :: proc() {
         case "c":
             rs: runic.Runestone = ---
             rs, err = ccdg.generate_runestone(plat, rune_file_name, from)
-            from_rc.cross[plat] = rs
+            om.insert(
+                &from_rc.cross,
+                plat,
+                runic.RunestoneWithFile {
+                    file_path = rune_file_name,
+                    stone = rs,
+                },
+            )
         case "odin":
             when ODIN_OS == .FreeBSD {
                 fmt.eprintfln("from odin is not supported on FreeBSD")
@@ -151,7 +160,14 @@ main :: proc() {
                     rune_file_name,
                     from,
                 )
-                from_rc.cross[plat] = rs
+                om.insert(
+                    &from_rc.cross,
+                    plat,
+                    runic.RunestoneWithFile {
+                        file_path = rune_file_name,
+                        stone = rs,
+                    },
+                )
             }
         case:
             fmt.eprintfln("from language {} is not supported", from.language)
@@ -212,7 +228,11 @@ main :: proc() {
 
         fmt.eprintfln("Successfully parsed runestone ({})", from)
 
-        from_rc.cross[plat] = rs
+        om.insert(
+            &from_rc.cross,
+            plat,
+            runic.RunestoneWithFile{file_path = rs_file_name, stone = rs},
+        )
     case [dynamic]string:
         stones: [dynamic]runic.Runestone
         defer delete(stones)
@@ -247,7 +267,7 @@ main :: proc() {
             append(&stones, rs)
         }
 
-        from_rc, err = runic.cross_the_runes(stones)
+        from_rc, err = runic.cross_the_runes(from, stones)
         if err != nil {
             fmt.eprintfln("failed to cross the runes: {}", err)
             os.exit(1)
@@ -297,7 +317,6 @@ main :: proc() {
                     from_rc,
                     to,
                     os.stream_from_handle(out_file),
-                    out_file_name,
                 ),
             )
         case "c":
@@ -305,7 +324,7 @@ main :: proc() {
             err = errors.wrap(
                 ccdg.generate_bindings(
                     plat,
-                    from_rc.cross[plat],
+                    om.get(from_rc.cross, plat).stone,
                     to,
                     os.stream_from_handle(out_file),
                 ),
@@ -353,7 +372,7 @@ main :: proc() {
 
         if err = errors.wrap(
             runic.write_runestone(
-                from_rc.cross[plat],
+                om.get(from_rc.cross, plat).stone,
                 os.stream_from_handle(rs_file),
                 to,
             ),

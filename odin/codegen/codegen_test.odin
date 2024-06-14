@@ -249,14 +249,17 @@ main :: proc() {}`
         defer os.close(file)
 
         rc: runic.Runecross
-        rc.cross = make(map[runic.Platform]runic.Runestone)
-        rc.cross[plat] = rs
+        rc.cross = om.make(runic.Platform, runic.RunestoneWithFile)
+        om.insert(
+            &rc.cross,
+            plat,
+            runic.RunestoneWithFile{file_path = abs_file_name, stone = rs},
+        )
 
         err := generate_bindings(
             rc,
             rn,
             os.stream_from_handle(file),
-            abs_file_name,
         )
         if !expect_value(t, err, io.Error.None) do return
 

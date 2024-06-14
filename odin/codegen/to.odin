@@ -31,13 +31,15 @@ generate_bindings :: proc(
     rc: runic.Runecross,
     rn: runic.To,
     wd: io.Writer,
+    file_path: string,
 ) -> io.Error {
     arena: runtime.Arena
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
 
+    // TODO: generate build tags for non simple runecross
     if runic.runecross_is_simple(rc) {
-        plat := rc.cross.data[0].key
+        plat := rc.cross[0].platform
 
         io.write_string(wd, "//+build ") or_return
         switch plat.os {
@@ -89,52 +91,27 @@ generate_bindings :: proc(
             rc.general,
             rn,
             wd,
-            "/general",
+            file_path,
             package_name,
         ) or_return
     }
 
-    for entry in rc.cross.data {
-        plat, stone := entry.key, entry.value
+    for entry in rc.cross {
+        plats, stone := entry.plats[:], entry.runestone
         if !runic.runecross_is_simple(rc) {
-            io.write_string(wd, "when (ODIN_OS == .") or_return
-
-            switch plat.os {
-            case .Linux:
-                io.write_string(wd, "Linux") or_return
-            case .Windows:
-                io.write_string(wd, "Windows") or_return
-            case .Macos:
-                io.write_string(wd, "Darwin") or_return
-            case .BSD:
-                io.write_string(
-                    wd,
-                    "FreeBSD || ODIN_OS == .OpenBSD || ODIN_OS == .NetBSD",
-                ) or_return
-            }
-
-            io.write_string(wd, ") && (ODIN_ARCH == .") or_return
-
-            switch plat.arch {
-            case .x86_64:
-                io.write_string(wd, "amd64") or_return
-            case .arm64:
-                io.write_string(wd, "arm64") or_return
-            }
-
-            io.write_string(wd, ") {\n\n") or_return
+            when_plats(wd, plats) or_return
         }
 
         generate_bindings_from_runestone(
             stone,
             rn,
             wd,
-            stone.file_path,
+            file_path,
             package_name,
         ) or_return
 
         if !runic.runecross_is_simple(rc) {
-            io.write_string(wd, "}\n") or_return
+            io.write_string(wd, "}\n\n") or_return
         }
     }
 
@@ -212,8 +189,16 @@ generate_bindings_from_runestone :: proc(
 
     if rs.lib_shared != nil || rs.lib_static != nil {
         if rs.lib_shared != nil && rs.lib_static != nil {
-            static := rs.lib_static.?
-            shared := rs.lib_shared.?
+            static, static_was_alloc := strings.replace_all(
+                rs.lib_static.?,
+                "\\",
+                "/",
+            )
+            shared, shared_was_alloc := strings.replace_all(
+                rs.lib_shared.?,
+                "\\",
+                "/",
+            )
 
             static_switch := rn.static_switch
             if len(static_switch) == 0 {
@@ -239,6 +224,7 @@ generate_bindings_from_runestone :: proc(
                 err: filepath.Relative_Error = ---
                 rel_static, err = filepath.rel(dir_name, static)
                 if err == .None && len(rel_static) < len(static) {
+                    if static_was_alloc do delete(static)
                     static = rel_static
                 }
             } else {
@@ -253,10 +239,7 @@ generate_bindings_from_runestone :: proc(
                 io.write_string(wd, "system:") or_return
             }
 
-            was_alloc: bool = ---
-            static, was_alloc = strings.replace_all(static, "\\", "/")
             io.write_string(wd, static) or_return
-            if was_alloc do delete(static)
 
             io.write_string(wd, "\"\n} else {\n    foreign import ") or_return
             io.write_string(wd, package_name) or_return
@@ -270,6 +253,7 @@ generate_bindings_from_runestone :: proc(
                 err: filepath.Relative_Error = ---
                 rel_shared, err = filepath.rel(dir_name, shared)
                 if err == .None && len(rel_shared) < len(shared) {
+                    if shared_was_alloc do delete(shared)
                     shared = rel_shared
                 }
             } else {
@@ -288,9 +272,7 @@ generate_bindings_from_runestone :: proc(
                 io.write_string(wd, "system:") or_return
             }
 
-            shared, was_alloc = strings.replace_all(shared, "\\", "/")
             io.write_string(wd, shared) or_return
-            if was_alloc do delete(shared)
 
             io.write_string(wd, "\"\n}\n\n") or_return
         } else {
@@ -355,167 +337,183 @@ generate_bindings_from_runestone :: proc(
         }
     }
 
-    io.write_string(wd, "@(default_calling_convention = \"c\")\n") or_return
-    fmt.wprintf(wd, "foreign {}_runic {{\n", package_name)
-
-    for entry in rs.symbols.data {
-        name, sym := entry.key, entry.value
-        fmt.wprintf(
+    if om.length(rs.symbols) != 0 {
+        io.write_string(
             wd,
-            "    @(link_name = \"{}\")\n",
-            sym.remap.? or_else name,
-        )
-        io.write_string(wd, "    ") or_return
+            "@(default_calling_convention = \"c\")\n",
+        ) or_return
+        fmt.wprintf(wd, "foreign {}_runic {{\n", package_name)
 
-        switch value in sym.value {
-        case runic.Type:
-            sym_build: strings.Builder
-            defer strings.builder_destroy(&sym_build)
-            ss := strings.to_stream(&sym_build)
-
-            name = runic.process_variable_name(
-                name,
-                rn,
-                reserved = ODIN_RESERVED,
-                allocator = arena_alloc,
+        for entry in rs.symbols.data {
+            name, sym := entry.key, entry.value
+            fmt.wprintf(
+                wd,
+                "    @(link_name = \"{}\")\n",
+                sym.remap.? or_else name,
             )
-            io.write_string(ss, name) or_return
-            io.write_string(ss, ": ") or_return
-            type_err := write_type(ss, name, value, rn)
-            if type_err != nil {
-                fmt.eprintfln("{}: {}", name, type_err)
-                io.write_string(wd, name) or_return
-                io.write_string(wd, " :: nil\n\n") or_return
-                continue
-            }
-            io.write_string(wd, strings.to_string(sym_build))
-        case runic.Function:
-            name = runic.process_function_name(
-                name,
-                rn,
-                reserved = ODIN_RESERVED,
-                allocator = arena_alloc,
-            )
-            io.write_string(wd, name) or_return
-            io.write_string(wd, " :: ") or_return
-            proc_err := write_procedure(wd, value, rn, nil)
-            if proc_err != nil {
-                fmt.eprintfln("{}: {}", name, proc_err)
-                io.write_string(wd, "nil\n\n") or_return
-                continue
-            }
-            io.write_string(wd, " ---") or_return
-        }
-        io.write_string(wd, "\n\n") or_return
-    }
+            io.write_string(wd, "    ") or_return
 
-    io.write_string(wd, "}\n\n") or_return
-
-    for entry in rs.symbols.data {
-        name, sym := entry.key, entry.value
-
-        switch _ in sym.value {
-        case runic.Type:
-            name = runic.process_variable_name(
-                name,
-                rn,
-                reserved = ODIN_RESERVED,
-                allocator = arena_alloc,
-            )
-        case runic.Function:
-            name = runic.process_function_name(
-                name,
-                rn,
-                reserved = ODIN_RESERVED,
-                allocator = arena_alloc,
-            )
-        }
-
-        for alias in sym.aliases {
-            switch sym_value in sym.value {
+            switch value in sym.value {
             case runic.Type:
-                alias_p := runic.process_variable_name(
-                    alias,
+                sym_build: strings.Builder
+                defer strings.builder_destroy(&sym_build)
+                ss := strings.to_stream(&sym_build)
+
+                name = runic.process_variable_name(
+                    name,
                     rn,
                     reserved = ODIN_RESERVED,
                     allocator = arena_alloc,
                 )
-
-                io.write_string(wd, alias_p) or_return
-                if func_ptr, ok := recursive_get_pure_func_ptr(
-                    sym_value,
-                    rs.types,
-                ); ok {
-                    io.write_string(wd, " :: #force_inline ")
-                    proc_err := write_procedure(
-                        wd,
-                        func_ptr^,
-                        rn,
-                        "contextless",
-                    )
-                    if proc_err != nil {
-                        fmt.eprintfln("{} ({}): {}", alias_p, name, proc_err)
-                        io.write_string(wd, "proc \"contextless\" () {}\n\n")
-                        continue
-                    }
-                    io.write_string(wd, " {\n") or_return
-
-                    if b, b_ok := func_ptr.return_type.spec.(runic.Builtin);
-                       b_ok && b == .Void {
-                        io.write_string(wd, "    ") or_return
-                    } else {
-                        io.write_string(wd, "    return ") or_return
-                    }
-
+                io.write_string(ss, name) or_return
+                io.write_string(ss, ": ") or_return
+                type_err := write_type(ss, name, value, rn)
+                if type_err != nil {
+                    fmt.eprintfln("{}: {}", name, type_err)
                     io.write_string(wd, name) or_return
-                    io.write_rune(wd, '(') or_return
-                    for p, p_idx in func_ptr.parameters {
-                        p_name := p.name
-                        if slice.contains(ODIN_RESERVED, p_name) {
-                            p_name = strings.concatenate(
-                                {p_name, "_"},
-                                arena_alloc,
-                            )
-                        }
-                        io.write_string(wd, p_name) or_return
-                        if p_idx != len(func_ptr.parameters) - 1 {
-                            io.write_string(wd, ", ") or_return
-                        }
-                    }
-                    io.write_string(wd, ")\n}") or_return
-                } else {
-                    sym_build: strings.Builder
-                    defer strings.builder_destroy(&sym_build)
-                    ss := strings.to_stream(&sym_build)
-
-                    io.write_string(
-                        ss,
-                        " :: #force_inline proc \"contextless\" () -> ",
-                    ) or_return
-                    type_err := write_type(ss, name, sym_value, rn)
-                    if type_err != nil {
-                        fmt.eprintfln("{}: {}", name, type_err)
-                        io.write_string(wd, " :: nil\n\n") or_return
-                        continue
-                    }
-                    io.write_string(ss, " {\n    return ") or_return
-                    io.write_string(ss, name) or_return
-                    io.write_string(ss, "\n}") or_return
-                    io.write_string(wd, strings.to_string(sym_build)) or_return
+                    io.write_string(wd, " :: nil\n\n") or_return
+                    continue
                 }
+                io.write_string(wd, strings.to_string(sym_build))
             case runic.Function:
-                alias_p := runic.process_function_name(
-                    alias,
+                name = runic.process_function_name(
+                    name,
                     rn,
                     reserved = ODIN_RESERVED,
                     allocator = arena_alloc,
                 )
-
-                io.write_string(wd, alias_p) or_return
-                io.write_string(wd, " :: ") or_return
                 io.write_string(wd, name) or_return
+                io.write_string(wd, " :: ") or_return
+                proc_err := write_procedure(wd, value, rn, nil)
+                if proc_err != nil {
+                    fmt.eprintfln("{}: {}", name, proc_err)
+                    io.write_string(wd, "nil\n\n") or_return
+                    continue
+                }
+                io.write_string(wd, " ---") or_return
             }
             io.write_string(wd, "\n\n") or_return
+        }
+
+        io.write_string(wd, "}\n\n") or_return
+
+        for entry in rs.symbols.data {
+            name, sym := entry.key, entry.value
+
+            switch _ in sym.value {
+            case runic.Type:
+                name = runic.process_variable_name(
+                    name,
+                    rn,
+                    reserved = ODIN_RESERVED,
+                    allocator = arena_alloc,
+                )
+            case runic.Function:
+                name = runic.process_function_name(
+                    name,
+                    rn,
+                    reserved = ODIN_RESERVED,
+                    allocator = arena_alloc,
+                )
+            }
+
+            for alias in sym.aliases {
+                switch sym_value in sym.value {
+                case runic.Type:
+                    alias_p := runic.process_variable_name(
+                        alias,
+                        rn,
+                        reserved = ODIN_RESERVED,
+                        allocator = arena_alloc,
+                    )
+
+                    io.write_string(wd, alias_p) or_return
+                    if func_ptr, ok := recursive_get_pure_func_ptr(
+                        sym_value,
+                        rs.types,
+                    ); ok {
+                        io.write_string(wd, " :: #force_inline ")
+                        proc_err := write_procedure(
+                            wd,
+                            func_ptr^,
+                            rn,
+                            "contextless",
+                        )
+                        if proc_err != nil {
+                            fmt.eprintfln(
+                                "{} ({}): {}",
+                                alias_p,
+                                name,
+                                proc_err,
+                            )
+                            io.write_string(
+                                wd,
+                                "proc \"contextless\" () {}\n\n",
+                            )
+                            continue
+                        }
+                        io.write_string(wd, " {\n") or_return
+
+                        if b, b_ok := func_ptr.return_type.spec.(runic.Builtin);
+                           b_ok && b == .Void {
+                            io.write_string(wd, "    ") or_return
+                        } else {
+                            io.write_string(wd, "    return ") or_return
+                        }
+
+                        io.write_string(wd, name) or_return
+                        io.write_rune(wd, '(') or_return
+                        for p, p_idx in func_ptr.parameters {
+                            p_name := p.name
+                            if slice.contains(ODIN_RESERVED, p_name) {
+                                p_name = strings.concatenate(
+                                    {p_name, "_"},
+                                    arena_alloc,
+                                )
+                            }
+                            io.write_string(wd, p_name) or_return
+                            if p_idx != len(func_ptr.parameters) - 1 {
+                                io.write_string(wd, ", ") or_return
+                            }
+                        }
+                        io.write_string(wd, ")\n}") or_return
+                    } else {
+                        sym_build: strings.Builder
+                        defer strings.builder_destroy(&sym_build)
+                        ss := strings.to_stream(&sym_build)
+
+                        io.write_string(
+                            ss,
+                            " :: #force_inline proc \"contextless\" () -> ",
+                        ) or_return
+                        type_err := write_type(ss, name, sym_value, rn)
+                        if type_err != nil {
+                            fmt.eprintfln("{}: {}", name, type_err)
+                            io.write_string(wd, " :: nil\n\n") or_return
+                            continue
+                        }
+                        io.write_string(ss, " {\n    return ") or_return
+                        io.write_string(ss, name) or_return
+                        io.write_string(ss, "\n}") or_return
+                        io.write_string(
+                            wd,
+                            strings.to_string(sym_build),
+                        ) or_return
+                    }
+                case runic.Function:
+                    alias_p := runic.process_function_name(
+                        alias,
+                        rn,
+                        reserved = ODIN_RESERVED,
+                        allocator = arena_alloc,
+                    )
+
+                    io.write_string(wd, alias_p) or_return
+                    io.write_string(wd, " :: ") or_return
+                    io.write_string(wd, name) or_return
+                }
+                io.write_string(wd, "\n\n") or_return
+            }
         }
     }
 
@@ -870,9 +868,53 @@ ODIN_RESERVED :: []string {
     "defer",
     "when",
     "else",
-    "continnue",
+    "continue",
     "fallthrough",
     "return",
     "break",
     "import",
+}
+
+when_plats :: proc(wd: io.Writer, plats: []runic.Platform) -> io.Error {
+    if len(plats) == 0 {
+        return .None
+    }
+
+    io.write_string(wd, "when (") or_return
+
+    for plat, idx in plats {
+        io.write_string(wd, "(ODIN_OS == .") or_return
+
+        switch plat.os {
+        case .Linux:
+            io.write_string(wd, "Linux") or_return
+        case .Windows:
+            io.write_string(wd, "Windows") or_return
+        case .Macos:
+            io.write_string(wd, "Darwin") or_return
+        case .BSD:
+            io.write_string(
+                wd,
+                "FreeBSD || ODIN_OS == .OpenBSD || ODIN_OS == .NetBSD",
+            ) or_return
+        }
+
+        io.write_string(wd, ") && (ODIN_ARCH == .") or_return
+
+        switch plat.arch {
+        case .x86_64:
+            io.write_string(wd, "amd64") or_return
+        case .arm64:
+            io.write_string(wd, "arm64") or_return
+        }
+
+        io.write_rune(wd, ')') or_return
+        if idx != len(plats) - 1 {
+            io.write_string(wd, " || ") or_return
+        }
+    }
+
+    io.write_string(wd, ") {\n\n") or_return
+
+    return .None
 }

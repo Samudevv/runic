@@ -17,6 +17,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package runic
 
+import "core:slice"
 import "core:strings"
 import "core:testing"
 import om "root:ordered_map"
@@ -149,11 +150,23 @@ test_runecross :: proc(t: ^testing.T) {
     expect_value(t, om.length(cross.general.types), 6)
     expect_value(t, om.length(cross.general.symbols), 2)
 
-    linux_cross := om.get(cross.cross, Platform{.Linux, .x86_64})
+    linux_cross_idx, _ := slice.linear_search_proc(
+        cross.cross[:],
+        proc(value: PlatformRunestone) -> bool {
+            return slice.contains(value.plats[:], Platform{.Linux, .x86_64})
+        },
+    )
+    linux_cross := cross.cross[linux_cross_idx]
     expect_value(t, om.length(linux_cross.types), 1)
     expect_value(t, om.length(linux_cross.symbols), 1)
 
-    windows_cross := om.get(cross.cross, Platform{.Windows, .x86_64})
+    windows_cross_idx, _ := slice.linear_search_proc(
+        cross.cross[:],
+        proc(value: PlatformRunestone) -> bool {
+            return slice.contains(value.plats[:], Platform{.Windows, .x86_64})
+        },
+    )
+    windows_cross := cross.cross[windows_cross_idx]
     expect_value(t, om.length(windows_cross.types), 1)
     expect_value(t, om.length(windows_cross.symbols), 1)
 }

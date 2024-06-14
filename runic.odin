@@ -24,7 +24,6 @@ import "core:path/filepath"
 import "core:strings"
 import "errors"
 import odincdg "odin/codegen"
-import om "ordered_map"
 import "runic"
 
 DEFAULT_TO_FILE_NAME :: "runic.to"
@@ -129,10 +128,9 @@ main :: proc() {
     }
 
     from_rc: runic.Runecross
-    from_rc.cross = om.make(
-        runic.Platform,
-        runic.RunestoneWithFile,
-        allocator = context.temp_allocator,
+    from_rc.cross = make(
+        [dynamic]runic.PlatformRunestone,
+        context.temp_allocator,
     )
 
     switch from in rune.from {
@@ -141,12 +139,11 @@ main :: proc() {
         case "c":
             rs: runic.Runestone = ---
             rs, err = ccdg.generate_runestone(plat, rune_file_name, from)
-            om.insert(
+            append(
                 &from_rc.cross,
-                plat,
-                runic.RunestoneWithFile {
-                    file_path = rune_file_name,
-                    stone = rs,
+                runic.PlatformRunestone {
+                    plats = {plat},
+                    runestone = {file_path = rune_file_name, stone = rs},
                 },
             )
         case "odin":
@@ -160,12 +157,11 @@ main :: proc() {
                     rune_file_name,
                     from,
                 )
-                om.insert(
+                append(
                     &from_rc.cross,
-                    plat,
-                    runic.RunestoneWithFile {
-                        file_path = rune_file_name,
-                        stone = rs,
+                    runic.PlatformRunestone {
+                        plats = {plat},
+                        runestone = {file_path = rune_file_name, stone = rs},
                     },
                 )
             }
@@ -228,10 +224,12 @@ main :: proc() {
 
         fmt.eprintfln("Successfully parsed runestone ({})", from)
 
-        om.insert(
+        append(
             &from_rc.cross,
-            plat,
-            runic.RunestoneWithFile{file_path = rs_file_name, stone = rs},
+            runic.PlatformRunestone {
+                plats = {plat},
+                runestone = {file_path = rs_file_name, stone = rs},
+            },
         )
     case [dynamic]string:
         stones: [dynamic]runic.Runestone
@@ -317,6 +315,7 @@ main :: proc() {
                     from_rc,
                     to,
                     os.stream_from_handle(out_file),
+                    out_file_name,
                 ),
             )
         case "c":
@@ -324,7 +323,7 @@ main :: proc() {
             err = errors.wrap(
                 ccdg.generate_bindings(
                     plat,
-                    om.get(from_rc.cross, plat).stone,
+                    from_rc.cross[0].stone,
                     to,
                     os.stream_from_handle(out_file),
                 ),
@@ -372,7 +371,7 @@ main :: proc() {
 
         if err = errors.wrap(
             runic.write_runestone(
-                om.get(from_rc.cross, plat).stone,
+                from_rc.cross[0].stone,
                 os.stream_from_handle(rs_file),
                 to,
             ),

@@ -23,8 +23,13 @@ import om "root:ordered_map"
 
 // TODO: memory management
 Runecross :: struct {
-    general: Runestone,
-    cross:   om.OrderedMap(Platform, RunestoneWithFile),
+    general: RunestoneWithFile,
+    cross:   [dynamic]PlatformRunestone,
+}
+
+PlatformRunestone :: struct {
+    plats:           []Platform,
+    using runestone: RunestoneWithFile,
 }
 
 RunestoneWithFile :: struct {
@@ -45,7 +50,10 @@ cross_the_runes :: proc(
         "file_paths and stones should have the same length",
     ) or_return
     if len(stones) == 1 {
-        rc.general = stones[0]
+        rc.general = RunestoneWithFile {
+            file_path = file_paths[0],
+            stone     = stones[0],
+        }
         return
     }
 
@@ -69,123 +77,203 @@ cross_the_runes :: proc(
         )
     }
 
+    rc.general.file_path = "/general"
     rc.general.types = om.make(string, Type)
     rc.general.symbols = om.make(string, Symbol)
     rc.general.constants = om.make(string, Constant)
 
     for entry0 in origin.data {
-        plat1, stone1 := entry0.key, entry0.value
+        stone1 := entry0.value
 
         {
-            // TODO: don't always do this just when it's different for platforms
-            stone2 := om.get(rc.cross, plat1)
-            stone2.version = stone1.version
-            stone2.platform = plat1
-            stone2.lib_static = stone1.lib_static
-            stone2.lib_shared = stone1.lib_shared
-            om.insert(&rc.cross, plat1, stone2)
+            plats := get_same_platforms(
+                stone1,
+                origin,
+                proc(stone1, stone2: RunestoneWithFile, _: rawptr) -> bool {
+                    return stone1.lib_shared == stone2.lib_shared
+                },
+            )
+
+            set_for_same_platforms(
+                stone1,
+                plats,
+                om.length(origin),
+                &rc,
+                proc(
+                    stone1: RunestoneWithFile,
+                    stone2: ^RunestoneWithFile,
+                    _: rawptr,
+                ) {
+                    stone2.lib_shared = stone1.lib_shared
+                },
+            )
+        }
+
+        {
+            plats := get_same_platforms(
+                stone1,
+                origin,
+                proc(stone1, stone2: RunestoneWithFile, _: rawptr) -> bool {
+                    return stone1.lib_static == stone2.lib_static
+                },
+            )
+
+            set_for_same_platforms(
+                stone1,
+                plats,
+                om.length(origin),
+                &rc,
+                proc(
+                    stone1: RunestoneWithFile,
+                    stone2: ^RunestoneWithFile,
+                    _: rawptr,
+                ) {
+                    stone2.lib_static = stone1.lib_static
+                },
+            )
         }
 
         // types
         for entry1 in stone1.types.data {
-            name1, type1 := entry1.key, entry1.value
-            if om.contains(rc.general.types, name1) do continue
+            name1 := entry1.key
 
-            same_platforms := 1
-            for entry2 in origin.data {
-                plat2, stone2 := entry2.key, entry2.value
-                if plat1 == plat2 do continue
+            plats := get_same_platforms(
+                stone1,
+                origin,
+                proc(
+                    stone1, stone2: RunestoneWithFile,
+                    user_data: rawptr,
+                ) -> bool {
+                    name1 := cast(^string)user_data
+                    type1 := om.get(stone1.types, name1^)
 
-                if type2, ok := om.get(stone2.types, name1); ok {
-                    if is_same(type1, type2) {
-                        same_platforms += 1
+                    if type2, ok := om.get(stone2.types, name1^); ok {
+                        if is_same(type1, type2) {
+                            return true
+                        }
                     }
-                }
-            }
 
-            if same_platforms != om.length(origin) {
-                stone2 := om.get(rc.cross, plat1)
-                defer om.insert(&rc.cross, plat1, stone2)
+                    return false
+                },
+                &name1,
+            )
 
-                if stone2.types.indices == nil {
-                    stone2.types = om.make(string, Type)
-                }
-
-                om.insert(&stone2.types, name1, type1)
-            } else {
-                om.insert(&rc.general.types, name1, type1)
-            }
+            set_for_same_platforms(
+                stone1,
+                plats,
+                om.length(origin),
+                &rc,
+                proc(
+                    stone1: RunestoneWithFile,
+                    stone2: ^RunestoneWithFile,
+                    user_data: rawptr,
+                ) {
+                    name1 := cast(^string)user_data
+                    om.insert(
+                        &stone2.types,
+                        name1^,
+                        om.get(stone1.types, name1^),
+                    )
+                },
+                &name1,
+            )
         }
 
         // symbols
         for entry1 in stone1.symbols.data {
-            name1, symbol1 := entry1.key, entry1.value
-            if symbol2, ok := om.get(rc.general.symbols, name1); ok {
-                for alias in symbol1.aliases {
-                    if !slice.contains(symbol2.aliases[:], alias) {
-                        append(&symbol2.aliases, alias)
+            name1 := entry1.key
+
+            plats := get_same_platforms(
+                stone1,
+                origin,
+                proc(
+                    stone1, stone2: RunestoneWithFile,
+                    user_data: rawptr,
+                ) -> bool {
+                    name1 := cast(^string)user_data
+                    symbol1 := om.get(stone1.symbols, name1^)
+
+                    if symbol2, ok := om.get(stone2.symbols, name1^); ok {
+                        if is_same(symbol1, symbol2) {
+                            return true
+                        }
                     }
-                }
 
-                om.insert(&rc.general.symbols, name1, symbol2)
-                continue
-            }
+                    return false
+                },
+                &name1,
+            )
 
-            same_platforms := 1
-            for entry2 in origin.data {
-                plat2, stone2 := entry2.key, entry2.value
-                if plat1 == plat2 do continue
+            set_for_same_platforms(
+                stone1,
+                plats,
+                om.length(origin),
+                &rc,
+                proc(
+                    stone1: RunestoneWithFile,
+                    stone2: ^RunestoneWithFile,
+                    user_data: rawptr,
+                ) {
+                    name1 := cast(^string)user_data
+                    symbol1 := om.get(stone1.symbols, name1^)
 
-                if symbol2, ok := om.get(stone2.symbols, name1); ok {
-                    if is_same(symbol1, symbol2) {
-                        same_platforms += 1
+                    if symbol2, ok := om.get(stone2.symbols, name1^); ok {
+                        for alias in symbol1.aliases {
+                            if !slice.contains(symbol2.aliases[:], alias) {
+                                append(&symbol2.aliases, alias)
+                            }
+                        }
+
+                        om.insert(&stone2.symbols, name1^, symbol2)
+                    } else {
+                        om.insert(&stone2.symbols, name1^, symbol1)
                     }
-                }
-            }
-
-            if same_platforms != om.length(origin) {
-                stone2 := om.get(rc.cross, plat1)
-                defer om.insert(&rc.cross, plat1, stone2)
-
-                if stone2.symbols.indices == nil {
-                    stone2.symbols = om.make(string, Symbol)
-                }
-
-                om.insert(&stone2.symbols, name1, symbol1)
-            } else {
-                om.insert(&rc.general.symbols, name1, symbol1)
-            }
+                },
+                &name1,
+            )
         }
 
         // constants
         for entry1 in stone1.constants.data {
-            name1, constant1 := entry1.key, entry1.value
-            if om.contains(rc.general.constants, name1) do continue
+            name1 := entry1.key
 
-            same_platforms := 1
-            for entry2 in origin.data {
-                plat2, stone2 := entry2.key, entry2.value
-                if plat1 == plat2 do continue
+            plats := get_same_platforms(
+                stone1,
+                origin,
+                proc(
+                    stone1, stone2: RunestoneWithFile,
+                    user_data: rawptr,
+                ) -> bool {
+                    name1 := cast(^string)user_data
+                    constant1 := om.get(stone1.constants, name1^)
 
-                if constant2, ok := om.get(stone2.constants, name1); ok {
-                    if is_same(constant1, constant2) {
-                        same_platforms += 1
+                    if constant2, ok := om.get(stone2.constants, name1^); ok {
+                        if is_same(constant1, constant2) {
+                            return true
+                        }
                     }
-                }
-            }
 
-            if same_platforms != om.length(origin) {
-                stone2 := om.get(rc.cross, plat1)
-                defer om.insert(&rc.cross, plat1, stone2)
+                    return false
+                },
+                &name1,
+            )
 
-                if stone2.constants.indices == nil {
-                    stone2.constants = om.make(string, Constant)
-                }
-
-                om.insert(&stone2.constants, name1, constant1)
-            } else {
-                om.insert(&rc.general.constants, name1, constant1)
-            }
+            set_for_same_platforms(
+                stone1,
+                plats,
+                om.length(origin),
+                &rc,
+                proc(
+                    stone1: RunestoneWithFile,
+                    stone2: ^RunestoneWithFile,
+                    user_data: rawptr,
+                ) {
+                    name1 := cast(^string)user_data
+                    constant1 := om.get(stone1.constants, name1^)
+                    om.insert(&stone2.constants, name1^, constant1)
+                },
+                &name1,
+            )
         }
     }
 
@@ -197,7 +285,7 @@ runecross_is_simple :: proc(rc: Runecross) -> bool {
         om.length(rc.general.types) == 0 &&
         om.length(rc.general.symbols) == 0 &&
         om.length(rc.general.constants) == 0 &&
-        om.length(rc.cross) == 1 \
+        len(rc.cross) == 1 \
     )
 }
 
@@ -366,4 +454,73 @@ is_same :: proc {
     is_same_function,
     is_same_symbol,
     is_same_constant,
+}
+
+get_same_platforms :: proc(
+    stone1: RunestoneWithFile,
+    origin: om.OrderedMap(Platform, RunestoneWithFile),
+    same_proc: #type proc(
+        stone1, stone2: RunestoneWithFile,
+        user_data: rawptr,
+    ) -> bool,
+    user_data: rawptr = nil,
+) -> (
+    plats: [dynamic]Platform,
+) {
+    append(&plats, stone1.platform)
+    for entry2 in origin.data {
+        plat2, stone2 := entry2.key, entry2.value
+        if stone1.platform == plat2 do continue
+        if same_proc(stone1, stone2, user_data) {
+            append(&plats, stone2.platform)
+        }
+    }
+    return
+}
+
+set_for_same_platforms :: proc(
+    stone1: RunestoneWithFile,
+    plats: [dynamic]Platform,
+    len_origin: int,
+    rc: ^Runecross,
+    set_proc: #type proc(
+        stone1: RunestoneWithFile,
+        stone2: ^RunestoneWithFile,
+        user_data: rawptr,
+    ),
+    user_data: rawptr = nil,
+) {
+    if len(plats) == len_origin {
+        if len(plats) == 1 {
+            rc.general.platform = plats[0]
+            rc.general.file_path = stone1.file_path
+        }
+        set_proc(stone1, &rc.general, user_data)
+        return
+    }
+
+    stone2_loop: for &stone2 in rc.cross {
+        if len(stone2.plats) == len(plats) {
+            for plat2 in stone2.plats {
+                if !slice.contains(plats[:], plat2) {
+                    continue stone2_loop
+                }
+            }
+
+            if len(plats) == 1 {
+                stone2.platform = plats[0]
+                stone2.file_path = stone1.file_path
+            }
+            set_proc(stone1, &stone2.runestone, user_data)
+            return
+        }
+    }
+
+    stone2: RunestoneWithFile
+    if len(plats) == 1 {
+        stone2.platform = plats[0]
+        stone2.file_path = stone1.file_path
+    }
+    set_proc(stone1, &stone2, user_data)
+    append(&rc.cross, PlatformRunestone{plats = plats[:], runestone = stone2})
 }

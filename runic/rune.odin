@@ -211,9 +211,10 @@ parse_rune :: proc(rd: io.Reader, file_path: string) -> (rn: Rune, err: union {
         rn.to = to
     }
 
-    if from, ok := rn.from.(From); ok {
-        rn_arena_alloc := runtime.arena_allocator(&rn.arena)
+    rn_arena_alloc := runtime.arena_allocator(&rn.arena)
 
+    switch &from in rn.from {
+    case From:
         from.static = relative_to_file(
             file_path,
             from.static,
@@ -373,6 +374,12 @@ parse_rune :: proc(rd: io.Reader, file_path: string) -> (rn: Rune, err: union {
         )
 
         rn.from = from
+    case string:
+        rn.from = relative_to_file(file_path, from, rn_arena_alloc)
+    case [dynamic]string:
+        for &path in from {
+            path = relative_to_file(file_path, path, rn_arena_alloc)
+        }
     }
 
     return

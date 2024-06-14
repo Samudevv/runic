@@ -57,8 +57,6 @@ cross_the_runes :: proc(
         origin[stone.platform] = stone
     }
 
-    half_stones := len(origin) / 2
-
     rc.general.types = om.make(string, Type)
     rc.general.symbols = om.make(string, Symbol)
     rc.general.constants = om.make(string, Constant)
@@ -90,7 +88,7 @@ cross_the_runes :: proc(
                 }
             }
 
-            if same_platforms <= half_stones {
+            if same_platforms != len(origin) {
                 stone2 := rc.cross[plat1]
                 defer rc.cross[plat1] = stone2
 
@@ -129,7 +127,7 @@ cross_the_runes :: proc(
                 }
             }
 
-            if same_platforms <= half_stones {
+            if same_platforms != len(origin) {
                 stone2 := rc.cross[plat1]
                 defer rc.cross[plat1] = stone2
 
@@ -159,7 +157,7 @@ cross_the_runes :: proc(
                 }
             }
 
-            if same_platforms <= half_stones {
+            if same_platforms != len(origin) {
                 stone2 := rc.cross[plat1]
                 defer rc.cross[plat1] = stone2
 

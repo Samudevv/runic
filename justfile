@@ -59,11 +59,24 @@ example EXAMPLE: debug
 
 [unix]
 clean:
-  rm -rf "{{ BUILD_DIR }}"
+  rm -rf "{{ BUILD_DIR }}" \
+  test_data/write_to_handle \
+  test_data/bindings.* \
+  test_data/macros.*.h \
+  test_data/*_runestone.ini \
+  test_data/foozy/foozy.h
   @just --justfile examples/olivec/justfile clean
   @just --justfile examples/glew/justfile clean
 
 [windows]
 clean:
   if (Test-Path -Path "{{ BUILD_DIR }}") { Remove-Item -Path "{{ BUILD_DIR }}" -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path 'test_data/write_to_handle') { Remove-Item -Path 'test_data/write_to_handle' -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path 'test_data/bindings.h') { Remove-Item -Path 'test_data/bindings.h' -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path 'test_data/bindings.odin') { Remove-Item -Path 'test_data/bindings.odin' -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path 'test_data/macros.pp.h') { Remove-Item -Path 'test_data/macros.pp.h' -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path 'test_data/macros.ppp.h') { Remove-Item -Path 'test_data/macros.ppp.h' -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path 'test_data/macros.ppp-pp.h') { Remove-Item -Path 'test_data/macros.ppp-pp.h' -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path 'test_data/example_runestone.ini') { Remove-Item -Path 'test_data/example_runestone.ini' -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path 'test_data/generate_runestone.ini') { Remove-Item -Path 'test_data/generate_runestone.ini' -Recurse -Force -ErrorAction SilentlyContinue }
   @just --justfile examples/olivec/justfile clean

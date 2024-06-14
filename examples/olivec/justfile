@@ -48,10 +48,11 @@ stb_image:
 
 [unix]
 clean:
-  rm -rf olivec/ "{{ BUILD_DIR / 'libolivec.a' }}" "{{ BUILD_DIR / 'olivec_impl.c.o' }}"
+  rm -rf olivec/ "{{ BUILD_DIR / 'libolivec.a' }}" "{{ BUILD_DIR / 'olivec_impl.c.o' }}" '../../test_data/olivec_example.ppm'
 
 [windows]
 clean:
   if (Test-Path -Path olivec) { Remove-Item -Path olivec -Recurse -Force -ErrorAction SilentlyContinue }
   if (Test-Path -Path "{{ BUILD_DIR / 'olivec.lib' }}") { Remove-Item -Path "{{ BUILD_DIR / 'olivec.lib' }}" -Force -ErrorAction SilentlyContinue }
   if (Test-Path -Path "{{ BUILD_DIR / 'olivec_impl.c.obj' }}") { Remove-Item -Path "{{ BUILD_DIR / 'olivec_impl.c.obj' }}" -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path '../../test_data/olivec_example.ppm') { Remove-Item -Path '../../test_data/olivec_example.ppm' -Recurse -Force -ErrorAction SilentlyContinue }

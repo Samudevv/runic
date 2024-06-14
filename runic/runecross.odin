@@ -17,12 +17,13 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package runic
 
-import "core:fmt"
 import "core:slice"
 import "root:errors"
 import om "root:ordered_map"
 
 // TODO: add file paths of runestones
+// TODO: move to ordered map for cross
+// TODO: memory management
 Runecross :: struct {
     general: Runestone,
     cross:   map[Platform]Runestone,
@@ -64,13 +65,10 @@ cross_the_runes :: proc(
 
     for plat1, stone1 in origin {
         {
+            // TODO: don't always do this just when it's different for platforms
             stone2 := rc.cross[plat1]
-            fmt.printfln(
-                "plat={} lib_static={} lib_shared={}",
-                plat1,
-                stone1.lib_static,
-                stone1.lib_shared,
-            )
+            stone2.version = stone1.version
+            stone2.platform = plat1
             stone2.lib_static = stone1.lib_static
             stone2.lib_shared = stone1.lib_shared
             rc.cross[plat1] = stone2

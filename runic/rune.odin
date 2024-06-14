@@ -184,6 +184,8 @@ parse_rune :: proc(rd: io.Reader, file_path: string) -> (rn: Rune, err: union {
         io.Error,
         json.Unmarshal_Error,
     }) {
+    rn_arena_alloc := runtime.arena_allocator(&rn.arena)
+
     buf: bytes.Buffer
     bytes.buffer_init_allocator(&buf, 0, 0)
     defer bytes.buffer_destroy(&buf)
@@ -192,13 +194,10 @@ parse_rune :: proc(rd: io.Reader, file_path: string) -> (rn: Rune, err: union {
 
     data := bytes.buffer_to_bytes(&buf)
 
-    json.unmarshal(
-        data,
-        &rn,
-        allocator = runtime.arena_allocator(&rn.arena),
-    ) or_return
+    json.unmarshal(data, &rn, allocator = rn_arena_alloc) or_return
 
-    if to, ok := rn.to.(To); ok {
+    switch &to in rn.to {
+    case To:
         to.trim_prefix = trim_to_trim_set(to.trim_prefix)
         to.trim_suffix = trim_to_trim_set(to.trim_suffix)
         to.add_prefix = add_to_add_set(to.add_prefix)
@@ -207,11 +206,11 @@ parse_rune :: proc(rd: io.Reader, file_path: string) -> (rn: Rune, err: union {
         if to.detect.multi_pointer == "" {
             to.detect.multi_pointer = "auto"
         }
-
-        rn.to = to
+    case string:
+        if to != "stdout" {
+            to = relative_to_file(file_path, to, rn_arena_alloc)
+        }
     }
-
-    rn_arena_alloc := runtime.arena_allocator(&rn.arena)
 
     switch &from in rn.from {
     case From:
@@ -373,9 +372,15 @@ parse_rune :: proc(rd: io.Reader, file_path: string) -> (rn: Rune, err: union {
             true,
         )
 
-        rn.from = from
+        // TODO: for all platforms
+        for &path in from.includedirs {
+            path = relative_to_file(file_path, path, rn_arena_alloc)
+        }
+
     case string:
-        rn.from = relative_to_file(file_path, from, rn_arena_alloc)
+        if from != "stdin" {
+            from = relative_to_file(file_path, from, rn_arena_alloc)
+        }
     case [dynamic]string:
         for &path in from {
             path = relative_to_file(file_path, path, rn_arena_alloc)

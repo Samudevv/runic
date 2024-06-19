@@ -17,5 +17,5 @@
       ]
     }
   },
-  "to": "../../build/olivec.runestone.ini"
+  "to": "stdout"
 }

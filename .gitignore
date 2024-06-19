@@ -3,6 +3,8 @@
 *.h.*
 *.bin
 *.pdb
+*.o
+*.obj
 !test_data/*
 !test_data/foozy/foozy.expected.h
 test_data/*.ppp.*

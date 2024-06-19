@@ -1,6 +1,15 @@
 {
   "version": 0,
-  "from": "../../build/olivec.runestone.ini",
+  "from": [
+    "../../build/olivec.linux.x86_64.ini",
+    "../../build/olivec.macos.x86_64.ini",
+    "../../build/olivec.bsd.x86_64.ini",
+    "../../build/olivec.windows.x86_64.ini",
+    "../../build/olivec.linux.arm64.ini",
+    "../../build/olivec.macos.arm64.ini",
+    "../../build/olivec.bsd.arm64.ini",
+    "../../build/olivec.windows.arm64.ini"
+  ],
   "to": {
     "language": "odin",
     "package": "olivec",
@@ -9,6 +18,7 @@
       "types": "Olivec_",
       "constants": "OLIVEC_"
     },
+    "no_build_tag": true,
     "out": "olivec/olivec.odin"
   }
 }

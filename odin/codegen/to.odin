@@ -38,8 +38,11 @@ generate_bindings :: proc(
     arena_alloc := runtime.arena_allocator(&arena)
 
     if !rn.no_build_tag {
-        io.write_string(wd, "//+build ") or_return
         for entry, cross_idx in rc.cross {
+            if cross_idx == 0 {
+                io.write_string(wd, "//+build ") or_return
+            }
+
             plats := entry.plats
 
             for plat, plat_idx in plats {

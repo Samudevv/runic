@@ -224,6 +224,7 @@ main :: proc() {
 
         fmt.eprintfln("Successfully parsed runestone ({})", from)
 
+        // TODO: set as general not as part of cross
         append(
             &from_rc.cross,
             runic.PlatformRunestone {

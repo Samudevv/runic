@@ -37,31 +37,44 @@ generate_bindings :: proc(
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
 
-    // TODO: generate build tags for non simple runecross
-    if runic.runecross_is_simple(rc) {
-        plat := rc.cross[0].platform
+    io.write_string(wd, "//+build ") or_return
+    for entry, cross_idx in rc.cross {
+        plats := entry.plats
 
-        io.write_string(wd, "//+build ") or_return
-        switch plat.os {
-        case .Linux:
-            io.write_string(wd, "linux ") or_return
-        case .Windows:
-            io.write_string(wd, "windows ") or_return
-        case .Macos:
-            io.write_string(wd, "darwin ") or_return
-        case .BSD:
-            io.write_string(
-                wd,
-                "freebsd, openbsd, netbsd\n//+build ",
-            ) or_return
+        for plat, plat_idx in plats {
+            os_names: []string = ---
+
+            switch plat.os {
+            case .Linux:
+                os_names = []string{"linux"}
+            case .Windows:
+                os_names = []string{"windows"}
+            case .Macos:
+                os_names = []string{"darwin"}
+            case .BSD:
+                os_names = []string{"freebsd", "openbsd", "netbsd"}
+            }
+
+            for os, os_idx in os_names {
+                io.write_string(wd, os) or_return
+                io.write_rune(wd, ' ') or_return
+                switch plat.arch {
+                case .x86_64:
+                    io.write_string(wd, "amd64") or_return
+                case .arm64:
+                    io.write_string(wd, "arm64") or_return
+                }
+                if os_idx != len(os_names) - 1 {
+                    io.write_string(wd, ", ") or_return
+                }
+            }
+
+            if plat_idx == len(plats) - 1 && cross_idx == len(rc.cross) - 1 {
+                io.write_rune(wd, '\n') or_return
+            } else {
+                io.write_string(wd, ", ") or_return
+            }
         }
-        switch plat.arch {
-        case .x86_64:
-            io.write_string(wd, "amd64") or_return
-        case .arm64:
-            io.write_string(wd, "arm64") or_return
-        }
-        io.write_rune(wd, '\n') or_return
     }
 
     io.write_string(wd, "package ") or_return
@@ -97,7 +110,7 @@ generate_bindings :: proc(
     }
 
     for entry in rc.cross {
-        plats, stone := entry.plats[:], entry.runestone
+        plats, stone := entry.plats, entry.runestone
         if !runic.runecross_is_simple(rc) {
             when_plats(wd, plats) or_return
         }

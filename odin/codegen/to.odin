@@ -61,12 +61,14 @@ generate_bindings :: proc(
 
                 for os, os_idx in os_names {
                     io.write_string(wd, os) or_return
-                    io.write_rune(wd, ' ') or_return
-                    switch plat.arch {
-                    case .x86_64:
-                        io.write_string(wd, "amd64") or_return
-                    case .arm64:
-                        io.write_string(wd, "arm64") or_return
+                    if !rn.ignore_arch {
+                        io.write_rune(wd, ' ') or_return
+                        switch plat.arch {
+                        case .x86_64:
+                            io.write_string(wd, "amd64") or_return
+                        case .arm64:
+                            io.write_string(wd, "arm64") or_return
+                        }
                     }
                     if os_idx != len(os_names) - 1 {
                         io.write_string(wd, ", ") or_return
@@ -121,7 +123,7 @@ generate_bindings :: proc(
             if rn.use_when_else && idx == len(rc.cross) - 1 && idx != 0 {
                 io.write_string(wd, "{\n\n") or_return
             } else {
-                when_plats(wd, plats) or_return
+                when_plats(wd, plats, rn.ignore_arch) or_return
             }
         }
 
@@ -954,15 +956,38 @@ ODIN_RESERVED :: []string {
     "import",
 }
 
-when_plats :: proc(wd: io.Writer, plats: []runic.Platform) -> io.Error {
+when_plats :: proc(
+    wd: io.Writer,
+    plats: []runic.Platform,
+    ignore_arch: bool,
+) -> io.Error {
     if len(plats) == 0 {
         return .None
     }
 
-    io.write_string(wd, "when (") or_return
+    io.write_string(wd, "when ") or_return
 
-    for plat, idx in plats {
-        io.write_string(wd, "(ODIN_OS == .") or_return
+    for &plat, idx in plats {
+        if ignore_arch {
+            context.user_ptr = &plat
+            prev_count := slice.count_proc(
+                plats[:idx],
+                proc(prev_plat: runic.Platform) -> bool {
+                    plat := cast(^runic.Platform)context.user_ptr
+                    return prev_plat.os == plat.os
+                },
+            )
+            if prev_count != 0 do continue
+        }
+
+        if idx != 0 {
+            io.write_string(wd, " || ") or_return
+        }
+
+        if !ignore_arch {
+            io.write_rune(wd, '(') or_return
+        }
+        io.write_string(wd, "ODIN_OS == .") or_return
 
         switch plat.os {
         case .Linux:
@@ -978,22 +1003,20 @@ when_plats :: proc(wd: io.Writer, plats: []runic.Platform) -> io.Error {
             ) or_return
         }
 
-        io.write_string(wd, ") && (ODIN_ARCH == .") or_return
+        if !ignore_arch {
+            io.write_string(wd, ") && (ODIN_ARCH == .") or_return
+            switch plat.arch {
+            case .x86_64:
+                io.write_string(wd, "amd64") or_return
+            case .arm64:
+                io.write_string(wd, "arm64") or_return
+            }
 
-        switch plat.arch {
-        case .x86_64:
-            io.write_string(wd, "amd64") or_return
-        case .arm64:
-            io.write_string(wd, "arm64") or_return
-        }
-
-        io.write_rune(wd, ')') or_return
-        if idx != len(plats) - 1 {
-            io.write_string(wd, " || ") or_return
+            io.write_rune(wd, ')') or_return
         }
     }
 
-    io.write_string(wd, ") {\n\n") or_return
+    io.write_string(wd, " {\n\n") or_return
 
     return .None
 }

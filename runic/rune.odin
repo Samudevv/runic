@@ -156,6 +156,7 @@ To :: struct {
     trim_suffix:   Trim,
     add_prefix:    Add,
     add_suffix:    Add,
+    ignore_arch:   bool,
     // Odin
     package_name:  string `json:"package"`,
     detect:        OdinDetect,

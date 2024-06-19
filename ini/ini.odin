@@ -17,11 +17,12 @@ parse_file :: proc(
     file, os_err := os.open(file_name)
     errors.wrap(os_err) or_return
     defer os.close(file)
-    return parse_reader(os.stream_from_handle(file), allocator)
+    return parse_reader(os.stream_from_handle(file), file_name, allocator)
 }
 
 parse_reader :: proc(
     rd: io.Reader,
+    file_name := "runestone",
     allocator := context.allocator,
 ) -> (
     ini: map[string]om.OrderedMap(string, string),
@@ -53,7 +54,8 @@ parse_reader :: proc(
         if strings.has_prefix(line_str, "[") {
             if !strings.has_suffix(line_str, "]") {
                 return ini, errors.message(
-                    ":{}: invalid section statement; \"]\" expected",
+                    "{}:{}: invalid section statement; \"]\" expected",
+                    file_name,
                     line_count,
                 )
             }
@@ -85,7 +87,11 @@ parse_reader :: proc(
             }
 
             if equals_pos == -1 {
-                err = errors.message(":{}: \"=\" expected", line_count)
+                err = errors.message(
+                    "{}:{}: \"=\" expected",
+                    file_name,
+                    line_count,
+                )
                 return
             }
 

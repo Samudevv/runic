@@ -107,7 +107,7 @@ generate_bindings :: proc(
 
     if !runic.runecross_is_simple(rc) {
         generate_bindings_from_runestone(
-            rc.general,
+            runic.PlatformRunestone{runestone = rc.general},
             rn,
             wd,
             file_path,
@@ -116,13 +116,13 @@ generate_bindings :: proc(
     }
 
     for entry in rc.cross {
-        plats, stone := entry.plats, entry.runestone
+        plats := entry.plats
         if !runic.runecross_is_simple(rc) {
             when_plats(wd, plats) or_return
         }
 
         generate_bindings_from_runestone(
-            stone,
+            entry,
             rn,
             wd,
             file_path,
@@ -138,14 +138,12 @@ generate_bindings :: proc(
 }
 
 generate_bindings_from_runestone :: proc(
-    rs: runic.Runestone,
+    rs: runic.PlatformRunestone,
     rn: runic.To,
     wd: io.Writer,
     file_path: string,
     package_name: string,
 ) -> io.Error {
-    plat := rs.platform
-
     arena: runtime.Arena
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
@@ -231,13 +229,13 @@ generate_bindings_from_runestone :: proc(
             io.write_string(wd, static_switch) or_return
             io.write_string(wd, ", false) {\n    ") or_return
 
-            io.write_string(wd, "foreign import ") or_return
-            io.write_string(wd, package_name) or_return
-            io.write_string(wd, "_runic \"") or_return
 
             rel_static: string
             defer delete(rel_static)
-            if filepath.is_abs(static) {
+            static_is_abs := filepath.is_abs(static)
+            macos_count := 0
+
+            if static_is_abs {
                 dir_name := filepath.dir(file_path)
                 defer delete(dir_name)
                 err: filepath.Relative_Error = ---
@@ -247,20 +245,50 @@ generate_bindings_from_runestone :: proc(
                     static = rel_static
                 }
             } else {
-                #partial switch plat.os {
-                case .Macos:
+                macos_count = slice.count_proc(
+                    rs.plats,
+                    proc(plat: runic.Platform) -> bool {
+                        return plat.os == .Macos
+                    },
+                )
+                if macos_count != 0 {
                     if strings.has_prefix(static, "lib") &&
                        strings.has_suffix(static, ".a") {
-                        static = strings.trim_prefix(static, "lib")
-                        static = strings.trim_suffix(static, ".a")
+                        macos_static := strings.trim_prefix(static, "lib")
+                        macos_static = strings.trim_suffix(macos_static, ".a")
+
+                        io.write_string(
+                            wd,
+                            "when ODIN_OS == .Darwin {\n",
+                        ) or_return
+                        io.write_string(wd, "    foreign import ") or_return
+                        io.write_string(wd, package_name) or_return
+                        io.write_string(wd, "_runic \"system:") or_return
+                        io.write_string(wd, macos_static) or_return
+                        io.write_string(wd, "\"\n} else {\n") or_return
                     }
                 }
+            }
+
+            if macos_count != 0 {
+                io.write_string(wd, "    ") or_return
+            }
+            io.write_string(wd, "foreign import ") or_return
+            io.write_string(wd, package_name) or_return
+            io.write_string(wd, "_runic \"") or_return
+
+            if !static_is_abs {
                 io.write_string(wd, "system:") or_return
             }
 
             io.write_string(wd, static) or_return
+            io.write_string(wd, "\"\n") or_return
 
-            io.write_string(wd, "\"\n} else {\n    foreign import ") or_return
+            if macos_count != 0 {
+                io.write_string(wd, "}\n") or_return
+            }
+
+            io.write_string(wd, "} else {\n    foreign import ") or_return
             io.write_string(wd, package_name) or_return
             io.write_string(wd, "_runic \"") or_return
 
@@ -276,16 +304,12 @@ generate_bindings_from_runestone :: proc(
                     shared = rel_shared
                 }
             } else {
-                switch plat.os {
-                case .Windows:
-                case .Linux, .Macos, .BSD:
-                    if strings.has_prefix(shared, "lib") &&
-                       (strings.has_suffix(shared, ".so") ||
-                               strings.has_suffix(shared, ".dylib")) {
-                        shared = strings.trim_prefix(shared, "lib")
-                        shared = strings.trim_suffix(shared, ".so")
-                        shared = strings.trim_suffix(shared, ".dylib")
-                    }
+                if strings.has_prefix(shared, "lib") &&
+                   (strings.has_suffix(shared, ".so") ||
+                           strings.has_suffix(shared, ".dylib")) {
+                    shared = strings.trim_prefix(shared, "lib")
+                    shared = strings.trim_suffix(shared, ".so")
+                    shared = strings.trim_suffix(shared, ".dylib")
                 }
 
                 io.write_string(wd, "system:") or_return
@@ -295,10 +319,6 @@ generate_bindings_from_runestone :: proc(
 
             io.write_string(wd, "\"\n}\n\n") or_return
         } else {
-            io.write_string(wd, "foreign import ") or_return
-            io.write_string(wd, package_name) or_return
-            io.write_string(wd, "_runic \"") or_return
-
             lib_name: string = ---
             is_shared: bool = ---
 
@@ -312,7 +332,10 @@ generate_bindings_from_runestone :: proc(
 
             rel_lib: string
             defer delete(rel_lib)
-            if filepath.is_abs(lib_name) {
+            macos_count := 0
+            lib_is_abs := filepath.is_abs(lib_name)
+
+            if lib_is_abs {
                 dir_name := filepath.dir(file_path)
                 defer delete(dir_name)
                 err: filepath.Relative_Error = ---
@@ -321,29 +344,49 @@ generate_bindings_from_runestone :: proc(
                     lib_name = rel_lib
                 }
             } else {
-                switch plat.os {
-                case .Windows:
-                case .Linux, .Macos, .BSD:
-                    if is_shared {
+                if is_shared {
+                    if strings.has_prefix(lib_name, "lib") &&
+                       (strings.has_suffix(lib_name, ".so") ||
+                               strings.has_suffix(lib_name, ".dylib")) {
+                        lib_name = strings.trim_prefix(lib_name, "lib")
+                        lib_name = strings.trim_suffix(lib_name, ".so")
+                        lib_name = strings.trim_suffix(lib_name, ".dylib")
+                    }
+                } else {
+                    macos_count = slice.count_proc(
+                        rs.plats,
+                        proc(plat: runic.Platform) -> bool {
+                            return plat.os == .Macos
+                        },
+                    )
+                    if macos_count != 0 {
                         if strings.has_prefix(lib_name, "lib") &&
-                           (strings.has_suffix(lib_name, ".so") ||
-                                   strings.has_suffix(lib_name, ".dylib")) {
-                            lib_name = strings.trim_prefix(lib_name, "lib")
-                            lib_name = strings.trim_suffix(lib_name, ".so")
-                            lib_name = strings.trim_suffix(lib_name, ".dylib")
-                        }
-                    } else {
-                        #partial switch plat.os {
-                        case .Macos:
-                            if strings.has_prefix(lib_name, "lib") &&
-                               strings.has_suffix(lib_name, ".a") {
-                                lib_name = strings.trim_prefix(lib_name, "lib")
-                                lib_name = strings.trim_suffix(lib_name, ".a")
-                            }
+                           strings.has_suffix(lib_name, ".a") {
+                            macos_lib := strings.trim_prefix(lib_name, "lib")
+                            macos_lib = strings.trim_suffix(macos_lib, ".a")
+
+                            io.write_string(
+                                wd,
+                                "when ODIN_OS == .Darwin {\n",
+                            ) or_return
+                            io.write_string(wd, "    foreign import ") or_return
+                            io.write_string(wd, package_name) or_return
+                            io.write_string(wd, "_runic \"system:") or_return
+                            io.write_string(wd, macos_lib) or_return
+                            io.write_string(wd, "\"\n} else {\n") or_return
                         }
                     }
                 }
+            }
 
+            if macos_count != 0 {
+                io.write_string(wd, "    ") or_return
+            }
+            io.write_string(wd, "foreign import ") or_return
+            io.write_string(wd, package_name) or_return
+            io.write_string(wd, "_runic \"") or_return
+
+            if !lib_is_abs {
                 io.write_string(wd, "system:") or_return
             }
 
@@ -352,7 +395,12 @@ generate_bindings_from_runestone :: proc(
             io.write_string(wd, lib_name) or_return
             if was_alloc do delete(lib_name)
 
-            io.write_string(wd, "\"\n\n") or_return
+            io.write_string(wd, "\"\n") or_return
+            if macos_count != 0 {
+                io.write_string(wd, "}\n\n") or_return
+            } else {
+                io.write_rune(wd, '\n') or_return
+            }
         }
     }
 

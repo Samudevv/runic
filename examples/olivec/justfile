@@ -18,15 +18,21 @@ run: build
 build: bindings stb_image olivec
   odin build . -out:"{{ BUILD_DIR / 'olivec_example' + EXE_EXT }}" {{ ODIN_FLAGS }}
 
+STDOUT_TO := if os_family() == 'unix' {
+  '>'
+} else {
+  '| Set-Content -Encoding String -Path'
+}
+
 bindings:
-  {{ BUILD_DIR / 'runic_debug' }} --os linux   --arch x86_64 rune.json > {{ BUILD_DIR / 'olivec.linux.x86_64.ini' }}
-  {{ BUILD_DIR / 'runic_debug' }} --os macos   --arch x86_64 rune.json > {{ BUILD_DIR / 'olivec.macos.x86_64.ini' }}
-  {{ BUILD_DIR / 'runic_debug' }} --os bsd     --arch x86_64 rune.json > {{ BUILD_DIR / 'olivec.bsd.x86_64.ini' }}
-  {{ BUILD_DIR / 'runic_debug' }} --os windows --arch x86_64 rune.json > {{ BUILD_DIR / 'olivec.windows.x86_64.ini' }}
-  {{ BUILD_DIR / 'runic_debug' }} --os linux   --arch arm64  rune.json > {{ BUILD_DIR / 'olivec.linux.arm64.ini' }}
-  {{ BUILD_DIR / 'runic_debug' }} --os macos   --arch arm64  rune.json > {{ BUILD_DIR / 'olivec.macos.arm64.ini' }}
-  {{ BUILD_DIR / 'runic_debug' }} --os bsd     --arch arm64  rune.json > {{ BUILD_DIR / 'olivec.bsd.arm64.ini' }}
-  {{ BUILD_DIR / 'runic_debug' }} --os windows --arch arm64  rune.json > {{ BUILD_DIR / 'olivec.windows.arm64.ini' }}
+  {{ BUILD_DIR / 'runic_debug' }} --os linux   --arch x86_64 rune.json {{ STDOUT_TO }} {{ BUILD_DIR / 'olivec.linux.x86_64.ini' }}
+  {{ BUILD_DIR / 'runic_debug' }} --os macos   --arch x86_64 rune.json {{ STDOUT_TO }} {{ BUILD_DIR / 'olivec.macos.x86_64.ini' }}
+  {{ BUILD_DIR / 'runic_debug' }} --os bsd     --arch x86_64 rune.json {{ STDOUT_TO }} {{ BUILD_DIR / 'olivec.bsd.x86_64.ini' }}
+  {{ BUILD_DIR / 'runic_debug' }} --os windows --arch x86_64 rune.json {{ STDOUT_TO }} {{ BUILD_DIR / 'olivec.windows.x86_64.ini' }}
+  {{ BUILD_DIR / 'runic_debug' }} --os linux   --arch arm64  rune.json {{ STDOUT_TO }} {{ BUILD_DIR / 'olivec.linux.arm64.ini' }}
+  {{ BUILD_DIR / 'runic_debug' }} --os macos   --arch arm64  rune.json {{ STDOUT_TO }} {{ BUILD_DIR / 'olivec.macos.arm64.ini' }}
+  {{ BUILD_DIR / 'runic_debug' }} --os bsd     --arch arm64  rune.json {{ STDOUT_TO }} {{ BUILD_DIR / 'olivec.bsd.arm64.ini' }}
+  {{ BUILD_DIR / 'runic_debug' }} --os windows --arch arm64  rune.json {{ STDOUT_TO }} {{ BUILD_DIR / 'olivec.windows.arm64.ini' }}
   {{ BUILD_DIR / 'runic_debug' }} bindings.json
 
 [unix]

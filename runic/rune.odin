@@ -160,6 +160,7 @@ To :: struct {
     package_name:  string `json:"package"`,
     detect:        OdinDetect,
     no_build_tag:  bool,
+    use_when_else: bool,
 }
 
 Rune :: struct {

@@ -115,10 +115,14 @@ generate_bindings :: proc(
         ) or_return
     }
 
-    for entry in rc.cross {
+    for entry, idx in rc.cross {
         plats := entry.plats
         if !runic.runecross_is_simple(rc) {
-            when_plats(wd, plats) or_return
+            if rn.use_when_else && idx == len(rc.cross) - 1 && idx != 0 {
+                io.write_string(wd, "{\n\n") or_return
+            } else {
+                when_plats(wd, plats) or_return
+            }
         }
 
         generate_bindings_from_runestone(
@@ -130,7 +134,12 @@ generate_bindings :: proc(
         ) or_return
 
         if !runic.runecross_is_simple(rc) {
-            io.write_string(wd, "}\n\n") or_return
+            io.write_rune(wd, '}') or_return
+            if rn.use_when_else && idx != len(rc.cross) - 1 {
+                io.write_string(wd, " else ") or_return
+            } else {
+                io.write_string(wd, "\n\n") or_return
+            }
         }
     }
 
@@ -369,7 +378,10 @@ generate_bindings_from_runestone :: proc(
                                 wd,
                                 "when ODIN_OS == .Darwin {\n",
                             ) or_return
-                            io.write_string(wd, "    foreign import ") or_return
+                            io.write_string(
+                                wd,
+                                "    foreign import ",
+                            ) or_return
                             io.write_string(wd, package_name) or_return
                             io.write_string(wd, "_runic \"system:") or_return
                             io.write_string(wd, macos_lib) or_return

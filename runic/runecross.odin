@@ -277,6 +277,10 @@ cross_the_runes :: proc(
         }
     }
 
+    slice.sort_by(rc.cross[:], proc(i, j: PlatformRunestone) -> bool {
+        return len(i.plats) < len(j.plats)
+    })
+
     return
 }
 

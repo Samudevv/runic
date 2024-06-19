@@ -37,42 +37,45 @@ generate_bindings :: proc(
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
 
-    io.write_string(wd, "//+build ") or_return
-    for entry, cross_idx in rc.cross {
-        plats := entry.plats
+    if !rn.no_build_tag {
+        io.write_string(wd, "//+build ") or_return
+        for entry, cross_idx in rc.cross {
+            plats := entry.plats
 
-        for plat, plat_idx in plats {
-            os_names: []string = ---
+            for plat, plat_idx in plats {
+                os_names: []string = ---
 
-            switch plat.os {
-            case .Linux:
-                os_names = []string{"linux"}
-            case .Windows:
-                os_names = []string{"windows"}
-            case .Macos:
-                os_names = []string{"darwin"}
-            case .BSD:
-                os_names = []string{"freebsd", "openbsd", "netbsd"}
-            }
-
-            for os, os_idx in os_names {
-                io.write_string(wd, os) or_return
-                io.write_rune(wd, ' ') or_return
-                switch plat.arch {
-                case .x86_64:
-                    io.write_string(wd, "amd64") or_return
-                case .arm64:
-                    io.write_string(wd, "arm64") or_return
+                switch plat.os {
+                case .Linux:
+                    os_names = []string{"linux"}
+                case .Windows:
+                    os_names = []string{"windows"}
+                case .Macos:
+                    os_names = []string{"darwin"}
+                case .BSD:
+                    os_names = []string{"freebsd", "openbsd", "netbsd"}
                 }
-                if os_idx != len(os_names) - 1 {
+
+                for os, os_idx in os_names {
+                    io.write_string(wd, os) or_return
+                    io.write_rune(wd, ' ') or_return
+                    switch plat.arch {
+                    case .x86_64:
+                        io.write_string(wd, "amd64") or_return
+                    case .arm64:
+                        io.write_string(wd, "arm64") or_return
+                    }
+                    if os_idx != len(os_names) - 1 {
+                        io.write_string(wd, ", ") or_return
+                    }
+                }
+
+                if plat_idx == len(plats) - 1 &&
+                   cross_idx == len(rc.cross) - 1 {
+                    io.write_rune(wd, '\n') or_return
+                } else {
                     io.write_string(wd, ", ") or_return
                 }
-            }
-
-            if plat_idx == len(plats) - 1 && cross_idx == len(rc.cross) - 1 {
-                io.write_rune(wd, '\n') or_return
-            } else {
-                io.write_string(wd, ", ") or_return
             }
         }
     }

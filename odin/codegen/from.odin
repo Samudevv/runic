@@ -712,8 +712,10 @@ type_to_type :: proc(
     case ^odina.Enum_Type:
         e: runic.Enum
         if type_expr.base_type == nil {
-            // TODO: use architecture to get the correct size of integer (this is int)
-            e.type = .SInt64
+            switch plat.arch {
+            case .x86_64, .arm64:
+                e.type = .SInt64
+            }
         } else {
             et := type_to_type(
                 plat,

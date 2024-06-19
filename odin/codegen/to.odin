@@ -217,16 +217,8 @@ generate_bindings_from_runestone :: proc(
 
     if rs.lib_shared != nil || rs.lib_static != nil {
         if rs.lib_shared != nil && rs.lib_static != nil {
-            static, static_was_alloc := strings.replace_all(
-                rs.lib_static.?,
-                "\\",
-                "/",
-            )
-            shared, shared_was_alloc := strings.replace_all(
-                rs.lib_shared.?,
-                "\\",
-                "/",
-            )
+            static := rs.lib_static.?
+            shared := rs.lib_shared.?
 
             static_switch := rn.static_switch
             if len(static_switch) == 0 {
@@ -252,7 +244,6 @@ generate_bindings_from_runestone :: proc(
                 err: filepath.Relative_Error = ---
                 rel_static, err = filepath.rel(dir_name, static)
                 if err == .None && len(rel_static) < len(static) {
-                    if static_was_alloc do delete(static)
                     static = rel_static
                 }
             } else {
@@ -292,6 +283,9 @@ generate_bindings_from_runestone :: proc(
                 io.write_string(wd, "system:") or_return
             }
 
+            static_was_alloc: bool = ---
+            static, static_was_alloc = strings.replace_all(static, "\\", "/")
+            defer if static_was_alloc do delete(static)
             io.write_string(wd, static) or_return
             io.write_string(wd, "\"\n") or_return
 
@@ -311,7 +305,6 @@ generate_bindings_from_runestone :: proc(
                 err: filepath.Relative_Error = ---
                 rel_shared, err = filepath.rel(dir_name, shared)
                 if err == .None && len(rel_shared) < len(shared) {
-                    if shared_was_alloc do delete(shared)
                     shared = rel_shared
                 }
             } else {
@@ -326,6 +319,9 @@ generate_bindings_from_runestone :: proc(
                 io.write_string(wd, "system:") or_return
             }
 
+            shared_was_alloc: bool = ---
+            shared, shared_was_alloc = strings.replace_all(shared, "\\", "/")
+            defer if shared_was_alloc do delete(shared)
             io.write_string(wd, shared) or_return
 
             io.write_string(wd, "\"\n}\n\n") or_return

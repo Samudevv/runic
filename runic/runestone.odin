@@ -474,6 +474,9 @@ write_runestone :: proc(
             defer delete(dir_name)
             rel_shared, err := filepath.rel(dir_name, shared)
             if err == .None && len(rel_shared) < len(shared) {
+                if !strings.contains(rel_shared, "/") && !strings.contains(rel_shared, "\\") {
+                    io.write_string(wd, "./") or_return
+                }
                 io.write_string(wd, rel_shared) or_return
             } else {
                 io.write_string(wd, shared) or_return
@@ -492,6 +495,9 @@ write_runestone :: proc(
             defer delete(dir_name)
             rel_static, err := filepath.rel(dir_name, static)
             if err == .None && len(rel_static) < len(static) {
+                if !strings.contains(rel_static, "/") && !strings.contains(rel_static, "\\") {
+                    io.write_string(wd, "./") or_return
+                }
                 io.write_string(wd, rel_static) or_return
             } else {
                 io.write_string(wd, static) or_return

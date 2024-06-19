@@ -183,7 +183,7 @@ parse_runestone :: proc(
 
     arena_alloc := runtime.arena_allocator(&temp_arena)
 
-    ini_file := ini.parse(in_stm) or_return
+    ini_file := ini.parse(in_stm, file_path) or_return
 
     using rs
 

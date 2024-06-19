@@ -6,6 +6,7 @@
 + [x] BSD support
 + [ ] complex bindings example (e.g. cairo)
 + [x] Make odin integers sizes based on platform and architecture
++ [ ] Switch to yaml for rune file
 
 ## 0.3 (?)
 

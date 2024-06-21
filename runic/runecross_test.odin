@@ -65,7 +65,7 @@ test_is_same :: proc(t: ^testing.T) {
     rs2, rs2_err := parse_runestone(strings.reader_to_stream(&rd2), "/rd2")
     if !expect_value(t, rs2_err, nil) do return
 
-    expect(t, rs1.lib_static != rs2.lib_static)
+    expect(t, rs1.lib.static != rs2.lib.static)
 
     expect(t, is_same(om.get(rs1.symbols, "a"), om.get(rs2.symbols, "a")))
     expect(t, is_same(om.get(rs1.symbols, "b"), om.get(rs2.symbols, "b")))

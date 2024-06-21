@@ -159,6 +159,6 @@ set_library :: proc(plat: Platform, rs: ^Runestone, from: From) {
     )
 
     rs_arena_alloc := runtime.arena_allocator(&rs.arena)
-    if len(shared_name) != 0 do rs.lib_shared = strings.clone(shared_name, rs_arena_alloc)
-    if len(static_name) != 0 do rs.lib_static = strings.clone(static_name, rs_arena_alloc)
+    if len(shared_name) != 0 do rs.lib.shared = strings.clone(shared_name, rs_arena_alloc)
+    if len(static_name) != 0 do rs.lib.static = strings.clone(static_name, rs_arena_alloc)
 }

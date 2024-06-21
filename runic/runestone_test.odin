@@ -91,8 +91,8 @@ test_example_runestone :: proc(t: ^testing.T) {
     expect_value(t, platform.os, OS.Linux)
     expect_value(t, platform.arch, Architecture.x86_64)
 
-    expect_value(t, lib_shared.?, "libfoo.so")
-    expect_value(t, lib_static.?, "libfoo.a")
+    expect_value(t, lib.shared.?, "libfoo.so")
+    expect_value(t, lib.static.?, "libfoo.a")
 
     expect_value(t, om.length(symbols), 7)
     expect_value(

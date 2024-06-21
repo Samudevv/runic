@@ -87,8 +87,7 @@ main :: proc() {}`
 
     rs := runic.Runestone {
         version = 0,
-        lib_shared = lib_shared,
-        lib_static = "libfoo.a",
+        lib = {shared = lib_shared, static = "libfoo.a"},
         symbols = om.OrderedMap(string, runic.Symbol) {
             data =  {
                  {

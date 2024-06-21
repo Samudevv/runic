@@ -28,6 +28,16 @@ import "root:errors"
 import "root:ini"
 import om "root:ordered_map"
 
+Runestone :: struct {
+    version:   uint,
+    platform:  Platform,
+    lib:       Library,
+    symbols:   om.OrderedMap(string, Symbol),
+    types:     om.OrderedMap(string, Type),
+    constants: om.OrderedMap(string, Constant),
+    arena:     runtime.Arena,
+}
+
 Builtin :: enum {
     Untyped,
     Void,
@@ -134,15 +144,9 @@ Symbol :: struct {
     aliases: [dynamic]string,
 }
 
-Runestone :: struct {
-    version:    uint,
-    platform:   Platform,
-    lib_shared: Maybe(string),
-    lib_static: Maybe(string),
-    symbols:    om.OrderedMap(string, Symbol),
-    types:      om.OrderedMap(string, Type),
-    constants:  om.OrderedMap(string, Constant),
-    arena:      runtime.Arena,
+Library :: struct {
+    shared: Maybe(string),
+    static: Maybe(string),
 }
 
 TypeSpecifier :: union {
@@ -245,7 +249,7 @@ parse_runestone :: proc(
         fmt.eprintln("section lib")
     }
 
-    lib: {
+    lib_section: {
         sect, ok := ini_file["lib"]
         errors.wrap(ok) or_return
         defer delete_key(&ini_file, "lib")
@@ -253,24 +257,15 @@ parse_runestone :: proc(
         shared, shared_ok := om.get(sect, "shared")
         static, static_ok := om.get(sect, "static")
 
-        if shared_ok {
-            // TODO: path should be able to contain a space
-            errors.assert(
-                !strings.contains(shared, " "),
-                "Only one library can be specified",
-            ) or_return
-            lib_shared = relative_to_file(file_path, shared, needs_dir = true)
+        if shared_ok && len(shared) != 0 {
+            lib.shared = relative_to_file(file_path, shared, needs_dir = true)
         }
-        if static_ok {
-            errors.assert(
-                !strings.contains(static, " "),
-                "Only one library can be specified",
-            ) or_return
-            lib_static = relative_to_file(file_path, static, needs_dir = true)
+        if static_ok && len(static) != 0 {
+            lib.static = relative_to_file(file_path, static, needs_dir = true)
         }
 
         errors.assert(
-            lib_shared != nil || lib_static != nil,
+            lib.shared != nil || lib.static != nil,
             "No libraries have been specified",
         ) or_return
     }
@@ -466,7 +461,7 @@ write_runestone :: proc(
 
     io.write_string(wd, "[lib]\n") or_return
 
-    if shared, ok := rs.lib_shared.?; ok {
+    if shared, ok := rs.lib.shared.?; ok {
         io.write_string(wd, "shared = ") or_return
 
         if filepath.is_abs(shared) {
@@ -488,7 +483,7 @@ write_runestone :: proc(
 
         io.write_rune(wd, '\n') or_return
     }
-    if static, ok := rs.lib_static.?; ok {
+    if static, ok := rs.lib.static.?; ok {
         io.write_string(wd, "static = ") or_return
 
         if filepath.is_abs(static) {

@@ -90,7 +90,10 @@ cross_the_runes :: proc(
                 stone1,
                 origin,
                 proc(stone1, stone2: RunestoneWithFile, _: rawptr) -> bool {
-                    return stone1.lib_shared == stone2.lib_shared
+                    return(
+                        stone1.lib.shared == stone2.lib.shared &&
+                        stone1.lib.static == stone2.lib.static \
+                    )
                 },
             )
 
@@ -104,31 +107,8 @@ cross_the_runes :: proc(
                     stone2: ^RunestoneWithFile,
                     _: rawptr,
                 ) {
-                    stone2.lib_shared = stone1.lib_shared
-                },
-            )
-        }
-
-        {
-            plats := get_same_platforms(
-                stone1,
-                origin,
-                proc(stone1, stone2: RunestoneWithFile, _: rawptr) -> bool {
-                    return stone1.lib_static == stone2.lib_static
-                },
-            )
-
-            set_for_same_platforms(
-                stone1,
-                plats,
-                om.length(origin),
-                &rc,
-                proc(
-                    stone1: RunestoneWithFile,
-                    stone2: ^RunestoneWithFile,
-                    _: rawptr,
-                ) {
-                    stone2.lib_static = stone1.lib_static
+                    stone2.lib.shared = stone1.lib.shared
+                    stone2.lib.static = stone1.lib.static
                 },
             )
         }

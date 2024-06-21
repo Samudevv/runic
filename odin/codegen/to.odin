@@ -215,10 +215,10 @@ generate_bindings_from_runestone :: proc(
 
     if om.length(rs.types) != 0 do io.write_rune(wd, '\n') or_return
 
-    if rs.lib_shared != nil || rs.lib_static != nil {
-        if rs.lib_shared != nil && rs.lib_static != nil {
-            static := rs.lib_static.?
-            shared := rs.lib_shared.?
+    if rs.lib.shared != nil || rs.lib.static != nil {
+        if rs.lib.shared != nil && rs.lib.static != nil {
+            static := rs.lib.static.?
+            shared := rs.lib.shared.?
 
             static_switch := rn.static_switch
             if len(static_switch) == 0 {
@@ -329,12 +329,12 @@ generate_bindings_from_runestone :: proc(
             lib_name: string = ---
             is_shared: bool = ---
 
-            if shared, ok := rs.lib_shared.?; ok {
+            if shared, ok := rs.lib.shared.?; ok {
                 is_shared = true
                 lib_name = shared
             } else {
                 is_shared = false
-                lib_name = rs.lib_static.?
+                lib_name = rs.lib.static.?
             }
 
             rel_lib: string

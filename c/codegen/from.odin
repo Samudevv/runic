@@ -483,7 +483,6 @@ check_unknown_types :: proc(
 
         if !om.contains(types^, spec) {
             if !slice.contains(custom_types^[:], spec) {
-                fmt.eprintfln("{} is unknown", spec)
                 append(custom_types, spec)
             }
 
@@ -542,9 +541,6 @@ union_check_unknown_types :: proc(
 ) -> runic.Union {
     for &m in uni.members {
         m.type.spec = check_unknown_types(m.type.spec, types, custom_types)
-        if _, ok := m.type.spec.(runic.Unknown); ok {
-            fmt.eprintfln("{} is unknown {}", m.name, m.type.spec)
-        }
     }
 
     return uni^

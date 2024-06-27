@@ -379,7 +379,6 @@ generate_runestone :: proc(
         }
     }
 
-
     return
 }
 
@@ -398,10 +397,7 @@ validate_unknown_types :: proc(
     case runic.Struct:
         return struct_validate_unknown_types(&spec, types)
     case runic.Union:
-        strct := runic.Struct {
-            members = spec.members,
-        }
-        return struct_validate_unknown_types(&strct, types)
+        return union_validate_unknown_types(&spec, types)
     }
 
     return tp_spec
@@ -434,6 +430,17 @@ struct_validate_unknown_types :: proc(
     return strct^
 }
 
+union_validate_unknown_types :: proc(
+    uni: ^runic.Union,
+    types: om.OrderedMap(string, runic.Type),
+) -> runic.Union {
+    for &m in uni.members {
+        m.type.spec = validate_unknown_types(m.type.spec, types)
+    }
+
+    return uni^
+}
+
 check_unknown_types :: proc(
     tp_spec: runic.TypeSpecifier,
     types: om.OrderedMap(string, runic.Type),
@@ -454,10 +461,7 @@ check_unknown_types :: proc(
     case runic.Struct:
         return struct_check_unknown_types(&spec, types, custom_types)
     case runic.Union:
-        strct := runic.Struct {
-            members = spec.members,
-        }
-        return struct_check_unknown_types(&strct, types, custom_types)
+        return union_check_unknown_types(&spec, types, custom_types)
     }
 
     return tp_spec
@@ -495,6 +499,18 @@ struct_check_unknown_types :: proc(
     }
 
     return strct^
+}
+
+union_check_unknown_types :: proc(
+    uni: ^runic.Union,
+    types: om.OrderedMap(string, runic.Type),
+    custom_types: ^[dynamic]string,
+) -> runic.Union {
+    for &m in uni.members {
+        m.type.spec = check_unknown_types(m.type.spec, types, custom_types)
+    }
+
+    return uni^
 }
 
 parser_variable_to_runic_type :: proc(

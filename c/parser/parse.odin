@@ -755,6 +755,7 @@ parse_variable :: proc(
                 qualifiers = qs,
                 pointer_info = first_pi,
             },
+            allocator = allocator,
         ) or_return
 
         token = token.next

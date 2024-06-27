@@ -330,6 +330,7 @@ generate_runestone :: proc(
                     f64,
                     string,
                 }
+                type_spec: runic.TypeSpecifier = runic.Builtin.Untyped
 
                 ival: i64 = ---
                 fval: f64 = ---
@@ -361,7 +362,18 @@ generate_runestone :: proc(
                         }
                     }
 
-                    macro_value = strings.clone(val)
+                    if strings.has_prefix(val, "\"") &&
+                       strings.has_suffix(val, "\"") {
+                        macro_value = strings.clone(
+                            strings.trim_suffix(
+                                strings.trim_prefix(val, "\""),
+                                "\"",
+                            ),
+                        )
+                        type_spec = runic.Builtin.String
+                    } else {
+                        macro_value = strings.clone(val)
+                    }
                 }
 
                 om.insert(
@@ -369,7 +381,7 @@ generate_runestone :: proc(
                     strings.clone(name),
                     runic.Constant {
                         value = macro_value,
-                        type = runic.Type{spec = runic.Builtin.Untyped},
+                        type = runic.Type{spec = type_spec},
                     },
                 )
 

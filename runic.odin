@@ -17,6 +17,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package main
 
+import "base:runtime"
 import ccdg "c/codegen"
 import "core:fmt"
 import "core:os"
@@ -132,6 +133,10 @@ main :: proc() {
         [dynamic]runic.PlatformRunestone,
         context.temp_allocator,
     )
+    defer delete(from_rc.arenas)
+    defer for &arena in from_rc.arenas {
+        runtime.arena_destroy(&arena)
+    }
 
     switch from in rune.from {
     case runic.From:
@@ -146,6 +151,7 @@ main :: proc() {
                     runestone = {file_path = rune_file_name, stone = rs},
                 },
             )
+            append(&from_rc.arenas, rs.arena)
         case "odin":
             when ODIN_OS == .FreeBSD {
                 fmt.eprintfln("from odin is not supported on FreeBSD")
@@ -164,6 +170,7 @@ main :: proc() {
                         runestone = {file_path = rune_file_name, stone = rs},
                     },
                 )
+                append(&from_rc.arenas, rs.arena)
             }
         case:
             fmt.eprintfln("from language {} is not supported", from.language)
@@ -232,6 +239,7 @@ main :: proc() {
                 runestone = {file_path = rs_file_name, stone = rs},
             },
         )
+        append(&from_rc.arenas, rs.arena)
     case [dynamic]string:
         stones: [dynamic]runic.Runestone
         defer delete(stones)

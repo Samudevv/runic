@@ -51,6 +51,7 @@ insert :: #force_inline proc(
     using m: ^OrderedMap($Key, $Value),
     key: Key,
     value: Value,
+    loc := #caller_location,
 ) {
     if idx, ok := indices[key]; ok {
         entry := &data[idx]
@@ -58,7 +59,7 @@ insert :: #force_inline proc(
     } else {
         idx = len(data)
         indices[key] = idx
-        append(&data, Entry(Key, Value){key = key, value = value})
+        append(&data, Entry(Key, Value){key = key, value = value}, loc = loc)
     }
 }
 

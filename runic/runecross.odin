@@ -17,12 +17,14 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package runic
 
+import "base:runtime"
 import "core:slice"
 import "root:errors"
 import om "root:ordered_map"
 
 // TODO: memory management
 Runecross :: struct {
+    arenas:  [dynamic]runtime.Arena,
     general: RunestoneWithFile,
     cross:   [dynamic]PlatformRunestone,
 }
@@ -45,6 +47,14 @@ cross_the_runes :: proc(
     err: errors.Error,
 ) {
     errors.assert(len(stones) != 0, "no runestones specified") or_return
+
+    rn_arena_alloc := runtime.arena_allocator(&stones[0].arena)
+
+    rc.arenas = make([dynamic]runtime.Arena, len(stones))
+    for stone, idx in stones {
+        rc.arenas[idx] = stone.arena
+    }
+
     errors.assert(
         len(file_paths) == len(stones),
         "file_paths and stones should have the same length",
@@ -56,6 +66,7 @@ cross_the_runes :: proc(
         }
         return
     }
+
 
     origin := om.make(Platform, RunestoneWithFile)
     defer om.delete(origin)
@@ -78,9 +89,13 @@ cross_the_runes :: proc(
     }
 
     rc.general.file_path = "/general"
-    rc.general.types = om.make(string, Type)
-    rc.general.symbols = om.make(string, Symbol)
-    rc.general.constants = om.make(string, Constant)
+    rc.general.types = om.make(string, Type, allocator = rn_arena_alloc)
+    rc.general.symbols = om.make(string, Symbol, allocator = rn_arena_alloc)
+    rc.general.constants = om.make(
+        string,
+        Constant,
+        allocator = rn_arena_alloc,
+    )
 
     for entry0 in origin.data {
         stone1 := entry0.value
@@ -96,6 +111,7 @@ cross_the_runes :: proc(
                     )
                 },
             )
+            defer delete(plats)
 
             set_for_same_platforms(
                 stone1,
@@ -110,6 +126,7 @@ cross_the_runes :: proc(
                     stone2.lib.shared = stone1.lib.shared
                     stone2.lib.static = stone1.lib.static
                 },
+                allocator = rn_arena_alloc,
             )
         }
 
@@ -137,6 +154,7 @@ cross_the_runes :: proc(
                 },
                 &name1,
             )
+            defer delete(plats)
 
             set_for_same_platforms(
                 stone1,
@@ -156,6 +174,7 @@ cross_the_runes :: proc(
                     )
                 },
                 &name1,
+                allocator = rn_arena_alloc,
             )
         }
 
@@ -183,6 +202,7 @@ cross_the_runes :: proc(
                 },
                 &name1,
             )
+            defer delete(plats)
 
             set_for_same_platforms(
                 stone1,
@@ -210,6 +230,7 @@ cross_the_runes :: proc(
                     }
                 },
                 &name1,
+                allocator = rn_arena_alloc,
             )
         }
 
@@ -237,6 +258,7 @@ cross_the_runes :: proc(
                 },
                 &name1,
             )
+            defer delete(plats)
 
             set_for_same_platforms(
                 stone1,
@@ -253,6 +275,7 @@ cross_the_runes :: proc(
                     om.insert(&stone2.constants, name1^, constant1)
                 },
                 &name1,
+                allocator = rn_arena_alloc,
             )
         }
     }
@@ -473,6 +496,7 @@ set_for_same_platforms :: proc(
         user_data: rawptr,
     ),
     user_data: rawptr = nil,
+    allocator := context.allocator,
 ) {
     if len(plats) == len_origin {
         if len(plats) == 1 {
@@ -506,5 +530,12 @@ set_for_same_platforms :: proc(
         stone2.file_path = stone1.file_path
     }
     set_proc(stone1, &stone2, user_data)
-    append(&rc.cross, PlatformRunestone{plats = plats[:], runestone = stone2})
+
+    context.allocator = allocator
+    plats_copy := make([]Platform, len(plats), allocator = allocator)
+    copy(plats_copy, plats[:])
+    append(
+        &rc.cross,
+        PlatformRunestone{plats = plats_copy, runestone = stone2},
+    )
 }

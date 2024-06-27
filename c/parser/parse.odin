@@ -676,9 +676,7 @@ parse_variable :: proc(
             token = p.next
 
             func_ptr_pi: PointerInfo
-            if token.kind != .Ident {
-                if token.kind != .Punct && token.lit != "*" do return vars, token, false, errors_expect(token, "*")
-
+            if token.kind != .Ident && token.lit == "*" {
                 func_ptr_pi, token = parse_pointer_info(
                     token,
                     allocator,
@@ -686,10 +684,10 @@ parse_variable :: proc(
                 token = token.next
             }
 
-            if token.kind != .Ident do return vars, token, false, errors_ident(token)
-
-            first_name = strings.clone(token.lit, allocator)
-            token = token.next
+            if token.kind == .Ident {
+                first_name = strings.clone(token.lit, allocator)
+                token = token.next
+            }
 
             if token.lit == "[" {
                 first_ai, token = parse_array_info(token, allocator) or_return

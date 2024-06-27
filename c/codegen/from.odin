@@ -145,7 +145,11 @@ generate_runestone :: proc(
                     continue
                 }
 
-                tp.spec = check_unknown_types(tp.spec, rs.types, &custom_types)
+                tp.spec = check_unknown_types(
+                    tp.spec,
+                    &rs.types,
+                    &custom_types,
+                )
 
                 if om.contains(rs.types, name.?) {
                     fmt.eprintf("Type {} is defined as \"", name)
@@ -179,7 +183,7 @@ generate_runestone :: proc(
 
             v_type.spec = check_unknown_types(
                 v_type.spec,
-                rs.types,
+                &rs.types,
                 &custom_types,
             )
 
@@ -215,7 +219,11 @@ generate_runestone :: proc(
                 continue
             }
 
-            rnfn = function_check_unknown_types(&rnfn, rs.types, &custom_types)
+            rnfn = function_check_unknown_types(
+                &rnfn,
+                &rs.types,
+                &custom_types,
+            )
 
             if om.contains(rs.symbols, fc.name.?) {
                 fmt.eprintf("Function {} is defined as \"", fc.name.?)
@@ -272,7 +280,7 @@ generate_runestone :: proc(
 
                             tp.spec = check_unknown_types(
                                 tp.spec,
-                                rs.types,
+                                &rs.types,
                                 &custom_types,
                             )
 
@@ -455,13 +463,27 @@ union_validate_unknown_types :: proc(
 
 check_unknown_types :: proc(
     tp_spec: runic.TypeSpecifier,
-    types: om.OrderedMap(string, runic.Type),
+    types: ^om.OrderedMap(string, runic.Type),
     custom_types: ^[dynamic]string,
 ) -> runic.TypeSpecifier {
     #partial switch &spec in tp_spec {
     case string:
-        if !om.contains(types, spec) {
+        if strings.has_prefix(spec, "anon_") {
+            anon_type, ok := om.get(types^, spec)
+            if ok {
+                anon_type.spec = check_unknown_types(
+                    anon_type.spec,
+                    types,
+                    custom_types,
+                )
+                om.insert(types, spec, anon_type)
+                return tp_spec
+            }
+        }
+
+        if !om.contains(types^, spec) {
             if !slice.contains(custom_types^[:], spec) {
+                fmt.eprintfln("{} is unknown", spec)
                 append(custom_types, spec)
             }
 
@@ -481,7 +503,7 @@ check_unknown_types :: proc(
 
 function_check_unknown_types :: proc(
     func: ^runic.Function,
-    types: om.OrderedMap(string, runic.Type),
+    types: ^om.OrderedMap(string, runic.Type),
     custom_types: ^[dynamic]string,
 ) -> runic.Function {
     func.return_type.spec = check_unknown_types(
@@ -503,7 +525,7 @@ function_check_unknown_types :: proc(
 
 struct_check_unknown_types :: proc(
     strct: ^runic.Struct,
-    types: om.OrderedMap(string, runic.Type),
+    types: ^om.OrderedMap(string, runic.Type),
     custom_types: ^[dynamic]string,
 ) -> runic.Struct {
     for &m in strct.members {
@@ -515,11 +537,14 @@ struct_check_unknown_types :: proc(
 
 union_check_unknown_types :: proc(
     uni: ^runic.Union,
-    types: om.OrderedMap(string, runic.Type),
+    types: ^om.OrderedMap(string, runic.Type),
     custom_types: ^[dynamic]string,
 ) -> runic.Union {
     for &m in uni.members {
         m.type.spec = check_unknown_types(m.type.spec, types, custom_types)
+        if _, ok := m.type.spec.(runic.Unknown); ok {
+            fmt.eprintfln("{} is unknown {}", m.name, m.type.spec)
+        }
     }
 
     return uni^

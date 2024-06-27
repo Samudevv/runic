@@ -41,7 +41,7 @@ win_cat ODIN_JOBS=num_cpus():
 
 showc ODIN_JOBS=num_cpus():
   @{{ CREATE_BUILD_DIR }}
-  odin build c/showc {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'showc' + EXE_EXT }}" {{ ODIN_RELEASE_FLAGS }} -thread-count:{{ ODIN_JOBS }}
+  odin build c/showc {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'showc' + EXE_EXT }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }}
 
 cppp ODIN_JOBS=num_cpus():
   @{{ CREATE_BUILD_DIR }}

@@ -314,7 +314,7 @@ parse_file :: proc(
                 case "{":
                     token = skip_between(token, "{", "}") or_return
                     semicolon_expected = false
-                case "__asm__":
+                case "__asm__", "__asm":
                     if token = token.next; token.lit != "(" do return parser, errors_expect(token, "(")
                     token = skip_between(token, "(", ")") or_return
                 case:
@@ -677,17 +677,17 @@ parse_variable :: proc(
     if token.lit == "(" {
         p := skip_gnu_attribute(token) or_return
         p = p.next
-        if p.lit == "*" {
+        if p.lit == "*" || p.lit == "^" {
             // function pointer
-            token = p.next
+            token = p
 
-            func_ptr_pi: PointerInfo
-            if token.kind != .Ident && token.lit == "*" {
-                func_ptr_pi, token = parse_pointer_info(
-                    token,
-                    allocator,
-                ) or_return
-                token = token.next
+            func_ptr_pi: PointerInfo = ---
+            func_ptr_pi, token = parse_pointer_info(token, allocator) or_return
+            func_ptr_pi.count -= 1
+            token = token.next
+
+            if p.lit == "^" {
+                ignore = true
             }
 
             if token.kind == .Ident {
@@ -887,7 +887,7 @@ parse_struct :: proc(
             case ":":
                 // All structs that use bit field sizes are ignored and all functions types containing such structs are also ignored
                 token = token.next
-                token = skip_between(token, token.lit, ";") or_return
+                token = skip_between(token, "", ";") or_return
                 ignore = true
                 continue
             case:
@@ -1145,7 +1145,7 @@ parse_pointer_info :: proc(
 
     for ; p != nil && p.kind != .EOF; p = p.next {
         switch p.lit {
-        case "*":
+        case "*", "^":
             pi.count += 1
         case "const":
             pi.const = true
@@ -1159,6 +1159,16 @@ parse_pointer_info :: proc(
             return
         case "__restrict", "__restrict__", "restrict":
             pi.restrict = true
+            token = p
+            p = p.next
+            if p.kind == .Punct && p.lit == "*" {
+                child: PointerInfo = ---
+                child, token = parse_pointer_info(p, allocator) or_return
+                pi.child = new_clone(child, allocator)
+            }
+            return
+        case "_Nonnull", "_Nullable":
+            // Ignore, but would be an interesting addition
             token = p
             p = p.next
             if p.kind == .Punct && p.lit == "*" {

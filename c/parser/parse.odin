@@ -241,7 +241,7 @@ parse_file :: proc(
             vars, token, ignore_var = parse_variable(
                 token,
                 true,
-                rs_arena_alloc,
+                allocator = rs_arena_alloc,
             ) or_return
             defer delete(vars)
 
@@ -285,7 +285,7 @@ parse_file :: proc(
                         v := var.(Var)
                         v.name = t.name
                         var^ = v
-                    case BuiltinType, CustomType:
+                    case BuiltinType, CustomType, FunctionPrototype:
                         // Ignore
                         break var_switch
                     }
@@ -359,7 +359,12 @@ parse_typedef :: proc(
 ) {
     token = _token.next
 
-    vars, token, ignore = parse_variable(token, true, allocator) or_return
+    vars, token, ignore = parse_variable(
+        token,
+        true,
+        true,
+        allocator,
+    ) or_return
 
     return
 }
@@ -367,6 +372,7 @@ parse_typedef :: proc(
 parse_variable :: proc(
     _token: ^ctz.Token,
     allow_multiple: bool,
+    parse_function_prototype := false,
     allocator := context.allocator,
 ) -> (
     vars: [dynamic]Variable,
@@ -738,6 +744,25 @@ parse_variable :: proc(
         token = token.next
     }
 
+    if parse_function_prototype && token.lit == "(" {
+        // Function prototype
+        func: Function = ---
+        func, token, ignore = parse_function_parameters(
+            token,
+            Var {
+                type = ts,
+                name = first_name,
+                qualifiers = qs,
+                pointer_info = first_pi,
+            },
+        ) or_return
+
+        token = token.next
+
+        append(&vars, Var{type = FunctionPrototype(func), name = first_name})
+        return
+    }
+
     if token.lit == "[" {
         first_ai, token = parse_array_info(token, allocator) or_return
     }
@@ -798,7 +823,6 @@ parse_variable :: proc(
         )
     }
 
-
     return
 }
 
@@ -838,7 +862,7 @@ parse_struct :: proc(
             vars, token, ignore_var = parse_variable(
                 token,
                 true,
-                allocator,
+                allocator = allocator,
             ) or_return
             defer delete(vars)
 
@@ -1063,7 +1087,7 @@ parse_function_parameters :: proc(
         vars, token, ignore_var = parse_variable(
             token,
             false,
-            allocator,
+            allocator = allocator,
         ) or_return
         defer delete(vars)
 

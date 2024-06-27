@@ -106,6 +106,8 @@ Function :: struct {
     array_info:   ArrayInfo,
 }
 
+FunctionPrototype :: distinct Function
+
 MacroInsertion :: struct {
     parameter: int,
     spaces:    int,
@@ -144,6 +146,7 @@ Type :: union {
     Enum,
     Union,
     CustomType,
+    FunctionPrototype,
 }
 
 MacroFuncToken :: union {

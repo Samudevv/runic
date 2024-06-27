@@ -214,6 +214,8 @@ type_to_string :: proc(type: parser.Type) -> string {
         return union_to_string(v, false)
     case parser.CustomType:
         return v.name
+    case parser.FunctionPrototype:
+        return func_proto_to_string(v, false)
     }
 
     return "invalid"
@@ -352,6 +354,19 @@ func_ptr_to_string :: proc(fp: parser.Function, print_name := true) -> string {
 
     strings.write_string(&out, "func_ptr ")
     strings.write_string(&out, func_to_string(fp, print_name))
+
+    return strings.to_string(out)
+}
+
+func_proto_to_string :: proc(
+    fp: parser.FunctionPrototype,
+    print_name := true,
+) -> string {
+    out: strings.Builder
+    strings.builder_init_none(&out)
+
+    strings.write_string(&out, "func_proto ")
+    strings.write_string(&out, func_to_string(parser.Function(fp), print_name))
 
     return strings.to_string(out)
 }

@@ -96,6 +96,7 @@ generate_runestone :: proc(
     pp_flags := parser.PREPROCESS_FLAGS
 
     anon_counter: int
+    func_protos := make([dynamic]string, arena_alloc)
 
     for hd in headers {
         p: parser.Parser
@@ -135,6 +136,7 @@ generate_runestone :: proc(
             tp, name := parser_variable_to_runic_type(
                 td,
                 &rs.types,
+                &func_protos,
                 isz,
                 &anon_counter,
             )
@@ -166,6 +168,7 @@ generate_runestone :: proc(
             v_type, v_name := parser_variable_to_runic_type(
                 vr,
                 &rs.types,
+                &func_protos,
                 isz,
                 &anon_counter,
             )
@@ -201,6 +204,7 @@ generate_runestone :: proc(
             rnfn := parser_function_to_runic_function(
                 fc,
                 &rs.types,
+                &func_protos,
                 isz,
                 &anon_counter,
             )
@@ -260,6 +264,7 @@ generate_runestone :: proc(
                         tp, name := parser_variable_to_runic_type(
                             td,
                             &rs.types,
+                            &func_protos,
                             isz,
                             &anon_counter,
                         )
@@ -495,6 +500,7 @@ struct_check_unknown_types :: proc(
 parser_variable_to_runic_type :: proc(
     var: parser.Variable,
     types: ^om.OrderedMap(string, runic.Type),
+    func_protos: ^[dynamic]string,
     isz: Int_Sizes,
     anon_counter: ^int,
 ) -> (
@@ -598,6 +604,7 @@ parser_variable_to_runic_type :: proc(
                 m_type, m_name := parser_variable_to_runic_type(
                     m,
                     types,
+                    func_protos,
                     isz,
                     anon_counter,
                 )
@@ -655,6 +662,7 @@ parser_variable_to_runic_type :: proc(
                 m_type, m_name := parser_variable_to_runic_type(
                     m,
                     types,
+                    func_protos,
                     isz,
                     anon_counter,
                 )
@@ -697,8 +705,29 @@ parser_variable_to_runic_type :: proc(
             case "uint64_t":
                 tp.spec = runic.Builtin.UInt64
             case:
-                tp.spec = strings.clone(ty.name)
+                if slice.contains(func_protos^[:], ty.name) {
+                    if tp.pointer_info.count == 0 {
+                        tp.spec = runic.Unknown(strings.clone(ty.name))
+                    } else {
+                        tp.pointer_info.count -= 1
+                        tp.spec = strings.clone(ty.name)
+                    }
+                } else {
+                    tp.spec = strings.clone(ty.name)
+                }
             }
+        case parser.FunctionPrototype:
+            if name != nil {
+                append(func_protos, name.?)
+            }
+
+            return parser_variable_to_runic_type(
+                parser.Function(ty),
+                types,
+                func_protos,
+                isz,
+                anon_counter,
+            )
         }
 
         if b, ok := tp.spec.(runic.Builtin); ok && b == .SInt8 {
@@ -711,7 +740,13 @@ parser_variable_to_runic_type :: proc(
             }
         }
     case parser.Function:
-        rf := parser_function_to_runic_function(t, types, isz, anon_counter)
+        rf := parser_function_to_runic_function(
+            t,
+            types,
+            func_protos,
+            isz,
+            anon_counter,
+        )
 
         if b, ok := rf.return_type.spec.(runic.Builtin); ok && b == .Untyped {
             return
@@ -750,6 +785,7 @@ parser_variable_to_runic_type :: proc(
 parser_function_to_runic_function :: proc(
     fc: parser.Function,
     types: ^om.OrderedMap(string, runic.Type),
+    func_protos: ^[dynamic]string,
     isz: Int_Sizes,
     anon_counter: ^int,
 ) -> (
@@ -760,6 +796,7 @@ parser_function_to_runic_function :: proc(
     f_type, _ := parser_variable_to_runic_type(
         fc.return_type^,
         types,
+        func_protos,
         isz,
         anon_counter,
     )
@@ -776,6 +813,7 @@ parser_function_to_runic_function :: proc(
         m_type, m_name := parser_variable_to_runic_type(
             p,
             types,
+            func_protos,
             isz,
             anon_counter,
         )

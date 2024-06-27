@@ -25,6 +25,7 @@ import "core:path/filepath"
 import "core:strings"
 import "errors"
 import odincdg "odin/codegen"
+import om "ordered_map"
 import "runic"
 
 DEFAULT_TO_FILE_NAME :: "runic.to"
@@ -151,6 +152,7 @@ main :: proc() {
                     runestone = {file_path = rune_file_name, stone = rs},
                 },
             )
+            fmt.printfln("anon_7: {}", om.get(rs.types, "anon_7"))
             append(&from_rc.arenas, rs.arena)
         case "odin":
             when ODIN_OS == .FreeBSD {

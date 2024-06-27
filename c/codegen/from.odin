@@ -610,11 +610,11 @@ parser_variable_to_runic_type :: proc(
                 )
                 if m_name == nil do m_name = fmt.aprintf("memb{}", count)
 
-                #partial switch s in m_type.spec {
-                case runic.Struct, runic.Union, runic.Enum, runic.FunctionPointer:
-                    anon_name := fmt.aprintf("anon_{}", anon_counter^)
-                    anon_counter^ += 1
-                    om.insert(types, anon_name, runic.Type{spec = m_type.spec})
+                if anon_name, anon_type, is_anon := runic.create_anon_type(
+                    m_type.spec,
+                    anon_counter,
+                ); is_anon {
+                    om.insert(types, anon_name, anon_type)
                     m_type.spec = anon_name
                 }
 
@@ -668,14 +668,13 @@ parser_variable_to_runic_type :: proc(
                 )
                 if m_name == nil do m_name = fmt.aprintf("unio{}", count)
 
-                #partial switch s in m_type.spec {
-                case runic.Struct, runic.Union, runic.Enum, runic.FunctionPointer:
-                    anon_name := fmt.aprintf("anon_{}", anon_counter^)
-                    anon_counter^ += 1
-                    om.insert(types, anon_name, runic.Type{spec = m_type.spec})
+                if anon_name, anon_type, is_anon := runic.create_anon_type(
+                    m_type.spec,
+                    anon_counter,
+                ); is_anon {
+                    om.insert(types, anon_name, anon_type)
                     m_type.spec = anon_name
                 }
-
 
                 append(
                     &u.members,
@@ -819,11 +818,11 @@ parser_function_to_runic_function :: proc(
         )
         if m_name == nil do m_name = fmt.aprintf("param{}", count)
 
-        #partial switch s in m_type.spec {
-        case runic.Struct, runic.Enum, runic.Union, runic.FunctionPointer:
-            anon_name := fmt.aprintf("anon_{}", anon_counter^)
-            om.insert(types, anon_name, runic.Type{spec = m_type.spec})
-            anon_counter^ += 1
+        if anon_name, anon_type, is_anon := runic.create_anon_type(
+            m_type.spec,
+            anon_counter,
+        ); is_anon {
+            om.insert(types, anon_name, anon_type)
             m_type.spec = anon_name
         }
 

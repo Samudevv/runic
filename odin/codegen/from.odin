@@ -460,11 +460,12 @@ proc_type_to_function :: proc(
             current_package,
             allocator,
         ) or_return
-        #partial switch spec in type.spec {
-        case runic.Enum, runic.Struct, runic.Union, runic.FunctionPointer:
-            anon_name := fmt.aprintf("anon_{}", anon_counter^)
-            anon_counter^ += 1
-            om.insert(types, anon_name, runic.Type{spec = type.spec})
+
+        if anon_name, anon_type, is_anon := runic.create_anon_type(
+            type.spec,
+            anon_counter,
+        ); is_anon {
+            om.insert(types, anon_name, anon_type)
             type.spec = anon_name
         }
 
@@ -512,15 +513,12 @@ proc_type_to_function :: proc(
             current_package,
             allocator,
         ) or_return
-        #partial switch spec in type.spec {
-        case runic.Enum, runic.Struct, runic.Union, runic.FunctionPointer:
-            anon_name := fmt.aprintf(
-                "anon_{}",
-                anon_counter^,
-                allocator = allocator,
-            )
-            anon_counter^ += 1
-            om.insert(types, anon_name, runic.Type{spec = type.spec})
+
+        if anon_name, anon_type, is_anon := runic.create_anon_type(
+            type.spec,
+            anon_counter,
+        ); is_anon {
+            om.insert(types, anon_name, anon_type)
             type.spec = anon_name
         }
 
@@ -1020,11 +1018,12 @@ struct_type_to_struct :: proc(
             current_package,
             allocator,
         ) or_return
-        #partial switch spec in type.spec {
-        case runic.Enum, runic.Struct, runic.Union, runic.FunctionPointer:
-            anon_name := fmt.aprintf("anon_{}", anon_counter^)
-            anon_counter^ += 1
-            om.insert(types, anon_name, runic.Type{spec = type.spec})
+
+        if anon_name, anon_type, is_anon := runic.create_anon_type(
+            type.spec,
+            anon_counter,
+        ); is_anon {
+            om.insert(types, anon_name, anon_type)
             type.spec = anon_name
         }
 

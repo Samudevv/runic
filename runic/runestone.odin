@@ -1289,3 +1289,42 @@ write_function :: proc(wd: io.Writer, fc: Function) -> io.Error {
 
     return .None
 }
+
+create_anon_type :: proc(
+    spec: TypeSpecifier,
+    anon_counter: ^int,
+) -> (
+    anon_name: string,
+    anon_type: Type,
+    is_anon: bool,
+) {
+    is_anon = true
+
+    #partial switch s in spec {
+    case Struct:
+        anon_type = Type {
+            spec = s,
+        }
+    case Union:
+        anon_type = Type {
+            spec = s,
+        }
+    case Enum:
+        anon_type = Type {
+            spec = s,
+        }
+    case FunctionPointer:
+        anon_type = Type {
+            spec = s,
+        }
+    case:
+        is_anon = false
+    }
+
+    if is_anon {
+        anon_name = fmt.aprintf("anon_{}", anon_counter^)
+        anon_counter^ += 1
+    }
+
+    return
+}

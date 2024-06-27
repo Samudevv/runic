@@ -14,3 +14,5 @@ extern void *(*get_proc_address)(const char *);
 void (**hello_world)();
 
 int (****const foo)();
+
+void(*signal(int, void (*)(int)))(int);

@@ -699,6 +699,12 @@ parse_variable :: proc(
                 first_ai, token = parse_array_info(token, allocator) or_return
             }
 
+            if token.lit == "(" {
+                token = skip_between(token, "(", ")") or_return
+                token = token.next
+                ignore = true
+            }
+
             if token.lit == ")" {
                 token = token.next
                 if token.lit != "(" do return vars, token, false, errors_expect(token, "(")

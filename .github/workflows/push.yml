@@ -28,7 +28,7 @@ jobs:
       - uses: laytan/setup-odin@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          release: dev-2024-06
+          release: dev-2024-07
       - uses: ilammy/msvc-dev-cmd@v1
         if: matrix.os == 'windows-latest'
       - uses: crazy-max/ghaction-chocolatey@v3

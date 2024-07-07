@@ -430,9 +430,8 @@ prepreprocess_file :: proc(
 }
 
 reserve_random_file :: proc(format: string) -> string {
-    rd := rand.create(1)
     for {
-        rd_str := fmt.aprintf("%06v", rand.uint64(&rd) % 1000000)
+        rd_str := fmt.aprintf("%06v", rand.uint64() % 1000000)
         defer delete(rd_str)
 
         rd_file_name := fmt.aprintf(format, rd_str)

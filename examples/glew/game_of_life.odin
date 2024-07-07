@@ -137,9 +137,8 @@ main :: proc() {
         "alloc failed",
     )
 
-    randy := rand.create(1234)
     for idx in 0 ..< game.width * game.height {
-        game.back_grid[idx] = u8(rand.int_max(2, &randy) * 255)
+        game.back_grid[idx] = u8(rand.int_max(2) * 255)
         game.front_grid[idx] = game.back_grid[idx]
     }
 

@@ -4,7 +4,6 @@ BUILD_DIR := justfile_directory() / '..' / '..' / 'build'
 ODIN_FLAGS := (
   '-debug ' +
   '-error-pos-style:unix ' +
-  '-define:OLIVEC_STATIC=true ' +
   '-extra-linker-flags:' + if os_family() == 'unix' {'-L' + BUILD_DIR} else {'/LIBPATH:' + BUILD_DIR}
 )
 EXE_EXT := if os_family() == 'unix' {''} else {'.exe'}

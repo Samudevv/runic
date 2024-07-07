@@ -3,6 +3,7 @@
   "from": {
     "language": "c",
     "shared": "libGLEW.so",
+    "static.linux": "libGLEW.a",
     "static.windows": "..\\..\\build\\glew32s.lib",
     "shared.windows": "..\\..\\build\\glew32.lib",
     "static.macos": "libGLEW.a",

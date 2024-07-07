@@ -21,11 +21,18 @@ LINK_FLAGS := if os() == 'linux' {
 }
 EXE_EXT := if os() == 'windows' {'.exe'} else {''}
 GLEW_VERSION := '2.1.0'
+GLEW_STATIC := if os() == 'linux' {
+  'false'
+} else if os() == 'macos' {
+  'false'
+} else {
+  'true'
+}
 
 default: game_of_life
 
 game_of_life ODIN_JOBS=num_cpus(): bindings
-  odin build . -out:"{{ BUILD_DIR / 'game_of_life' + EXE_EXT }}" {{ ODIN_FLAGS }} {{ ODIN_DEBUG_FLAGS }} "-extra-linker-flags:{{ LINK_FLAGS }}" -thread-count:{{ ODIN_JOBS }} -define:GLEW_STATIC={{ if os() == 'macos' {'false'} else {'true'} }}
+  odin build . -out:"{{ BUILD_DIR / 'game_of_life' + EXE_EXT }}" {{ ODIN_FLAGS }} {{ ODIN_DEBUG_FLAGS }} "-extra-linker-flags:{{ LINK_FLAGS }}" -thread-count:{{ ODIN_JOBS }} -define:GLEW_STATIC={{ GLEW_STATIC }}
 
 bindings: glew
   {{ BUILD_DIR / 'runic_debug' }} rune.json

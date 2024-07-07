@@ -140,41 +140,35 @@ generate_runestone :: proc(
                 isz,
                 &anon_counter,
             )
-            if name != nil {
-                if runic.single_list_glob(rf.ignore.types, name.?) {
-                    continue
-                }
 
-                if ow_tp, ow_err := runic.overwrite_type(rf.overwrite, name.?);
-                   ow_err != nil {
-                    fmt.eprintfln(
-                        "Type Overwrite for \"{}\" failed to parse: {}",
-                        name.?,
-                        ow_err,
-                    )
-                } else if ow_tp != nil {
-                    tp = ow_tp.?
-                }
+            if name == nil do continue
+            if runic.single_list_glob(rf.ignore.types, name.?) do continue
 
-                tp.spec = check_unknown_types(
-                    tp.spec,
-                    &rs.types,
-                    &custom_types,
+            if ow_tp, ow_err := runic.overwrite_type(rf.overwrite, name.?);
+               ow_err != nil {
+                fmt.eprintfln(
+                    "Type Overwrite for \"{}\" failed to parse: {}",
+                    name.?,
+                    ow_err,
                 )
-
-                if om.contains(rs.types, name.?) {
-                    fmt.eprintf("Type {} is defined as \"", name)
-                    runic.write_type(
-                        os.stream_from_handle(os.stderr),
-                        om.get(rs.types, name.?),
-                    )
-                    fmt.eprint("\" and \"")
-                    runic.write_type(os.stream_from_handle(os.stderr), tp)
-                    fmt.eprintln('"')
-                }
-
-                om.insert(&rs.types, name.?, tp)
+            } else if ow_tp != nil {
+                tp = ow_tp.?
             }
+
+            tp.spec = check_unknown_types(tp.spec, &rs.types, &custom_types)
+
+            if om.contains(rs.types, name.?) {
+                fmt.eprintf("Type {} is defined as \"", name)
+                runic.write_type(
+                    os.stream_from_handle(os.stderr),
+                    om.get(rs.types, name.?),
+                )
+                fmt.eprint("\" and \"")
+                runic.write_type(os.stream_from_handle(os.stderr), tp)
+                fmt.eprintln('"')
+            }
+
+            om.insert(&rs.types, name.?, tp)
         }
 
         for vr in p.variables {
@@ -288,6 +282,25 @@ generate_runestone :: proc(
 
             if runic.single_list_glob(rf.ignore.types, ct) {
                 continue custom_types_loop
+            }
+            if ow_tp, ow_err := runic.overwrite_type(rf.overwrite, ct);
+               ow_err != nil {
+                fmt.eprintfln(
+                    "Type Overwrite of \"{}\" failed to parse: {}",
+                    ct,
+                    ow_err,
+                )
+            } else if ow_tp != nil {
+                tp := ow_tp.?
+
+                tp.spec = check_unknown_types(
+                    tp.spec,
+                    &rs.types,
+                    &custom_types,
+                )
+
+                om.insert(&rs.types, ct, tp)
+                continue
             }
 
             for inc in p.includes {

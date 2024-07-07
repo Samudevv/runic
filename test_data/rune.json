@@ -16,6 +16,11 @@
     ],
     "defines": {
       "MYFOO": 2
+    },
+    "overwrite": {
+      "types": {
+        "size_t": "#UInt64"
+      }
     }
   },
   "to": {

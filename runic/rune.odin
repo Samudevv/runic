@@ -24,6 +24,7 @@ import "core:io"
 import "core:path/filepath"
 import "core:slice"
 import "core:strings"
+import "root:errors"
 
 From :: struct {
     language:                   string,
@@ -55,6 +56,7 @@ From :: struct {
     shared_bsd_arm64:           string `json:"shared.bsd.arm64"`,
     // General
     ignore:                     IgnoreSet,
+    overwrite:                  OverwriteSet,
     // C
     headers:                    [dynamic]string,
     headers_linux:              [dynamic]string `json:"headers.linux"`,
@@ -130,6 +132,13 @@ IgnoreSet :: struct {
     functions: SingleList,
     variables: SingleList,
     types:     SingleList,
+}
+
+OverwriteSet :: struct {
+    constants: map[string]string,
+    functions: map[string]string,
+    variables: map[string]string,
+    types:     map[string]string,
 }
 
 Trim :: union {
@@ -673,3 +682,44 @@ single_list_glob :: proc(list: SingleList, value: string) -> bool {
 contains :: proc {
     single_list_contains,
 }
+
+overwrite_type :: proc(
+    ow: OverwriteSet,
+    name: string,
+) -> (
+    value: Maybe(Type),
+    err: errors.Error,
+) {
+    if value_str, ok := ow.types[name]; ok {
+        return parse_type(value_str)
+    }
+    return
+}
+
+overwrite_func :: proc(
+    ow: OverwriteSet,
+    name: string,
+) -> (
+    value: Maybe(Function),
+    err: errors.Error,
+) {
+    if value_str, ok := ow.functions[name]; ok {
+        return parse_func(value_str)
+    }
+    return
+}
+
+overwrite_constant :: proc(
+    ow: OverwriteSet,
+    name: string,
+) -> (
+    value: Maybe(Constant),
+    err: errors.Error,
+) {
+    if value_str, ok := ow.constants[name]; ok {
+        return parse_constant(value_str)
+    }
+    return
+}
+
+overwrite_var :: overwrite_type

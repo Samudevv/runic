@@ -145,6 +145,17 @@ generate_runestone :: proc(
                     continue
                 }
 
+                if ow_tp, ow_err := runic.overwrite_type(rf.overwrite, name.?);
+                   ow_err != nil {
+                    fmt.eprintfln(
+                        "Type Overwrite for \"{}\" failed to parse: {}",
+                        name.?,
+                        ow_err,
+                    )
+                } else if ow_tp != nil {
+                    tp = ow_tp.?
+                }
+
                 tp.spec = check_unknown_types(
                     tp.spec,
                     &rs.types,
@@ -177,7 +188,19 @@ generate_runestone :: proc(
                 &anon_counter,
             )
 
-            if v_name == nil || runic.single_list_glob(rf.ignore.variables, v_name.?) do continue
+            if v_name == nil do continue
+            if runic.single_list_glob(rf.ignore.variables, v_name.?) do continue
+
+            if ow_tp, ow_err := runic.overwrite_var(rf.overwrite, v_name.?);
+               ow_err != nil {
+                fmt.eprintfln(
+                    "Variable Overwrite of \"{}\" failed to parse: {}",
+                    v_name.?,
+                    ow_err,
+                )
+            } else if ow_tp != nil {
+                v_type = ow_tp.?
+            }
 
             sym.value = v_type
 
@@ -212,7 +235,20 @@ generate_runestone :: proc(
                 isz,
                 &anon_counter,
             )
-            if fc.name == nil || runic.single_list_glob(rf.ignore.functions, fc.name.?) do continue
+
+            if fc.name == nil do continue
+            if runic.single_list_glob(rf.ignore.functions, fc.name.?) do continue
+
+            if ow_fn, ow_err := runic.overwrite_func(rf.overwrite, fc.name.?);
+               ow_err != nil {
+                fmt.eprintfln(
+                    "Function Overwrite of \"{}\" failed to parse: {}",
+                    fc.name.?,
+                    ow_err,
+                )
+            } else if ow_fn != nil {
+                rnfn = ow_fn.?
+            }
 
             if b, ok := rnfn.return_type.spec.(runic.Builtin);
                ok && b == .Untyped {
@@ -323,6 +359,19 @@ generate_runestone :: proc(
         macro_loop: for entry in p.macros.data {
             name, macro := entry.key, entry.value
             if runic.single_list_glob(rf.ignore.macros, name) {
+                continue
+            }
+            if ow_const, ow_err := runic.overwrite_constant(
+                rf.overwrite,
+                name,
+            ); ow_err != nil {
+                fmt.eprintfln(
+                    "Constant Overwrite of \"{}\" failed to parse: {}",
+                    name,
+                    ow_err,
+                )
+            } else if ow_const != nil {
+                om.insert(&rs.constants, strings.clone(name), ow_const.?)
                 continue
             }
 
@@ -1012,42 +1061,38 @@ int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
     case .Linux, .Macos, .BSD:
         switch plat.arch {
         case .x86_64, .arm64:
-            return(
-                 {
-                    char = 1,
-                    short = 2,
-                    Int = 4,
-                    long = 8,
-                    longlong = 8,
-                    float = 4,
-                    double = 8,
-                    long_double = 16,
-                    _Bool = 1,
-                    float_Complex = 8,
-                    double_Complex = 16,
-                    long_double_Complex = 32,
-                } \
-            )
+            return ({
+                        char = 1,
+                        short = 2,
+                        Int = 4,
+                        long = 8,
+                        longlong = 8,
+                        float = 4,
+                        double = 8,
+                        long_double = 16,
+                        _Bool = 1,
+                        float_Complex = 8,
+                        double_Complex = 16,
+                        long_double_Complex = 32,
+                    })
         }
     case .Windows:
         switch plat.arch {
         case .x86_64, .arm64:
-            return(
-                 {
-                    char = 1,
-                    short = 2,
-                    Int = 4,
-                    long = 4,
-                    longlong = 8,
-                    float = 4,
-                    double = 8,
-                    long_double = 8,
-                    _Bool = 1,
-                    float_Complex = 8,
-                    double_Complex = 16,
-                    long_double_Complex = 16,
-                } \
-            )
+            return ({
+                        char = 1,
+                        short = 2,
+                        Int = 4,
+                        long = 4,
+                        longlong = 8,
+                        float = 4,
+                        double = 8,
+                        long_double = 8,
+                        _Bool = 1,
+                        float_Complex = 8,
+                        double_Complex = 16,
+                        long_double_Complex = 16,
+                    })
         }
     }
     return

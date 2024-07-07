@@ -646,7 +646,7 @@ write_runestone :: proc(
     return .None
 }
 
-@(private = "file")
+@(private)
 parse_func :: proc(def: string) -> (func: Function, err: errors.Error) {
     token_arena: runtime.Arena
     defer runtime.arena_destroy(&token_arena)
@@ -666,7 +666,7 @@ parse_func :: proc(def: string) -> (func: Function, err: errors.Error) {
     return
 }
 
-@(private = "file")
+@(private)
 parse_type :: proc(def: string) -> (type: Type, err: errors.Error) {
     token_arena: runtime.Arena
     defer runtime.arena_destroy(&token_arena)
@@ -1071,7 +1071,7 @@ parse_union_token :: proc(
     return
 }
 
-@(private = "file")
+@(private)
 parse_constant :: proc(def: string) -> (c: Constant, err: errors.Error) {
     token_arena: runtime.Arena
     defer runtime.arena_destroy(&token_arena)

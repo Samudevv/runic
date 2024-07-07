@@ -139,6 +139,7 @@ generate_runestone :: proc(
                 &func_protos,
                 isz,
                 &anon_counter,
+                rf.overwrite,
             )
 
             if name == nil do continue
@@ -180,6 +181,7 @@ generate_runestone :: proc(
                 &func_protos,
                 isz,
                 &anon_counter,
+                rf.overwrite,
             )
 
             if v_name == nil do continue
@@ -228,6 +230,7 @@ generate_runestone :: proc(
                 &func_protos,
                 isz,
                 &anon_counter,
+                rf.overwrite,
             )
 
             if fc.name == nil do continue
@@ -324,6 +327,7 @@ generate_runestone :: proc(
                             &func_protos,
                             isz,
                             &anon_counter,
+                            rf.overwrite,
                         )
                         if name != nil {
 
@@ -614,6 +618,7 @@ parser_variable_to_runic_type :: proc(
     func_protos: ^[dynamic]string,
     isz: Int_Sizes,
     anon_counter: ^int,
+    ow: runic.OverwriteSet,
 ) -> (
     tp: runic.Type,
     name: Maybe(string),
@@ -718,12 +723,14 @@ parser_variable_to_runic_type :: proc(
                     func_protos,
                     isz,
                     anon_counter,
+                    ow,
                 )
                 if m_name == nil do m_name = fmt.aprintf("memb{}", count)
 
                 if anon_name, anon_type, is_anon := runic.create_anon_type(
                     m_type.spec,
                     anon_counter,
+                    ow,
                 ); is_anon {
                     om.insert(types, anon_name, anon_type)
                     m_type.spec = anon_name
@@ -776,12 +783,14 @@ parser_variable_to_runic_type :: proc(
                     func_protos,
                     isz,
                     anon_counter,
+                    ow,
                 )
                 if m_name == nil do m_name = fmt.aprintf("unio{}", count)
 
                 if anon_name, anon_type, is_anon := runic.create_anon_type(
                     m_type.spec,
                     anon_counter,
+                    ow,
                 ); is_anon {
                     om.insert(types, anon_name, anon_type)
                     m_type.spec = anon_name
@@ -837,6 +846,7 @@ parser_variable_to_runic_type :: proc(
                 func_protos,
                 isz,
                 anon_counter,
+                ow,
             )
         }
 
@@ -856,6 +866,7 @@ parser_variable_to_runic_type :: proc(
             func_protos,
             isz,
             anon_counter,
+            ow,
         )
 
         if b, ok := rf.return_type.spec.(runic.Builtin); ok && b == .Untyped {
@@ -898,6 +909,7 @@ parser_function_to_runic_function :: proc(
     func_protos: ^[dynamic]string,
     isz: Int_Sizes,
     anon_counter: ^int,
+    ow: runic.OverwriteSet,
 ) -> (
     rf: runic.Function,
 ) {
@@ -909,6 +921,7 @@ parser_function_to_runic_function :: proc(
         func_protos,
         isz,
         anon_counter,
+        ow,
     )
 
     if b, ok := f_type.spec.(runic.Builtin); ok && b == .Untyped {
@@ -926,12 +939,14 @@ parser_function_to_runic_function :: proc(
             func_protos,
             isz,
             anon_counter,
+            ow,
         )
         if m_name == nil do m_name = fmt.aprintf("param{}", count)
 
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             m_type.spec,
             anon_counter,
+            ow,
         ); is_anon {
             om.insert(types, anon_name, anon_type)
             m_type.spec = anon_name

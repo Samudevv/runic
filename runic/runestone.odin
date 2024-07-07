@@ -1293,6 +1293,7 @@ write_function :: proc(wd: io.Writer, fc: Function) -> io.Error {
 create_anon_type :: proc(
     spec: TypeSpecifier,
     anon_counter: ^int,
+    ow: OverwriteSet,
 ) -> (
     anon_name: string,
     anon_type: Type,
@@ -1324,6 +1325,16 @@ create_anon_type :: proc(
     if is_anon {
         anon_name = fmt.aprintf("anon_{}", anon_counter^)
         anon_counter^ += 1
+
+        if ow_tp, ow_err := overwrite_type(ow, anon_name); ow_err != nil {
+            fmt.eprintfln(
+                "Type Overwrite of \"{}\" failed to parse: {}",
+                anon_name,
+                ow_err,
+            )
+        } else if ow_tp != nil {
+            anon_type = ow_tp.?
+        }
     }
 
     return

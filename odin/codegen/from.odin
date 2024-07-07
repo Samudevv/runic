@@ -180,6 +180,7 @@ generate_runestone :: proc(
                             &anon_counter,
                             &imports,
                             nil,
+                            rf.overwrite,
                             rs_arena_alloc,
                         )
                         if type_err != nil {
@@ -245,6 +246,7 @@ generate_runestone :: proc(
                                 &anon_counter,
                                 &imports,
                                 nil,
+                                rf.overwrite,
                                 rs_arena_alloc,
                             )
                             if fn_err != nil {
@@ -356,6 +358,7 @@ generate_runestone :: proc(
                                 &anon_counter,
                                 &imports,
                                 nil,
+                                rf.overwrite,
                                 rs_arena_alloc,
                             )
                             if type_err != nil {
@@ -430,6 +433,7 @@ proc_type_to_function :: proc(
     anon_counter: ^int,
     imports: ^map[string]Import,
     current_package: Maybe(^odina.Package),
+    ow: runic.OverwriteSet,
     allocator := context.allocator,
 ) -> (
     fn: runic.Function,
@@ -458,12 +462,14 @@ proc_type_to_function :: proc(
             anon_counter,
             imports,
             current_package,
+            ow,
             allocator,
         ) or_return
 
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             type.spec,
             anon_counter,
+            ow,
         ); is_anon {
             om.insert(types, anon_name, anon_type)
             type.spec = anon_name
@@ -511,12 +517,14 @@ proc_type_to_function :: proc(
             anon_counter,
             imports,
             current_package,
+            ow,
             allocator,
         ) or_return
 
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             type.spec,
             anon_counter,
+            ow,
         ); is_anon {
             om.insert(types, anon_name, anon_type)
             type.spec = anon_name
@@ -604,6 +612,7 @@ type_to_type :: proc(
     anon_counter: ^int,
     imports: ^map[string]Import,
     current_package: Maybe(^odina.Package),
+    ow: runic.OverwriteSet,
     allocator := context.allocator,
 ) -> (
     type: runic.Type,
@@ -639,6 +648,7 @@ type_to_type :: proc(
                         pkg,
                         types,
                         anon_counter,
+                        ow,
                         allocator,
                     ) or_return
                     om.insert(types, prefix_type_name, type)
@@ -656,6 +666,7 @@ type_to_type :: proc(
             anon_counter,
             imports,
             current_package,
+            ow,
             allocator,
         ) or_return
         if len(type.array_info) != 0 {
@@ -672,6 +683,7 @@ type_to_type :: proc(
             anon_counter,
             imports,
             current_package,
+            ow,
             allocator,
         ) or_return
 
@@ -700,6 +712,7 @@ type_to_type :: proc(
             anon_counter,
             imports,
             current_package,
+            ow,
             allocator,
         ) or_return
         if len(type.array_info) != 0 {
@@ -723,6 +736,7 @@ type_to_type :: proc(
                 anon_counter,
                 imports,
                 current_package,
+                ow,
                 allocator,
             ) or_return
 
@@ -778,6 +792,7 @@ type_to_type :: proc(
                 anon_counter,
                 imports,
                 current_package,
+                ow,
                 allocator,
             ) or_return
             type.spec = u
@@ -790,6 +805,7 @@ type_to_type :: proc(
             anon_counter,
             imports,
             current_package,
+            ow,
             allocator,
         ) or_return
         type.spec = s
@@ -820,6 +836,7 @@ type_to_type :: proc(
                 anon_counter,
                 imports,
                 nil,
+                ow,
                 allocator,
             ) or_return
             return
@@ -831,6 +848,7 @@ type_to_type :: proc(
                 type_name,
                 types,
                 anon_counter,
+                ow,
                 allocator,
             ) or_return
         }
@@ -853,6 +871,7 @@ type_to_type :: proc(
             anon_counter,
             imports,
             current_package,
+            ow,
             allocator,
         )
     case ^odina.Proc_Type:
@@ -864,6 +883,7 @@ type_to_type :: proc(
             anon_counter,
             imports,
             current_package,
+            ow,
             allocator,
         ) or_return
 
@@ -950,7 +970,39 @@ type_identifier_to_type_specifier :: proc(
         t = Bool32
     case "b64":
         t = Bool64
-    case "i128", "u128", "i16le", "i32le", "i64le", "i128le", "u16le", "u32le", "u64le", "u128le", "i16be", "i32be", "i64be", "i128be", "u16be", "u32be", "u64be", "u128be", "f16le", "f32le", "f64le", "f16be", "f32be", "f64be", "complex32", "complex64", "complex128", "quaternion64", "quaternion128", "quaternion256", "string", "typeid", "any":
+    case "i128",
+         "u128",
+         "i16le",
+         "i32le",
+         "i64le",
+         "i128le",
+         "u16le",
+         "u32le",
+         "u64le",
+         "u128le",
+         "i16be",
+         "i32be",
+         "i64be",
+         "i128be",
+         "u16be",
+         "u32be",
+         "u64be",
+         "u128be",
+         "f16le",
+         "f32le",
+         "f64le",
+         "f16be",
+         "f32be",
+         "f64be",
+         "complex32",
+         "complex64",
+         "complex128",
+         "quaternion64",
+         "quaternion128",
+         "quaternion256",
+         "string",
+         "typeid",
+         "any":
         err = errors.message("{} is not supported", ident)
     case:
         t = strings.clone(ident, allocator)
@@ -966,6 +1018,7 @@ struct_type_to_union :: proc(
     anon_counter: ^int,
     imports: ^map[string]Import,
     current_package: Maybe(^odina.Package),
+    ow: runic.OverwriteSet,
     allocator := context.allocator,
 ) -> (
     u: runic.Union,
@@ -978,6 +1031,7 @@ struct_type_to_union :: proc(
         anon_counter,
         imports,
         current_package,
+        ow,
         allocator,
     ) or_return
     u.members = s.members
@@ -991,6 +1045,7 @@ struct_type_to_struct :: proc(
     anon_counter: ^int,
     imports: ^map[string]Import,
     current_package: Maybe(^odina.Package),
+    ow: runic.OverwriteSet,
     allocator := context.allocator,
 ) -> (
     s: runic.Struct,
@@ -1016,12 +1071,14 @@ struct_type_to_struct :: proc(
             anon_counter,
             imports,
             current_package,
+            ow,
             allocator,
         ) or_return
 
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             type.spec,
             anon_counter,
+            ow,
         ); is_anon {
             om.insert(types, anon_name, anon_type)
             type.spec = anon_name
@@ -1244,6 +1301,7 @@ lookup_type_of_import :: proc(
     pkg, type_name: string,
     types: ^om.OrderedMap(string, runic.Type),
     anon_counter: ^int,
+    ow: runic.OverwriteSet,
     allocator := context.allocator,
 ) -> (
     type: runic.Type,
@@ -1295,6 +1353,7 @@ lookup_type_of_import :: proc(
         imp.pkg,
         types,
         anon_counter,
+        ow,
         allocator,
     )
 
@@ -1307,6 +1366,7 @@ lookup_type_in_package :: proc(
     pkg: ^odina.Package,
     types: ^om.OrderedMap(string, runic.Type),
     anon_counter: ^int,
+    ow: runic.OverwriteSet,
     allocator := context.allocator,
 ) -> (
     type: runic.Type,
@@ -1339,6 +1399,7 @@ lookup_type_in_package :: proc(
                             anon_counter,
                             &local_imports,
                             pkg,
+                            ow,
                             allocator,
                         )
                         return

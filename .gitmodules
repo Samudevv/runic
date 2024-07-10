@@ -1,0 +1,3 @@
+[submodule "odin-yaml"]
+	path = shared/yaml
+	url = https://github.com/PucklaJ/odin-yaml.git

@@ -19,10 +19,10 @@ package runic
 
 import "base:runtime"
 import "core:bytes"
-// import "core:encoding/json"
 import "core:io"
 import "core:path/filepath"
 import "core:slice"
+import "core:strconv"
 import "core:strings"
 import "root:errors"
 import "shared:yaml"
@@ -67,7 +67,7 @@ To :: struct {
     add_suffix:    AddSet,
     ignore_arch:   bool,
     // Odin
-    package_name:  string `json:"package"`,
+    package_name:  string,
     detect:        OdinDetect,
     no_build_tag:  bool,
     use_when_else: bool,
@@ -512,10 +512,45 @@ parse_rune :: proc(
                     #partial switch v in value {
                     case yaml.Mapping:
                         for d_key, d_value in v {
-                            // TODO: convert i64 and f64 to string
                             #partial switch d_v in d_value {
                             case string:
                                 d_map[d_key] = d_v
+                            case i64:
+                                buf, mem_err := make(
+                                    [dynamic]u8,
+                                    0,
+                                    20,
+                                    rn_arena_alloc,
+                                )
+                                errors.wrap(mem_err) or_return
+
+                                d_map[d_key] = strconv.append_int(
+                                    buf[:],
+                                    d_v,
+                                    10,
+                                )
+                            case f64:
+                                buf, mem_err := make(
+                                    [dynamic]u8,
+                                    0,
+                                    310,
+                                    rn_arena_alloc,
+                                )
+                                errors.wrap(mem_err) or_return
+
+                                d_map[d_key] = strconv.append_float(
+                                    buf[:],
+                                    d_v,
+                                    'f',
+                                    4,
+                                    64,
+                                )
+                            case bool:
+                                if d_v {
+                                    d_map[d_key] = "1"
+                                } else {
+                                    d_map[d_key] = "0"
+                                }
                             case:
                                 err = errors.message(
                                     "\"from.{}.{}\" has invalid type %T",
@@ -840,222 +875,6 @@ parse_rune :: proc(
 
     return
 }
-
-/*parse_rune_json :: proc(
-    rd: io.Reader,
-    file_path: string,
-) -> (
-    rn: Rune,
-    err: union {
-        io.Error,
-        json.Unmarshal_Error,
-    },
-) {
-    rn_arena_alloc := runtime.arena_allocator(&rn.arena)
-
-    buf: bytes.Buffer
-    bytes.buffer_init_allocator(&buf, 0, 0)
-    defer bytes.buffer_destroy(&buf)
-
-    io.copy(bytes.buffer_to_stream(&buf), rd) or_return
-
-    data := bytes.buffer_to_bytes(&buf)
-
-    json.unmarshal(data, &rn, allocator = rn_arena_alloc) or_return
-
-    switch &to in rn.to {
-    case To:
-        to.trim_prefix = trim_to_trim_set(to.trim_prefix)
-        to.trim_suffix = trim_to_trim_set(to.trim_suffix)
-        to.add_prefix = add_to_add_set(to.add_prefix)
-        to.add_suffix = add_to_add_set(to.add_suffix)
-
-        if to.detect.multi_pointer == "" {
-            to.detect.multi_pointer = "auto"
-        }
-    case string:
-        if to != "stdout" {
-            to = relative_to_file(file_path, to, rn_arena_alloc)
-        }
-    }
-
-    switch &from in rn.from {
-    case From:
-        from.static = relative_to_file(
-            file_path,
-            from.static,
-            rn_arena_alloc,
-            true,
-        )
-        from.static_linux = relative_to_file(
-            file_path,
-            from.static_linux,
-            rn_arena_alloc,
-            true,
-        )
-        from.static_linux_x86_64 = relative_to_file(
-            file_path,
-            from.static_linux_x86_64,
-            rn_arena_alloc,
-            true,
-        )
-        from.static_linux_arm64 = relative_to_file(
-            file_path,
-            from.static_linux_arm64,
-            rn_arena_alloc,
-            true,
-        )
-        from.static_windows = relative_to_file(
-            file_path,
-            from.static_windows,
-            rn_arena_alloc,
-            true,
-        )
-        from.static_windows_x86_64 = relative_to_file(
-            file_path,
-            from.static_windows_x86_64,
-            rn_arena_alloc,
-            true,
-        )
-        from.static_windows_arm64 = relative_to_file(
-            file_path,
-            from.static_windows_arm64,
-            rn_arena_alloc,
-            true,
-        )
-        from.static_macos = relative_to_file(
-            file_path,
-            from.static_macos,
-            rn_arena_alloc,
-            true,
-        )
-        from.static_macos_x86_64 = relative_to_file(
-            file_path,
-            from.static_macos_x86_64,
-            rn_arena_alloc,
-            true,
-        )
-        from.static_macos_arm64 = relative_to_file(
-            file_path,
-            from.static_macos_arm64,
-            rn_arena_alloc,
-            true,
-        )
-        from.static_bsd = relative_to_file(
-            file_path,
-            from.static_bsd,
-            rn_arena_alloc,
-            true,
-        )
-        from.static_bsd_x86_64 = relative_to_file(
-            file_path,
-            from.static_bsd_x86_64,
-            rn_arena_alloc,
-            true,
-        )
-        from.static_bsd_arm64 = relative_to_file(
-            file_path,
-            from.static_bsd_arm64,
-            rn_arena_alloc,
-            true,
-        )
-
-        from.shared = relative_to_file(
-            file_path,
-            from.shared,
-            rn_arena_alloc,
-            true,
-        )
-        from.shared_linux = relative_to_file(
-            file_path,
-            from.shared_linux,
-            rn_arena_alloc,
-            true,
-        )
-        from.shared_linux_x86_64 = relative_to_file(
-            file_path,
-            from.shared_linux_x86_64,
-            rn_arena_alloc,
-            true,
-        )
-        from.shared_linux_arm64 = relative_to_file(
-            file_path,
-            from.shared_linux_arm64,
-            rn_arena_alloc,
-            true,
-        )
-        from.shared_windows = relative_to_file(
-            file_path,
-            from.shared_windows,
-            rn_arena_alloc,
-            true,
-        )
-        from.shared_windows_x86_64 = relative_to_file(
-            file_path,
-            from.shared_windows_x86_64,
-            rn_arena_alloc,
-            true,
-        )
-        from.shared_windows_arm64 = relative_to_file(
-            file_path,
-            from.shared_windows_arm64,
-            rn_arena_alloc,
-            true,
-        )
-        from.shared_macos = relative_to_file(
-            file_path,
-            from.shared_macos,
-            rn_arena_alloc,
-            true,
-        )
-        from.shared_macos_x86_64 = relative_to_file(
-            file_path,
-            from.shared_macos_x86_64,
-            rn_arena_alloc,
-            true,
-        )
-        from.shared_macos_arm64 = relative_to_file(
-            file_path,
-            from.shared_macos_arm64,
-            rn_arena_alloc,
-            true,
-        )
-        from.shared_bsd = relative_to_file(
-            file_path,
-            from.shared_bsd,
-            rn_arena_alloc,
-            true,
-        )
-        from.shared_bsd_x86_64 = relative_to_file(
-            file_path,
-            from.shared_bsd_x86_64,
-            rn_arena_alloc,
-            true,
-        )
-        from.shared_bsd_arm64 = relative_to_file(
-            file_path,
-            from.shared_bsd_arm64,
-            rn_arena_alloc,
-            true,
-        )
-
-        // TODO: for all platforms
-        for &path in from.includedirs {
-            path = relative_to_file(file_path, path, rn_arena_alloc)
-        }
-
-    case string:
-        if from != "stdin" {
-            from = relative_to_file(file_path, from, rn_arena_alloc)
-        }
-    case [dynamic]string:
-        for &path in from {
-            path = relative_to_file(file_path, path, rn_arena_alloc)
-        }
-    }
-
-    return
-}*/
 
 rune_destroy :: proc(rn: ^Rune) {
     runtime.arena_destroy(&rn.arena)

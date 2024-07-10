@@ -37,10 +37,10 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, rn.from.(From).language, "c")
 
     f := rn.from.(From)
-    expect_value(t, f.shared, "libfoo.so")
-    expect_value(t, len(f.headers), 3)
-    expect_value(t, len(f.headers_macos), 1)
-    expect_value(t, len(f.overwrite.types), 1)
+    expect_value(t, f.shared.d[Platform{.Any, .Any}], "libfoo.so")
+    expect_value(t, len(f.headers.d[Platform{.Any, .Any}]), 3)
+    expect_value(t, len(f.headers.d[Platform{.Any, .Any}]), 1)
+    expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].types), 1)
 
     to := rn.to.(To)
     expect_value(t, to.static_switch, "FOO_STATIC")

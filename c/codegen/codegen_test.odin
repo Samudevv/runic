@@ -29,21 +29,28 @@ test_c_generate_runestone :: proc(t: ^testing.T) {
     plat := runic.platform_from_host()
 
     from := runic.From {
-        shared         = "libtest_data.so",
-        shared_windows = "test_data.dll",
-        headers        =  {
-            "test_data/array.h",
-            "test_data/builtin.h",
-            "test_data/enum.h",
-            "test_data/function.h",
-            "test_data/function_pointer.h",
-            "test_data/gnu_attribute.h",
-            "test_data/include.h",
-            "test_data/macros.h",
-            "test_data/pointer.h",
+        shared = {
+            d = {
+                runic.Platform{.Any, .Any} = "libtest_data.so",
+                runic.Platform{.Windows, .Any} = "test_data.dll",
+            },
+        },
+        headers = {
+            d = {
+                runic.Platform{.Any, .Any} = {
+                    "test_data/array.h",
+                    "test_data/builtin.h",
+                    "test_data/enum.h",
+                    "test_data/function.h",
+                    "test_data/function_pointer.h",
+                    "test_data/gnu_attribute.h",
+                    "test_data/include.h",
+                    "test_data/macros.h",
+                    "test_data/pointer.h",
+                },
+            },
         },
     }
-    defer delete(from.headers)
 
     to := runic.To{}
 

@@ -17,8 +17,8 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package runic
 
-//import "base:runtime"
-//import "core:strings"
+import "base:runtime"
+import "core:strings"
 
 Platform :: struct {
     os:   OS,
@@ -70,60 +70,6 @@ platform_from_host :: proc() -> Platform {
     return Platform{os = host_os(), arch = host_arch()}
 }
 
-platform_value :: proc(
-    $T: typeid,
-    plat: Platform,
-    all,
-    linux,
-    linux_x86_64,
-    linux_arm64,
-    windows,
-    windows_x86_64,
-    windows_arm64,
-    macos,
-    macos_x86_64,
-    macos_arm64,
-    bsd,
-    bsd_x86_64,
-    bsd_arm64: T,
-) -> T {
-    switch plat.os {
-    case .Linux:
-        switch plat.arch {
-        case .x86_64:
-            if len(linux_x86_64) != 0 do return linux_x86_64
-        case .arm64:
-            if len(linux_arm64) != 0 do return linux_arm64
-        }
-        if len(linux) != 0 do return linux
-    case .Windows:
-        switch plat.arch {
-        case .x86_64:
-            if len(windows_x86_64) != 0 do return windows_x86_64
-        case .arm64:
-            if len(windows_arm64) != 0 do return windows_arm64
-        }
-        if len(windows) != 0 do return windows
-    case .Macos:
-        switch plat.arch {
-        case .x86_64:
-            if len(macos_x86_64) != 0 do return macos_x86_64
-        case .arm64:
-            if len(macos_arm64) != 0 do return macos_arm64
-        }
-        if len(macos) != 0 do return macos
-    case .BSD:
-        switch plat.arch {
-        case .x86_64:
-            if len(bsd_x86_64) != 0 do return bsd_x86_64
-        case .arm64:
-            if len(bsd_arm64) != 0 do return bsd_arm64
-        }
-        if len(bsd) != 0 do return bsd
-    }
-    return all
-}
-
 platform_from_strings :: proc(
     os, arch: Maybe(string),
 ) -> (
@@ -133,7 +79,7 @@ platform_from_strings :: proc(
     if os != nil {
         switch plat.os {
         case .Linux, .Windows, .Macos, .BSD, .Any:
-            // A reminder to implement more platforms
+        // A reminder to implement more platforms
         }
 
         switch os.? {
@@ -154,7 +100,7 @@ platform_from_strings :: proc(
     if arch != nil {
         switch plat.arch {
         case .x86_64, .arm64, .Any:
-            // A reminder to implement more platforms
+        // A reminder to implement more platforms
         }
 
         switch arch.? {
@@ -172,43 +118,35 @@ platform_from_strings :: proc(
     return
 }
 
-/*set_library :: proc(plat: Platform, rs: ^Runestone, from: From) {
-    static_name := platform_value(
-        string,
-        plat,
-        all = from.static,
-        linux = from.static_linux,
-        linux_x86_64 = from.static_linux_x86_64,
-        linux_arm64 = from.static_linux_arm64,
-        windows = from.static_windows,
-        windows_x86_64 = from.static_windows_x86_64,
-        windows_arm64 = from.static_windows_arm64,
-        macos = from.static_macos,
-        macos_x86_64 = from.static_macos_x86_64,
-        macos_arm64 = from.static_macos_arm64,
-        bsd = from.static_bsd,
-        bsd_x86_64 = from.static_bsd_x86_64,
-        bsd_arm64 = from.static_bsd_arm64,
-    )
-    shared_name := platform_value(
-        string,
-        plat,
-        all = from.shared,
-        linux = from.shared_linux,
-        linux_x86_64 = from.shared_linux_x86_64,
-        linux_arm64 = from.shared_linux_arm64,
-        windows = from.shared_windows,
-        windows_x86_64 = from.shared_windows_x86_64,
-        windows_arm64 = from.shared_windows_arm64,
-        macos = from.shared_macos,
-        macos_x86_64 = from.shared_macos_x86_64,
-        macos_arm64 = from.shared_macos_arm64,
-        bsd = from.shared_bsd,
-        bsd_x86_64 = from.shared_bsd_x86_64,
-        bsd_arm64 = from.shared_bsd_arm64,
-    )
+platform_value_get :: proc(
+    $T: typeid,
+    v: PlatformValue(T),
+    plat: Platform,
+) -> (
+    T,
+    bool,
+) #optional_ok {
+    ok: bool = ---
+    plat_v: T = ---
 
+    if plat_v, ok = v.d[plat]; ok {
+        return plat_v, true
+    } else if plat_v, ok = v.d[Platform{os = plat.os, arch = .Any}]; ok {
+        return plat_v, true
+    } else if plat_v, ok = v.d[Platform{os = .Any, arch = .Any}]; ok {
+        return plat_v, true
+    }
+
+    return T{}, false
+}
+
+set_library :: proc(plat: Platform, rs: ^Runestone, from: From) {
     rs_arena_alloc := runtime.arena_allocator(&rs.arena)
-    if len(shared_name) != 0 do rs.lib.shared = strings.clone(shared_name, rs_arena_alloc)
-    if len(static_name) != 0 do rs.lib.static = strings.clone(static_name, rs_arena_alloc)
-}*/
+
+    if static_name, ok := platform_value_get(string, from.static, plat); ok {
+        rs.lib.static = strings.clone(static_name, rs_arena_alloc)
+    }
+    if shared_name, ok := platform_value_get(string, from.shared, plat); ok {
+        rs.lib.shared = strings.clone(shared_name, rs_arena_alloc)
+    }
+}

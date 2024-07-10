@@ -49,6 +49,8 @@ generate_bindings :: proc(
                 os_names: []string = ---
 
                 switch plat.os {
+                case .Any:
+                    panic("invalid os Any")
                 case .Linux:
                     os_names = []string{"linux"}
                 case .Windows:
@@ -64,6 +66,8 @@ generate_bindings :: proc(
                     if !rn.ignore_arch {
                         io.write_rune(wd, ' ') or_return
                         switch plat.arch {
+                        case .Any:
+                            panic("invalid arch Any")
                         case .x86_64:
                             io.write_string(wd, "amd64") or_return
                         case .arm64:
@@ -986,6 +990,8 @@ when_plats :: proc(
         io.write_string(wd, "ODIN_OS == .") or_return
 
         switch plat.os {
+        case .Any:
+            panic("invalid os Any")
         case .Linux:
             io.write_string(wd, "Linux") or_return
         case .Windows:
@@ -1002,6 +1008,8 @@ when_plats :: proc(
         if !ignore_arch {
             io.write_string(wd, ") && (ODIN_ARCH == .") or_return
             switch plat.arch {
+            case .Any:
+                panic("invalid arch Any")
             case .x86_64:
                 io.write_string(wd, "amd64") or_return
             case .arm64:

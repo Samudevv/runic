@@ -74,10 +74,10 @@ To :: struct {
 }
 
 TrimSet :: struct {
-    functions: yaml.Value,
-    variables: yaml.Value,
-    types:     yaml.Value,
-    constants: yaml.Value,
+    functions: []string,
+    variables: []string,
+    types:     []string,
+    constants: []string,
 }
 
 AddSet :: struct {
@@ -88,10 +88,10 @@ AddSet :: struct {
 }
 
 IgnoreSet :: struct {
-    macros:    yaml.Value,
-    functions: yaml.Value,
-    variables: yaml.Value,
-    types:     yaml.Value,
+    macros:    []string,
+    functions: []string,
+    variables: []string,
+    types:     []string,
 }
 
 OverwriteSet :: struct {
@@ -105,11 +105,6 @@ OdinDetect :: struct {
     multi_pointer: string,
 }
 
-
-SingleList :: union {
-    string,
-    [dynamic]string,
-}
 
 PlatformValue :: struct(T: typeid) {
     d: map[Platform]T,
@@ -259,20 +254,133 @@ parse_rune :: proc(
                     i_set: IgnoreSet
                     #partial switch v in value {
                     case string:
-                        i_set.macros = v
-                        i_set.functions = v
-                        i_set.variables = v
-                        i_set.types = v
+                        arr := make([dynamic]string, rn_arena_alloc)
+                        append(&arr, v)
+
+                        i_set.macros = arr[:]
+                        i_set.functions = arr[:]
+                        i_set.variables = arr[:]
+                        i_set.types = arr[:]
                     case yaml.Sequence:
-                        i_set.macros = v
-                        i_set.functions = v
-                        i_set.variables = v
-                        i_set.types = v
+                        arr := make([dynamic]string, rn_arena_alloc)
+
+                        for seq_v, idx in v {
+                            #partial switch v_seq in seq_v {
+                            case string:
+                                append(&arr, v_seq)
+                            case:
+                                err = errors.message(
+                                    "\"from.{}\"[{}] has invalid type %T",
+                                    key,
+                                    idx,
+                                    v_seq,
+                                )
+                                return
+                            }
+                        }
+
+                        i_set.macros = arr[:]
+                        i_set.functions = arr[:]
+                        i_set.variables = arr[:]
+                        i_set.types = arr[:]
                     case yaml.Mapping:
-                        i_set.macros = v["macros"]
-                        i_set.functions = v["functions"]
-                        i_set.variables = v["variables"]
-                        i_set.types = v["types"]
+                        macros_arr := make([dynamic]string, rn_arena_alloc)
+                        functions_arr := make([dynamic]string, rn_arena_alloc)
+                        variables_arr := make([dynamic]string, rn_arena_alloc)
+                        types_arr := make([dynamic]string, rn_arena_alloc)
+
+                        if macros, ok := v["macros"]; ok {
+                            #partial switch m in macros {
+                            case string:
+                                append(&macros_arr, m)
+                            case yaml.Sequence:
+                                for seq_m, idx in m {
+                                    #partial switch m_seq in seq_m {
+                                    case string:
+                                        append(&macros_arr, m_seq)
+                                    case:
+                                        err = errors.message(
+                                            "\"from.{}.macros\"[{}] has invalid type %T",
+                                            key,
+                                            idx,
+                                            m_seq,
+                                        )
+                                        return
+                                    }
+                                }
+                            }
+                        }
+
+                        if functions, ok := v["functions"]; ok {
+                            #partial switch f in functions {
+                            case string:
+                                append(&functions_arr, f)
+                            case yaml.Sequence:
+                                for seq_f, idx in f {
+                                    #partial switch f_seq in seq_f {
+                                    case string:
+                                        append(&functions_arr, f_seq)
+                                    case:
+                                        err = errors.message(
+                                            "\"from.{}.functions\"[{}] has invalid type %T",
+                                            key,
+                                            idx,
+                                            f_seq,
+                                        )
+                                        return
+                                    }
+                                }
+                            }
+                        }
+
+                        if variables, ok := v["variables"]; ok {
+                            #partial switch var in variables {
+                            case string:
+                                append(&variables_arr, var)
+                            case yaml.Sequence:
+                                for seq_var, idx in var {
+                                    #partial switch var_seq in seq_var {
+                                    case string:
+                                        append(&variables_arr, var_seq)
+                                    case:
+                                        err = errors.message(
+                                            "\"from.{}.variables\"[{}] has invalid type %T",
+                                            key,
+                                            idx,
+                                            var_seq,
+                                        )
+                                        return
+                                    }
+                                }
+                            }
+                        }
+
+                        if types, ok := v["types"]; ok {
+                            #partial switch t in types {
+                            case string:
+                                append(&types_arr, t)
+                            case yaml.Sequence:
+                                for seq_t, idx in t {
+                                    #partial switch t_seq in seq_t {
+                                    case string:
+                                        append(&types_arr, t_seq)
+                                    case:
+                                        err = errors.message(
+                                            "\"from.{}.types\"[{}] has invalid type %T",
+                                            key,
+                                            idx,
+                                            t_seq,
+                                        )
+                                        return
+                                    }
+                                }
+                            }
+                        }
+
+                        i_set.macros = macros_arr[:]
+                        i_set.functions = functions_arr[:]
+                        i_set.variables = variables_arr[:]
+                        i_set.types = types_arr[:]
                     case:
                         err = errors.message(
                             "\"from.{}\" has invalid type %T",
@@ -669,146 +777,423 @@ parse_rune :: proc(
                 t.out = relative_to_file(file_path, t.out, rn_arena_alloc)
             }
 
-            #partial switch trim_prefix in to["trim_prefix"] {
-            case string:
-                t.trim_prefix.functions = trim_prefix
-                t.trim_prefix.variables = trim_prefix
-                t.trim_prefix.types = trim_prefix
-                t.trim_prefix.constants = trim_prefix
-            case yaml.Sequence:
-                t.trim_prefix.functions = trim_prefix
-                t.trim_prefix.variables = trim_prefix
-                t.trim_prefix.types = trim_prefix
-                t.trim_prefix.constants = trim_prefix
-            case yaml.Mapping:
-                t.trim_prefix.functions = trim_prefix["functions"]
-                t.trim_prefix.variables = trim_prefix["variables"]
-                t.trim_prefix.types = trim_prefix["types"]
-                t.trim_prefix.constants = trim_prefix["constants"]
-            case:
-                err = errors.message(
-                    "\"to.trim_prefix\" has invalid type %T",
-                    trim_prefix,
-                )
-                return
+            if "trim_prefix" in to {
+                #partial switch trim_prefix in to["trim_prefix"] {
+                case string:
+                    arr := make([dynamic]string, rn_arena_alloc)
+                    append(&arr, trim_prefix)
+
+                    t.trim_prefix.functions = arr[:]
+                    t.trim_prefix.variables = arr[:]
+                    t.trim_prefix.types = arr[:]
+                    t.trim_prefix.constants = arr[:]
+                case yaml.Sequence:
+                    arr := make([dynamic]string, rn_arena_alloc)
+
+                    for seq_v, idx in trim_prefix {
+                        #partial switch v_seq in seq_v {
+                        case string:
+                            append(&arr, v_seq)
+                        case:
+                            err = errors.message(
+                                "\"to.trim_prefix\"[{}] has invalid type %T",
+                                idx,
+                                v_seq,
+                            )
+                            return
+                        }
+                    }
+
+                    t.trim_prefix.functions = arr[:]
+                    t.trim_prefix.variables = arr[:]
+                    t.trim_prefix.types = arr[:]
+                    t.trim_prefix.constants = arr[:]
+                case yaml.Mapping:
+                    functions_arr := make([dynamic]string, rn_arena_alloc)
+                    variables_arr := make([dynamic]string, rn_arena_alloc)
+                    types_arr := make([dynamic]string, rn_arena_alloc)
+                    constants_arr := make([dynamic]string, rn_arena_alloc)
+
+                    if "functions" in trim_prefix {
+                        #partial switch f in trim_prefix["functions"] {
+                        case string:
+                            append(&functions_arr, f)
+                        case yaml.Sequence:
+                            for seq_f, idx in f {
+                                #partial switch f_seq in seq_f {
+                                case string:
+                                    append(&functions_arr, f_seq)
+                                case:
+                                    err = errors.message(
+                                        "\"from.trim_prefix.functions\"[{}] has invalid type %T",
+                                        idx,
+                                        f_seq,
+                                    )
+                                    return
+                                }
+                            }
+                        case:
+                            err = errors.message(
+                                "\"from.trim_prefix.functions\" has invald type %T",
+                                f,
+                            )
+                            return
+                        }
+                    }
+
+                    if "variables" in trim_prefix {
+                        #partial switch var in trim_prefix["variables"] {
+                        case string:
+                            append(&variables_arr, var)
+                        case yaml.Sequence:
+                            for seq_v, idx in var {
+                                #partial switch v_seq in seq_v {
+                                case string:
+                                    append(&variables_arr, v_seq)
+                                case:
+                                    err = errors.message(
+                                        "\"from.trim_prefix.variables\"[{}] has invalid type %T",
+                                        idx,
+                                        v_seq,
+                                    )
+                                    return
+                                }
+                            }
+                        case:
+                            err = errors.message(
+                                "\"from.trim_prefix.variables\" has invald type %T",
+                                var,
+                            )
+                            return
+                        }
+                    }
+
+                    if "types" in trim_prefix {
+                        #partial switch t in trim_prefix["types"] {
+                        case string:
+                            append(&types_arr, t)
+                        case yaml.Sequence:
+                            for seq_t, idx in t {
+                                #partial switch t_seq in seq_t {
+                                case string:
+                                    append(&types_arr, t_seq)
+                                case:
+                                    err = errors.message(
+                                        "\"from.trim_prefix.types\"[{}] has invalid type %T",
+                                        idx,
+                                        t_seq,
+                                    )
+                                    return
+                                }
+                            }
+                        case:
+                            err = errors.message(
+                                "\"from.trim_prefix.types\" has invald type %T",
+                                t,
+                            )
+                            return
+                        }
+                    }
+
+                    if "constants" in trim_prefix {
+                        #partial switch c in trim_prefix["constants"] {
+                        case string:
+                            append(&constants_arr, c)
+                        case yaml.Sequence:
+                            for seq_c, idx in c {
+                                #partial switch c_seq in seq_c {
+                                case string:
+                                    append(&constants_arr, c_seq)
+                                case:
+                                    err = errors.message(
+                                        "\"from.trim_prefix.constants\"[{}] has invalid type %T",
+                                        idx,
+                                        c_seq,
+                                    )
+                                    return
+                                }
+                            }
+                        case:
+                            err = errors.message(
+                                "\"from.trim_prefix.constants\" has invald type %T",
+                                t,
+                            )
+                            return
+                        }
+                    }
+
+                    t.trim_prefix.functions = functions_arr[:]
+                    t.trim_prefix.variables = variables_arr[:]
+                    t.trim_prefix.types = types_arr[:]
+                    t.trim_prefix.constants = constants_arr[:]
+                case:
+                    err = errors.message(
+                        "\"to.trim_prefix\" has invalid type %T",
+                        trim_prefix,
+                    )
+                    return
+                }
             }
 
-            #partial switch trim_suffix in to["trim_suffix"] {
-            case string:
-                t.trim_suffix.functions = trim_suffix
-                t.trim_suffix.variables = trim_suffix
-                t.trim_suffix.types = trim_suffix
-                t.trim_suffix.constants = trim_suffix
-            case yaml.Sequence:
-                t.trim_suffix.functions = trim_suffix
-                t.trim_suffix.variables = trim_suffix
-                t.trim_suffix.types = trim_suffix
-                t.trim_suffix.constants = trim_suffix
-            case yaml.Mapping:
-                t.trim_suffix.functions = trim_suffix["functions"]
-                t.trim_suffix.variables = trim_suffix["variables"]
-                t.trim_suffix.types = trim_suffix["types"]
-                t.trim_suffix.constants = trim_suffix["constants"]
-            case:
-                err = errors.message(
-                    "\"to.trim_suffix\" has invalid type %T",
-                    trim_suffix,
-                )
-                return
+            if "trim_suffix" in to {
+                #partial switch trim_suffix in to["trim_suffix"] {
+                case string:
+                    arr := make([dynamic]string, rn_arena_alloc)
+                    append(&arr, trim_suffix)
+
+                    t.trim_suffix.functions = arr[:]
+                    t.trim_suffix.variables = arr[:]
+                    t.trim_suffix.types = arr[:]
+                    t.trim_suffix.constants = arr[:]
+                case yaml.Sequence:
+                    arr := make([dynamic]string, rn_arena_alloc)
+
+                    for v_seq, idx in trim_suffix {
+                        #partial switch seq_v in v_seq {
+                        case string:
+                            append(&arr, seq_v)
+                        case:
+                            err = errors.message(
+                                "\"to.trim_suffix\"[{}] has invalid type %T",
+                                idx,
+                                seq_v,
+                            )
+                            return
+                        }
+                    }
+
+                    t.trim_suffix.functions = arr[:]
+                    t.trim_suffix.variables = arr[:]
+                    t.trim_suffix.types = arr[:]
+                    t.trim_suffix.constants = arr[:]
+                case yaml.Mapping:
+                    functions_arr := make([dynamic]string, rn_arena_alloc)
+                    variables_arr := make([dynamic]string, rn_arena_alloc)
+                    types_arr := make([dynamic]string, rn_arena_alloc)
+                    constants_arr := make([dynamic]string, rn_arena_alloc)
+
+                    if "functions" in trim_suffix {
+                        #partial switch f in trim_suffix["functions"] {
+                        case string:
+                            append(&functions_arr, f)
+                        case yaml.Sequence:
+                            for seq_f, idx in f {
+                                #partial switch f_seq in seq_f {
+                                case string:
+                                    append(&functions_arr, f_seq)
+                                case:
+                                    err = errors.message(
+                                        "\"from.trim_suffix.functions\"[{}] has invalid type %T",
+                                        idx,
+                                        f_seq,
+                                    )
+                                    return
+                                }
+                            }
+                        case:
+                            err = errors.message(
+                                "\"from.trim_suffix.functions\" has invald type %T",
+                                f,
+                            )
+                            return
+                        }
+                    }
+
+                    if "variables" in trim_suffix {
+                        #partial switch var in trim_suffix["variables"] {
+                        case string:
+                            append(&variables_arr, var)
+                        case yaml.Sequence:
+                            for seq_v, idx in var {
+                                #partial switch v_seq in seq_v {
+                                case string:
+                                    append(&variables_arr, v_seq)
+                                case:
+                                    err = errors.message(
+                                        "\"from.trim_suffix.variables\"[{}] has invalid type %T",
+                                        idx,
+                                        v_seq,
+                                    )
+                                    return
+                                }
+                            }
+                        case:
+                            err = errors.message(
+                                "\"from.trim_suffix.variables\" has invald type %T",
+                                var,
+                            )
+                            return
+                        }
+                    }
+
+                    if "types" in trim_suffix {
+                        #partial switch t in trim_suffix["types"] {
+                        case string:
+                            append(&types_arr, t)
+                        case yaml.Sequence:
+                            for seq_t, idx in t {
+                                #partial switch t_seq in seq_t {
+                                case string:
+                                    append(&types_arr, t_seq)
+                                case:
+                                    err = errors.message(
+                                        "\"from.trim_suffix.types\"[{}] has invalid type %T",
+                                        idx,
+                                        t_seq,
+                                    )
+                                    return
+                                }
+                            }
+                        case:
+                            err = errors.message(
+                                "\"from.trim_suffix.types\" has invald type %T",
+                                t,
+                            )
+                            return
+                        }
+                    }
+
+                    if "constants" in trim_suffix {
+                        #partial switch c in trim_suffix["constants"] {
+                        case string:
+                            append(&constants_arr, c)
+                        case yaml.Sequence:
+                            for seq_c, idx in c {
+                                #partial switch c_seq in seq_c {
+                                case string:
+                                    append(&constants_arr, c_seq)
+                                case:
+                                    err = errors.message(
+                                        "\"from.trim_suffix.constants\"[{}] has invalid type %T",
+                                        idx,
+                                        c_seq,
+                                    )
+                                    return
+                                }
+                            }
+                        case:
+                            err = errors.message(
+                                "\"from.trim_suffix.constants\" has invald type %T",
+                                t,
+                            )
+                            return
+                        }
+                    }
+                    t.trim_suffix.functions = functions_arr[:]
+                    t.trim_suffix.variables = variables_arr[:]
+                    t.trim_suffix.types = types_arr[:]
+                    t.trim_suffix.constants = constants_arr[:]
+                case:
+                    err = errors.message(
+                        "\"to.trim_suffix\" has invalid type %T",
+                        trim_suffix,
+                    )
+                    return
+                }
             }
 
-            #partial switch add_prfx in to["add_prefix"] {
-            case string:
-                t.add_prefix.functions = add_prfx
-                t.add_prefix.variables = add_prfx
-                t.add_prefix.types = add_prfx
-                t.add_prefix.constants = add_prfx
-            case yaml.Mapping:
-                ok: bool = ---
-                if "functions" in add_prfx {
-                    t.add_prefix.functions, ok = add_prfx["functions"].(string)
-                    errors.wrap(
-                        ok,
-                        "\"to.add_prefix.functions\" has invalid type",
-                    ) or_return
-                }
+            if "add_prefix" in to {
+                #partial switch add_prfx in to["add_prefix"] {
+                case string:
+                    t.add_prefix.functions = add_prfx
+                    t.add_prefix.variables = add_prfx
+                    t.add_prefix.types = add_prfx
+                    t.add_prefix.constants = add_prfx
+                case yaml.Mapping:
+                    ok: bool = ---
+                    if "functions" in add_prfx {
+                        t.add_prefix.functions, ok =
+                        add_prfx["functions"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.add_prefix.functions\" has invalid type",
+                        ) or_return
+                    }
 
-                if "variables" in add_prfx {
-                    t.add_prefix.variables, ok = add_prfx["variables"].(string)
-                    errors.wrap(
-                        ok,
-                        "\"to.add_prefix.variables\" has invalid type",
-                    ) or_return
-                }
+                    if "variables" in add_prfx {
+                        t.add_prefix.variables, ok =
+                        add_prfx["variables"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.add_prefix.variables\" has invalid type",
+                        ) or_return
+                    }
 
-                if "types" in add_prfx {
-                    t.add_prefix.types, ok = add_prfx["types"].(string)
-                    errors.wrap(
-                        ok,
-                        "\"to.add_prefix.types\" has invalid type",
-                    ) or_return
-                }
+                    if "types" in add_prfx {
+                        t.add_prefix.types, ok = add_prfx["types"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.add_prefix.types\" has invalid type",
+                        ) or_return
+                    }
 
-                if "constants" in add_prfx {
-                    t.add_prefix.constants, ok = add_prfx["constants"].(string)
-                    errors.wrap(
-                        ok,
-                        "\"to.add_prefix.constants\" has invalid type",
-                    ) or_return
+                    if "constants" in add_prfx {
+                        t.add_prefix.constants, ok =
+                        add_prfx["constants"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.add_prefix.constants\" has invalid type",
+                        ) or_return
+                    }
+                case:
+                    err = errors.message(
+                        "\"to.add_prefix\" has invalid type %T",
+                        add_prfx,
+                    )
+                    return
                 }
-            case:
-                err = errors.message(
-                    "\"to.add_prefix\" has invalid type %T",
-                    add_prfx,
-                )
-                return
             }
 
-            #partial switch add_sfx in to["add_suffix"] {
-            case string:
-                t.add_suffix.functions = add_sfx
-                t.add_suffix.variables = add_sfx
-                t.add_suffix.types = add_sfx
-                t.add_suffix.constants = add_sfx
-            case yaml.Mapping:
-                ok: bool = ---
-                if "functions" in add_sfx {
-                    t.add_suffix.functions, ok = add_sfx["functions"].(string)
-                    errors.wrap(
-                        ok,
-                        "\"to.add_suffix.functions\" has invalid type",
-                    ) or_return
-                }
+            if "add_suffix" in to {
+                #partial switch add_sfx in to["add_suffix"] {
+                case string:
+                    t.add_suffix.functions = add_sfx
+                    t.add_suffix.variables = add_sfx
+                    t.add_suffix.types = add_sfx
+                    t.add_suffix.constants = add_sfx
+                case yaml.Mapping:
+                    ok: bool = ---
+                    if "functions" in add_sfx {
+                        t.add_suffix.functions, ok =
+                        add_sfx["functions"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.add_suffix.functions\" has invalid type",
+                        ) or_return
+                    }
 
-                if "variables" in add_sfx {
-                    t.add_suffix.variables, ok = add_sfx["variables"].(string)
-                    errors.wrap(
-                        ok,
-                        "\"to.add_suffix.variables\" has invalid type",
-                    ) or_return
-                }
+                    if "variables" in add_sfx {
+                        t.add_suffix.variables, ok =
+                        add_sfx["variables"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.add_suffix.variables\" has invalid type",
+                        ) or_return
+                    }
 
-                if "types" in add_sfx {
-                    t.add_suffix.types, ok = add_sfx["types"].(string)
-                    errors.wrap(
-                        ok,
-                        "\"to.add_suffix.types\" has invalid type",
-                    ) or_return
-                }
+                    if "types" in add_sfx {
+                        t.add_suffix.types, ok = add_sfx["types"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.add_suffix.types\" has invalid type",
+                        ) or_return
+                    }
 
-                if "constants" in add_sfx {
-                    t.add_suffix.constants, ok = add_sfx["constants"].(string)
-                    errors.wrap(
-                        ok,
-                        "\"to.add_suffix.constants\" has invalid type",
-                    ) or_return
+                    if "constants" in add_sfx {
+                        t.add_suffix.constants, ok =
+                        add_sfx["constants"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.add_suffix.constants\" has invalid type",
+                        ) or_return
+                    }
+                case:
+                    err = errors.message(
+                        "\"to.add_suffix\" has invalid type %T",
+                        add_sfx,
+                    )
+                    return
                 }
-            case:
-                err = errors.message(
-                    "\"to.add_suffix\" has invalid type %T",
-                    add_sfx,
-                )
-                return
             }
 
             if ignore_arch, ok := to["ignore_arch"]; ok {
@@ -883,44 +1268,25 @@ rune_destroy :: proc(rn: ^Rune) {
 @(private = "file")
 single_list_trim_prefix :: #force_inline proc(
     ident: string,
-    list: yaml.Value,
+    list: []string,
 ) -> string {
-    #partial switch l in list {
-    case string:
-        return strings.trim_prefix(ident, l)
-    case yaml.Sequence:
-        str := ident
-        for v in l {
-            #partial switch x in v {
-            case string:
-                str = strings.trim_prefix(str, x)
-            }
-        }
-        return str
+    str := ident
+    for v in list {
+        str = strings.trim_prefix(str, v)
     }
-
-    return ident
+    return str
 }
 
 @(private = "file")
 single_list_trim_suffix :: #force_inline proc(
     ident: string,
-    list: yaml.Value,
+    list: []string,
 ) -> string {
-    #partial switch l in list {
-    case string:
-        return strings.trim_suffix(ident, l)
-    case yaml.Sequence:
-        str := ident
-        for v in l {
-            #partial switch x in v {
-            case string:
-                str = strings.trim_suffix(str, x)
-            }
-        }
+    str := ident
+    for v in list {
+        str = strings.trim_suffix(str, v)
     }
-
-    return ident
+    return str
 }
 
 @(private = "file")
@@ -968,7 +1334,7 @@ is_valid_identifier :: proc(ident: string) -> bool {
 @(private = "file")
 process_identifier :: #force_inline proc(
     ident: string,
-    trim_prefix, trim_suffix: yaml.Value,
+    trim_prefix, trim_suffix: []string,
     add_pf, add_sf: string,
     reserved: []string,
     valid_ident := is_valid_identifier,
@@ -1103,34 +1469,13 @@ relative_to_file :: proc(
     return rel_path, true
 }
 
-single_list_contains :: proc(list: SingleList, value: string) -> bool {
-    switch l in list {
-    case string:
-        return value == l
-    case [dynamic]string:
-        return slice.contains(l[:], value)
+single_list_glob :: proc(list: []string, value: string) -> bool {
+    for p in list {
+        ok, _ := filepath.match(p, value)
+        if ok do return true
     }
 
     return false
-}
-
-single_list_glob :: proc(list: SingleList, value: string) -> bool {
-    switch l in list {
-    case string:
-        ok, _ := filepath.match(l, value)
-        return ok
-    case [dynamic]string:
-        for p in l {
-            ok, _ := filepath.match(p, value)
-            if ok do return true
-        }
-    }
-
-    return false
-}
-
-contains :: proc {
-    single_list_contains,
 }
 
 overwrite_type :: proc(

@@ -58,23 +58,8 @@ generate_runestone :: proc(
 
     rs.symbols = om.make(string, runic.Symbol, allocator = rs_arena_alloc)
 
-    packages := runic.platform_value(
-        [dynamic]string,
-        plat,
-        all = rf.packages,
-        linux = rf.packages_linux,
-        linux_x86_64 = rf.packages_linux_x86_64,
-        linux_arm64 = rf.packages_linux_arm64,
-        windows = rf.packages_windows,
-        windows_x86_64 = rf.packages_windows_x86_64,
-        windows_arm64 = rf.packages_windows_arm64,
-        macos = rf.packages_macos,
-        macos_x86_64 = rf.packages_macos_x86_64,
-        macos_arm64 = rf.packages_macos_arm64,
-        bsd = rf.packages_bsd,
-        bsd_x86_64 = rf.packages_bsd_x86_64,
-        bsd_arm64 = rf.packages_bsd_arm64,
-    )
+    packages := runic.platform_value_get([]string, rf.packages, plat)
+    overwrite := runic.platform_value_get(runic.OverwriteSet, rf.overwrite, plat)
 
     anon_counter: int
 
@@ -180,7 +165,7 @@ generate_runestone :: proc(
                             &anon_counter,
                             &imports,
                             nil,
-                            rf.overwrite,
+                            overwrite,
                             rs_arena_alloc,
                         )
                         if type_err != nil {
@@ -246,7 +231,7 @@ generate_runestone :: proc(
                                 &anon_counter,
                                 &imports,
                                 nil,
-                                rf.overwrite,
+                                overwrite,
                                 rs_arena_alloc,
                             )
                             if fn_err != nil {
@@ -358,7 +343,7 @@ generate_runestone :: proc(
                                 &anon_counter,
                                 &imports,
                                 nil,
-                                rf.overwrite,
+                                overwrite,
                                 rs_arena_alloc,
                             )
                             if type_err != nil {
@@ -724,6 +709,8 @@ type_to_type :: proc(
         e: runic.Enum
         if type_expr.base_type == nil {
             switch plat.arch {
+            case .Any:
+                panic("invalid arch any")
             case .x86_64, .arm64:
                 e.type = .SInt64
             }
@@ -917,11 +904,15 @@ type_identifier_to_type_specifier :: proc(
     switch ident {
     case "int":
         switch plat.arch {
+        case .Any:
+            panic("invalid arch Any")
         case .x86_64, .arm64:
             t = SInt64
         }
     case "uint":
         switch plat.arch {
+        case .Any:
+            panic("invalid arch Any")
         case .x86_64, .arm64:
             t = UInt64
         }
@@ -959,6 +950,8 @@ type_identifier_to_type_specifier :: proc(
         t = RawPtr
     case "bool":
         switch plat.arch {
+        case .Any:
+            panic("invalid arch Any")
         case .x86_64, .arm64:
             t = Bool64
         }

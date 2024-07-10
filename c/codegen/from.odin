@@ -49,48 +49,22 @@ generate_runestone :: proc(
     rs.platform = plat
     runic.set_library(plat, &rs, rf)
 
-    rune_defines := runic.platform_value(
-        map[string]json.Value,
-        plat,
-        all = rf.defines,
-        linux = rf.defines_linux,
-        linux_x86_64 = rf.defines_linux_x86_64,
-        linux_arm64 = rf.defines_linux_arm64,
-        windows = rf.defines_windows,
-        windows_x86_64 = rf.defines_windows_x86_64,
-        windows_arm64 = rf.defines_windows_arm64,
-        macos = rf.defines_macos,
-        macos_x86_64 = rf.defines_macos_x86_64,
-        macos_arm64 = rf.defines_macos_arm64,
-        bsd = rf.defines_bsd,
-        bsd_x86_64 = rf.defines_bsd_x86_64,
-        bsd_arm64 = rf.defines_bsd_arm64,
-    )
-
     defines := make([dynamic][2]string, arena_alloc)
 
-    for name, value in rune_defines {
-        str_value := json_value_to_string(value, arena_alloc) or_return
-        append(&defines, [2]string{name, str_value})
+    if rune_defines, ok := runic.platform_value_get(
+        map[string]string,
+        rf.defines,
+        plat,
+    ); ok {
+        for name, value in rune_defines {
+            str_value := json_value_to_string(value, arena_alloc) or_return
+            append(&defines, [2]string{name, str_value})
+        }
     }
 
-    headers := runic.platform_value(
-        [dynamic]string,
-        plat,
-        all = rf.headers,
-        linux = rf.headers_linux,
-        linux_x86_64 = rf.headers_linux_x86_64,
-        linux_arm64 = rf.headers_linux_arm64,
-        windows = rf.headers_windows,
-        windows_x86_64 = rf.headers_windows_x86_64,
-        windows_arm64 = rf.headers_windows_arm64,
-        macos = rf.headers_macos,
-        macos_x86_64 = rf.headers_macos_x86_64,
-        macos_arm64 = rf.headers_macos_x86_64,
-        bsd = rf.headers_bsd,
-        bsd_x86_64 = rf.headers_bsd_x86_64,
-        bsd_arm64 = rf.headers_bsd_arm64,
-    )
+    headers := runic.platform_value_get([]string, rf.headers, plat)
+    overwrite := runic.platform_value_get(runic.OverwriteSet, rf.overwrite, plat)
+    ignore := runic.platform_value_get(runic.IgnoreSet, rf.ignore, plat)
 
     pp_program := parser.PREPROCESS_PROGRAM
     pp_flags := parser.PREPROCESS_FLAGS
@@ -102,23 +76,7 @@ generate_runestone :: proc(
         p: parser.Parser
         defer parser.destroy_parser(&p)
 
-        includedirs := runic.platform_value(
-            [dynamic]string,
-            plat,
-            all = rf.includedirs,
-            linux = rf.includedirs_linux,
-            linux_x86_64 = rf.includedirs_linux_x86_64,
-            linux_arm64 = rf.includedirs_linux_arm64,
-            windows = rf.includedirs_windows,
-            windows_x86_64 = rf.includedirs_windows_x86_64,
-            windows_arm64 = rf.includedirs_windows_arm64,
-            macos = rf.includedirs_macos,
-            macos_x86_64 = rf.includedirs_macos_x86_64,
-            macos_arm64 = rf.includedirs_macos_arm64,
-            bsd = rf.includedirs_bsd,
-            bsd_x86_64 = rf.includedirs_bsd_x86_64,
-            bsd_arm64 = rf.includedirs_bsd_arm64,
-        )
+        includedirs := runic.platform_value_get([]string, rf.includedirs, plat)
 
         p = parser.parse_file(
             plat,
@@ -139,13 +97,13 @@ generate_runestone :: proc(
                 &func_protos,
                 isz,
                 &anon_counter,
-                rf.overwrite,
+                overwrite,
             )
 
             if name == nil do continue
-            if runic.single_list_glob(rf.ignore.types, name.?) do continue
+            if runic.single_list_glob(ignore.types, name.?) do continue
 
-            if ow_tp, ow_err := runic.overwrite_type(rf.overwrite, name.?);
+            if ow_tp, ow_err := runic.overwrite_type(overwrite, name.?);
                ow_err != nil {
                 fmt.eprintfln(
                     "Type Overwrite for \"{}\" failed to parse: {}",
@@ -181,13 +139,13 @@ generate_runestone :: proc(
                 &func_protos,
                 isz,
                 &anon_counter,
-                rf.overwrite,
+                overwrite,
             )
 
             if v_name == nil do continue
-            if runic.single_list_glob(rf.ignore.variables, v_name.?) do continue
+            if runic.single_list_glob(ignore.variables, v_name.?) do continue
 
-            if ow_tp, ow_err := runic.overwrite_var(rf.overwrite, v_name.?);
+            if ow_tp, ow_err := runic.overwrite_var(overwrite, v_name.?);
                ow_err != nil {
                 fmt.eprintfln(
                     "Variable Overwrite of \"{}\" failed to parse: {}",
@@ -230,13 +188,13 @@ generate_runestone :: proc(
                 &func_protos,
                 isz,
                 &anon_counter,
-                rf.overwrite,
+                overwrite,
             )
 
             if fc.name == nil do continue
-            if runic.single_list_glob(rf.ignore.functions, fc.name.?) do continue
+            if runic.single_list_glob(ignore.functions, fc.name.?) do continue
 
-            if ow_fn, ow_err := runic.overwrite_func(rf.overwrite, fc.name.?);
+            if ow_fn, ow_err := runic.overwrite_func(overwrite, fc.name.?);
                ow_err != nil {
                 fmt.eprintfln(
                     "Function Overwrite of \"{}\" failed to parse: {}",
@@ -283,10 +241,10 @@ generate_runestone :: proc(
         custom_types_loop: for ct in custom_types {
             if _, ok := om.get(rs.types, ct); ok do continue
 
-            if runic.single_list_glob(rf.ignore.types, ct) {
+            if runic.single_list_glob(ignore.types, ct) {
                 continue custom_types_loop
             }
-            if ow_tp, ow_err := runic.overwrite_type(rf.overwrite, ct);
+            if ow_tp, ow_err := runic.overwrite_type(overwrite, ct);
                ow_err != nil {
                 fmt.eprintfln(
                     "Type Overwrite of \"{}\" failed to parse: {}",
@@ -327,7 +285,7 @@ generate_runestone :: proc(
                             &func_protos,
                             isz,
                             &anon_counter,
-                            rf.overwrite,
+                            overwrite,
                         )
                         if name != nil {
 
@@ -375,11 +333,11 @@ generate_runestone :: proc(
 
         macro_loop: for entry in p.macros.data {
             name, macro := entry.key, entry.value
-            if runic.single_list_glob(rf.ignore.macros, name) {
+            if runic.single_list_glob(ignore.macros, name) {
                 continue
             }
             if ow_const, ow_err := runic.overwrite_constant(
-                rf.overwrite,
+                overwrite,
                 name,
             ); ow_err != nil {
                 fmt.eprintfln(
@@ -1086,8 +1044,12 @@ int_sizes_from_host :: proc() -> (is: Int_Sizes, err: errors.Error) {
 
 int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
     switch plat.os {
+    case .Any:
+        panic("not int sizes for any os")
     case .Linux, .Macos, .BSD:
         switch plat.arch {
+        case .Any:
+            panic("no int sizes for any arch")
         case .x86_64, .arm64:
             return ({
                         char = 1,
@@ -1106,6 +1068,8 @@ int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
         }
     case .Windows:
         switch plat.arch {
+        case .Any:
+            panic("no int sizes for any arch")
         case .x86_64, .arm64:
             return ({
                         char = 1,

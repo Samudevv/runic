@@ -76,6 +76,8 @@ preprocess_file :: proc(
     os_str, arch_str: string
 
     switch plat.os {
+    case .Any:
+        panic("invalid os Any")
     case .Linux:
         os_str = "linux"
     case .Windows:
@@ -86,6 +88,8 @@ preprocess_file :: proc(
         os_str = "freebsd"
     }
     switch plat.arch {
+    case .Any:
+        panic("invalid arch Any")
     case .x86_64:
         arch_str = "x86_64"
     case .arm64:

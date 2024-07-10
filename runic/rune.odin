@@ -1219,10 +1219,6 @@ parse_rune :: proc(
                             mp_ok,
                             "\"to.detect.multi_pointer\" has invalid type",
                         ) or_return
-
-                        if len(t.detect.multi_pointer) == 0 {
-                            t.detect.multi_pointer = "auto"
-                        }
                     }
                 case:
                     err = errors.message(
@@ -1231,6 +1227,10 @@ parse_rune :: proc(
                     )
                     return
                 }
+            }
+
+            if len(t.detect.multi_pointer) == 0 {
+                t.detect.multi_pointer = "auto"
             }
 
             if no_build_tag, ok := to["no_build_tag"]; ok {

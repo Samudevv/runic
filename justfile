@@ -10,7 +10,11 @@ ODIN_FLAGS := (
   '-collection:shared=shared'
 )
 ODIN_DEBUG_FLAGS := '-debug'
-ODIN_RELEASE_FLAGS := '-o:speed' + if os() == 'linux' {' -extra-linker-flags=-static'} else {''}
+ODIN_RELEASE_FLAGS := (
+  '-o:speed ' +
+  '-define:YAML_STATIC=true ' +
+  if os() == 'linux' {' -extra-linker-flags=-static'} else {''}
+)
 
 BUILD_DIR := 'build'
 CREATE_BUILD_DIR := if os_family() == 'unix' {'mkdir -p "' + BUILD_DIR + '"'} else {'New-Item -Path "' + BUILD_DIR + '" -ItemType Directory -Force'}
@@ -20,7 +24,7 @@ default: release
 tools: showc cpp cppp
 all: debug release tools test (example 'olivec') (example 'glew')
 
-release ODIN_JOBS=num_cpus():
+release ODIN_JOBS=num_cpus(): build-yaml
   @{{ CREATE_BUILD_DIR }}
   odin build . {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'runic' + EXE_EXT  }}" {{ ODIN_RELEASE_FLAGS }} -thread-count:{{ ODIN_JOBS }}
 
@@ -81,3 +85,6 @@ clean:
   if (Test-Path -Path 'test_data/example_runestone.ini') { Remove-Item -Path 'test_data/example_runestone.ini' -Recurse -Force -ErrorAction SilentlyContinue }
   if (Test-Path -Path 'test_data/generate_runestone.ini') { Remove-Item -Path 'test_data/generate_runestone.ini' -Recurse -Force -ErrorAction SilentlyContinue }
   @just --justfile examples/olivec/justfile clean
+
+build-yaml:
+  {{ if os() == 'linux' { 'just -f shared/yaml/justfile build' } else { '' } }}

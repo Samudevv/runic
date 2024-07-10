@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
       - uses: korandoru/setup-zig@v1
         name: Install zig
         if: matrix.os == 'ubuntu-latest'

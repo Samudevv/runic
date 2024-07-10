@@ -1,5 +1,18 @@
 set windows-shell := ['powershell.exe']
 
+YAML_STATIC := if os() == 'linux' {
+  'true'
+} else if os() == 'windows' {
+  'true'
+} else {
+  'false'
+}
+YAML_STATIC_DEBUG := if os() == 'windows' {
+  'true'
+} else {
+  'false'
+}
+
 ODIN_FLAGS := (
   '-vet-shadowing ' +
   '-vet-unused ' +
@@ -9,10 +22,10 @@ ODIN_FLAGS := (
   '-collection:root=. ' +
   '-collection:shared=shared'
 )
-ODIN_DEBUG_FLAGS := '-debug'
+ODIN_DEBUG_FLAGS := '-debug -define:YAML_STATIC=' + YAML_STATIC_DEBUG
 ODIN_RELEASE_FLAGS := (
   '-o:speed ' +
-  '-define:YAML_STATIC=true ' +
+  '-define:YAML_STATIC=' + YAML_STATIC + ' ' +
   if os() == 'linux' {' -extra-linker-flags=-static'} else {''}
 )
 

@@ -205,6 +205,8 @@ parse_rune :: proc(
                     return
                 }
 
+                delete(splits)
+
                 plat, plat_ok := platform_from_strings(os, arch)
                 if !plat_ok {
                     err = errors.message(
@@ -626,8 +628,7 @@ parse_rune :: proc(
                             case i64:
                                 buf, mem_err := make(
                                     [dynamic]u8,
-                                    0,
-                                    20,
+                                    256,
                                     rn_arena_alloc,
                                 )
                                 errors.wrap(mem_err) or_return
@@ -640,7 +641,6 @@ parse_rune :: proc(
                             case f64:
                                 buf, mem_err := make(
                                     [dynamic]u8,
-                                    0,
                                     310,
                                     rn_arena_alloc,
                                 )
@@ -722,6 +722,8 @@ parse_rune :: proc(
                     f.packages.d[plat] = p_seq[:]
                 }
             }
+
+            rn.from = f
         case string:
             if from != "stdin" {
                 rn.from = relative_to_file(file_path, from, rn_arena_alloc)

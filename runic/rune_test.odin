@@ -39,7 +39,7 @@ test_rune :: proc(t: ^testing.T) {
     f := rn.from.(From)
     expect_value(t, f.shared.d[Platform{.Any, .Any}], "libfoo.so")
     expect_value(t, len(f.headers.d[Platform{.Any, .Any}]), 3)
-    expect_value(t, len(f.headers.d[Platform{.Any, .Any}]), 1)
+    expect_value(t, len(f.headers.d[Platform{.Macos, .Any}]), 1)
     expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].types), 1)
 
     to := rn.to.(To)

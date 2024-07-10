@@ -138,8 +138,17 @@ parse_rune :: proc(
 
     #partial switch y in yaml_data {
     case yaml.Mapping:
-        // TODO: check if values exist
-        rn.version = uint(y["version"].(i64))
+        errors.assert("version" in y, "\"version\" is missing") or_return
+        errors.assert("from" in y, "\"from\" is missing") or_return
+        errors.assert("to" in y, "\"to\" is missing") or_return
+
+        if version, ok := y["version"].(i64); ok {
+            rn.version = uint(version)
+        } else {
+            err = errors.message("\"version\" has invalid type")
+            return
+        }
+
 
         #partial switch from in y["from"] {
         case yaml.Mapping:
@@ -171,6 +180,11 @@ parse_rune :: proc(
                 map[Platform][]string,
                 allocator = rn_arena_alloc,
             )
+
+            errors.assert(
+                "language" in from,
+                "\"from.language\" is missing",
+            ) or_return
 
             for key, value in from {
                 splits, alloc_err := strings.split(key, ".")
@@ -209,12 +223,38 @@ parse_rune :: proc(
 
                 switch name {
                 case "language":
-                    f.language = value.(string)
+                    v, ok := value.(string)
+                    errors.wrap(
+                        ok,
+                        "\"from.language\" has invalid type",
+                    ) or_return
+                    f.language = v
                 case "static":
-                    // TODO: relative to file
-                    f.static.d[plat] = value.(string)
+                    v, ok := value.(string)
+                    errors.wrap(
+                        ok,
+                        "\"from.static\" has invalid type",
+                    ) or_return
+
+                    f.static.d[plat] = relative_to_file(
+                        file_path,
+                        v,
+                        rn_arena_alloc,
+                        true,
+                    )
                 case "shared":
-                    f.shared.d[plat] = value.(string)
+                    v, ok := value.(string)
+                    errors.wrap(
+                        ok,
+                        "\"from.shared\" has invalid type",
+                    ) or_return
+
+                    f.shared.d[plat] = relative_to_file(
+                        file_path,
+                        v,
+                        rn_arena_alloc,
+                        true,
+                    )
                 case "ignore":
                     i_set: IgnoreSet
                     #partial switch v in value {
@@ -264,104 +304,112 @@ parse_rune :: proc(
 
                     #partial switch v in value {
                     case yaml.Mapping:
-                        #partial switch con in v["constants"] {
-                        case yaml.Mapping:
-                            for con_key, con_value in con {
-                                #partial switch con_v in con_value {
-                                case string:
-                                    o_set.constants[con_key] = con_v
-                                case:
-                                    err = errors.message(
-                                        "\"from.{}.constants.{}\" has invalid type %T",
-                                        key,
-                                        con_key,
-                                        con_v,
-                                    )
-                                    return
+                        if "constants" in v {
+                            #partial switch con in v["constants"] {
+                            case yaml.Mapping:
+                                for con_key, con_value in con {
+                                    #partial switch con_v in con_value {
+                                    case string:
+                                        o_set.constants[con_key] = con_v
+                                    case:
+                                        err = errors.message(
+                                            "\"from.{}.constants.{}\" has invalid type %T",
+                                            key,
+                                            con_key,
+                                            con_v,
+                                        )
+                                        return
+                                    }
                                 }
+                            case:
+                                err = errors.message(
+                                    "\"from.{}.constants\" has invalid type %T",
+                                    key,
+                                    con,
+                                )
+                                return
                             }
-                        case:
-                            err = errors.message(
-                                "\"from.{}.constants\" has invalid type %T",
-                                key,
-                                con,
-                            )
-                            return
                         }
 
-                        #partial switch fun in v["functions"] {
-                        case yaml.Mapping:
-                            for fun_key, fun_value in fun {
-                                #partial switch fun_v in fun_value {
-                                case string:
-                                    o_set.functions[fun_key] = fun_v
-                                case:
-                                    err = errors.message(
-                                        "\"from.{}.functions.{}\" has invalid type %T",
-                                        key,
-                                        fun_key,
-                                        fun_v,
-                                    )
-                                    return
+                        if "functions" in v {
+                            #partial switch fun in v["functions"] {
+                            case yaml.Mapping:
+                                for fun_key, fun_value in fun {
+                                    #partial switch fun_v in fun_value {
+                                    case string:
+                                        o_set.functions[fun_key] = fun_v
+                                    case:
+                                        err = errors.message(
+                                            "\"from.{}.functions.{}\" has invalid type %T",
+                                            key,
+                                            fun_key,
+                                            fun_v,
+                                        )
+                                        return
+                                    }
                                 }
+                            case:
+                                err = errors.message(
+                                    "\"from.{}.functions\" has invalid type %T",
+                                    key,
+                                    fun,
+                                )
+                                return
                             }
-                        case:
-                            err = errors.message(
-                                "\"from.{}.functions\" has invalid type %T",
-                                key,
-                                fun,
-                            )
-                            return
                         }
 
-                        #partial switch var in v["variables"] {
-                        case yaml.Mapping:
-                            for var_key, var_value in var {
-                                #partial switch var_v in var_value {
-                                case string:
-                                    o_set.variables[var_key] = var_v
-                                case:
-                                    err = errors.message(
-                                        "\"from.{}.variables.{}\" has invalid type %T",
-                                        key,
-                                        var_key,
-                                        var_v,
-                                    )
-                                    return
+                        if "variables" in v {
+                            #partial switch var in v["variables"] {
+                            case yaml.Mapping:
+                                for var_key, var_value in var {
+                                    #partial switch var_v in var_value {
+                                    case string:
+                                        o_set.variables[var_key] = var_v
+                                    case:
+                                        err = errors.message(
+                                            "\"from.{}.variables.{}\" has invalid type %T",
+                                            key,
+                                            var_key,
+                                            var_v,
+                                        )
+                                        return
+                                    }
                                 }
+                            case:
+                                err = errors.message(
+                                    "\"from.{}.variables\" has invalid type %T",
+                                    key,
+                                    var,
+                                )
+                                return
                             }
-                        case:
-                            err = errors.message(
-                                "\"from.{}.variables\" has invalid type %T",
-                                key,
-                                var,
-                            )
-                            return
                         }
 
-                        #partial switch typ in v["types"] {
-                        case yaml.Mapping:
-                            for typ_key, typ_value in typ {
-                                #partial switch typ_v in typ_value {
-                                case string:
-                                    o_set.types[typ_key] = typ_v
-                                case:
-                                    err = errors.message(
-                                        "\"from.{}.types.{}\" has invalid type %T",
-                                        key,
-                                        typ_key,
-                                        typ_v,
-                                    )
-                                    return
+                        if "types" in v {
+                            #partial switch typ in v["types"] {
+                            case yaml.Mapping:
+                                for typ_key, typ_value in typ {
+                                    #partial switch typ_v in typ_value {
+                                    case string:
+                                        o_set.types[typ_key] = typ_v
+                                    case:
+                                        err = errors.message(
+                                            "\"from.{}.types.{}\" has invalid type %T",
+                                            key,
+                                            typ_key,
+                                            typ_v,
+                                        )
+                                        return
+                                    }
                                 }
+                            case:
+                                err = errors.message(
+                                    "\"from.{}.types\" has invalid type %T",
+                                    key,
+                                    typ,
+                                )
+                                return
                             }
-                        case:
-                            err = errors.message(
-                                "\"from.{}.types\" has invalid type %T",
-                                key,
-                                typ,
-                            )
-                            return
                         }
                     case:
                         err = errors.message(
@@ -378,12 +426,22 @@ parse_rune :: proc(
 
                     #partial switch v in value {
                     case string:
-                        append(&h_seq, v)
+                        append(
+                            &h_seq,
+                            relative_to_file(file_path, v, rn_arena_alloc),
+                        )
                     case yaml.Sequence:
                         for seq_v, idx in v {
                             #partial switch v_seq in seq_v {
                             case string:
-                                append(&h_seq, v_seq)
+                                append(
+                                    &h_seq,
+                                    relative_to_file(
+                                        file_path,
+                                        v_seq,
+                                        rn_arena_alloc,
+                                    ),
+                                )
                             case:
                                 err = errors.message(
                                     "\"from.{}\"[{}] has invalid type %T",
@@ -409,12 +467,22 @@ parse_rune :: proc(
 
                     #partial switch v in value {
                     case string:
-                        append(&i_seq, v)
+                        append(
+                            &i_seq,
+                            relative_to_file(file_path, v, rn_arena_alloc),
+                        )
                     case yaml.Sequence:
                         for seq_v, idx in v {
                             #partial switch v_seq in seq_v {
                             case string:
-                                append(&i_seq, v_seq)
+                                append(
+                                    &i_seq,
+                                    relative_to_file(
+                                        file_path,
+                                        v_seq,
+                                        rn_arena_alloc,
+                                    ),
+                                )
                             case:
                                 err = errors.message(
                                     "\"from.{}\"[{}] has invalid type %T",
@@ -473,12 +541,22 @@ parse_rune :: proc(
 
                     #partial switch v in value {
                     case string:
-                        append(&p_seq, v)
+                        append(
+                            &p_seq,
+                            relative_to_file(file_path, v, rn_arena_alloc),
+                        )
                     case yaml.Sequence:
                         for seq_v, idx in v {
                             #partial switch v_seq in seq_v {
                             case string:
-                                append(&p_seq, v_seq)
+                                append(
+                                    &p_seq,
+                                    relative_to_file(
+                                        file_path,
+                                        v_seq,
+                                        rn_arena_alloc,
+                                    ),
+                                )
                             case:
                                 err = errors.message(
                                     "\"from.{}\"[{}] has invalid type %T",
@@ -534,10 +612,27 @@ parse_rune :: proc(
         case yaml.Mapping:
             t: To
 
-            // TODO: check if exists
-            t.language = to["language"].(string)
-            t.static_switch = to["static_switch"].(string)
-            t.out = to["out"].(string)
+            if language, ok := to["language"]; ok {
+                t.language, ok = language.(string)
+                errors.wrap(ok, "\"to.language\" has invalid type") or_return
+            } else {
+                err = errors.message("\"to.language\" is missing")
+                return
+            }
+
+            if static_switch, ok := to["static_switch"]; ok {
+                t.static_switch, ok = static_switch.(string)
+                errors.wrap(
+                    ok,
+                    "\"to.static_switch\" has invalid type",
+                ) or_return
+            }
+
+            if out, ok := to["out"]; ok {
+                t.out, ok = out.(string)
+                errors.wrap(ok, "\"to.out\" has invalid type") or_return
+                t.out = relative_to_file(file_path, t.out, rn_arena_alloc)
+            }
 
             #partial switch trim_prefix in to["trim_prefix"] {
             case string:
@@ -594,10 +689,38 @@ parse_rune :: proc(
                 t.add_prefix.types = add_prfx
                 t.add_prefix.constants = add_prfx
             case yaml.Mapping:
-                t.add_prefix.functions = add_prfx["functions"].(string)
-                t.add_prefix.variables = add_prfx["variables"].(string)
-                t.add_prefix.types = add_prfx["types"].(string)
-                t.add_prefix.constants = add_prfx["constants"].(string)
+                ok: bool = ---
+                if "functions" in add_prfx {
+                    t.add_prefix.functions, ok = add_prfx["functions"].(string)
+                    errors.wrap(
+                        ok,
+                        "\"to.add_prefix.functions\" has invalid type",
+                    ) or_return
+                }
+
+                if "variables" in add_prfx {
+                    t.add_prefix.variables, ok = add_prfx["variables"].(string)
+                    errors.wrap(
+                        ok,
+                        "\"to.add_prefix.variables\" has invalid type",
+                    ) or_return
+                }
+
+                if "types" in add_prfx {
+                    t.add_prefix.types, ok = add_prfx["types"].(string)
+                    errors.wrap(
+                        ok,
+                        "\"to.add_prefix.types\" has invalid type",
+                    ) or_return
+                }
+
+                if "constants" in add_prfx {
+                    t.add_prefix.constants, ok = add_prfx["constants"].(string)
+                    errors.wrap(
+                        ok,
+                        "\"to.add_prefix.constants\" has invalid type",
+                    ) or_return
+                }
             case:
                 err = errors.message(
                     "\"to.add_prefix\" has invalid type %T",
@@ -613,10 +736,38 @@ parse_rune :: proc(
                 t.add_suffix.types = add_sfx
                 t.add_suffix.constants = add_sfx
             case yaml.Mapping:
-                t.add_suffix.functions = add_sfx["functions"].(string)
-                t.add_suffix.variables = add_sfx["variables"].(string)
-                t.add_suffix.types = add_sfx["types"].(string)
-                t.add_suffix.constants = add_sfx["constants"].(string)
+                ok: bool = ---
+                if "functions" in add_sfx {
+                    t.add_suffix.functions, ok = add_sfx["functions"].(string)
+                    errors.wrap(
+                        ok,
+                        "\"to.add_suffix.functions\" has invalid type",
+                    ) or_return
+                }
+
+                if "variables" in add_sfx {
+                    t.add_suffix.variables, ok = add_sfx["variables"].(string)
+                    errors.wrap(
+                        ok,
+                        "\"to.add_suffix.variables\" has invalid type",
+                    ) or_return
+                }
+
+                if "types" in add_sfx {
+                    t.add_suffix.types, ok = add_sfx["types"].(string)
+                    errors.wrap(
+                        ok,
+                        "\"to.add_suffix.types\" has invalid type",
+                    ) or_return
+                }
+
+                if "constants" in add_sfx {
+                    t.add_suffix.constants, ok = add_sfx["constants"].(string)
+                    errors.wrap(
+                        ok,
+                        "\"to.add_suffix.constants\" has invalid type",
+                    ) or_return
+                }
             case:
                 err = errors.message(
                     "\"to.add_suffix\" has invalid type %T",
@@ -625,25 +776,52 @@ parse_rune :: proc(
                 return
             }
 
-            t.ignore_arch = to["ignore_arch"].(bool)
-            t.package_name = to["package"].(string)
-
-            #partial switch detect in to["detect"] {
-            case yaml.Mapping:
-                t.detect.multi_pointer = detect["multi_pointer"].(string)
-                if len(t.detect.multi_pointer) == 0 {
-                    t.detect.multi_pointer = "auto"
-                }
-            case:
-                err = errors.message(
-                    "\"to.detect\" has invalid type %T",
-                    detect,
-                )
-                return
+            if ignore_arch, ok := to["ignore_arch"]; ok {
+                t.ignore_arch, ok = ignore_arch.(bool)
+                errors.wrap(
+                    ok,
+                    "\"to.ignore_arch\" has invalid type",
+                ) or_return
+            }
+            if package_name, ok := to["package"]; ok {
+                t.package_name, ok = package_name.(string)
+                errors.wrap(ok, "\"to.package\" has invalid type") or_return
             }
 
-            t.no_build_tag = to["no_build_tag"].(bool)
-            t.use_when_else = to["use_when_else"].(bool)
+            if detect, ok := to["detect"]; ok {
+                #partial switch d in detect {
+                case yaml.Mapping:
+                    if multi_pointer, mp_ok := d["multi_pointer"]; mp_ok {
+                        t.detect.multi_pointer, mp_ok = multi_pointer.(string)
+                        errors.wrap(
+                            mp_ok,
+                            "\"to.detect.multi_pointer\" has invalid type",
+                        ) or_return
+
+                        if len(t.detect.multi_pointer) == 0 {
+                            t.detect.multi_pointer = "auto"
+                        }
+                    }
+                case:
+                    err = errors.message(
+                        "\"to.detect\" has invalid type %T",
+                        d,
+                    )
+                    return
+                }
+            }
+
+            if no_build_tag, ok := to["no_build_tag"]; ok {
+                t.no_build_tag, ok = no_build_tag.(bool)
+                errors.wrap(
+                    ok,
+                    "\"to.no_build_tag\" has invalid type",
+                ) or_return
+            }
+            if use_when_else, ok := to["use_when_else"]; ok {
+                t.use_when_else, ok = use_when_else.(bool)
+                errors.wrap(ok, "\"to.use_when_else\" has invalid type")
+            }
 
             rn.to = t
         case string:

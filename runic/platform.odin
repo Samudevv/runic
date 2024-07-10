@@ -131,6 +131,11 @@ platform_from_strings :: proc(
     ok: bool,
 ) #optional_ok {
     if os != nil {
+        switch plat.os {
+        case .Linux, .Windows, .Macos, .BSD, .Any:
+            // A reminder to implement more platforms
+        }
+
         switch os.? {
         case "linux":
             plat.os = .Linux
@@ -147,6 +152,11 @@ platform_from_strings :: proc(
     }
 
     if arch != nil {
+        switch plat.arch {
+        case .x86_64, .arm64, .Any:
+            // A reminder to implement more platforms
+        }
+
         switch arch.? {
         case "x86_64":
             plat.arch = .x86_64

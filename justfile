@@ -6,7 +6,8 @@ ODIN_FLAGS := (
   '-vet-style ' +
   '-warnings-as-errors ' +
   '-error-pos-style:unix ' +
-  '-collection:root=. '
+  '-collection:root=. ' +
+  '-collection:shared=shared'
 )
 ODIN_DEBUG_FLAGS := '-debug'
 ODIN_RELEASE_FLAGS := '-o:speed' + if os() == 'linux' {' -extra-linker-flags=-static'} else {''}
@@ -51,8 +52,8 @@ cpp ODIN_JOBS=num_cpus():
   @{{ CREATE_BUILD_DIR }}
   odin build c/pp {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'cpp' + EXE_EXT }}" {{ ODIN_RELEASE_FLAGS }} -thread-count:{{ ODIN_JOBS }}
 
-check TARGET='' ODIN_JOBS=num_cpus():
-  odin check . {{ ODIN_FLAGS }} -thread-count:{{ ODIN_JOBS }} {{ if TARGET == '' {''} else {'-target:' + TARGET} }}
+check PACKAGE='.' TARGET='' ODIN_JOBS=num_cpus():
+  odin check {{ PACKAGE }} {{ ODIN_FLAGS }} -thread-count:{{ ODIN_JOBS }} {{ if TARGET == '' {''} else {'-target:' + TARGET} }}
 
 example EXAMPLE: debug
   @just --justfile "{{ 'examples' / EXAMPLE / 'justfile' }}"

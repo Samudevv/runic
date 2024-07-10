@@ -17,8 +17,8 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package runic
 
-import "base:runtime"
-import "core:strings"
+//import "base:runtime"
+//import "core:strings"
 
 Platform :: struct {
     os:   OS,
@@ -26,6 +26,7 @@ Platform :: struct {
 }
 
 OS :: enum {
+    Any,
     Linux,
     Windows,
     Macos,
@@ -33,6 +34,7 @@ OS :: enum {
 }
 
 Architecture :: enum {
+    Any,
     x86_64,
     arm64,
 }
@@ -122,7 +124,45 @@ platform_value :: proc(
     return all
 }
 
-set_library :: proc(plat: Platform, rs: ^Runestone, from: From) {
+platform_from_strings :: proc(
+    os, arch: Maybe(string),
+) -> (
+    plat: Platform,
+    ok: bool,
+) #optional_ok {
+    if os != nil {
+        switch os.? {
+        case "linux":
+            plat.os = .Linux
+        case "windows":
+            plat.os = .Windows
+        case "macos":
+            plat.os = .Macos
+        case "bsd":
+            plat.os = .BSD
+        case:
+            ok = false
+            return
+        }
+    }
+
+    if arch != nil {
+        switch arch.? {
+        case "x86_64":
+            plat.arch = .x86_64
+        case "arm64":
+            plat.arch = .arm64
+        case:
+            ok = false
+            return
+        }
+    }
+
+    ok = true
+    return
+}
+
+/*set_library :: proc(plat: Platform, rs: ^Runestone, from: From) {
     static_name := platform_value(
         string,
         plat,
@@ -161,4 +201,4 @@ set_library :: proc(plat: Platform, rs: ^Runestone, from: From) {
     rs_arena_alloc := runtime.arena_allocator(&rs.arena)
     if len(shared_name) != 0 do rs.lib.shared = strings.clone(shared_name, rs_arena_alloc)
     if len(static_name) != 0 do rs.lib.static = strings.clone(static_name, rs_arena_alloc)
-}
+}*/

@@ -210,7 +210,7 @@ parse_runestone :: proc(
         errors.wrap(ok2) or_return
 
         switch platform.os {
-        case .Linux, .Windows, .Macos, .BSD:
+        case .Linux, .Windows, .Macos, .BSD, .Any:
         // Just a reminder to update this when platforms change
         }
         switch os_str {
@@ -222,6 +222,9 @@ parse_runestone :: proc(
             platform.os = .Macos
         case "BSD":
             platform.os = .BSD
+        case "Any":
+            err = errors.message("a runestone can not have any os")
+            return
         case:
             err = errors.message("invalid os \"{}\"", os_str)
             return
@@ -231,7 +234,7 @@ parse_runestone :: proc(
         errors.wrap(ok3) or_return
 
         switch platform.arch {
-        case .x86_64, .arm64:
+        case .x86_64, .arm64, .Any:
         // Just a reminder to update this when platforms change
         }
         switch arch_str {
@@ -239,6 +242,9 @@ parse_runestone :: proc(
             platform.arch = .x86_64
         case "arm64":
             platform.arch = .arm64
+        case "Any":
+            err = errors.message("a runestone can not have any architecture")
+            return
         case:
             err = errors.message("invalid arch \"{}\"", arch_str)
             return

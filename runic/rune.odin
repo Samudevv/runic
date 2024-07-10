@@ -19,105 +19,65 @@ package runic
 
 import "base:runtime"
 import "core:bytes"
-import "core:encoding/json"
+// import "core:encoding/json"
 import "core:io"
 import "core:path/filepath"
 import "core:slice"
 import "core:strings"
 import "root:errors"
+import "shared:yaml"
+
+Rune :: struct {
+    version: uint,
+    from:    union {
+        From,
+        string,
+        [dynamic]string,
+    },
+    to:      union {
+        To,
+        string,
+    },
+    arena:   runtime.Arena,
+}
 
 From :: struct {
-    language:                   string,
-    static:                     string,
-    static_linux:               string `json:"static.linux"`,
-    static_linux_x86_64:        string `json:"static.linux.x86_64`,
-    static_linux_arm64:         string `json:"static.linux.arm64`,
-    static_windows:             string `json:"static.windows"`,
-    static_windows_x86_64:      string `json:"static.windows.x86_64"`,
-    static_windows_arm64:       string `json:"static.windows.arm64"`,
-    static_macos:               string `json:"static.macos"`,
-    static_macos_x86_64:        string `json:"static.macos.x86_64"`,
-    static_macos_arm64:         string `json:"static.macos.arm64"`,
-    static_bsd:                 string `json:"static.bsd"`,
-    static_bsd_x86_64:          string `json:"static.bsd.x86_64"`,
-    static_bsd_arm64:           string `json:"static.bsd.arm64"`,
-    shared:                     string,
-    shared_linux:               string `json:"shared.linux"`,
-    shared_linux_x86_64:        string `json:"shared.linux.x86_64"`,
-    shared_linux_arm64:         string `json:"shared.linux.arm64"`,
-    shared_windows:             string `json:"shared.windows"`,
-    shared_windows_x86_64:      string `json:"shared.windows.x86_64"`,
-    shared_windows_arm64:       string `json:"shared.windows.arm64"`,
-    shared_macos:               string `json:"shared.macos"`,
-    shared_macos_x86_64:        string `json:"shared.macos.x86_64"`,
-    shared_macos_arm64:         string `json:"shared.macos.arm64"`,
-    shared_bsd:                 string `json:"shared.bsd"`,
-    shared_bsd_x86_64:          string `json:"shared.bsd.x86_64"`,
-    shared_bsd_arm64:           string `json:"shared.bsd.arm64"`,
     // General
-    ignore:                     IgnoreSet,
-    overwrite:                  OverwriteSet,
+    language:    string,
+    static:      PlatformValue,
+    shared:      PlatformValue,
+    ignore:      PlatformValue,
+    overwrite:   PlatformValue,
     // C
-    headers:                    [dynamic]string,
-    headers_linux:              [dynamic]string `json:"headers.linux"`,
-    headers_linux_x86_64:       [dynamic]string `json:"headers.linux.x86_64"`,
-    headers_linux_arm64:        [dynamic]string `json:"headers.linux.arm64"`,
-    headers_windows:            [dynamic]string `json:"headers.windows"`,
-    headers_windows_x86_64:     [dynamic]string `json:"headers.windows.x86_64"`,
-    headers_windows_arm64:      [dynamic]string `json:"headers.windows.arm64"`,
-    headers_macos:              [dynamic]string `json:"headers.macos"`,
-    headers_macos_x86_64:       [dynamic]string `json:"headers.macos.x86_64"`,
-    headers_macos_arm64:        [dynamic]string `json:"headers.macos.arm64"`,
-    headers_bsd:                [dynamic]string `json:"headers.bsd"`,
-    headers_bsd_x86_64:         [dynamic]string `json:"headers.bsd.x86_64"`,
-    headers_bsd_arm64:          [dynamic]string `json:"headers.bsd.arm64"`,
-    includedirs:                [dynamic]string,
-    includedirs_linux:          [dynamic]string `json:"includedirs.linux"`,
-    includedirs_linux_x86_64:   [dynamic]string `json:"includedirs.linux.x86_64"`,
-    includedirs_linux_arm64:    [dynamic]string `json:"includedirs.linux.arm64"`,
-    includedirs_windows:        [dynamic]string `json:"includedirs.windows"`,
-    includedirs_windows_x86_64: [dynamic]string `json:"includedirs.windows.x86_64"`,
-    includedirs_windows_arm64:  [dynamic]string `json:"includedirs.windows.arm64"`,
-    includedirs_macos:          [dynamic]string `json:"includedirs.macos"`,
-    includedirs_macos_x86_64:   [dynamic]string `json:"includedirs.macos.x86_64"`,
-    includedirs_macos_arm64:    [dynamic]string `json:"includedirs.macos.arm64"`,
-    includedirs_bsd:            [dynamic]string `json:"includedirs.bsd"`,
-    includedirs_bsd_x86_64:     [dynamic]string `json:"includedirs.bsd.x86_64"`,
-    includedirs_bsd_arm64:      [dynamic]string `json:"includedirs.bsd.arm64"`,
-    defines:                    map[string]json.Value,
-    defines_linux:              map[string]json.Value `json:"defines.linux"`,
-    defines_linux_x86_64:       map[string]json.Value `json:"defines.linux.x86_64"`,
-    defines_linux_arm64:        map[string]json.Value `json:"defines.linux.arm64"`,
-    defines_windows:            map[string]json.Value `json:"defines.windows"`,
-    defines_windows_x86_64:     map[string]json.Value `json:"defines.windows.x86_64"`,
-    defines_windows_arm64:      map[string]json.Value `json:"defines.windows.arm64"`,
-    defines_macos:              map[string]json.Value `json:"defines.macos"`,
-    defines_macos_x86_64:       map[string]json.Value `json:"defines.macos.x86_64"`,
-    defines_macos_arm64:        map[string]json.Value `json:"defines.macos.arm64"`,
-    defines_bsd:                map[string]json.Value `json:"defines.bsd"`,
-    defines_bsd_x86_64:         map[string]json.Value `json:"defines.bsd.x86_64"`,
-    defines_bsd_arm64:          map[string]json.Value `json:"defines.bsd.arm64"`,
+    headers:     PlatformValue,
+    includedirs: PlatformValue,
+    defines:     PlatformValue,
     // Odin
-    packages:                   [dynamic]string,
-    packages_linux:             [dynamic]string `json:"packages.linux"`,
-    packages_linux_x86_64:      [dynamic]string `json:"packages.linux.x86_64"`,
-    packages_linux_arm64:       [dynamic]string `json:"packages.linux.arm64"`,
-    packages_windows:           [dynamic]string `json:"packages.windows"`,
-    packages_windows_x86_64:    [dynamic]string `json:"packages.windows.x86_64"`,
-    packages_windows_arm64:     [dynamic]string `json:"packages.windows.arm64"`,
-    packages_macos:             [dynamic]string `json:"packages.macos"`,
-    packages_macos_x86_64:      [dynamic]string `json:"packages.macos.x86_64"`,
-    packages_macos_arm64:       [dynamic]string `json:"packages.macos.arm64"`,
-    packages_bsd:               [dynamic]string `json:"packages.bsd"`,
-    packages_bsd_x86_64:        [dynamic]string `json:"packages.bsd.x86_64"`,
-    packages_bsd_arm64:         [dynamic]string `json:"packages.bsd.arm64"`,
+    packages:    PlatformValue,
+}
+
+To :: struct {
+    language:      string,
+    // General
+    static_switch: string,
+    out:           string,
+    trim_prefix:   TrimSet,
+    trim_suffix:   TrimSet,
+    add_prefix:    AddSet,
+    add_suffix:    AddSet,
+    ignore_arch:   bool,
+    // Odin
+    package_name:  string `json:"package"`,
+    detect:        OdinDetect,
+    no_build_tag:  bool,
+    use_when_else: bool,
 }
 
 TrimSet :: struct {
-    functions: SingleList,
-    variables: SingleList,
-    types:     SingleList,
-    constants: SingleList,
+    functions: yaml.Value,
+    variables: yaml.Value,
+    types:     yaml.Value,
+    constants: yaml.Value,
 }
 
 AddSet :: struct {
@@ -141,61 +101,286 @@ OverwriteSet :: struct {
     types:     map[string]string,
 }
 
-Trim :: union {
-    string,
-    [dynamic]string,
-    TrimSet,
-}
-
-Add :: union {
-    string,
-    AddSet,
-}
-
 OdinDetect :: struct {
     multi_pointer: string,
 }
 
-To :: struct {
-    language:      string,
-    // General
-    static_switch: string,
-    out:           string,
-    trim_prefix:   Trim,
-    trim_suffix:   Trim,
-    add_prefix:    Add,
-    add_suffix:    Add,
-    ignore_arch:   bool,
-    // Odin
-    package_name:  string `json:"package"`,
-    detect:        OdinDetect,
-    no_build_tag:  bool,
-    use_when_else: bool,
-}
-
-Rune :: struct {
-    version: uint,
-    from:    union {
-        From,
-        string,
-        [dynamic]string,
-    },
-    to:      union {
-        To,
-        string,
-    },
-    arena:   runtime.Arena,
-}
 
 SingleList :: union {
     string,
     [dynamic]string,
 }
 
-parse_rune :: proc(rd: io.Reader, file_path: string) -> (rn: Rune, err: union {
+PlatformValue :: map[Platform]yaml.Value
+
+parse_rune :: proc(
+    rd: io.Reader,
+    file_path: string,
+) -> (
+    rn: Rune,
+    err: errors.Error,
+) {
+    rn_arena_alloc := runtime.arena_allocator(&rn.arena)
+
+    buf: bytes.Buffer
+    bytes.buffer_init_allocator(&buf, 0, 0)
+
+    _, io_err := io.copy(bytes.buffer_to_stream(&buf), rd)
+    errors.wrap(io_err) or_return
+
+    data := bytes.buffer_to_bytes(&buf)
+
+    yaml_data, yaml_err := yaml.decode(data, rn_arena_alloc)
+    bytes.buffer_destroy(&buf)
+    if yaml_err != nil do return rn, errors.message("Yaml Decode: {}", yaml.error_string(yaml_err, file_path, errors.error_allocator))
+
+    #partial switch y in yaml_data {
+    case yaml.Mapping:
+        // TODO: check if values exist
+        rn.version = uint(y["version"].(i64))
+
+        #partial switch from in y["from"] {
+        case yaml.Mapping:
+            f: From
+
+            f.static = make(PlatformValue, allocator = rn_arena_alloc)
+            f.shared = make(PlatformValue, allocator = rn_arena_alloc)
+            f.ignore = make(PlatformValue, allocator = rn_arena_alloc)
+            f.overwrite = make(PlatformValue, allocator = rn_arena_alloc)
+            f.headers = make(PlatformValue, allocator = rn_arena_alloc)
+            f.includedirs = make(PlatformValue, allocator = rn_arena_alloc)
+            f.defines = make(PlatformValue, allocator = rn_arena_alloc)
+            f.packages = make(PlatformValue, allocator = rn_arena_alloc)
+
+            for key, value in from {
+                splits, alloc_err := strings.split(key, ".")
+                errors.wrap(alloc_err) or_return
+
+                name: string = ---
+                os, arch: Maybe(string)
+
+                if len(splits) == 0 {
+                    err = errors.message("invalid key in \"from\"")
+                    return
+                } else if len(splits) == 1 {
+                    #no_bounds_check name = splits[0]
+                } else if len(splits) == 2 {
+                    #no_bounds_check name = splits[0]
+                    #no_bounds_check os = splits[1]
+                } else if len(splits) == 3 {
+                    #no_bounds_check name = splits[0]
+                    #no_bounds_check os = splits[1]
+                    #no_bounds_check arch = splits[2]
+                } else {
+                    err = errors.message("invalid key in \"from\": {}", key)
+                    return
+                }
+
+                plat, plat_ok := platform_from_strings(os, arch)
+                if !plat_ok {
+                    err = errors.message(
+                        "invalid platform for \"from.{}\" os=\"{}\" arch=\"{}\"",
+                        name,
+                        os,
+                        arch,
+                    )
+                    return
+                }
+
+                switch name {
+                case "language":
+                    f.language = value.(string)
+                case "static":
+                    // TODO: relative to file
+                    f.static[plat] = value
+                case "shared":
+                    f.shared[plat] = value
+                case "ignore":
+                    f.ignore[plat] = value
+                case "overwrite":
+                    f.overwrite[plat] = value
+                case "headers":
+                    f.headers[plat] = value
+                case "includedirs":
+                    f.includedirs[plat] = value
+                case "defines":
+                    f.defines[plat] = value
+                case "packages":
+                    f.packages[plat] = value
+                }
+            }
+        case string:
+            if from != "stdin" {
+                rn.from = relative_to_file(file_path, from, rn_arena_alloc)
+            } else {
+                rn.from = from
+            }
+        case yaml.Sequence:
+            f := make([dynamic]string, rn_arena_alloc)
+
+            for value, idx in from {
+                #partial switch v in value {
+                case string:
+                    append(&f, relative_to_file(file_path, v, rn_arena_alloc))
+                case:
+                    err = errors.message(
+                        "\"from\"[{}] has invalid type %T",
+                        idx,
+                        v,
+                    )
+                    return
+                }
+            }
+
+            rn.from = f
+        case:
+            err = errors.message("\"from\" has invalid type %T", from)
+            return
+        }
+
+        #partial switch to in y["to"] {
+        case yaml.Mapping:
+            t: To
+
+            // TODO: check if exists
+            t.language = to["language"].(string)
+            t.static_switch = to["static_switch"].(string)
+            t.out = to["out"].(string)
+
+            #partial switch trim_prefix in to["trim_prefix"] {
+            case string:
+                t.trim_prefix.functions = trim_prefix
+                t.trim_prefix.variables = trim_prefix
+                t.trim_prefix.types = trim_prefix
+                t.trim_prefix.constants = trim_prefix
+            case yaml.Sequence:
+                t.trim_prefix.functions = trim_prefix
+                t.trim_prefix.variables = trim_prefix
+                t.trim_prefix.types = trim_prefix
+                t.trim_prefix.constants = trim_prefix
+            case yaml.Mapping:
+                t.trim_prefix.functions = trim_prefix["functions"]
+                t.trim_prefix.variables = trim_prefix["variables"]
+                t.trim_prefix.types = trim_prefix["types"]
+                t.trim_prefix.constants = trim_prefix["constants"]
+            case:
+                err = errors.message(
+                    "\"to.trim_prefix\" has invalid type %T",
+                    trim_prefix,
+                )
+                return
+            }
+
+            #partial switch trim_suffix in to["trim_suffix"] {
+            case string:
+                t.trim_suffix.functions = trim_suffix
+                t.trim_suffix.variables = trim_suffix
+                t.trim_suffix.types = trim_suffix
+                t.trim_suffix.constants = trim_suffix
+            case yaml.Sequence:
+                t.trim_suffix.functions = trim_suffix
+                t.trim_suffix.variables = trim_suffix
+                t.trim_suffix.types = trim_suffix
+                t.trim_suffix.constants = trim_suffix
+            case yaml.Mapping:
+                t.trim_suffix.functions = trim_suffix["functions"]
+                t.trim_suffix.variables = trim_suffix["variables"]
+                t.trim_suffix.types = trim_suffix["types"]
+                t.trim_suffix.constants = trim_suffix["constants"]
+            case:
+                err = errors.message(
+                    "\"to.trim_suffix\" has invalid type %T",
+                    trim_suffix,
+                )
+                return
+            }
+
+            #partial switch add_prfx in to["add_prefix"] {
+            case string:
+                t.add_prefix.functions = add_prfx
+                t.add_prefix.variables = add_prfx
+                t.add_prefix.types = add_prfx
+                t.add_prefix.constants = add_prfx
+            case yaml.Mapping:
+                t.add_prefix.functions = add_prfx["functions"].(string)
+                t.add_prefix.variables = add_prfx["variables"].(string)
+                t.add_prefix.types = add_prfx["types"].(string)
+                t.add_prefix.constants = add_prfx["constants"].(string)
+            case:
+                err = errors.message(
+                    "\"to.add_prefix\" has invalid type %T",
+                    add_prfx,
+                )
+                return
+            }
+
+            #partial switch add_sfx in to["add_suffix"] {
+            case string:
+                t.add_suffix.functions = add_sfx
+                t.add_suffix.variables = add_sfx
+                t.add_suffix.types = add_sfx
+                t.add_suffix.constants = add_sfx
+            case yaml.Mapping:
+                t.add_suffix.functions = add_sfx["functions"].(string)
+                t.add_suffix.variables = add_sfx["variables"].(string)
+                t.add_suffix.types = add_sfx["types"].(string)
+                t.add_suffix.constants = add_sfx["constants"].(string)
+            case:
+                err = errors.message(
+                    "\"to.add_suffix\" has invalid type %T",
+                    add_sfx,
+                )
+                return
+            }
+
+            t.ignore_arch = to["ignore_arch"].(bool)
+            t.package_name = to["package"].(string)
+
+            #partial switch detect in to["detect"] {
+            case yaml.Mapping:
+                t.detect.multi_pointer = detect["multi_pointer"].(string)
+                if len(t.detect.multi_pointer) == 0 {
+                    t.detect.multi_pointer = "auto"
+                }
+            case:
+                err = errors.message(
+                    "\"to.detect\" has invalid type %T",
+                    detect,
+                )
+                return
+            }
+
+            t.no_build_tag = to["no_build_tag"].(bool)
+            t.use_when_else = to["use_when_else"].(bool)
+
+            rn.to = t
+        case string:
+            if to != "stdout" {
+                rn.to = relative_to_file(file_path, to, rn_arena_alloc)
+            } else {
+                rn.to = to
+            }
+        case:
+            err = errors.message("\"to\" has invalid type %T", to)
+        }
+    case:
+        err = errors.message("yaml file has invalid type %T", y)
+        return
+    }
+
+    return
+}
+
+/*parse_rune_json :: proc(
+    rd: io.Reader,
+    file_path: string,
+) -> (
+    rn: Rune,
+    err: union {
         io.Error,
         json.Unmarshal_Error,
-    }) {
+    },
+) {
     rn_arena_alloc := runtime.arena_allocator(&rn.arena)
 
     buf: bytes.Buffer
@@ -400,7 +585,7 @@ parse_rune :: proc(rd: io.Reader, file_path: string) -> (rn: Rune, err: union {
     }
 
     return
-}
+}*/
 
 rune_destroy :: proc(rn: ^Rune) {
     runtime.arena_destroy(&rn.arena)
@@ -409,15 +594,18 @@ rune_destroy :: proc(rn: ^Rune) {
 @(private = "file")
 single_list_trim_prefix :: #force_inline proc(
     ident: string,
-    list: SingleList,
+    list: yaml.Value,
 ) -> string {
-    switch l in list {
+    #partial switch l in list {
     case string:
         return strings.trim_prefix(ident, l)
-    case [dynamic]string:
+    case yaml.Sequence:
         str := ident
         for v in l {
-            str = strings.trim_prefix(str, v)
+            #partial switch x in v {
+            case string:
+                str = strings.trim_prefix(str, x)
+            }
         }
         return str
     }
@@ -428,15 +616,18 @@ single_list_trim_prefix :: #force_inline proc(
 @(private = "file")
 single_list_trim_suffix :: #force_inline proc(
     ident: string,
-    list: SingleList,
+    list: yaml.Value,
 ) -> string {
-    switch l in list {
+    #partial switch l in list {
     case string:
         return strings.trim_suffix(ident, l)
-    case [dynamic]string:
+    case yaml.Sequence:
         str := ident
         for v in l {
-            str = strings.trim_suffix(str, v)
+            #partial switch x in v {
+            case string:
+                str = strings.trim_suffix(str, x)
+            }
         }
     }
 
@@ -488,7 +679,7 @@ is_valid_identifier :: proc(ident: string) -> bool {
 @(private = "file")
 process_identifier :: #force_inline proc(
     ident: string,
-    trim_prefix, trim_suffix: SingleList,
+    trim_prefix, trim_suffix: yaml.Value,
     add_pf, add_sf: string,
     reserved: []string,
     valid_ident := is_valid_identifier,
@@ -521,36 +712,6 @@ process_identifier :: #force_inline proc(
     return ident4
 }
 
-@(private = "file")
-trim_to_trim_set :: #force_inline proc(t: Trim) -> TrimSet {
-    if t == nil do return {}
-
-    switch trim in t {
-    case string:
-        return {trim, trim, trim, trim}
-    case [dynamic]string:
-        return {trim, trim, trim, trim}
-    case TrimSet:
-        return trim
-    }
-
-    return {}
-}
-
-@(private = "file")
-add_to_add_set :: #force_inline proc(a: Add) -> AddSet {
-    if a == nil do return {}
-
-    switch add in a {
-    case string:
-        return {add, add, add, add}
-    case AddSet:
-        return add
-    }
-
-    return {}
-}
-
 process_function_name :: proc(
     ident: string,
     rn: To,
@@ -560,10 +721,10 @@ process_function_name :: proc(
 ) -> string {
     return process_identifier(
         ident,
-        (rn.trim_prefix.(TrimSet) or_else {}).functions,
-        (rn.trim_suffix.(TrimSet) or_else {}).functions,
-        (rn.add_prefix.(AddSet) or_else {}).functions,
-        (rn.add_suffix.(AddSet) or_else {}).functions,
+        rn.trim_prefix.functions,
+        rn.trim_suffix.functions,
+        rn.add_prefix.functions,
+        rn.add_suffix.functions,
         reserved,
         valid_ident,
         allocator,
@@ -579,10 +740,10 @@ process_variable_name :: proc(
 ) -> string {
     return process_identifier(
         ident,
-        (rn.trim_prefix.(TrimSet) or_else {}).variables,
-        (rn.trim_suffix.(TrimSet) or_else {}).variables,
-        (rn.add_prefix.(AddSet) or_else {}).variables,
-        (rn.add_suffix.(AddSet) or_else {}).variables,
+        rn.trim_prefix.variables,
+        rn.trim_suffix.variables,
+        rn.add_prefix.variables,
+        rn.add_suffix.variables,
         reserved,
         valid_ident,
         allocator,
@@ -598,10 +759,10 @@ process_type_name :: proc(
 ) -> string {
     return process_identifier(
         ident,
-        (rn.trim_prefix.(TrimSet) or_else {}).types,
-        (rn.trim_suffix.(TrimSet) or_else {}).types,
-        (rn.add_prefix.(AddSet) or_else {}).types,
-        (rn.add_suffix.(AddSet) or_else {}).types,
+        rn.trim_prefix.types,
+        rn.trim_suffix.types,
+        rn.add_prefix.types,
+        rn.add_suffix.types,
         reserved,
         valid_ident,
         allocator,
@@ -617,10 +778,10 @@ process_constant_name :: proc(
 ) -> string {
     return process_identifier(
         ident,
-        (rn.trim_prefix.(TrimSet) or_else {}).constants,
-        (rn.trim_suffix.(TrimSet) or_else {}).constants,
-        (rn.add_prefix.(AddSet) or_else {}).constants,
-        (rn.add_suffix.(AddSet) or_else {}).constants,
+        rn.trim_prefix.constants,
+        rn.trim_suffix.constants,
+        rn.add_prefix.constants,
+        rn.add_suffix.constants,
         reserved,
         valid_ident,
         allocator,

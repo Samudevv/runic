@@ -44,16 +44,16 @@ Rune :: struct {
 From :: struct {
     // General
     language:    string,
-    static:      PlatformValue,
-    shared:      PlatformValue,
-    ignore:      PlatformValue,
-    overwrite:   PlatformValue,
+    static:      PlatformValue(string),
+    shared:      PlatformValue(string),
+    ignore:      PlatformValue(IgnoreSet),
+    overwrite:   PlatformValue(OverwriteSet),
     // C
-    headers:     PlatformValue,
-    includedirs: PlatformValue,
-    defines:     PlatformValue,
+    headers:     PlatformValue([]string),
+    includedirs: PlatformValue([]string),
+    defines:     PlatformValue(map[string]string),
     // Odin
-    packages:    PlatformValue,
+    packages:    PlatformValue([]string),
 }
 
 To :: struct {
@@ -88,10 +88,10 @@ AddSet :: struct {
 }
 
 IgnoreSet :: struct {
-    macros:    SingleList,
-    functions: SingleList,
-    variables: SingleList,
-    types:     SingleList,
+    macros:    yaml.Value,
+    functions: yaml.Value,
+    variables: yaml.Value,
+    types:     yaml.Value,
 }
 
 OverwriteSet :: struct {
@@ -111,7 +111,9 @@ SingleList :: union {
     [dynamic]string,
 }
 
-PlatformValue :: map[Platform]yaml.Value
+PlatformValue :: struct(T: typeid) {
+    d: map[Platform]T,
+}
 
 parse_rune :: proc(
     rd: io.Reader,
@@ -143,14 +145,32 @@ parse_rune :: proc(
         case yaml.Mapping:
             f: From
 
-            f.static = make(PlatformValue, allocator = rn_arena_alloc)
-            f.shared = make(PlatformValue, allocator = rn_arena_alloc)
-            f.ignore = make(PlatformValue, allocator = rn_arena_alloc)
-            f.overwrite = make(PlatformValue, allocator = rn_arena_alloc)
-            f.headers = make(PlatformValue, allocator = rn_arena_alloc)
-            f.includedirs = make(PlatformValue, allocator = rn_arena_alloc)
-            f.defines = make(PlatformValue, allocator = rn_arena_alloc)
-            f.packages = make(PlatformValue, allocator = rn_arena_alloc)
+            f.static.d = make(map[Platform]string, allocator = rn_arena_alloc)
+            f.shared.d = make(map[Platform]string, allocator = rn_arena_alloc)
+            f.ignore.d = make(
+                map[Platform]IgnoreSet,
+                allocator = rn_arena_alloc,
+            )
+            f.overwrite.d = make(
+                map[Platform]OverwriteSet,
+                allocator = rn_arena_alloc,
+            )
+            f.headers.d = make(
+                map[Platform][]string,
+                allocator = rn_arena_alloc,
+            )
+            f.includedirs.d = make(
+                map[Platform][]string,
+                allocator = rn_arena_alloc,
+            )
+            f.defines.d = make(
+                map[Platform]map[string]string,
+                allocator = rn_arena_alloc,
+            )
+            f.packages.d = make(
+                map[Platform][]string,
+                allocator = rn_arena_alloc,
+            )
 
             for key, value in from {
                 splits, alloc_err := strings.split(key, ".")
@@ -192,21 +212,293 @@ parse_rune :: proc(
                     f.language = value.(string)
                 case "static":
                     // TODO: relative to file
-                    f.static[plat] = value
+                    f.static.d[plat] = value.(string)
                 case "shared":
-                    f.shared[plat] = value
+                    f.shared.d[plat] = value.(string)
                 case "ignore":
-                    f.ignore[plat] = value
+                    i_set: IgnoreSet
+                    #partial switch v in value {
+                    case string:
+                        i_set.macros = v
+                        i_set.functions = v
+                        i_set.variables = v
+                        i_set.types = v
+                    case yaml.Sequence:
+                        i_set.macros = v
+                        i_set.functions = v
+                        i_set.variables = v
+                        i_set.types = v
+                    case yaml.Mapping:
+                        i_set.macros = v["macros"]
+                        i_set.functions = v["functions"]
+                        i_set.variables = v["variables"]
+                        i_set.types = v["types"]
+                    case:
+                        err = errors.message(
+                            "\"from.{}\" has invalid type %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
+                    f.ignore.d[plat] = i_set
                 case "overwrite":
-                    f.overwrite[plat] = value
+                    o_set: OverwriteSet
+
+                    o_set.constants = make(
+                        map[string]string,
+                        allocator = rn_arena_alloc,
+                    )
+                    o_set.functions = make(
+                        map[string]string,
+                        allocator = rn_arena_alloc,
+                    )
+                    o_set.variables = make(
+                        map[string]string,
+                        allocator = rn_arena_alloc,
+                    )
+                    o_set.types = make(
+                        map[string]string,
+                        allocator = rn_arena_alloc,
+                    )
+
+                    #partial switch v in value {
+                    case yaml.Mapping:
+                        #partial switch con in v["constants"] {
+                        case yaml.Mapping:
+                            for con_key, con_value in con {
+                                #partial switch con_v in con_value {
+                                case string:
+                                    o_set.constants[con_key] = con_v
+                                case:
+                                    err = errors.message(
+                                        "\"from.{}.constants.{}\" has invalid type %T",
+                                        key,
+                                        con_key,
+                                        con_v,
+                                    )
+                                    return
+                                }
+                            }
+                        case:
+                            err = errors.message(
+                                "\"from.{}.constants\" has invalid type %T",
+                                key,
+                                con,
+                            )
+                            return
+                        }
+
+                        #partial switch fun in v["functions"] {
+                        case yaml.Mapping:
+                            for fun_key, fun_value in fun {
+                                #partial switch fun_v in fun_value {
+                                case string:
+                                    o_set.functions[fun_key] = fun_v
+                                case:
+                                    err = errors.message(
+                                        "\"from.{}.functions.{}\" has invalid type %T",
+                                        key,
+                                        fun_key,
+                                        fun_v,
+                                    )
+                                    return
+                                }
+                            }
+                        case:
+                            err = errors.message(
+                                "\"from.{}.functions\" has invalid type %T",
+                                key,
+                                fun,
+                            )
+                            return
+                        }
+
+                        #partial switch var in v["variables"] {
+                        case yaml.Mapping:
+                            for var_key, var_value in var {
+                                #partial switch var_v in var_value {
+                                case string:
+                                    o_set.variables[var_key] = var_v
+                                case:
+                                    err = errors.message(
+                                        "\"from.{}.variables.{}\" has invalid type %T",
+                                        key,
+                                        var_key,
+                                        var_v,
+                                    )
+                                    return
+                                }
+                            }
+                        case:
+                            err = errors.message(
+                                "\"from.{}.variables\" has invalid type %T",
+                                key,
+                                var,
+                            )
+                            return
+                        }
+
+                        #partial switch typ in v["types"] {
+                        case yaml.Mapping:
+                            for typ_key, typ_value in typ {
+                                #partial switch typ_v in typ_value {
+                                case string:
+                                    o_set.types[typ_key] = typ_v
+                                case:
+                                    err = errors.message(
+                                        "\"from.{}.types.{}\" has invalid type %T",
+                                        key,
+                                        typ_key,
+                                        typ_v,
+                                    )
+                                    return
+                                }
+                            }
+                        case:
+                            err = errors.message(
+                                "\"from.{}.types\" has invalid type %T",
+                                key,
+                                typ,
+                            )
+                            return
+                        }
+                    case:
+                        err = errors.message(
+                            "\"from.{}\" has invalid type %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
+
+                    f.overwrite.d[plat] = o_set
                 case "headers":
-                    f.headers[plat] = value
+                    h_seq := make([dynamic]string, rn_arena_alloc)
+
+                    #partial switch v in value {
+                    case string:
+                        append(&h_seq, v)
+                    case yaml.Sequence:
+                        for seq_v, idx in v {
+                            #partial switch v_seq in seq_v {
+                            case string:
+                                append(&h_seq, v_seq)
+                            case:
+                                err = errors.message(
+                                    "\"from.{}\"[{}] has invalid type %T",
+                                    key,
+                                    idx,
+                                    v_seq,
+                                )
+                                return
+                            }
+                        }
+                    case:
+                        err = errors.message(
+                            "\"from.{}\" has invalid type %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
+
+                    f.headers.d[plat] = h_seq[:]
                 case "includedirs":
-                    f.includedirs[plat] = value
+                    i_seq := make([dynamic]string, rn_arena_alloc)
+
+                    #partial switch v in value {
+                    case string:
+                        append(&i_seq, v)
+                    case yaml.Sequence:
+                        for seq_v, idx in v {
+                            #partial switch v_seq in seq_v {
+                            case string:
+                                append(&i_seq, v_seq)
+                            case:
+                                err = errors.message(
+                                    "\"from.{}\"[{}] has invalid type %T",
+                                    key,
+                                    idx,
+                                    v_seq,
+                                )
+                                return
+                            }
+                        }
+                    case:
+                        err = errors.message(
+                            "\"from.{}\" has invalid type %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
+
+                    f.includedirs.d[plat] = i_seq[:]
                 case "defines":
-                    f.defines[plat] = value
+                    d_map := make(
+                        map[string]string,
+                        allocator = rn_arena_alloc,
+                    )
+
+                    #partial switch v in value {
+                    case yaml.Mapping:
+                        for d_key, d_value in v {
+                            // TODO: convert i64 and f64 to string
+                            #partial switch d_v in d_value {
+                            case string:
+                                d_map[d_key] = d_v
+                            case:
+                                err = errors.message(
+                                    "\"from.{}.{}\" has invalid type %T",
+                                    key,
+                                    d_key,
+                                    d_v,
+                                )
+                                return
+                            }
+                        }
+                    case:
+                        err = errors.message(
+                            "\"from.{}\" has invalid type %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
+
+                    f.defines.d[plat] = d_map
                 case "packages":
-                    f.packages[plat] = value
+                    p_seq := make([dynamic]string, rn_arena_alloc)
+
+                    #partial switch v in value {
+                    case string:
+                        append(&p_seq, v)
+                    case yaml.Sequence:
+                        for seq_v, idx in v {
+                            #partial switch v_seq in seq_v {
+                            case string:
+                                append(&p_seq, v_seq)
+                            case:
+                                err = errors.message(
+                                    "\"from.{}\"[{}] has invalid type %T",
+                                    key,
+                                    idx,
+                                    v_seq,
+                                )
+                                return
+                            }
+                        }
+                    case:
+                        err = errors.message(
+                            "\"from.{}\" has invalid type %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
+
+                    f.packages.d[plat] = p_seq[:]
                 }
             }
         case string:

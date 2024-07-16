@@ -254,6 +254,11 @@ parse_rune :: proc(
                     )
                 case "ignore":
                     i_set: IgnoreSet
+                    if value == nil {
+                        f.ignore.d[plat] = i_set
+                        break
+                    }
+
                     #partial switch v in value {
                     case string:
                         arr := make([dynamic]string, rn_arena_alloc)
@@ -411,6 +416,11 @@ parse_rune :: proc(
                         map[string]string,
                         allocator = rn_arena_alloc,
                     )
+
+                    if value == nil {
+                        f.overwrite.d[plat] = o_set
+                        break
+                    }
 
                     #partial switch v in value {
                     case yaml.Mapping:
@@ -575,6 +585,11 @@ parse_rune :: proc(
                 case "includedirs":
                     i_seq := make([dynamic]string, rn_arena_alloc)
 
+                    if value == nil {
+                        f.includedirs.d[plat] = i_seq[:]
+                        break
+                    }
+
                     #partial switch v in value {
                     case string:
                         append(
@@ -618,6 +633,11 @@ parse_rune :: proc(
                         map[string]string,
                         allocator = rn_arena_alloc,
                     )
+
+                    if value == nil {
+                        f.defines.d[plat] = d_map
+                        break
+                    }
 
                     #partial switch v in value {
                     case yaml.Mapping:

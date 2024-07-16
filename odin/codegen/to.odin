@@ -109,13 +109,15 @@ generate_bindings :: proc(
     io.write_string(wd, package_name) or_return
     io.write_string(wd, "\n\n") or_return
 
+    write_when := false
+
     for entry, idx in rc.cross {
         plats := entry.plats
         if !runic.runecross_is_simple(rc) {
-            if rn.use_when_else && idx == len(rc.cross) - 1 && idx != 0 {
+            if rn.use_when_else && idx == len(rc.cross) - 1 && write_when {
                 io.write_string(wd, "{\n\n") or_return
             } else {
-                when_plats(wd, plats, rn.ignore_arch) or_return
+                write_when = when_plats(wd, plats, rn.ignore_arch) or_return
             }
         }
 
@@ -127,7 +129,7 @@ generate_bindings :: proc(
             package_name,
         ) or_return
 
-        if !runic.runecross_is_simple(rc) {
+        if !runic.runecross_is_simple(rc) && write_when {
             io.write_rune(wd, '}') or_return
             if rn.use_when_else && idx != len(rc.cross) - 1 {
                 io.write_string(wd, " else ") or_return
@@ -944,72 +946,92 @@ ODIN_RESERVED :: []string {
     "import",
 }
 
+plat_if_expr :: proc(
+    plat: runic.Platform,
+    ignore_arch: bool,
+) -> Maybe(string) {
+    if plat.os == .Any && plat.arch == .Any do return nil
+
+    b: strings.Builder
+
+    if plat.os != .Any {
+        strings.write_string(&b, "(ODIN_OS == ")
+
+        switch plat.os {
+        case .Any:
+            strings.write_string(&b, "ODIN_OS")
+        case .Linux:
+            strings.write_string(&b, ".Linux")
+        case .Windows:
+            strings.write_string(&b, ".Windows")
+        case .Macos:
+            strings.write_string(&b, ".Darwin")
+        case .BSD:
+            strings.write_string(
+                &b,
+                ".FreeBSD || ODIN_OS == .OpenBSD || ODIN_OS == .NetBSD",
+            )
+        }
+
+        strings.write_rune(&b, ')')
+
+        if !ignore_arch && plat.arch != .Any {
+            strings.write_string(&b, " && ")
+        }
+    }
+
+    if !ignore_arch && plat.arch != .Any {
+        strings.write_string(&b, "(ODIN_ARCH == ")
+
+        switch plat.arch {
+        case .Any:
+            strings.write_string(&b, "ODIN_ARCH")
+        case .x86_64:
+            strings.write_string(&b, ".amd64")
+        case .arm64:
+            strings.write_string(&b, ".arm64")
+        }
+
+        strings.write_rune(&b, ')')
+    }
+
+    return strings.to_string(b)
+}
+
 when_plats :: proc(
     wd: io.Writer,
     plats: []runic.Platform,
     ignore_arch: bool,
-) -> io.Error {
+) -> (
+    write_when: bool,
+    err: io.Error,
+) {
     if len(plats) == 0 {
-        return .None
+        return false, .None
     }
 
-    io.write_string(wd, "when ") or_return
+    b: strings.Builder
 
-    for &plat, idx in plats {
-        if ignore_arch {
-            context.user_ptr = &plat
-            prev_count := slice.count_proc(
-                plats[:idx],
-                proc(prev_plat: runic.Platform) -> bool {
-                    plat := cast(^runic.Platform)context.user_ptr
-                    return prev_plat.os == plat.os
-                },
-            )
-            if prev_count != 0 do continue
-        }
-
-        if idx != 0 {
-            io.write_string(wd, " || ") or_return
-        }
-
-        if !ignore_arch {
-            io.write_rune(wd, '(') or_return
-        }
-
-        io.write_string(wd, "ODIN_OS == ") or_return
-
-        switch plat.os {
-        case .Any:
-            io.write_string(wd, "ODIN_OS") or_return
-        case .Linux:
-            io.write_string(wd, ".Linux") or_return
-        case .Windows:
-            io.write_string(wd, ".Windows") or_return
-        case .Macos:
-            io.write_string(wd, ".Darwin") or_return
-        case .BSD:
-            io.write_string(
-                wd,
-                ".FreeBSD || ODIN_OS == .OpenBSD || ODIN_OS == .NetBSD",
-            ) or_return
-        }
-
-        if !ignore_arch {
-            io.write_string(wd, ") && (ODIN_ARCH == ") or_return
-            switch plat.arch {
-            case .Any:
-                io.write_string(wd, "ODIN_ARCH") or_return
-            case .x86_64:
-                io.write_string(wd, ".amd64") or_return
-            case .arm64:
-                io.write_string(wd, ".arm64") or_return
+    for p in plats {
+        if if_expr, ok := plat_if_expr(p, ignore_arch).?; ok {
+            if strings.builder_len(b) != 0 {
+                strings.write_string(&b, " || ")
             }
-
-            io.write_rune(wd, ')') or_return
+            strings.write_string(&b, if_expr)
+            delete(if_expr)
         }
     }
 
-    io.write_string(wd, " {\n\n") or_return
+    if strings.builder_len(b) != 0 {
+        io.write_string(wd, "when ") or_return
 
-    return .None
+        io.write_string(wd, strings.to_string(b)) or_return
+        strings.builder_destroy(&b)
+
+        io.write_string(wd, " {\n\n") or_return
+
+        return true, .None
+    }
+
+    return false, .None
 }

@@ -35,8 +35,8 @@ game_of_life ODIN_JOBS=num_cpus(): bindings
   odin build . -out:"{{ BUILD_DIR / 'game_of_life' + EXE_EXT }}" {{ ODIN_FLAGS }} {{ ODIN_DEBUG_FLAGS }} "-extra-linker-flags:{{ LINK_FLAGS }}" -thread-count:{{ ODIN_JOBS }} -define:GLEW_STATIC={{ GLEW_STATIC }}
 
 bindings: glew
-  {{ BUILD_DIR / 'runic_debug' }} rune.json
-  {{ BUILD_DIR / 'runic_debug' }} bindings.json
+  {{ BUILD_DIR / 'runic_debug' }} rune.yml
+  {{ BUILD_DIR / 'runic_debug' }} bindings.yml
 
 [windows]
 glew:

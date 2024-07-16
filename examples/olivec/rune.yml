@@ -1,0 +1,13 @@
+version: 0
+from:
+  language: c
+  static: libolivec.a
+  static.windows: olivec.lib
+  headers: olive.c
+  defines:
+    OLIVECDEF: "extern"
+  ignore:
+    macros:
+      - OLIVE_C_
+      - OLIVEC_CANVAS_NULL
+to: stdout

@@ -24,11 +24,11 @@ import "core:testing"
 test_rune :: proc(t: ^testing.T) {
     using testing
 
-    file, os_err := os.open("test_data/rune.json")
+    file, os_err := os.open("test_data/rune.yml")
     if !expect_value(t, os_err, 0) do return
     defer os.close(file)
 
-    rn, err := parse_rune(os.stream_from_handle(file), "test_data/rune.json")
+    rn, err := parse_rune(os.stream_from_handle(file), "test_data/rune.yml")
     defer rune_destroy(&rn)
     if !expect_value(t, err, nil) do return
 

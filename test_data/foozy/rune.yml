@@ -1,0 +1,10 @@
+version: 0
+from:
+  language: odin
+  static: libfoozy.a
+  packages: "."
+to:
+  language: c
+  out: foozy.h
+  add_prefix:
+    functions: foozy_

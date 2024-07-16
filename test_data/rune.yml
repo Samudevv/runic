@@ -1,0 +1,25 @@
+version: 0
+from:
+  language: c
+  shared: libfoo.so
+  headers:
+    - 'foo.h'
+    - 'foz.h'
+    - 'bar.h'
+  headers.macos: plat_macos.h
+  includedirs: include
+  defines:
+    MYFOO: !!int 2
+  overwrite:
+    types:
+      size_t: "#UInt64"
+to:
+  language: odin
+  static_switch: FOO_STATIC
+  package: foo
+  trim_prefix:
+    functions: foo_
+    variables: bar_
+    types: baz_
+  trim_suffix:
+    types: _t

@@ -41,7 +41,7 @@ main :: proc() {
     defer free_all(context.temp_allocator)
     defer free_all(errors.error_allocator)
 
-    rune_file_name := "./rune.json"
+    rune_file_name := "./rune.yml"
     plat := runic.platform_from_host()
 
     if len(os.args) > 1 {

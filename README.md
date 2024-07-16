@@ -131,37 +131,30 @@ A runestone is a (modified) ini file containing information about the contents o
 
 ## Rune
 
-```json
-{
-  "version": 0,
-  "from": {
-    "language": "c",
-    "static": "libolivec.a",
-    "static.windows": "olivec.lib",
-    "headers": [
-      "olive.c"
-    ],
-    "defines": {
-      "OLIVECDEF": "extern"
-    },
-    "ignore": {
-      "macros": [
-        "OLIVE_C_",
-        "OLIVEC_CANVAS_NULL"
-      ]
-    }
-  },
-  "to": {
-    "language": "odin",
-    "package": "olivec",
-    "trim_prefix": {
-      "functions": "olivec_",
-      "types": "Olivec_",
-      "constants": "OLIVEC_"
-    },
-    "out": "olivec/olivec.odin"
-  }
-}
+```yaml
+version: 0
+from:
+  language: c
+  static: libolivec.a
+  static.windows: olivec.lib
+  headers: olive.c
+  defines:
+    OLIVECDEF: "extern"
+  ignore:
+    macros:
+      - OLIVE_C_
+      - OLIVEC_CANVAS_NULL
+to:
+  language: odin
+  package: olivec
+  trim_prefix:
+    functions: olivec_
+    types: Olivec_
+    constants: OLIVEC_
+  no_build_tag: yes
+  use_when_else: yes
+  ignore_arch: yes
+  out: "olivec/olivec.odin
 ```
 
 This example rune file is used to generate the bindings of the olivec example. A rune file contains all configuration necessary to generate bindings or runestones. One rune consists of a from and a to section. Each section can either specify a runestone file or a configuration that generates a runestone or bindings respectively.

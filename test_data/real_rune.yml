@@ -1,0 +1,19 @@
+version: 0
+from:
+  language: c
+  shared: libfoo.so
+  headers: [macros.h, function.h, builtin.h]
+  # headers.macos: plat_macos.h
+  # headers.macos.arm64: plat_macos_arm64.h
+  includedirs: include
+  defines:
+    MYFOO: "2"
+to:
+  language: odin
+  package: foo
+  trim_prefix:
+    functions: foo_
+    variables: bar_
+    types: baz_
+  trim_suffix:
+    types: _t

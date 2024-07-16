@@ -30,19 +30,19 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
 
     plat := runic.platform_from_host()
 
-    rune_file, os_err := os.open("test_data/foozy/rune.json")
+    rune_file, os_err := os.open("test_data/foozy/rune.yml")
     if !expect_value(t, os_err, 0) do return
     defer os.close(rune_file)
 
     rn, rn_err := runic.parse_rune(
         os.stream_from_handle(rune_file),
-        "test_data/foozy/rune.json",
+        "test_data/foozy/rune.yml",
     )
     if !expect_value(t, rn_err, nil) do return
 
     rs, rs_err := generate_runestone(
         plat,
-        "test_data/foozy/rune.json",
+        "test_data/foozy/rune.yml",
         rn.from.(runic.From),
     )
     if !expect_value(t, rs_err, nil) do return

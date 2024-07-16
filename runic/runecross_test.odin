@@ -147,15 +147,7 @@ test_runecross :: proc(t: ^testing.T) {
     )
     if !expect_value(t, cross_err, nil) do return
 
-    general: ^PlatformRunestone
-    for &c in cross.cross {
-        if len(c.plats) == 1 &&
-           c.plats[0].os == .Any &&
-           c.plats[0].arch == .Any {
-            general = &c
-        }
-    }
-    if !expect(t, general != nil) do return
+    general := &cross.cross[0]
 
     expect_value(t, len(general.plats), 1)
     expect_value(t, general.plats[0].os, OS.Any)

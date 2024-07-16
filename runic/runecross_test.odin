@@ -156,22 +156,26 @@ test_runecross :: proc(t: ^testing.T) {
     expect_value(t, om.length(general.types), 6)
     expect_value(t, om.length(general.symbols), 2)
 
-    linux_cross_idx, _ := slice.linear_search_proc(
+    linux_cross_idx, found := slice.linear_search_proc(
         cross.cross[:],
         proc(value: PlatformRunestone) -> bool {
-            return slice.contains(value.plats[:], Platform{.Linux, .x86_64})
+            return slice.contains(value.plats[:], Platform{.Linux, .Any})
         },
     )
+    if !expect(t, found) do return
+
     linux_cross := cross.cross[linux_cross_idx]
     expect_value(t, om.length(linux_cross.types), 1)
     expect_value(t, om.length(linux_cross.symbols), 1)
 
-    windows_cross_idx, _ := slice.linear_search_proc(
+    windows_cross_idx, found_win := slice.linear_search_proc(
         cross.cross[:],
         proc(value: PlatformRunestone) -> bool {
-            return slice.contains(value.plats[:], Platform{.Windows, .x86_64})
+            return slice.contains(value.plats[:], Platform{.Windows, .Any})
         },
     )
+    if !expect(t, found_win) do return
+
     windows_cross := cross.cross[windows_cross_idx]
     expect_value(t, om.length(windows_cross.types), 1)
     expect_value(t, om.length(windows_cross.symbols), 1)

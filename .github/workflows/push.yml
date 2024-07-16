@@ -44,7 +44,7 @@ jobs:
           command: just test
           timeout_minutes: 2
           retry_wait_seconds: 1
-          max_attempts: 5
+          max_attempts: 1
 
       - name: example/olivec
         run: just example olivec

@@ -51,8 +51,14 @@ jobs:
       - name: Setup example/glew
         if: matrix.os == 'ubuntu-latest'
         run: |
+          just debug
+          ln -sr build/runic_debug build/runic
+          export PATH=$(pwd)/build/:$PATH
+
           just -f examples/glew/justfile build
           just -f examples/glew/justfile
+
+          rm build/runic
       - name: example/glew
         run: just example glew
 

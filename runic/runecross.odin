@@ -24,8 +24,8 @@ import om "root:ordered_map"
 
 // TODO: memory management
 Runecross :: struct {
-    arenas:  [dynamic]runtime.Arena,
-    cross:   [dynamic]PlatformRunestone,
+    arenas: [dynamic]runtime.Arena,
+    cross:  [dynamic]PlatformRunestone,
 }
 
 PlatformRunestone :: struct {
@@ -60,13 +60,16 @@ cross_the_runes :: proc(
         "file_paths and stones should have the same length",
     ) or_return
     if len(stones) == 1 {
-        append(&rc.cross, PlatformRunestone{
-            plats = {{.Any, .Any}},
-            runestone = RunestoneWithFile{
-                file_path = file_paths[0],
-                stone = stones[0],
+        append(
+            &rc.cross,
+            PlatformRunestone {
+                plats = {{.Any, .Any}},
+                runestone = RunestoneWithFile {
+                    file_path = file_paths[0],
+                    stone = stones[0],
+                },
             },
-        })
+        )
         return
     }
 
@@ -275,7 +278,12 @@ cross_the_runes :: proc(
     }
 
     slice.sort_by(rc.cross[:], proc(i, j: PlatformRunestone) -> bool {
-        return (len(i.plats) == 1 && i.plats[0].os == .Any && i.plats[0].arch == .Any) || (len(i.plats) < len(j.plats))
+        return(
+            (len(i.plats) == 1 &&
+                i.plats[0].os == .Any &&
+                i.plats[0].arch == .Any) ||
+            (len(i.plats) < len(j.plats)) \
+        )
     })
 
     return
@@ -476,6 +484,79 @@ get_same_platforms :: proc(
         delete(plats)
         plats = make([dynamic]Platform)
         append(&plats, Platform{.Any, .Any})
+    } else {
+        // Count the number of OSes and Architectures in origin
+        // This will represent the entire collection of OSes and Architectures
+        origin_os, origin_os_count: int
+        origin_arch, origin_arch_count: int
+
+        for entry in origin.data {
+            plat := entry.key
+
+            origin_os_count += (origin_os & (1 << uint(plat.os))) == 0
+            origin_os |= 1 << uint(plat.os)
+
+            origin_arch_count += (origin_arch & (1 << uint(plat.arch))) == 0
+            origin_arch |= 1 << uint(plat.arch)
+        }
+
+        // Check if all architectures of an OS are present
+        for &plat1, i in plats {
+            stone_arch, stone_arch_count: int
+
+            for plat2 in plats {
+                if plat1.os == plat2.os {
+                    if plat2.arch == .Any {
+                        stone_arch_count = origin_arch_count
+                        break
+                    }
+                    stone_arch_count += (stone_arch & (1 << uint(plat2.arch))) == 0
+                    stone_arch |= 1 << uint(plat2.arch)
+                }
+            }
+
+            if stone_arch_count == origin_arch_count {
+                plat1.arch = .Any
+
+                for j := i + 1; j < len(plats); j += 1 {
+                    plat2 := plats[j]
+                    if plat1.os == plat2.os {
+                        unordered_remove(&plats, j)
+                        j -= 1
+                    }
+                }
+            }
+        }
+
+        // Check if all OSes of an Architecture are present
+        for &plat1, i in plats {
+            if plat1.arch == .Any do continue
+
+            stone_os, stone_os_count: int
+
+            for plat2 in plats {
+                if plat1.arch == plat2.arch {
+                    if plat2.os == .Any {
+                        stone_os_count = origin_os_count
+                        break
+                    }
+                    stone_os_count += (stone_os & (1 << uint(plat1.os))) == 0
+                    stone_os |= 1 << uint(plat1.os)
+                }
+            }
+
+            if stone_os_count == origin_os_count {
+                plat1.os = .Any
+
+                for j := i + 1; j < len(plats); j += 1 {
+                    plat2 := plats[j]
+                    if plat1.arch == plat2.arch {
+                        unordered_remove(&plats, j)
+                        j -= 1
+                    }
+                }
+            }
+        }
     }
 
     return

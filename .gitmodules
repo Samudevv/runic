@@ -1,3 +1,6 @@
 [submodule "odin-yaml"]
 	path = shared/yaml
 	url = https://github.com/PucklaJ/odin-yaml.git
+[submodule "examples/glew"]
+	path = examples/glew
+	url = https://github.com/PucklaJ/odin-glew.git

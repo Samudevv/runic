@@ -73,7 +73,7 @@ check PACKAGE='.' TARGET='' ODIN_JOBS=num_cpus():
   odin check {{ PACKAGE }} {{ ODIN_FLAGS }} -thread-count:{{ ODIN_JOBS }} {{ if TARGET == '' {''} else {'-target:' + TARGET} }}
 
 example EXAMPLE: debug
-  @just --justfile "{{ 'examples' / EXAMPLE / 'justfile' }}"
+  @just --justfile "{{ 'examples' / EXAMPLE / 'justfile' }}" example
 
 [unix]
 clean:

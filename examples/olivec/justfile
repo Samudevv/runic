@@ -9,7 +9,7 @@ ODIN_FLAGS := (
 EXE_EXT := if os_family() == 'unix' {''} else {'.exe'}
 MAKE := if os() == 'linux' {'make'} else {'gmake'}
 
-default: run
+example: run
 
 run: build
   {{ BUILD_DIR / 'olivec_example' }}

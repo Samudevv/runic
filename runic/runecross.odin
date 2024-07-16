@@ -25,7 +25,6 @@ import om "root:ordered_map"
 // TODO: memory management
 Runecross :: struct {
     arenas:  [dynamic]runtime.Arena,
-    general: RunestoneWithFile,
     cross:   [dynamic]PlatformRunestone,
 }
 
@@ -54,16 +53,20 @@ cross_the_runes :: proc(
     for stone, idx in stones {
         rc.arenas[idx] = stone.arena
     }
+    rc.cross = make([dynamic]PlatformRunestone, rn_arena_alloc)
 
     errors.assert(
         len(file_paths) == len(stones),
         "file_paths and stones should have the same length",
     ) or_return
     if len(stones) == 1 {
-        rc.general = RunestoneWithFile {
-            file_path = file_paths[0],
-            stone     = stones[0],
-        }
+        append(&rc.cross, PlatformRunestone{
+            plats = {{.Any, .Any}},
+            runestone = RunestoneWithFile{
+                file_path = file_paths[0],
+                stone = stones[0],
+            },
+        })
         return
     }
 
@@ -87,15 +90,6 @@ cross_the_runes :: proc(
             RunestoneWithFile{file_path = file_paths[idx], stone = stone},
         )
     }
-
-    rc.general.file_path = "/general"
-    rc.general.types = om.make(string, Type, allocator = rn_arena_alloc)
-    rc.general.symbols = om.make(string, Symbol, allocator = rn_arena_alloc)
-    rc.general.constants = om.make(
-        string,
-        Constant,
-        allocator = rn_arena_alloc,
-    )
 
     for entry0 in origin.data {
         stone1 := entry0.value
@@ -288,12 +282,7 @@ cross_the_runes :: proc(
 }
 
 runecross_is_simple :: proc(rc: Runecross) -> bool {
-    return(
-        om.length(rc.general.types) == 0 &&
-        om.length(rc.general.symbols) == 0 &&
-        om.length(rc.general.constants) == 0 &&
-        len(rc.cross) == 1 \
-    )
+    return len(rc.cross) == 1
 }
 
 is_same_constant :: proc(c1, c2: Constant) -> bool {
@@ -482,6 +471,13 @@ get_same_platforms :: proc(
             append(&plats, stone2.platform)
         }
     }
+
+    if len(plats) == om.length(origin) {
+        delete(plats)
+        plats = make([dynamic]Platform)
+        append(&plats, Platform{.Any, .Any})
+    }
+
     return
 }
 
@@ -498,15 +494,6 @@ set_for_same_platforms :: proc(
     user_data: rawptr = nil,
     allocator := context.allocator,
 ) {
-    if len(plats) == len_origin {
-        if len(plats) == 1 {
-            rc.general.platform = plats[0]
-            rc.general.file_path = stone1.file_path
-        }
-        set_proc(stone1, &rc.general, user_data)
-        return
-    }
-
     stone2_loop: for &stone2 in rc.cross {
         if len(stone2.plats) == len(plats) {
             for plat2 in stone2.plats {

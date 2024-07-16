@@ -14,7 +14,6 @@ You should have received a copy of the GNU General Public License
 along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-
 package odin_codegen
 
 import "base:runtime"
@@ -50,7 +49,7 @@ generate_bindings :: proc(
 
                 switch plat.os {
                 case .Any:
-                    panic("invalid os Any")
+                    os_names = []string{}
                 case .Linux:
                     os_names = []string{"linux"}
                 case .Windows:
@@ -67,7 +66,6 @@ generate_bindings :: proc(
                         io.write_rune(wd, ' ') or_return
                         switch plat.arch {
                         case .Any:
-                            panic("invalid arch Any")
                         case .x86_64:
                             io.write_string(wd, "amd64") or_return
                         case .arm64:
@@ -110,16 +108,6 @@ generate_bindings :: proc(
 
     io.write_string(wd, package_name) or_return
     io.write_string(wd, "\n\n") or_return
-
-    if !runic.runecross_is_simple(rc) {
-        generate_bindings_from_runestone(
-            runic.PlatformRunestone{runestone = rc.general},
-            rn,
-            wd,
-            file_path,
-            package_name,
-        ) or_return
-    }
 
     for entry, idx in rc.cross {
         plats := entry.plats
@@ -987,33 +975,34 @@ when_plats :: proc(
         if !ignore_arch {
             io.write_rune(wd, '(') or_return
         }
-        io.write_string(wd, "ODIN_OS == .") or_return
+
+        io.write_string(wd, "ODIN_OS == ") or_return
 
         switch plat.os {
         case .Any:
-            panic("invalid os Any")
+            io.write_string(wd, "ODIN_OS") or_return
         case .Linux:
-            io.write_string(wd, "Linux") or_return
+            io.write_string(wd, ".Linux") or_return
         case .Windows:
-            io.write_string(wd, "Windows") or_return
+            io.write_string(wd, ".Windows") or_return
         case .Macos:
-            io.write_string(wd, "Darwin") or_return
+            io.write_string(wd, ".Darwin") or_return
         case .BSD:
             io.write_string(
                 wd,
-                "FreeBSD || ODIN_OS == .OpenBSD || ODIN_OS == .NetBSD",
+                ".FreeBSD || ODIN_OS == .OpenBSD || ODIN_OS == .NetBSD",
             ) or_return
         }
 
         if !ignore_arch {
-            io.write_string(wd, ") && (ODIN_ARCH == .") or_return
+            io.write_string(wd, ") && (ODIN_ARCH == ") or_return
             switch plat.arch {
             case .Any:
-                panic("invalid arch Any")
+                io.write_string(wd, "ODIN_ARCH") or_return
             case .x86_64:
-                io.write_string(wd, "amd64") or_return
+                io.write_string(wd, ".amd64") or_return
             case .arm64:
-                io.write_string(wd, "arm64") or_return
+                io.write_string(wd, ".arm64") or_return
             }
 
             io.write_rune(wd, ')') or_return

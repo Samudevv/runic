@@ -147,8 +147,22 @@ test_runecross :: proc(t: ^testing.T) {
     )
     if !expect_value(t, cross_err, nil) do return
 
-    expect_value(t, om.length(cross.general.types), 6)
-    expect_value(t, om.length(cross.general.symbols), 2)
+    general: ^PlatformRunestone
+    for &c in cross.cross {
+        if len(c.plats) == 1 &&
+           c.plats[0].os == .Any &&
+           c.plats[0].arch == .Any {
+            general = &c
+        }
+    }
+    if !expect(t, general != nil) do return
+
+    expect_value(t, len(general.plats), 1)
+    expect_value(t, general.plats[0].os, OS.Any)
+    expect_value(t, general.plats[0].arch, Architecture.Any)
+
+    expect_value(t, om.length(general.types), 6)
+    expect_value(t, om.length(general.symbols), 2)
 
     linux_cross_idx, _ := slice.linear_search_proc(
         cross.cross[:],

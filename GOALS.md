@@ -1,14 +1,19 @@
 # Goals for future versions
 
-## 0.2 (September)
+## 0.2 (End of July)
 
 + [x] MacOS support
 + [x] BSD support
-+ [ ] complex bindings example (e.g. cairo)
 + [x] Make odin integers sizes based on platform and architecture
-+ [ ] Switch to yaml for rune file
++ [x] Switch to yaml for rune file
++ [ ] Handle Any OS and Any Arch where possible
++ [ ] Add 32-Bit architectures
 
-## 0.3 (?)
+## 0.4 (End of August)
+
++ [ ] libclang as backend of C parser
+
+## 0.4 (?)
 
 + C
   + To
@@ -31,3 +36,4 @@
 + [ ] Prettier and more useful logs
 + [ ] Better error messages
 + [ ] If requested, run formatter over generated code
++ [ ] complex bindings example (e.g. cairo)

@@ -39,8 +39,8 @@ RunestoneWithFile :: struct {
 }
 
 cross_the_runes :: proc(
-    file_paths: [dynamic]string,
-    stones: [dynamic]Runestone,
+    file_paths: []string,
+    stones: []Runestone,
 ) -> (
     rc: Runecross,
     err: errors.Error,
@@ -593,6 +593,11 @@ set_for_same_platforms :: proc(
     }
 
     stone2: RunestoneWithFile
+
+    stone2.symbols = om.make(string, Symbol, allocator = allocator)
+    stone2.types = om.make(string, Type, allocator = allocator)
+    stone2.constants = om.make(string, Constant, allocator = allocator)
+
     if len(plats) == 1 {
         stone2.platform = plats[0]
         stone2.file_path = stone1.file_path

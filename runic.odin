@@ -274,7 +274,7 @@ main :: proc() {
             append(&stones, rs)
         }
 
-        from_rc, err = runic.cross_the_runes(from, stones)
+        from_rc, err = runic.cross_the_runes(from[:], stones[:])
         if err != nil {
             fmt.eprintfln("failed to cross the runes: {}", err)
             os.exit(1)

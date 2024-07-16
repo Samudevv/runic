@@ -20,6 +20,7 @@ package runic
 import "core:slice"
 import "core:strings"
 import "core:testing"
+import "base:runtime"
 import om "root:ordered_map"
 
 SAME_RUNESTONE1 :: `
@@ -146,6 +147,10 @@ test_runecross :: proc(t: ^testing.T) {
         {linux_stone, windows_stone},
     )
     if !expect_value(t, cross_err, nil) do return
+    defer delete(cross.arenas)
+    defer for &a in cross.arenas {
+        runtime.arena_destroy(&a)
+    }
 
     general := &cross.cross[0]
 

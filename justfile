@@ -4,6 +4,12 @@ YAML_STATIC := if os() == 'linux' {
   'true'
 } else if os() == 'windows' {
   'true'
+} else if os() == 'macos' {
+  if arch() == 'x86_64' {
+    'true'
+  } else {
+    'false'
+  }
 } else {
   'false'
 }

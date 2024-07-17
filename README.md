@@ -74,7 +74,6 @@ This repository contains some examples which show how the tool can be used.
   **Dependencies**:
   + Arch Linux: `sudo pacman -S --needed glew glfw`
   + Ubuntu: `sudo apt install libglew-dev libglfw3-dev`
-  + Windows: wget, 7zip (can be installed using `winget install wget 7zip` or `choco install wget 7zip`)
 
 ## Runestone
 

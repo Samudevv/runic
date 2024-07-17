@@ -55,7 +55,7 @@ jobs:
           ln -sr build/runic_debug build/runic
           export PATH=$(pwd)/build/:$PATH
 
-          sudo just -f examples/glew/justfile deps-debian
+          sudo $(which just) -f examples/glew/justfile deps-debian
           just -f examples/glew/justfile build
           just -f examples/glew/justfile
 

@@ -19,24 +19,16 @@ jobs:
           submodules: recursive
       - uses: korandoru/setup-zig@v1
         name: Install zig
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'
         with:
           zig-version: 0.12.0
       - uses: extractions/setup-just@v2
         name: Install just
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'
       - uses: laytan/setup-odin@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           release: dev-2024-07
       - uses: ilammy/msvc-dev-cmd@v1
         if: matrix.os == 'windows-latest'
-      - name: Install glew, glfw
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt install libglew-dev libglfw3-dev
-      - name: Install just, glew, zig
-        if: startsWith(matrix.os, 'macos') == true
-        run: brew install just glew zig
 
       - name: Test
         uses: nick-fields/retry@v3
@@ -48,20 +40,6 @@ jobs:
 
       - name: example/olivec
         run: just example olivec
-      - name: Setup example/glew
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          just debug
-          ln -sr build/runic_debug build/runic
-          export PATH=$(pwd)/build/:$PATH
-
-          sudo $(which just) -f examples/glew/justfile deps-debian
-          just -f examples/glew/justfile build
-          just -f examples/glew/justfile
-
-          rm build/runic
-      - name: example/glew
-        run: just example glew
 
       - name: Build runic release
         run: just

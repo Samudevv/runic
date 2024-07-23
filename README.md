@@ -19,7 +19,7 @@ For example if you would like to use odin in your project but also use a C libra
 runic [rune file]
 ```
 
-Runic is configured through a **rune** file which is a json file that contains the language **from** which to generate a **runestone** and (if specified) the language **to** which to write bindings using the generated **runestone**. If no rune file is specified a `rune.json` file in the current directory is attempted to be opened.
+Runic is configured through a **rune** file which is a yaml file that contains the language **from** which to generate a **runestone** and (if specified) the language **to** which to write bindings using the generated **runestone**. If no rune file is specified a `rune.yml` file in the current directory is attempted to be opened.
 
 A **runestone** is an intermediate format that contains all symbols and necessary types that are contained inside one library file (e.g. libfoo.a, libfoo.so, foo.lib, foo.dll etc.)
 
@@ -74,7 +74,6 @@ This repository contains some examples which show how the tool can be used.
   **Dependencies**:
   + Arch Linux: `sudo pacman -S --needed glew glfw`
   + Ubuntu: `sudo apt install libglew-dev libglfw3-dev`
-  + Windows: wget, 7zip (can be installed using `winget install wget 7zip` or `choco install wget 7zip`)
 
 ## Runestone
 
@@ -133,6 +132,10 @@ A runestone is a (modified) ini file containing information about the contents o
 
 ```yaml
 version: 0
+platforms:
+  - Linux x86_64
+  - Macos x86_64
+  - Windows x86_64
 from:
   language: c
   static: libolivec.a

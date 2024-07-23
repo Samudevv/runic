@@ -37,6 +37,8 @@ Architecture :: enum {
     Any,
     x86_64,
     arm64,
+    x86,
+    arm32,
 }
 
 host_os :: proc() -> OS {
@@ -99,7 +101,7 @@ platform_from_strings :: proc(
 
     if arch != nil {
         switch plat.arch {
-        case .x86_64, .arm64, .Any:
+        case .x86_64, .arm64, .Any, .x86, .arm32:
         // A reminder to implement more platforms
         }
 
@@ -108,6 +110,10 @@ platform_from_strings :: proc(
             plat.arch = .x86_64
         case "arm64":
             plat.arch = .arm64
+        case "x86":
+            plat.arch = .x86
+        case "arm32":
+            plat.arch = .arm32
         case:
             ok = false
             return

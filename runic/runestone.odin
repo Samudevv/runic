@@ -234,7 +234,7 @@ parse_runestone :: proc(
         errors.wrap(ok3) or_return
 
         switch platform.arch {
-        case .x86_64, .arm64, .Any:
+        case .x86_64, .arm64, .Any, .x86, .arm32:
         // Just a reminder to update this when platforms change
         }
         switch arch_str {
@@ -242,6 +242,10 @@ parse_runestone :: proc(
             platform.arch = .x86_64
         case "arm64":
             platform.arch = .arm64
+        case "x86":
+            platform.arch = .x86
+        case "arm32":
+            platform.arch = .arm32
         case "Any":
             err = errors.message("a runestone can not have any architecture")
             return

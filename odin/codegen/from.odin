@@ -713,6 +713,8 @@ type_to_type :: proc(
                 panic("invalid arch any")
             case .x86_64, .arm64:
                 e.type = .SInt64
+            case .x86, .arm32:
+                e.type = .SInt32
             }
         } else {
             et := type_to_type(
@@ -908,6 +910,8 @@ type_identifier_to_type_specifier :: proc(
             panic("invalid arch Any")
         case .x86_64, .arm64:
             t = SInt64
+        case .x86, .arm32:
+            t = SInt32
         }
     case "uint":
         switch plat.arch {
@@ -915,6 +919,8 @@ type_identifier_to_type_specifier :: proc(
             panic("invalid arch Any")
         case .x86_64, .arm64:
             t = UInt64
+        case .x86, .arm32:
+            t = UInt32
         }
     case "i8":
         t = SInt8
@@ -954,6 +960,8 @@ type_identifier_to_type_specifier :: proc(
             panic("invalid arch Any")
         case .x86_64, .arm64:
             t = Bool64
+        case .x86, .arm32:
+            t = Bool32
         }
     case "b8":
         t = Bool8

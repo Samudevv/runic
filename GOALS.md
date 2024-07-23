@@ -7,7 +7,7 @@
 + [x] Make odin integers sizes based on platform and architecture
 + [x] Switch to yaml for rune file
 + [ ] Handle Any OS and Any Arch where possible
-+ [ ] Add 32-Bit architectures
++ [x] Add 32-Bit architectures
 
 ## 0.4 (End of August)
 

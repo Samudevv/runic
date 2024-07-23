@@ -94,6 +94,10 @@ preprocess_file :: proc(
         arch_str = "x86_64"
     case .arm64:
         arch_str = "aarch64"
+    case .x86:
+        arch_str = "x86"
+    case .arm32:
+        arch_str = "arm"
     }
 
     append(&pp_call, strings.concatenate({arch_str, "-", os_str}, arena_alloc))

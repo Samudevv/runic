@@ -71,6 +71,11 @@ main :: proc() {
             } else {
                 switch last_arg {
                 case "os":
+                    switch runic.OS.Any {
+                    case .Linux, .Windows, .Macos, .BSD, .Any:
+                        // Just a reminder to implement more platforms
+                    }
+
                     switch strings.to_lower(arg, context.temp_allocator) {
                     case "linux":
                         plat.os = .Linux
@@ -85,11 +90,20 @@ main :: proc() {
                         os.exit(1)
                     }
                 case "arch":
+                    switch runic.Architecture.Any {
+                    case .x86_64, .arm64, .x86, .arm32, .Any:
+                        // Just a reminder to implement more platforms
+                    }
+
                     switch strings.to_lower(arg, context.temp_allocator) {
                     case "x86_64", "amd64":
                         plat.arch = .x86_64
                     case "arm64", "aarch64":
                         plat.arch = .arm64
+                    case "x86", "i386":
+                        plat.arch = .x86
+                    case "arm", "arm32":
+                        plat.arch = .arm32
                     case:
                         fmt.eprintfln("invalid architecture \"{}\"", arg)
                         os.exit(1)

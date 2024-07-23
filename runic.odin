@@ -98,23 +98,21 @@ main :: proc() {
         defer delete(file_paths)
 
         for plat in plats {
+            rs: runic.Runestone = ---
+
             switch from.language {
             case "c":
-                rs: runic.Runestone = ---
                 rs, err = ccdg.generate_runestone(plat, rune_file_name, from)
-                append(&stones, rs)
             case "odin":
                 when ODIN_OS == .FreeBSD {
                     fmt.eprintfln("from odin is not supported on FreeBSD")
                     os.exit(1)
                 } else {
-                    rs: runic.Runestone = ---
                     rs, err = odincdg.generate_runestone(
                         plat,
                         rune_file_name,
                         from,
                     )
-                    append(&stones, rs)
                 }
             case:
                 fmt.eprintfln(
@@ -132,9 +130,10 @@ main :: proc() {
                     plat.arch,
                     err,
                 )
-                os.exit(1)
+                continue
             }
 
+            append(&stones, rs)
             append(&file_paths, "")
 
             fmt.eprintfln(

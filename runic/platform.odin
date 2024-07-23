@@ -41,6 +41,11 @@ Architecture :: enum {
     arm32,
 }
 
+MIN_OS :: OS.Linux
+MAX_OS :: OS.BSD
+MIN_ARCH :: Architecture.x86_64
+MAX_ARCH :: Architecture.arm32
+
 host_os :: proc() -> OS {
     switch OS.Linux {
     case .Linux, .Windows, .Macos, .BSD, .Any:

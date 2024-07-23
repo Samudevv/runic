@@ -171,7 +171,23 @@ parse_rune :: proc(
                     return
                 }
 
-                append(&plats, plat)
+                if plat.os == .Any {
+                    for os in MIN_OS ..= MAX_OS {
+                        if plat.arch == .Any {
+                            for arch in MIN_ARCH ..= MAX_ARCH {
+                                append(&plats, Platform{os, arch})
+                            }
+                        } else {
+                            append(&plats, Platform{os, plat.arch})
+                        }
+                    }
+                } else if plat.arch == .Any {
+                    for arch in MIN_ARCH ..= MAX_ARCH {
+                        append(&plats, Platform{plat.os, arch})
+                    }
+                } else {
+                    append(&plats, plat)
+                }
             case yaml.Sequence:
                 for value, idx in p {
                     #partial switch v in value {
@@ -202,7 +218,23 @@ parse_rune :: proc(
                             return
                         }
 
-                        append(&plats, plat)
+                        if plat.os == .Any {
+                            for os in MIN_OS ..= MAX_OS {
+                                if plat.arch == .Any {
+                                    for arch in MIN_ARCH ..= MAX_ARCH {
+                                        append(&plats, Platform{os, arch})
+                                    }
+                                } else {
+                                    append(&plats, Platform{os, plat.arch})
+                                }
+                            }
+                        } else if plat.arch == .Any {
+                            for arch in MIN_ARCH ..= MAX_ARCH {
+                                append(&plats, Platform{plat.os, arch})
+                            }
+                        } else {
+                            append(&plats, plat)
+                        }
                     case:
                         err = errors.message(
                             "\"platforms\"[{}] has invalid type",

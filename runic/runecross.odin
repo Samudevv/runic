@@ -60,10 +60,16 @@ cross_the_runes :: proc(
         "file_paths and stones should have the same length",
     ) or_return
     if len(stones) == 1 {
+        plats := make(
+            [dynamic]Platform,
+            runtime.arena_allocator(&stones[0].arena),
+        )
+        append(&plats, Platform{.Any, .Any})
+
         append(
             &rc.cross,
             PlatformRunestone {
-                plats = {{.Any, .Any}},
+                plats = plats[:],
                 runestone = RunestoneWithFile {
                     file_path = file_paths[0],
                     stone = stones[0],
@@ -510,7 +516,8 @@ get_same_platforms :: proc(
                         stone_arch_count = origin_arch_count
                         break
                     }
-                    stone_arch_count += (stone_arch & (1 << uint(plat2.arch))) == 0
+                    stone_arch_count +=
+                        (stone_arch & (1 << uint(plat2.arch))) == 0
                     stone_arch |= 1 << uint(plat2.arch)
                 }
             }

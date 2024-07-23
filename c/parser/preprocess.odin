@@ -363,6 +363,22 @@ prepreprocess_file :: proc(
                         return
                     }
 
+                    if inc.type == .Relative {
+                        abs_path: string = ---
+                        if filepath.is_abs(inc.path) {
+                            abs_path = inc.path
+                        } else {
+                            abs_path = filepath.join(
+                                {abs_dirname, inc.path},
+                                arena_alloc,
+                            )
+                        }
+
+                        if !os.exists(abs_path) {
+                            inc.type = .System
+                        }
+                    }
+
                     switch inc.type {
                     case .Relative:
                         io.write_string(out, INCLUDE_REL) or_return

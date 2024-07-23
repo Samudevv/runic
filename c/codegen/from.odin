@@ -120,7 +120,8 @@ generate_runestone :: proc(
 
             tp.spec = check_unknown_types(tp.spec, &rs.types, &custom_types)
 
-            if om.contains(rs.types, name.?) {
+            if other, ok := om.get(rs.types, name.?);
+               ok && !runic.is_same(tp, other) {
                 fmt.eprintf("Type {} is defined as \"", name)
                 runic.write_type(
                     os.stream_from_handle(os.stderr),

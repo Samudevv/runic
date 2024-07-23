@@ -1,4 +1,8 @@
 version: 0
+platforms:
+  - Linux x86_64
+  - Macos x86_64
+  - Windows x86_64
 from:
   language: c
   static: libolivec.a
@@ -10,4 +14,14 @@ from:
     macros:
       - OLIVE_C_
       - OLIVEC_CANVAS_NULL
-to: stdout
+to:
+  language: odin
+  package: olivec
+  trim_prefix:
+    functions: olivec_
+    types: Olivec_
+    constants: OLIVEC_
+  no_build_tag: yes
+  use_when_else: yes
+  ignore_arch: yes
+  out: "olivec/olivec.odin"

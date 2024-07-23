@@ -24,10 +24,7 @@ STDOUT_TO := if os_family() == 'unix' {
 }
 
 bindings:
-  {{ BUILD_DIR / 'runic_debug' }} --os linux   rune.yml {{ STDOUT_TO }} {{ BUILD_DIR / 'olivec.linux.ini' }}
-  {{ BUILD_DIR / 'runic_debug' }} --os macos   rune.yml {{ STDOUT_TO }} {{ BUILD_DIR / 'olivec.macos.ini' }}
-  {{ BUILD_DIR / 'runic_debug' }} --os windows rune.yml {{ STDOUT_TO }} {{ BUILD_DIR / 'olivec.windows.ini' }}
-  {{ BUILD_DIR / 'runic_debug' }} bindings.yml
+  {{ BUILD_DIR / 'runic_debug' }}
 
 [unix]
 olivec:

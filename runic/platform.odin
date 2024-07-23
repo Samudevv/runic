@@ -84,7 +84,10 @@ platform_from_strings :: proc(
         // A reminder to implement more platforms
         }
 
-        switch os.? {
+        os_lower := strings.to_lower(os.?)
+        defer delete(os_lower)
+
+        switch os_lower {
         case "linux":
             plat.os = .Linux
         case "windows":
@@ -105,7 +108,10 @@ platform_from_strings :: proc(
         // A reminder to implement more platforms
         }
 
-        switch arch.? {
+        arch_lower := strings.to_lower(arch.?)
+        defer delete(arch_lower)
+
+        switch arch_lower {
         case "x86_64":
             plat.arch = .x86_64
         case "arm64":

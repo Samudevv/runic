@@ -138,8 +138,10 @@ main :: proc() {
 
             if err != nil {
                 fmt.eprintfln(
-                    "failed to generate runestone from language {}: {}",
+                    "\"{}\" Runestone {}.{} Failed: {}",
                     from.language,
+                    plat.os,
+                    plat.arch,
                     err,
                 )
                 os.exit(1)

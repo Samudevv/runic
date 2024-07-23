@@ -113,6 +113,8 @@ platform_from_strings :: proc(
             plat.os = .Macos
         case "bsd":
             plat.os = .BSD
+        case "any":
+            plat.os = .Any
         case:
             ok = false
             return
@@ -137,6 +139,8 @@ platform_from_strings :: proc(
             plat.arch = .x86
         case "arm32":
             plat.arch = .arm32
+        case "any":
+            plat.arch = .Any
         case:
             ok = false
             return

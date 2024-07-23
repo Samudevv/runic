@@ -42,6 +42,11 @@ Architecture :: enum {
 }
 
 host_os :: proc() -> OS {
+    switch OS.Linux {
+    case .Linux, .Windows, .Macos, .BSD, .Any:
+        // Just a reminder
+    }
+
     when ODIN_OS == .Linux {
         os := OS.Linux
     } else when ODIN_OS == .Windows {
@@ -58,10 +63,17 @@ host_os :: proc() -> OS {
 }
 
 host_arch :: proc() -> Architecture {
+    switch Architecture.Any {
+    case .x86_64, .arm64, .x86, .arm32, .Any:
+        // Just a reminder
+    }
+
     when ODIN_ARCH == .amd64 {
         arch := Architecture.x86_64
     } else when ODIN_ARCH == .arm64 {
         arch := Architecture.arm64
+    } else when ODIN_ARCH == .i386 {
+        arch := Architecture.x86
     } else {
         #panic("Architecture is not supported")
     }

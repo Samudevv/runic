@@ -92,19 +92,17 @@ main :: proc() {
 
     switch from in rune.from {
     case runic.From:
+        stones: [dynamic]runic.Runestone
+        defer delete(stones)
+        file_paths: [dynamic]string
+        defer delete(file_paths)
+
         for plat in plats {
             switch from.language {
             case "c":
                 rs: runic.Runestone = ---
                 rs, err = ccdg.generate_runestone(plat, rune_file_name, from)
-                append(
-                    &from_rc.cross,
-                    runic.PlatformRunestone {
-                        plats = {plat},
-                        runestone = {file_path = rune_file_name, stone = rs},
-                    },
-                )
-                append(&from_rc.arenas, rs.arena)
+                append(&stones, rs)
             case "odin":
                 when ODIN_OS == .FreeBSD {
                     fmt.eprintfln("from odin is not supported on FreeBSD")
@@ -116,17 +114,7 @@ main :: proc() {
                         rune_file_name,
                         from,
                     )
-                    append(
-                        &from_rc.cross,
-                        runic.PlatformRunestone {
-                            plats = {plat},
-                            runestone =  {
-                                file_path = rune_file_name,
-                                stone = rs,
-                            },
-                        },
-                    )
-                    append(&from_rc.arenas, rs.arena)
+                    append(&stones, rs)
                 }
             case:
                 fmt.eprintfln(
@@ -147,6 +135,8 @@ main :: proc() {
                 os.exit(1)
             }
 
+            append(&file_paths, "")
+
             fmt.eprintfln(
                 "\"{}\" Runestone {}.{} Success",
                 from.language,
@@ -155,6 +145,13 @@ main :: proc() {
             )
         }
 
+        fmt.eprintln("Crossing the Runes ...")
+
+        from_rc, err = runic.cross_the_runes(file_paths[:], stones[:])
+        if err != nil {
+            fmt.eprintfln("failed to cross the runes: {}", err)
+            os.exit(1)
+        }
     case string:
         rs_file: os.Handle = ---
         rs_file_name: string = ---
@@ -229,6 +226,8 @@ main :: proc() {
 
             append(&stones, rs)
         }
+
+        fmt.eprintln("Crossing the Runes ...")
 
         from_rc, err = runic.cross_the_runes(from[:], stones[:])
         if err != nil {

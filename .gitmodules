@@ -4,3 +4,6 @@
 [submodule "examples/glew"]
 	path = examples/glew
 	url = https://github.com/PucklaJ/odin-glew.git
+[submodule "shared/libclang"]
+	path = shared/libclang
+	url = https://github.com/PucklaJ/odin-libclang.git

@@ -247,6 +247,32 @@ generate_runestone :: proc(
                     case .CX_SC_Auto, .CX_SC_None, .CX_SC_Register:
                     }
 
+                    if cursor_type.kind == .CXType_Elaborated {
+                        if data.last_elaborated != nil {
+                            type: runic.Type
+                            switch t in data.last_elaborated {
+                            case runic.Struct:
+                                type.spec = t
+                            case runic.Enum:
+                                type.spec = t
+                            case runic.Union:
+                                type.spec = t
+                            }
+
+                            om.insert(
+                                &data.rs.symbols,
+                                strings.clone_from_cstring(
+                                    clang.getCString(display_name),
+                                    rs_arena_alloc,
+                                ),
+                                runic.Symbol{value = type},
+                            )
+
+                            data.last_elaborated = nil
+                        }
+                        break
+                    }
+
                     type: runic.Type = ---
                     type, data.err = clang_type_to_runic_type(
                         cursor_type,
@@ -294,6 +320,32 @@ generate_runestone :: proc(
 
                     if clang.getCString(display_name) == "" {
                         data.last_elaborated = type.spec.(runic.Struct)
+                    } else {
+                        om.insert(
+                            &data.rs.types,
+                            strings.clone_from_cstring(
+                                clang.getCString(display_name),
+                                rs_arena_alloc,
+                            ),
+                            type,
+                        )
+                    }
+                case .CXCursor_EnumDecl:
+                    type: runic.Type = ---
+                    type, data.err = clang_type_to_runic_type(
+                        cursor_type,
+                        cursor,
+                        data.isz,
+                        rs_arena_alloc,
+                    )
+                    if data.err != nil {
+                        fmt.println(data.err, "\n")
+                        data.err = nil
+                        return .CXChildVisit_Continue
+                    }
+
+                    if clang.getCString(display_name) == "" {
+                        data.last_elaborated = type.spec.(runic.Enum)
                     } else {
                         om.insert(
                             &data.rs.types,
@@ -403,8 +455,6 @@ clang_type_to_runic_type :: proc(
                 tp.pointer_info.read_only = true
             }
         }
-    case .CXType_Enum:
-        return tp, errors.not_implemented()
     case .CXType_ConstantArray:
         arr_type := clang.getArrayElementType(type)
         tp = clang_type_to_runic_type(
@@ -539,6 +589,45 @@ clang_type_to_runic_type :: proc(
                 cursor_kind,
             )
         }
+    case .CXType_Enum:
+        e: runic.Enum
+        // TODO: get correct enum type
+        e.type = .SInt32
+        e.entries = make([dynamic]runic.EnumEntry, allocator)
+
+        clang.visitChildren(
+            cursor,
+            proc "c" (
+                cursor, parent: clang.CXCursor,
+                client_data: clang.CXClientData,
+            ) -> clang.CXChildVisitResult {
+                e := cast(^runic.Enum)client_data
+                context = runtime.default_context()
+                rs_arena_alloc := e.entries.allocator
+
+                display_name := clang.getCursorDisplayName(cursor)
+
+                defer clang.disposeString(display_name)
+
+                value := clang.getEnumConstantDeclValue(cursor)
+
+                append(
+                    &e.entries,
+                    runic.EnumEntry {
+                        name = strings.clone_from_cstring(
+                            clang.getCString(display_name),
+                            rs_arena_alloc,
+                        ),
+                        value = i64(value),
+                    },
+                )
+
+                return .CXChildVisit_Continue
+            },
+            &e,
+        )
+
+        tp.spec = e
     case:
         type_spell := clang.getTypeKindSpelling(type.kind)
         defer clang.disposeString(type_spell)

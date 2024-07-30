@@ -151,3 +151,68 @@ test_cpp_struct :: proc(t: ^testing.T) {
     expect_value(t, len(x.members), 1)
     expect_value(t, x.members[0].name, "str")
 }
+
+@(test)
+test_cpp_enum :: proc(t: ^testing.T) {
+    using testing
+
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libenum.so"}},
+        headers = {d = {runic.Platform{.Any, .Any} = {"test_data/enum.h"}}},
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+
+    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    expect_value(t, om.length(rs.types), 4)
+    expect_value(t, om.length(rs.symbols), 1)
+
+    abc := om.get(rs.types, "abc_enum")
+    abc_enum := abc.spec.(runic.Enum)
+
+    expect_value(t, len(abc_enum.entries), 3)
+    expect_value(t, abc_enum.entries[0].name, "A")
+    expect_value(t, abc_enum.entries[1].name, "B")
+    expect_value(t, abc_enum.entries[2].name, "C")
+
+    expect_value(t, abc_enum.entries[0].value.(i64), 0)
+    expect_value(t, abc_enum.entries[1].value.(i64), 1)
+    expect_value(t, abc_enum.entries[2].value.(i64), 2)
+
+    cba := om.get(rs.types, "cba_enum")
+    cba_enum := cba.spec.(runic.Enum)
+
+    expect_value(t, len(cba_enum.entries), 3)
+    expect_value(t, cba_enum.entries[0].name, "M")
+    expect_value(t, cba_enum.entries[1].name, "H")
+    expect_value(t, cba_enum.entries[2].name, "N")
+
+    expect_value(t, cba_enum.entries[0].value.(i64), 0)
+    expect_value(t, cba_enum.entries[1].value.(i64), 1)
+    expect_value(t, cba_enum.entries[2].value.(i64), 2)
+
+
+    constis := om.get(rs.types, "constants")
+    con_enum := constis.spec.(runic.Enum)
+
+    expect_value(t, len(con_enum.entries), 7)
+    expect_value(t, con_enum.entries[0].name, "X")
+    expect_value(t, con_enum.entries[1].name, "Y")
+    expect_value(t, con_enum.entries[2].name, "Z")
+    expect_value(t, con_enum.entries[3].name, "W")
+    expect_value(t, con_enum.entries[4].name, "Apple")
+    expect_value(t, con_enum.entries[5].name, "Banana")
+    expect_value(t, con_enum.entries[6].name, "Calculate")
+
+    expect_value(t, con_enum.entries[0].value.(i64), 1)
+    expect_value(t, con_enum.entries[1].value.(i64), 5)
+    expect_value(t, con_enum.entries[2].value.(i64), 8)
+    expect_value(t, con_enum.entries[3].value.(i64), -7)
+    expect_value(t, con_enum.entries[4].value.(i64), 789)
+    expect_value(t, con_enum.entries[5].value.(i64), 90)
+    expect_value(t, con_enum.entries[6].value.(i64), (70 * 4 + 9) / 6 % 7)
+}

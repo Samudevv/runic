@@ -4,7 +4,7 @@ typedef enum {
   C,
 } abc_enum;
 
-enum cba_enum { C, B, A };
+enum cba_enum { M, H, N };
 
 enum constants {
   X = 1,
@@ -12,7 +12,7 @@ enum constants {
   Z = 8,
   W = -7,
   Apple = 789,
-  Banana = 90.8,
+  Banana = 90,
   Calculate = (70 * 4 + 9) / 6 % 7,
 };
 

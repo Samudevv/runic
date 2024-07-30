@@ -133,9 +133,9 @@ test_enum :: proc(t: ^testing.T) {
 
     expect_value(t, len(e1.values), 3)
     expect_value(t, e1Name.?, "cba_enum")
-    expect_value(t, e1.values[0].name, "C")
-    expect_value(t, e1.values[1].name, "B")
-    expect_value(t, e1.values[2].name, "A")
+    expect_value(t, e1.values[0].name, "M")
+    expect_value(t, e1.values[1].name, "H")
+    expect_value(t, e1.values[2].name, "N")
     expect_value(t, e1.values[0].value, nil)
     expect_value(t, e1.values[1].value, nil)
     expect_value(t, e1.values[2].value, nil)
@@ -157,7 +157,7 @@ test_enum :: proc(t: ^testing.T) {
     expect_value(t, e2.values[2].value.?.(i64), 8)
     expect_value(t, e2.values[3].value.?.(i64), -7)
     expect_value(t, e2.values[4].value.?.(i64), 789)
-    expect_value(t, e2.values[5].value.?.(string), "90.8")
+    expect_value(t, e2.values[5].value.?.(i64), 90)
     expect_value(t, e2.values[6].value.?.(i64), 6)
 
     v0 := variables[0].(Var).type.(Enum)

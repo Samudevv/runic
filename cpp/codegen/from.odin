@@ -168,6 +168,7 @@ generate_runestone :: proc(
                 cursor_kind := clang.getCursorKind(cursor)
                 cursor_type := clang.getCursorType(cursor)
                 display_name := clang.getCursorDisplayName(cursor)
+                storage_class := clang.Cursor_getStorageClass(cursor)
 
                 defer clang.disposeString(display_name)
 
@@ -183,9 +184,10 @@ generate_runestone :: proc(
                         typedef,
                         cursor,
                         data.isz,
+                        rs_arena_alloc,
                     )
                     if data.err != nil {
-                        fmt.eprintln(data.err)
+                        fmt.eprintln(data.err, "\n")
                         data.err = nil
                         return .CXChildVisit_Continue
                     }
@@ -198,6 +200,37 @@ generate_runestone :: proc(
                         ),
                         type,
                     )
+                case .CXCursor_VarDecl:
+                    switch storage_class {
+                    case .CX_SC_Invalid, .CX_SC_Extern, .CX_SC_Static, .CX_SC_OpenCLWorkGroupLocal, .CX_SC_PrivateExtern:
+                        return .CXChildVisit_Continue
+                    case .CX_SC_Auto, .CX_SC_None, .CX_SC_Register:
+                    }
+
+                    type: runic.Type = ---
+                    type, data.err = clang_type_to_runic_type(
+                        cursor_type,
+                        cursor,
+                        data.isz,
+                        rs_arena_alloc,
+                    )
+
+                    if data.err != nil {
+                        fmt.eprintln(data.err, "\n")
+                        data.err = nil
+                        return .CXChildVisit_Continue
+                    }
+
+                    om.insert(
+                        &data.rs.symbols,
+                        strings.clone_from_cstring(
+                            clang.getCString(display_name),
+                            rs_arena_alloc,
+                        ),
+                        runic.Symbol{value = type},
+                    )
+                case:
+                    fmt.printfln("Other Cursor Type: {}", cursor_kind)
                 }
 
                 return .CXChildVisit_Continue
@@ -278,18 +311,56 @@ clang_type_to_runic_type :: proc(
         if pointee.kind == .CXType_Void {
             tp.spec = runic.Builtin.RawPtr
         } else {
-            tp.pointer_info.count += 1
+            // NOTE: Not Sure
+            if len(tp.array_info) != 0 {
+                tp.array_info[len(tp.array_info) - 1].pointer_info.count += 1
+            } else {
+                tp.pointer_info.count += 1
+            }
         }
 
         if clang.isConstQualifiedType(pointee) != 0 {
-            tp.pointer_info.read_only = true
+            // NOTE: Not Sure
+            if len(tp.array_info) != 0 {
+                tp.array_info[len(tp.array_info) - 1].pointer_info.read_only =
+                    true
+            } else {
+                tp.pointer_info.read_only = true
+            }
         }
     case .CXType_Enum:
         return tp, errors.not_implemented()
     case .CXType_ConstantArray:
-        return tp, errors.not_implemented()
+        arr_type := clang.getArrayElementType(type)
+        tp = clang_type_to_runic_type(
+            arr_type,
+            cursor,
+            isz,
+            allocator,
+        ) or_return
+
+        // NOTE: Probably dangerous, because it uses the values and sizes from the host platform
+        arr_size := clang.getArraySize(type)
+
+        if len(tp.array_info) == 0 {
+            tp.array_info = make([dynamic]runic.Array, allocator)
+        }
+
+        append(&tp.array_info, runic.Array{size = u64(arr_size)})
     case .CXType_IncompleteArray:
-        return tp, errors.not_implemented()
+        arr_type := clang.getArrayElementType(type)
+        tp = clang_type_to_runic_type(
+            arr_type,
+            cursor,
+            isz,
+            allocator,
+        ) or_return
+
+        if len(tp.array_info) == 0 {
+            tp.array_info = make([dynamic]runic.Array, allocator)
+        }
+
+        append(&tp.array_info, runic.Array{size = nil})
     case .CXType_Elaborated:
         return tp, errors.not_implemented()
     case .CXType_Typedef:
@@ -313,6 +384,9 @@ clang_type_to_runic_type :: proc(
     }
 
     if clang.isConstQualifiedType(type) != 0 {
+        if len(tp.array_info) != 0 {
+            tp.array_info[len(tp.array_info) - 1].read_only = true
+        }
         tp.read_only = true
     }
 

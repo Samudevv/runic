@@ -1,15 +1,6 @@
 # Goals for future versions
 
-## 0.2 (End of July)
-
-+ [x] MacOS support
-+ [x] BSD support
-+ [x] Make odin integers sizes based on platform and architecture
-+ [x] Switch to yaml for rune file
-+ [x] Handle Any OS and Any Arch where possible
-+ [x] Add 32-Bit architectures
-
-## 0.4 (End of August)
+## 0.3 (End of August)
 
 + [ ] libclang as backend of C parser
 

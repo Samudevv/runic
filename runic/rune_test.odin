@@ -35,6 +35,11 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, rn.version, 0)
 
     expect_value(t, rn.from.(From).language, "c")
+    expect_value(t, len(rn.platforms), 2)
+    expect_value(t, rn.platforms[0].os, OS.Linux)
+    expect_value(t, rn.platforms[1].os, OS.Windows)
+    expect_value(t, rn.platforms[0].arch, Architecture.x86_64)
+    expect_value(t, rn.platforms[1].arch, Architecture.x86_64)
 
     f := rn.from.(From)
     expect_value(t, f.shared.d[Platform{.Any, .Any}], "libfoo.so")

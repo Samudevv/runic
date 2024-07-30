@@ -28,17 +28,18 @@ import "root:errors"
 import "shared:yaml"
 
 Rune :: struct {
-    version: uint,
-    from:    union {
+    version:   uint,
+    platforms: []Platform,
+    from:      union {
         From,
         string,
         [dynamic]string,
     },
-    to:      union {
+    to:        union {
         To,
         string,
     },
-    arena:   runtime.Arena,
+    arena:     runtime.Arena,
 }
 
 From :: struct {
@@ -142,6 +143,112 @@ parse_rune :: proc(
         } else {
             err = errors.message("\"version\" has invalid type")
             return
+        }
+
+        if platforms, ok := y["platforms"]; ok {
+            plats := make([dynamic]Platform, rn_arena_alloc)
+
+            #partial switch p in platforms {
+            case string:
+                name_arch := strings.split(p, " ")
+                defer delete(name_arch)
+
+                if len(name_arch) != 2 {
+                    err = errors.message("\"platforms\" is invalid: \"{}\"", p)
+                    return
+                }
+
+                plat, plat_ok := platform_from_strings(
+                    name_arch[0],
+                    name_arch[1],
+                )
+                if !plat_ok {
+                    err = errors.message(
+                        "\"platforms\" is invalid os=\"{}\" arch=\"{}\"",
+                        name_arch[0],
+                        name_arch[1],
+                    )
+                    return
+                }
+
+                if plat.os == .Any {
+                    for os in MIN_OS ..= MAX_OS {
+                        if plat.arch == .Any {
+                            for arch in MIN_ARCH ..= MAX_ARCH {
+                                append(&plats, Platform{os, arch})
+                            }
+                        } else {
+                            append(&plats, Platform{os, plat.arch})
+                        }
+                    }
+                } else if plat.arch == .Any {
+                    for arch in MIN_ARCH ..= MAX_ARCH {
+                        append(&plats, Platform{plat.os, arch})
+                    }
+                } else {
+                    append(&plats, plat)
+                }
+            case yaml.Sequence:
+                for value, idx in p {
+                    #partial switch v in value {
+                    case string:
+                        name_arch := strings.split(v, " ")
+                        defer delete(name_arch)
+
+                        if len(name_arch) != 2 {
+                            err = errors.message(
+                                "\"platforms\"[{}] is invalid: \"{}\"",
+                                idx,
+                                v,
+                            )
+                            return
+                        }
+
+                        plat, plat_ok := platform_from_strings(
+                            name_arch[0],
+                            name_arch[1],
+                        )
+                        if !plat_ok {
+                            err = errors.message(
+                                "\"platforms\"[{}] is invalid os=\"{}\" arch=\"{}\"",
+                                idx,
+                                name_arch[0],
+                                name_arch[1],
+                            )
+                            return
+                        }
+
+                        if plat.os == .Any {
+                            for os in MIN_OS ..= MAX_OS {
+                                if plat.arch == .Any {
+                                    for arch in MIN_ARCH ..= MAX_ARCH {
+                                        append(&plats, Platform{os, arch})
+                                    }
+                                } else {
+                                    append(&plats, Platform{os, plat.arch})
+                                }
+                            }
+                        } else if plat.arch == .Any {
+                            for arch in MIN_ARCH ..= MAX_ARCH {
+                                append(&plats, Platform{plat.os, arch})
+                            }
+                        } else {
+                            append(&plats, plat)
+                        }
+                    case:
+                        err = errors.message(
+                            "\"platforms\"[{}] has invalid type",
+                            idx,
+                        )
+                        return
+                    }
+                }
+            case:
+                err = errors.message("\"platforms\" has invalid type")
+                return
+            }
+
+            rn.platforms = plats[:]
         }
 
 

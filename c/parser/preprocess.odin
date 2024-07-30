@@ -94,6 +94,10 @@ preprocess_file :: proc(
         arch_str = "x86_64"
     case .arm64:
         arch_str = "aarch64"
+    case .x86:
+        arch_str = "x86"
+    case .arm32:
+        arch_str = "arm"
     }
 
     append(&pp_call, strings.concatenate({arch_str, "-", os_str}, arena_alloc))
@@ -357,6 +361,22 @@ prepreprocess_file :: proc(
                     } else {
                         err = errors_expect(token, "\" or <")
                         return
+                    }
+
+                    if inc.type == .Relative {
+                        abs_path: string = ---
+                        if filepath.is_abs(inc.path) {
+                            abs_path = inc.path
+                        } else {
+                            abs_path = filepath.join(
+                                {abs_dirname, inc.path},
+                                arena_alloc,
+                            )
+                        }
+
+                        if !os.exists(abs_path) {
+                            inc.type = .System
+                        }
                     }
 
                     switch inc.type {

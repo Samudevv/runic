@@ -37,9 +37,21 @@ Architecture :: enum {
     Any,
     x86_64,
     arm64,
+    x86,
+    arm32,
 }
 
+MIN_OS :: OS.Linux
+MAX_OS :: OS.BSD
+MIN_ARCH :: Architecture.x86_64
+MAX_ARCH :: Architecture.arm32
+
 host_os :: proc() -> OS {
+    switch OS.Linux {
+    case .Linux, .Windows, .Macos, .BSD, .Any:
+        // Just a reminder
+    }
+
     when ODIN_OS == .Linux {
         os := OS.Linux
     } else when ODIN_OS == .Windows {
@@ -56,10 +68,17 @@ host_os :: proc() -> OS {
 }
 
 host_arch :: proc() -> Architecture {
+    switch Architecture.Any {
+    case .x86_64, .arm64, .x86, .arm32, .Any:
+        // Just a reminder
+    }
+
     when ODIN_ARCH == .amd64 {
         arch := Architecture.x86_64
     } else when ODIN_ARCH == .arm64 {
         arch := Architecture.arm64
+    } else when ODIN_ARCH == .i386 {
+        arch := Architecture.x86
     } else {
         #panic("Architecture is not supported")
     }
@@ -82,7 +101,10 @@ platform_from_strings :: proc(
         // A reminder to implement more platforms
         }
 
-        switch os.? {
+        os_lower := strings.to_lower(os.?)
+        defer delete(os_lower)
+
+        switch os_lower {
         case "linux":
             plat.os = .Linux
         case "windows":
@@ -91,6 +113,8 @@ platform_from_strings :: proc(
             plat.os = .Macos
         case "bsd":
             plat.os = .BSD
+        case "any":
+            plat.os = .Any
         case:
             ok = false
             return
@@ -99,15 +123,24 @@ platform_from_strings :: proc(
 
     if arch != nil {
         switch plat.arch {
-        case .x86_64, .arm64, .Any:
+        case .x86_64, .arm64, .Any, .x86, .arm32:
         // A reminder to implement more platforms
         }
 
-        switch arch.? {
+        arch_lower := strings.to_lower(arch.?)
+        defer delete(arch_lower)
+
+        switch arch_lower {
         case "x86_64":
             plat.arch = .x86_64
         case "arm64":
             plat.arch = .arm64
+        case "x86":
+            plat.arch = .x86
+        case "arm32":
+            plat.arch = .arm32
+        case "any":
+            plat.arch = .Any
         case:
             ok = false
             return

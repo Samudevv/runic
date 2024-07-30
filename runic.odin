@@ -22,7 +22,6 @@ import ccdg "c/codegen"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
-import "core:strings"
 import "errors"
 import odincdg "odin/codegen"
 import "runic"
@@ -42,66 +41,10 @@ main :: proc() {
     defer free_all(errors.error_allocator)
 
     rune_file_name := "./rune.yml"
-    plat := runic.platform_from_host()
+    host_plat := runic.platform_from_host()
 
     if len(os.args) > 1 {
-        last_arg: string
-
-        arg_loop: for arg in os.args[1:] {
-            if strings.has_prefix(arg, "--") {
-                switch strings.trim_prefix(arg, "--") {
-                case "os", "plat":
-                    last_arg = "os"
-                case "arch":
-                    last_arg = "arch"
-                case:
-                    fmt.eprintfln("invalid flag \"{}\"", arg)
-                    os.exit(1)
-                }
-            } else if strings.has_prefix(arg, "-") {
-                switch strings.trim_prefix(arg, "-") {
-                case "p":
-                    last_arg = "os"
-                case "a":
-                    last_arg = "arch"
-                case:
-                    fmt.eprintfln("invalid flag \"{}\"", arg)
-                    os.exit(1)
-                }
-            } else {
-                switch last_arg {
-                case "os":
-                    switch strings.to_lower(arg, context.temp_allocator) {
-                    case "linux":
-                        plat.os = .Linux
-                    case "windows":
-                        plat.os = .Windows
-                    case "macos":
-                        plat.os = .Macos
-                    case "bsd":
-                        plat.os = .BSD
-                    case:
-                        fmt.eprintfln("invalid os \"{}\"", arg)
-                        os.exit(1)
-                    }
-                case "arch":
-                    switch strings.to_lower(arg, context.temp_allocator) {
-                    case "x86_64", "amd64":
-                        plat.arch = .x86_64
-                    case "arm64", "aarch64":
-                        plat.arch = .arm64
-                    case:
-                        fmt.eprintfln("invalid architecture \"{}\"", arg)
-                        os.exit(1)
-                    }
-                case:
-                    rune_file_name = arg
-                    break arg_loop
-                }
-
-                last_arg = ""
-            }
-        }
+        rune_file_name = os.args[1]
     }
 
     rune_file, os_err := os.open(rune_file_name)
@@ -128,6 +71,15 @@ main :: proc() {
         os.exit(1)
     }
 
+    plats: []runic.Platform = ---
+    if len(rune.platforms) != 0 {
+        plats = rune.platforms
+    } else {
+        platties := make([dynamic]runic.Platform, context.temp_allocator)
+        append(&platties, host_plat)
+        plats = platties[:]
+    }
+
     from_rc: runic.Runecross
     from_rc.cross = make(
         [dynamic]runic.PlatformRunestone,
@@ -140,53 +92,65 @@ main :: proc() {
 
     switch from in rune.from {
     case runic.From:
-        switch from.language {
-        case "c":
+        stones: [dynamic]runic.Runestone
+        defer delete(stones)
+        file_paths: [dynamic]string
+        defer delete(file_paths)
+
+        for plat in plats {
             rs: runic.Runestone = ---
-            rs, err = ccdg.generate_runestone(plat, rune_file_name, from)
-            append(
-                &from_rc.cross,
-                runic.PlatformRunestone {
-                    plats = {plat},
-                    runestone = {file_path = rune_file_name, stone = rs},
-                },
-            )
-            append(&from_rc.arenas, rs.arena)
-        case "odin":
-            when ODIN_OS == .FreeBSD {
-                fmt.eprintfln("from odin is not supported on FreeBSD")
+
+            switch from.language {
+            case "c":
+                rs, err = ccdg.generate_runestone(plat, rune_file_name, from)
+            case "odin":
+                when ODIN_OS == .FreeBSD {
+                    fmt.eprintfln("from odin is not supported on FreeBSD")
+                    os.exit(1)
+                } else {
+                    rs, err = odincdg.generate_runestone(
+                        plat,
+                        rune_file_name,
+                        from,
+                    )
+                }
+            case:
+                fmt.eprintfln(
+                    "from language {} is not supported",
+                    from.language,
+                )
                 os.exit(1)
-            } else {
-                rs: runic.Runestone = ---
-                rs, err = odincdg.generate_runestone(
-                    plat,
-                    rune_file_name,
-                    from,
-                )
-                append(
-                    &from_rc.cross,
-                    runic.PlatformRunestone {
-                        plats = {plat},
-                        runestone = {file_path = rune_file_name, stone = rs},
-                    },
-                )
-                append(&from_rc.arenas, rs.arena)
             }
-        case:
-            fmt.eprintfln("from language {} is not supported", from.language)
-            os.exit(1)
-        }
 
-        if err != nil {
+            if err != nil {
+                fmt.eprintfln(
+                    "\"{}\" Runestone {}.{} Failed: {}",
+                    from.language,
+                    plat.os,
+                    plat.arch,
+                    err,
+                )
+                continue
+            }
+
+            append(&stones, rs)
+            append(&file_paths, "")
+
             fmt.eprintfln(
-                "failed to generate runestone from language {}: {}",
+                "\"{}\" Runestone {}.{} Success",
                 from.language,
-                err,
+                plat.os,
+                plat.arch,
             )
-            os.exit(1)
         }
 
-        fmt.eprintfln("Successfully parsed language \"{}\"", from.language)
+        fmt.eprintln("Crossing the Runes ...")
+
+        from_rc, err = runic.cross_the_runes(file_paths[:], stones[:])
+        if err != nil {
+            fmt.eprintfln("failed to cross the runes: {}", err)
+            os.exit(1)
+        }
     case string:
         rs_file: os.Handle = ---
         rs_file_name: string = ---
@@ -218,24 +182,12 @@ main :: proc() {
             os.exit(1)
         }
 
-        if rs.platform.os != plat.os || rs.platform.arch != plat.arch {
-            fmt.eprintfln(
-                "Runestone has different platform than target\nTarget    = {}.{}\nRunestone = {}.{}",
-                plat.os,
-                plat.arch,
-                rs.platform.os,
-                rs.platform.arch,
-            )
-            os.exit(1)
-        }
-
         fmt.eprintfln("Successfully parsed runestone ({})", from)
 
-        // TODO: set as general not as part of cross
         append(
             &from_rc.cross,
             runic.PlatformRunestone {
-                plats = {plat},
+                plats = {rs.platform},
                 runestone = {file_path = rs_file_name, stone = rs},
             },
         )
@@ -273,6 +225,8 @@ main :: proc() {
 
             append(&stones, rs)
         }
+
+        fmt.eprintln("Crossing the Runes ...")
 
         from_rc, err = runic.cross_the_runes(from[:], stones[:])
         if err != nil {
@@ -331,7 +285,7 @@ main :: proc() {
             // TODO: update for Runecross
             err = errors.wrap(
                 ccdg.generate_bindings(
-                    plat,
+                    from_rc.cross[0].platform,
                     from_rc.cross[0].stone,
                     to,
                     os.stream_from_handle(out_file),

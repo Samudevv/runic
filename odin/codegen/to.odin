@@ -70,6 +70,10 @@ generate_bindings :: proc(
                             io.write_string(wd, "amd64") or_return
                         case .arm64:
                             io.write_string(wd, "arm64") or_return
+                        case .x86:
+                            io.write_string(wd, "i386") or_return
+                        case .arm32:
+                            io.write_string(wd, "arm32") or_return
                         }
                     }
                     if os_idx != len(os_names) - 1 {
@@ -990,6 +994,10 @@ plat_if_expr :: proc(
             strings.write_string(&b, ".amd64")
         case .arm64:
             strings.write_string(&b, ".arm64")
+        case .x86:
+            strings.write_string(&b, ".i386")
+        case .arm32:
+            strings.write_string(&b, ".arm32")
         }
 
         strings.write_rune(&b, ')')

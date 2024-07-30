@@ -34,3 +34,32 @@ test_cpp_builtin :: proc(t: ^testing.T) {
     expect_value(t, zab.value.(runic.Type).pointer_info.count, 1)
     expect_value(t, zab.value.(runic.Type).array_info[0].size.(u64), 2)
 }
+
+@(test)
+test_cpp_pointer :: proc(t: ^testing.T) {
+    using testing
+
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libpointer.so"}},
+        headers = {d = {runic.Platform{.Any, .Any} = {"test_data/pointer.h"}}},
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+
+    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    expect_value(t, om.length(rs.symbols), 9)
+
+    arr := om.get(rs.symbols, "arr")
+    arr_type := arr.value.(runic.Type)
+
+    expect_value(t, arr_type.spec.(runic.Builtin), runic.Builtin.String)
+    expect_value(t, arr_type.read_only, true)
+    expect_value(t, arr_type.pointer_info.count, 1)
+    expect_value(t, arr_type.pointer_info.read_only, true)
+}
+
+

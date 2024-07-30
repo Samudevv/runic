@@ -390,6 +390,13 @@ clang_type_to_runic_type :: proc(
         tp.read_only = true
     }
 
+    if b, ok := tp.spec.(runic.Builtin); ok && b == .SInt8 {
+        if tp.pointer_info.count != 0 {
+            tp.spec = runic.Builtin.String
+            tp.pointer_info.count -= 1
+        }
+    }
+
     return
 }
 

@@ -328,7 +328,7 @@ test_pointer :: proc(t: ^testing.T) {
     if !expect_value(t, len(typedefs), 0) {
         return
     }
-    if !expect_value(t, len(variables), 8) {
+    if !expect_value(t, len(variables), 9) {
         return
     }
 
@@ -359,20 +359,20 @@ test_pointer :: proc(t: ^testing.T) {
     expect_value(t, c1.pointer_info.const, true)
     expect_value(t, c1.qualifiers[0], TypeQualifier.const)
 
-    c1 = variables[5].(Var)
+    c1 = variables[6].(Var)
     expect_value(t, c1.name.?, "xyz")
     expect_value(t, c1.pointer_info.count, 2)
     expect_value(t, c1.pointer_info.const, false)
     expect_value(t, c1.pointer_info.restrict, true)
 
-    arr := variables[6].(Var)
+    arr := variables[7].(Var)
     expect_value(t, arr.name.?, "arr")
     expect_value(t, arr.pointer_info.count, 1)
     expect_value(t, arr.pointer_info.const, true)
     expect_value(t, arr.pointer_info.child.count, 1)
     expect_value(t, arr.pointer_info.child.const, false)
 
-    arr = variables[7].(Var)
+    arr = variables[8].(Var)
     expect_value(t, arr.name.?, "arr1")
     expect_value(t, arr.pointer_info.count, 1)
     expect_value(t, arr.pointer_info.const, true)

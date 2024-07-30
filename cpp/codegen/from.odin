@@ -346,7 +346,13 @@ clang_type_to_runic_type :: proc(
             tp.array_info = make([dynamic]runic.Array, allocator)
         }
 
-        append(&tp.array_info, runic.Array{size = u64(arr_size)})
+        append(&tp.array_info, runic.Array{})
+        for i := len(tp.array_info) - 1; i > 0; i -= 1 {
+            tp.array_info[i] = tp.array_info[i - 1]
+        }
+        tp.array_info[0] = runic.Array {
+            size = u64(arr_size),
+        }
     case .CXType_IncompleteArray:
         arr_type := clang.getArrayElementType(type)
         tp = clang_type_to_runic_type(
@@ -360,7 +366,13 @@ clang_type_to_runic_type :: proc(
             tp.array_info = make([dynamic]runic.Array, allocator)
         }
 
-        append(&tp.array_info, runic.Array{size = nil})
+        append(&tp.array_info, runic.Array{})
+        for i := len(tp.array_info) - 1; i > 0; i -= 1 {
+            tp.array_info[i] = tp.array_info[i - 1]
+        }
+        tp.array_info[0] = runic.Array {
+            size = nil,
+        }
     case .CXType_Elaborated:
         return tp, errors.not_implemented()
     case .CXType_Typedef:

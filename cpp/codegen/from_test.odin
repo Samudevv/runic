@@ -62,4 +62,36 @@ test_cpp_pointer :: proc(t: ^testing.T) {
     expect_value(t, arr_type.pointer_info.read_only, true)
 }
 
+@(test)
+test_cpp_array :: proc(t: ^testing.T) {
+    using testing
 
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libarray.so"}},
+        headers = {d = {runic.Platform{.Any, .Any} = {"test_data/array.h"}}},
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+
+    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    expect_value(t, om.length(rs.symbols), 5)
+
+    ptr := om.get(rs.symbols, "ptr")
+    ptr_type := ptr.value.(runic.Type)
+
+    expect_value(t, ptr_type.spec.(runic.Builtin), runic.Builtin.RawPtr)
+    expect_value(t, len(ptr_type.array_info), 1)
+    expect_value(t, ptr_type.array_info[0].size.(u64), 12)
+
+    c := om.get(rs.symbols, "c")
+    c_type := c.value.(runic.Type)
+
+    expect_value(t, len(c_type.array_info), 3)
+    expect_value(t, c_type.array_info[0].size.(u64), 1)
+    expect_value(t, c_type.array_info[1].size.(u64), 2)
+    expect_value(t, c_type.array_info[2].size.(u64), 3)
+}

@@ -95,3 +95,59 @@ test_cpp_array :: proc(t: ^testing.T) {
     expect_value(t, c_type.array_info[1].size.(u64), 2)
     expect_value(t, c_type.array_info[2].size.(u64), 3)
 }
+
+@(test)
+test_cpp_struct :: proc(t: ^testing.T) {
+    using testing
+
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libstruct.so"}},
+        headers = {d = {runic.Platform{.Any, .Any} = {"test_data/struct.h"}}},
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+
+    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    expect_value(t, om.length(rs.types), 4)
+
+    abc_t := om.get(rs.types, "abc_t")
+    abc_struct := abc_t.spec.(runic.Struct)
+
+    expect_value(t, len(abc_struct.members), 4)
+    expect_value(t, abc_struct.members[0].name, "a")
+    expect_value(t, abc_struct.members[1].name, "b")
+    expect_value(t, abc_struct.members[2].name, "c")
+    expect_value(t, abc_struct.members[3].name, "yzg")
+
+    my_struct := om.get(rs.types, "my_struct")
+    my_struct_s := my_struct.spec.(runic.Struct)
+
+    expect_value(t, len(my_struct_s.members), 2)
+    expect_value(t, my_struct_s.members[0].name, "x")
+    expect_value(t, my_struct_s.members[1].name, "y")
+
+    ss_t := om.get(rs.types, "_sszu_")
+    ss_t_struct := ss_t.spec.(runic.Struct)
+
+    expect_value(t, len(ss_t_struct.members), 1)
+    expect_value(t, ss_t_struct.members[0].name, "x")
+
+    w_ctx, ok := om.get(rs.types, "wl_context")
+    expect(t, ok)
+
+    w_ctx_s := w_ctx.spec.(runic.Struct)
+    expect_value(t, len(w_ctx_s.members), 1)
+    expect_value(t, w_ctx_s.members[0].name, "window")
+
+    window := w_ctx_s.members[0].type.spec.(runic.Struct)
+    expect_value(t, len(window.members), 3)
+    expect_value(t, window.members[2].name, "x")
+
+    x := window.members[2].type.spec.(runic.Struct)
+    expect_value(t, len(x.members), 1)
+    expect_value(t, x.members[0].name, "str")
+}

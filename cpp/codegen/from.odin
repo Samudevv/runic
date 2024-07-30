@@ -26,8 +26,22 @@ import om "root:ordered_map"
 import "root:runic"
 import clang "shared:libclang"
 
+Elaborated :: union {
+    runic.Struct,
+    runic.Union,
+    runic.Enum,
+}
+
 ClientData :: struct {
-    rs:        ^runic.Runestone,
+    rs:              ^runic.Runestone,
+    allocator:       runtime.Allocator,
+    err:             errors.Error,
+    isz:             ccdg.Int_Sizes,
+    last_elaborated: Elaborated,
+}
+
+StructData :: struct {
+    s:         ^runic.Struct,
     allocator: runtime.Allocator,
     err:       errors.Error,
     isz:       ccdg.Int_Sizes,
@@ -179,6 +193,32 @@ generate_runestone :: proc(
                     type_name := clang.getTypedefName(cursor_type)
                     defer clang.disposeString(type_name)
 
+                    if typedef.kind == .CXType_Elaborated {
+                        if data.last_elaborated != nil {
+                            type: runic.Type
+                            switch t in data.last_elaborated {
+                            case runic.Struct:
+                                type.spec = t
+                            case runic.Enum:
+                                type.spec = t
+                            case runic.Union:
+                                type.spec = t
+                            }
+
+                            om.insert(
+                                &data.rs.types,
+                                strings.clone_from_cstring(
+                                    clang.getCString(type_name),
+                                    rs_arena_alloc,
+                                ),
+                                type,
+                            )
+
+                            data.last_elaborated = nil
+                        }
+                        break
+                    }
+
                     type: runic.Type = ---
                     type, data.err = clang_type_to_runic_type(
                         typedef,
@@ -229,6 +269,41 @@ generate_runestone :: proc(
                         ),
                         runic.Symbol{value = type},
                     )
+                case .CXCursor_StructDecl:
+                    type: runic.Type = ---
+                    type, data.err = clang_type_to_runic_type(
+                        cursor_type,
+                        cursor,
+                        data.isz,
+                        rs_arena_alloc,
+                    )
+
+                    if data.err != nil {
+                        fmt.eprintln(data.err, "\n")
+                        data.err = nil
+                        return .CXChildVisit_Continue
+                    }
+
+                    if len(type.spec.(runic.Struct).members) == 0 {
+                        fmt.println(
+                            "Throwing struct away: {}",
+                            clang_source_error(cursor, ""),
+                        )
+                        break
+                    }
+
+                    if clang.getCString(display_name) == "" {
+                        data.last_elaborated = type.spec.(runic.Struct)
+                    } else {
+                        om.insert(
+                            &data.rs.types,
+                            strings.clone_from_cstring(
+                                clang.getCString(display_name),
+                                rs_arena_alloc,
+                            ),
+                            type,
+                        )
+                    }
                 case:
                     fmt.printfln("Other Cursor Type: {}", cursor_kind)
                 }
@@ -373,8 +448,6 @@ clang_type_to_runic_type :: proc(
         tp.array_info[0] = runic.Array {
             size = nil,
         }
-    case .CXType_Elaborated:
-        return tp, errors.not_implemented()
     case .CXType_Typedef:
         type_name := clang.getTypedefName(type)
         defer clang.disposeString(type_name)
@@ -383,6 +456,89 @@ clang_type_to_runic_type :: proc(
             clang.getCString(type_name),
             allocator,
         )
+    case .CXType_Record:
+        cursor_kind := clang.getCursorKind(cursor)
+
+        #partial switch cursor_kind {
+        case .CXCursor_StructDecl:
+            s: runic.Struct
+            s.members = make([dynamic]runic.Member, allocator)
+
+            data := StructData {
+                s         = &s,
+                allocator = allocator,
+                isz       = isz,
+            }
+
+            clang.visitChildren(
+                cursor,
+                proc "c" (
+                    cursor, parent: clang.CXCursor,
+                    client_data: clang.CXClientData,
+                ) -> clang.CXChildVisitResult {
+                    data := cast(^StructData)client_data
+                    context = runtime.default_context()
+
+                    // cursor_kind := clang.getCursorKind(cursor)
+                    cursor_type := clang.getCursorType(cursor)
+                    display_name := clang.getCursorDisplayName(cursor)
+
+                    defer clang.disposeString(display_name)
+
+                    if cursor_type.kind == .CXType_Elaborated &&
+                       len(data.s.members) != 0 {
+                        if data.s.members[len(data.s.members) - 1].name ==
+                           "__clang__elaborated__clang__" {
+                            data.s.members[len(data.s.members) - 1].name =
+                                strings.clone_from_cstring(
+                                    clang.getCString(display_name),
+                                )
+                        }
+
+                        return .CXChildVisit_Continue
+                    }
+
+                    type: runic.Type = ---
+                    type, data.err = clang_type_to_runic_type(
+                        cursor_type,
+                        cursor,
+                        data.isz,
+                        data.allocator,
+                    )
+                    if data.err != nil {
+                        fmt.eprintln(data.err, "\n")
+                        data.err = nil
+                        return .CXChildVisit_Continue
+                    }
+
+                    type_name: string = ---
+                    if clang.getCString(display_name) == "" {
+                        type_name = "__clang__elaborated__clang__"
+                    } else {
+                        type_name = strings.clone_from_cstring(
+                            clang.getCString(display_name),
+                            data.allocator,
+                        )
+                    }
+
+                    append(
+                        &data.s.members,
+                        runic.Member{name = type_name, type = type},
+                    )
+
+                    return .CXChildVisit_Continue
+                },
+                &data,
+            )
+
+            tp.spec = s
+        case:
+            err = clang_source_error(
+                cursor,
+                "unsupported record \"{}\"",
+                cursor_kind,
+            )
+        }
     case:
         type_spell := clang.getTypeKindSpelling(type.kind)
         defer clang.disposeString(type_spell)

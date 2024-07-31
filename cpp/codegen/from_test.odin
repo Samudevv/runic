@@ -219,3 +219,42 @@ test_cpp_enum :: proc(t: ^testing.T) {
     expect_value(t, con_enum.entries[5].value.(i64), 90)
     expect_value(t, con_enum.entries[6].value.(i64), (70 * 4 + 9) / 6 % 7)
 }
+
+@(test)
+test_cpp_union :: proc(t: ^testing.T) {
+    using testing
+
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libunion.so"}},
+        headers = {d = {runic.Platform{.Any, .Any} = {"test_data/union.h"}}},
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+
+    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    expect_value(t, om.length(rs.types), 2)
+
+    my_union := om.get(rs.types, "my_union")
+    my := my_union.spec.(runic.Union)
+
+    expect_value(t, len(my.members), 2)
+    expect_value(t, my.members[0].name, "zuz")
+    expect_value(t, my.members[1].name, "uzu")
+
+    other_union := om.get(rs.types, "other_union")
+    other := other_union.spec.(runic.Union)
+
+    expect_value(t, len(other.members), 2)
+    expect_value(t, other.members[0].name, "floaties")
+    expect_value(t, other.members[1].name, "inties")
+
+    floaties := other.members[0].type.spec.(runic.Struct)
+
+    expect_value(t, len(floaties.members), 2)
+    expect_value(t, floaties.members[0].name, "f")
+    expect_value(t, floaties.members[1].name, "g")
+}

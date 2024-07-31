@@ -26,6 +26,7 @@ import om "root:ordered_map"
 import "root:runic"
 import clang "shared:libclang"
 
+@(private = "file")
 ClientData :: struct {
     rs:        ^runic.Runestone,
     allocator: runtime.Allocator,
@@ -33,8 +34,17 @@ ClientData :: struct {
     isz:       ccdg.Int_Sizes,
 }
 
+@(private = "file")
 StructData :: struct {
     s:         ^runic.Struct,
+    allocator: runtime.Allocator,
+    err:       errors.Error,
+    isz:       ccdg.Int_Sizes,
+}
+
+@(private = "file")
+UnionData :: struct {
+    u:         ^runic.Union,
     allocator: runtime.Allocator,
     err:       errors.Error,
     isz:       ccdg.Int_Sizes,
@@ -188,7 +198,7 @@ generate_runestone :: proc(
                         named_name := clang.getCursorDisplayName(named_cursor)
                         defer clang.disposeString(named_name)
 
-                        if !(struct_is_unnamed(named_name) || enum_is_unnamed(named_name)) {
+                        if !(struct_is_unnamed(named_name) || enum_is_unnamed(named_name) || union_is_unnamed(named_name)) {
                             if clang.getCString(named_name) != clang.getCString(type_name) {
                                 om.insert(&data.rs.types, strings.clone_from_cstring(clang.getCString(type_name), rs_arena_alloc), runic.Type{spec = strings.clone_from_cstring(clang.getCString(named_name), rs_arena_alloc)})
                             }
@@ -276,7 +286,19 @@ generate_runestone :: proc(
                     type: runic.Type = ---
                     type, data.err = clang_type_to_runic_type(cursor_type, cursor, data.isz, rs_arena_alloc)
                     if data.err != nil {
-                        fmt.println(data.err, "\n")
+                        fmt.eprintln(data.err, "\n")
+                        data.err = nil
+                        return .CXChildVisit_Continue
+                    }
+
+                    om.insert(&data.rs.types, strings.clone_from_cstring(clang.getCString(display_name), rs_arena_alloc), type)
+                case .CXCursor_UnionDecl:
+                    if union_is_unnamed(display_name) do break
+
+                    type: runic.Type = ---
+                    type, data.err = clang_type_to_runic_type(cursor_type, cursor, data.isz, rs_arena_alloc)
+                    if data.err != nil {
+                        fmt.eprintln(data.err, "\n")
                         data.err = nil
                         return .CXChildVisit_Continue
                     }
@@ -310,6 +332,13 @@ enum_is_unnamed :: proc(display_name: clang.CXString) -> bool {
     defer delete(str)
 
     return str == "" || strings.has_prefix(str, "enum (unnamed")
+}
+
+union_is_unnamed :: proc(display_name: clang.CXString) -> bool {
+    str := strings.clone_from_cstring(clang.getCString(display_name))
+    defer delete(str)
+
+    return str == "" || strings.has_prefix(str, "union (unnamed")
 }
 
 clang_type_to_runic_type :: proc(
@@ -539,6 +568,100 @@ clang_type_to_runic_type :: proc(
             err = data.err
 
             tp.spec = s
+        case .CXCursor_UnionDecl:
+            u: runic.Union
+            u.members = make([dynamic]runic.Member, allocator)
+
+            data := UnionData {
+                u         = &u,
+                allocator = allocator,
+                isz       = isz,
+            }
+
+            clang.visitChildren(
+                cursor,
+                proc "c" (
+                    cursor, parent: clang.CXCursor,
+                    client_data: clang.CXClientData,
+                ) -> clang.CXChildVisitResult {
+                    data := cast(^UnionData)client_data
+                    context = runtime.default_context()
+
+                    cursor_type := clang.getCursorType(cursor)
+                    display_name := clang.getCursorDisplayName(cursor)
+
+                    defer clang.disposeString(display_name)
+
+                    if cursor_type.kind == .CXType_Elaborated {
+                        named_type := clang.Type_getNamedType(cursor_type)
+                        named_cursor := clang.getTypeDeclaration(named_type)
+
+                        type: runic.Type = ---
+                        type, data.err = clang_type_to_runic_type(
+                            named_type,
+                            named_cursor,
+                            data.isz,
+                            data.allocator,
+                        )
+
+                        if data.err != nil {
+                            return .CXChildVisit_Break
+                        }
+
+                        append(
+                            &data.u.members,
+                            runic.Member {
+                                name = strings.clone_from_cstring(
+                                    clang.getCString(display_name),
+                                    data.allocator,
+                                ),
+                                type = type,
+                            },
+                        )
+
+                        return .CXChildVisit_Continue
+                    }
+
+                    // Ignore unnamed Structs, Unions and Enums
+                    // Those will be handled when the next Elaborated comes around
+                    if (cursor_type.kind == .CXType_Record &&
+                           (struct_is_unnamed(display_name) ||
+                                   union_is_unnamed(display_name))) ||
+                       (cursor_type.kind == .CXType_Enum &&
+                               enum_is_unnamed(display_name)) {
+                        return .CXChildVisit_Continue
+                    }
+
+                    type: runic.Type = ---
+                    type, data.err = clang_type_to_runic_type(
+                        cursor_type,
+                        cursor,
+                        data.isz,
+                        data.allocator,
+                    )
+
+                    if data.err != nil {
+                        return .CXChildVisit_Break
+                    }
+
+                    type_name := strings.clone_from_cstring(
+                        clang.getCString(display_name),
+                        data.allocator,
+                    )
+
+                    append(
+                        &data.u.members,
+                        runic.Member{name = type_name, type = type},
+                    )
+
+                    return .CXChildVisit_Continue
+                },
+                &data,
+            )
+
+            err = data.err
+
+            tp.spec = u
         case:
             err = clang_source_error(
                 cursor,

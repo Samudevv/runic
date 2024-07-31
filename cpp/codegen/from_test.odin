@@ -365,3 +365,50 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
 
     expect_value(t, len(zuz_type.members), 1)
 }
+@(test)
+test_cpp_function :: proc(t: ^testing.T) {
+    using testing
+
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libfunction.so"}},
+        headers = {
+            d = {runic.Platform{.Any, .Any} = {"test_data/function.h"}},
+        },
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+
+    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    expect_value(t, om.length(rs.types), 0)
+    expect_value(t, om.length(rs.symbols), 8)
+
+    hello_world := om.get(rs.symbols, "hello_world")
+    hw := hello_world.value.(runic.Function)
+
+    expect_value(t, hw.return_type.spec.(runic.Builtin), runic.Builtin.Void)
+    expect_value(t, len(hw.parameters), 0)
+    expect(t, !hw.variadic)
+
+    foo := om.get(rs.symbols, "foo")
+    fooo := foo.value.(runic.Function)
+
+    expect_value(t, fooo.return_type.spec.(runic.Builtin), runic.Builtin.Void)
+    expect_value(t, len(fooo.parameters), 3)
+    expect_value(t, fooo.parameters[1].name, "b")
+
+    strcpy := om.get(rs.symbols, "strcpy")
+    spy := strcpy.value.(runic.Function)
+
+    expect_value(t, len(spy.parameters), 1)
+    expect_value(t, spy.parameters[0].name, "param0")
+    expect_value(
+        t,
+        spy.parameters[0].type.spec.(runic.Builtin),
+        runic.Builtin.String,
+    )
+    expect_value(t, spy.parameters[0].type.read_only, true)
+}

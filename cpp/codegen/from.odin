@@ -80,7 +80,7 @@ generate_runestone :: proc(
     }
 
     headers := runic.platform_value_get([]string, rf.headers, plat)
-    /*overwrite := runic.platform_value_get(
+    /*TODO overwrite := runic.platform_value_get(
         runic.OverwriteSet,
         rf.overwrite,
         plat,
@@ -192,7 +192,6 @@ generate_runestone :: proc(
 
                 defer clang.disposeString(display_name)
 
-                // TODO: handle unknown types
                 if clang.Location_isFromMainFile(cursor_location) == 0 {
                     #partial switch cursor_kind {
                     case .CXCursor_TypedefDecl:
@@ -223,7 +222,6 @@ generate_runestone :: proc(
                     return .CXChildVisit_Continue
                 }
 
-                // TODO: correctly handle elaborated types
                 #partial switch cursor_kind {
                 case .CXCursor_TypedefDecl:
                     typedef := clang.getTypedefDeclUnderlyingType(cursor)
@@ -486,6 +484,108 @@ generate_runestone :: proc(
                             rs_arena_alloc,
                         ),
                         type,
+                    )
+                case .CXCursor_FunctionDecl:
+                    switch storage_class {
+                    case .CX_SC_Invalid,
+                         .CX_SC_Static,
+                         .CX_SC_OpenCLWorkGroupLocal,
+                         .CX_SC_PrivateExtern:
+                        return .CXChildVisit_Continue
+                    case .CX_SC_Auto,
+                         .CX_SC_None,
+                         .CX_SC_Register,
+                         .CX_SC_Extern:
+                    }
+                    if clang.Cursor_isFunctionInlined(cursor) != 0 do return .CXChildVisit_Continue
+
+                    cursor_return_type := clang.getCursorResultType(cursor)
+                    num_params := clang.Cursor_getNumArguments(cursor)
+
+                    func: runic.Function
+
+                    types: om.OrderedMap(string, runic.Type) = ---
+                    func.return_type, types, data.err =
+                        clang_type_to_runic_type(
+                            cursor_return_type,
+                            cursor,
+                            data.isz,
+                            rs_arena_alloc,
+                        )
+
+                    om.extend(&data.rs.types, types)
+                    om.delete(types)
+
+                    if data.err != nil {
+                        fmt.eprintln(data.err, "\n")
+                        data.err = nil
+                        return .CXChildVisit_Continue
+                    }
+
+                    func.parameters = make(
+                        [dynamic]runic.Member,
+                        rs_arena_alloc,
+                    )
+                    func.variadic =
+                        num_params != 0 &&
+                        clang.isFunctionTypeVariadic(cursor_type) != 0
+
+                    func_name := clang.getCursorSpelling(cursor)
+                    defer clang.disposeString(func_name)
+
+                    for idx in 0 ..< num_params {
+                        param_cursor := clang.Cursor_getArgument(
+                            cursor,
+                            u32(idx),
+                        )
+                        param_type := clang.getCursorType(param_cursor)
+                        param_name := clang.getCursorSpelling(param_cursor)
+
+                        defer clang.disposeString(param_name)
+
+                        param_name_str := strings.clone_from_cstring(
+                            clang.getCString(param_name),
+                            rs_arena_alloc,
+                        )
+                        // TODO: check if this works
+                        if param_name_str == "" {
+                            param_name_str = fmt.aprintf(
+                                "param{}",
+                                idx,
+                                allocator = rs_arena_alloc,
+                            )
+                        }
+
+                        type: runic.Type = ---
+                        type, types, data.err = clang_type_to_runic_type(
+                            param_type,
+                            param_cursor,
+                            data.isz,
+                            rs_arena_alloc,
+                        )
+
+                        om.extend(&data.rs.types, types)
+                        om.delete(types)
+
+                        if data.err != nil {
+                            fmt.eprintln(data.err, "\n")
+                            data.err = nil
+                            return .CXChildVisit_Continue
+                        }
+
+                        append(
+                            &func.parameters,
+                            runic.Member{name = param_name_str, type = type},
+                        )
+                    }
+
+                    om.insert(
+                        &data.rs.symbols,
+                        strings.clone_from_cstring(
+                            clang.getCString(func_name),
+                            rs_arena_alloc,
+                        ),
+                        runic.Symbol{value = func},
                     )
                 case:
                     fmt.eprintfln("Other Cursor Type: {}", cursor_kind)

@@ -1,3 +1,5 @@
+#define printf(x, y) return
+
 void hello_world();
 
 void foo(int a, int b, const char u);
@@ -13,7 +15,7 @@ __attribute__((null))
 
 void b();
 
-void asm_func() __asm__() __attribute__((null));
+void asm_func() __asm__("movl $5, %eax") __attribute__((null));
 
 int a;
 

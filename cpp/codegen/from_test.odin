@@ -266,7 +266,9 @@ test_cpp_attribute :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libattribute.so"}},
-        headers = {d = {runic.Platform{.Any, .Any} = {"test_data/gnu_attribute.h"}}},
+        headers = {
+            d = {runic.Platform{.Any, .Any} = {"test_data/gnu_attribute.h"}},
+        },
     }
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
@@ -277,4 +279,27 @@ test_cpp_attribute :: proc(t: ^testing.T) {
 
     expect_value(t, om.length(rs.types), 4)
     expect_value(t, om.length(rs.symbols), 1)
+}
+
+@(test)
+test_cpp_include :: proc(t: ^testing.T) {
+    using testing
+
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libinclude.so"}},
+        headers = {
+            d = {runic.Platform{.Any, .Any} = {"test_data/include.h"}},
+        },
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+
+    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    expect_value(t, om.length(rs.types), 0)
+    expect_value(t, om.length(rs.symbols), 0)
+    expect_value(t, om.length(rs.constants), 0)
 }

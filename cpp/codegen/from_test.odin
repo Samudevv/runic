@@ -453,3 +453,29 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     expect_value(t, len(by.parameters), 4)
     expect_value(t, len(by.parameters[3].type.spec.(runic.Struct).members), 2)
 }
+
+@(test)
+test_cpp_macros :: proc(t: ^testing.T) {
+    using testing
+
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libmacros.so"}},
+        headers = {d = {runic.Platform{.Any, .Any} = {"test_data/macros.h"}}},
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+
+    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    expect_value(t, om.length(rs.constants), 12)
+
+    A := om.get(rs.constants, "A")
+    expect_value(t, A.value.(i64), 1)
+    B := om.get(rs.constants, "B")
+    expect_value(t, B.value.(i64), 2)
+    C := om.get(rs.constants, "C")
+    expect_value(t, C.value.(i64), 3)
+}

@@ -269,7 +269,7 @@ test_function_pointer :: proc(t: ^testing.T) {
     if !expect_value(t, len(functions), 0) {
         return
     }
-    if !expect_value(t, len(typedefs), 1) {
+    if !expect_value(t, len(typedefs), 2) {
         return
     }
     if !expect_value(t, len(variables), 5) {
@@ -290,7 +290,7 @@ test_function_pointer :: proc(t: ^testing.T) {
     expect_value(t, len(bye.parameters), 4)
     expect_value(t, len(bye.parameters[3].(Var).type.(Struct).members), 2)
 
-    cb := typedefs[0].(Function)
+    cb := typedefs[1].(Function)
     expect_value(t, cb.name.?, "callback")
     expect_value(t, len(cb.parameters), 5)
     expect_value(t, cb.return_type.(Var).type.(BuiltinType), BuiltinType.void)

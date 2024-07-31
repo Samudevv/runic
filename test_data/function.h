@@ -6,7 +6,7 @@ void foo(int a, int b, const char u);
 
 static inline char bar(unsigned long long int);
 
-void baz();
+void baz(struct { int a, b; } x);
 
 const char *strcpy(const char *);
 

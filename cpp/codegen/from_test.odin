@@ -411,4 +411,45 @@ test_cpp_function :: proc(t: ^testing.T) {
         runic.Builtin.String,
     )
     expect_value(t, spy.parameters[0].type.read_only, true)
+
+    baz := om.get(rs.symbols, "baz")
+    bz := baz.value.(runic.Function)
+
+    expect_value(t, len(bz.parameters[0].type.spec.(runic.Struct).members), 2)
+}
+
+@(test)
+test_cpp_function_pointer :: proc(t: ^testing.T) {
+    using testing
+
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libfunction_pointer.so"}},
+        headers = {
+            d = {
+                runic.Platform{.Any, .Any} = {"test_data/function_pointer.h"},
+            },
+        },
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+
+    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    expect_value(t, om.length(rs.types), 2)
+    expect_value(t, om.length(rs.symbols), 6)
+
+    hello := om.get(rs.symbols, "hello")
+    hell := hello.value.(runic.Type).spec.(runic.FunctionPointer)
+
+    expect_value(t, len(hell.parameters), 0)
+    expect_value(t, hell.return_type.spec.(runic.Builtin), runic.Builtin.Void)
+
+    bye := om.get(rs.symbols, "bye")
+    by := bye.value.(runic.Type).spec.(runic.FunctionPointer)
+
+    expect_value(t, len(by.parameters), 4)
+    expect_value(t, len(by.parameters[3].type.spec.(runic.Struct).members), 2)
 }

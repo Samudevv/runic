@@ -1,3 +1,5 @@
+typedef void GLFWwindow;
+
 void (*hello)();
 
 unsigned long long int (*bye)(

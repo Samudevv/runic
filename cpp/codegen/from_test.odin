@@ -258,3 +258,23 @@ test_cpp_union :: proc(t: ^testing.T) {
     expect_value(t, floaties.members[0].name, "f")
     expect_value(t, floaties.members[1].name, "g")
 }
+
+@(test)
+test_cpp_attribute :: proc(t: ^testing.T) {
+    using testing
+
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libattribute.so"}},
+        headers = {d = {runic.Platform{.Any, .Any} = {"test_data/gnu_attribute.h"}}},
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+
+    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    expect_value(t, om.length(rs.types), 4)
+    expect_value(t, om.length(rs.symbols), 1)
+}

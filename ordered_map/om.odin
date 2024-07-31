@@ -130,3 +130,14 @@ contains :: #force_inline proc(
 ) -> bool {
     return key in indices
 }
+
+extend :: #force_inline proc(
+    dst: ^OrderedMap($Key, $Value),
+    src: OrderedMap(Key, Value),
+    loc := #caller_location,
+) {
+    for entry in src.data {
+        key, value := entry.key, entry.value
+        insert(dst, key, value, loc = loc)
+    }
+}

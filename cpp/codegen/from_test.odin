@@ -278,7 +278,7 @@ test_cpp_attribute :: proc(t: ^testing.T) {
     defer runic.runestone_destroy(&rs)
 
     expect_value(t, om.length(rs.types), 4)
-    expect_value(t, om.length(rs.symbols), 1)
+    expect_value(t, om.length(rs.symbols), 2)
 }
 
 @(test)
@@ -288,9 +288,7 @@ test_cpp_include :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libinclude.so"}},
-        headers = {
-            d = {runic.Platform{.Any, .Any} = {"test_data/include.h"}},
-        },
+        headers = {d = {runic.Platform{.Any, .Any} = {"test_data/include.h"}}},
     }
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
@@ -302,4 +300,68 @@ test_cpp_include :: proc(t: ^testing.T) {
     expect_value(t, om.length(rs.types), 0)
     expect_value(t, om.length(rs.symbols), 0)
     expect_value(t, om.length(rs.constants), 0)
+}
+
+@(test)
+test_cpp_elaborated :: proc(t: ^testing.T) {
+    using testing
+
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libelaborated.so"}},
+        headers = {
+            d = {runic.Platform{.Any, .Any} = {"test_data/elaborated.h"}},
+        },
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+
+    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    expect_value(t, om.length(rs.types), 6)
+    expect_value(t, om.length(rs.symbols), 4)
+
+    pack := om.get(rs.symbols, "pack")
+    pack_type := pack.value.(runic.Type).spec.(string)
+
+    expect_value(t, pack_type, "big_package")
+
+    bag := om.get(rs.symbols, "bag")
+    bag_type := bag.value.(runic.Type).spec.(string)
+
+    expect_value(t, bag_type, "small_package")
+
+    packer := om.get(rs.symbols, "packer")
+    packer_type := packer.value.(runic.Type).spec.(runic.Struct)
+
+    expect_value(t, len(packer_type.members), 2)
+
+    tree := om.get(rs.symbols, "tree")
+    tree_type := tree.value.(runic.Type)
+
+    _, ok := tree_type.spec.(string)
+    expect(t, ok)
+
+    expect(t, tree_type.read_only)
+
+    small_package := om.get(rs.types, "small_package")
+    small := small_package.spec.(runic.Struct)
+
+    expect_value(t, len(small.members), 1)
+
+    unific := om.get(rs.types, "unific")
+    uni := unific.spec.(runic.Union)
+
+    expect_value(t, len(uni.members), 4)
+    expect_value(t, uni.members[0].type.spec.(string), "big_package")
+    expect_value(t, uni.members[1].type.spec.(string), "small_package")
+    expect_value(t, len(uni.members[2].type.spec.(runic.Struct).members), 2)
+    expect_value(t, uni.members[3].type.spec.(string), "zuz")
+
+    zuz := om.get(rs.types, "zuz")
+    zuz_type := zuz.spec.(runic.Struct)
+
+    expect_value(t, len(zuz_type.members), 1)
 }

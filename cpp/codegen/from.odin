@@ -19,6 +19,7 @@ package cpp_codegen
 
 import "base:runtime"
 import "core:fmt"
+import "core:os"
 import "core:strconv"
 import "core:strings"
 import ccdg "root:c/codegen"
@@ -28,6 +29,12 @@ import "root:runic"
 import clang "shared:libclang"
 
 @(private = "file")
+Macro :: struct {
+    def:  string,
+    func: bool,
+}
+
+@(private = "file")
 ClientData :: struct {
     rs:             ^runic.Runestone,
     allocator:      runtime.Allocator,
@@ -35,6 +42,7 @@ ClientData :: struct {
     err:            errors.Error,
     isz:            ccdg.Int_Sizes,
     included_types: ^map[string]clang.CXType,
+    macros:         ^om.OrderedMap(string, Macro),
 }
 
 @(private = "file")
@@ -89,12 +97,14 @@ generate_runestone :: proc(
     ignore := runic.platform_value_get(runic.IgnoreSet, rf.ignore, plat)*/
 
     included_types := make(map[string]clang.CXType, allocator = arena_alloc)
+    macros := om.make(string, Macro, allocator = arena_alloc)
     data := ClientData {
         rs             = &rs,
         allocator      = rs_arena_alloc,
         arena_alloc    = arena_alloc,
         isz            = ccdg.int_sizes_from_platform(plat),
         included_types = &included_types,
+        macros         = &macros,
     }
     index := clang.createIndex(0, 0)
     defer clang.disposeIndex(index)
@@ -102,6 +112,7 @@ generate_runestone :: proc(
     defer for unit in units {
         clang.disposeTranslationUnit(unit)
     }
+
 
     for header in headers {
         header_cstr := strings.clone_to_cstring(header, arena_alloc)
@@ -676,13 +687,6 @@ generate_runestone :: proc(
                         runic.Symbol{value = func},
                     )
                 case .CXCursor_MacroDefinition:
-                    if clang.Cursor_isMacroFunctionLike(cursor) != 0 do return .CXChildVisit_Continue
-
-                    // TODO: rewrite macro expansion code for clang
-                    macro_name := clang.getCursorSpelling(cursor)
-                    defer clang.disposeString(macro_name)
-
-
                     cursor_extent := clang.getCursorExtent(cursor)
                     cursor_start := clang.getRangeStart(cursor_extent)
                     cursor_end := clang.getRangeEnd(cursor_extent)
@@ -713,52 +717,33 @@ generate_runestone :: proc(
                         int(buffer_size),
                     )
 
-                    start_offset += u32(len(clang.getCString(macro_name)))
-                    macro_def := strings.trim_left_space(
-                        buffer[start_offset:end_offset],
+                    macro_def := buffer[start_offset:end_offset]
+                    macro_name_value := strings.split_after_n(
+                        macro_def,
+                        " ",
+                        2,
+                        data.arena_alloc,
                     )
 
-                    if len(macro_def) == 0 do return .CXChildVisit_Continue
-
-
-                    macro_name_str := strings.clone_from_cstring(
-                        clang.getCString(macro_name),
-                        rs_arena_alloc,
-                    )
-
-                    const: runic.Constant
-                    const.type.spec = runic.Builtin.Untyped
-
-                    if strings.has_prefix(macro_def, "\"") &&
-                       strings.has_suffix(macro_def, "\"") {
-                        macro_def = strings.trim_prefix(
-                            strings.trim_suffix(macro_def, "\""),
-                            "\"",
-                        )
-                        const.type.spec = runic.Builtin.String
-                    } else if strings.has_prefix(macro_def, "'") &&
-                       strings.has_suffix(macro_def, "'") &&
-                       len(macro_def) == 3 {
-                        macro_def = strings.trim_prefix(
-                            strings.trim_suffix(macro_def, "'"),
-                            "'",
-                        )
-                        const.type.spec = runic.Builtin.SInt8
-                    } else if value_i64, ok_i64 := strconv.parse_i64(
-                        macro_def,
-                    ); ok_i64 {
-                        const.value = value_i64
-                    } else if value_f64, ok_f64 := strconv.parse_f64(
-                        macro_def,
-                    ); ok_f64 {
-                        const.value = value_f64
+                    macro_name := macro_name_value[0]
+                    macro_value: string = ---
+                    if len(macro_name_value) == 2 {
+                        macro_value = macro_name_value[1]
                     } else {
-                        const.value = strings.clone(macro_def, rs_arena_alloc)
+                        macro_value = ""
                     }
 
-                    om.insert(&data.rs.constants, macro_name_str, const)
+                    om.insert(
+                        data.macros,
+                        strings.trim_right_space(macro_name),
+                        Macro {
+                            def = strings.trim_left_space(macro_value),
+                            func = clang.Cursor_isMacroFunctionLike(cursor) !=
+                            0,
+                        },
+                    )
                 case .CXCursor_MacroExpansion, .CXCursor_InclusionDirective:
-                    // Ignore
+                // Ignore
                 case:
                     fmt.eprintln(
                         clang_source_error(
@@ -905,6 +890,198 @@ generate_runestone :: proc(
             validate_unknown_types(&value, rs.types)
         }
     }
+
+    // Handle Macros
+    if om.length(macros) != 0 {
+        macro_file_name: string = ---
+        {
+            macro_file: os.Handle = ---
+            macro_file_err: errors.Error = ---
+            macro_file, macro_file_name, macro_file_err = temp_file()
+            if macro_file_err != nil {
+                err = errors.message(
+                    "failed to create macro file: {}",
+                    macro_file_err,
+                )
+                return
+            }
+            defer os.close(macro_file)
+
+            stringify_name, stringify2_name: strings.Builder
+            strings.builder_init(&stringify_name, arena_alloc)
+            strings.builder_init(&stringify2_name, arena_alloc)
+
+            strings.write_rune(&stringify_name, 'S')
+            strings.write_string(&stringify2_name, "SS")
+
+            for om.contains(macros, strings.to_string(stringify_name)) {
+                strings.write_rune(&stringify_name, '_')
+            }
+            for om.contains(macros, strings.to_string(stringify2_name)) {
+                strings.write_rune(&stringify2_name, '_')
+            }
+
+            fmt.fprintf(
+                macro_file,
+                `#define {}(X) #X
+#define {}(X) {}(X)
+`,
+                strings.to_string(stringify2_name),
+                strings.to_string(stringify_name),
+                strings.to_string(stringify2_name),
+            )
+
+            for entry in macros.data {
+                name, macro := entry.key, entry.value
+
+                fmt.fprintfln(macro_file, "#define {} {}", name, macro.def)
+            }
+
+            os.write_string(macro_file, "const char")
+
+            for entry, idx in macros.data {
+                name, macro := entry.key, entry.value
+                if macro.func || len(macro.def) == 0 do continue
+
+                prefix_name := strings.concatenate({"R", name}, arena_alloc)
+                for om.contains(macros, prefix_name) {
+                    prefix_name = strings.concatenate(
+                        {"_", prefix_name},
+                        arena_alloc,
+                    )
+                }
+
+                fmt.fprintf(
+                    macro_file,
+                    "*{}={}({})",
+                    prefix_name,
+                    strings.to_string(stringify_name),
+                    name,
+                )
+                if idx == om.length(macros) - 1 {
+                    os.write_rune(macro_file, ';')
+                } else {
+                    os.write_rune(macro_file, ',')
+                }
+            }
+        }
+
+        defer delete(macro_file_name)
+        defer os.remove(macro_file_name)
+
+        macro_file_name_cstr := strings.clone_to_cstring(
+            macro_file_name,
+            arena_alloc,
+        )
+
+        macro_index := clang.createIndex(0, 0)
+        defer clang.disposeIndex(macro_index)
+
+        cmd := [?]cstring{"-xc", "--std=c99"}
+        unit := clang.parseTranslationUnit(
+            macro_index,
+            macro_file_name_cstr,
+            &cmd[0],
+            len(cmd),
+            nil,
+            0,
+            u32(clang.CXTranslationUnit_Flags.CXTranslationUnit_None),
+        )
+        if unit == nil {
+            err = errors.message("failed to parse macro file")
+            return
+        }
+        defer clang.disposeTranslationUnit(unit)
+
+        cursor := clang.getTranslationUnitCursor(unit)
+
+        clang.visitChildren(
+            cursor,
+            proc "c" (
+                cursor, parent: clang.CXCursor,
+                client_data: clang.CXClientData,
+            ) -> clang.CXChildVisitResult {
+                data := cast(^ClientData)client_data
+                context = runtime.default_context()
+
+                cursor_kind := clang.getCursorKind(cursor)
+
+                #partial switch cursor_kind {
+                case .CXCursor_VarDecl:
+                    var_name := clang.getCursorSpelling(cursor)
+                    defer clang.disposeString(var_name)
+
+                    var_name_cstr := cast([^]byte)clang.getCString(var_name)
+                    start := 0
+                    for var_name_cstr[start] == '_' {
+                        start += 1
+                    }
+                    start += 1
+
+                    var_name_str := strings.clone_from_cstring(
+                        cast(cstring)var_name_cstr[start:],
+                        data.allocator,
+                    )
+
+                    om.insert(
+                        &data.rs.constants,
+                        var_name_str,
+                        runic.Constant{},
+                    )
+                case .CXCursor_StringLiteral:
+                    const_value := clang.getCursorSpelling(cursor)
+                    defer clang.disposeString(const_value)
+
+                    const_str := strings.string_from_ptr(
+                        cast(^byte)clang.getCString(const_value),
+                        len(clang.getCString(const_value)),
+                    )
+                    const_str = const_str[1:len(const_str) - 1]
+
+                    entry := &data.rs.constants.data[len(data.rs.constants.data) - 1]
+                    const := &entry.value
+                    const.type.spec = runic.Builtin.Untyped
+
+                    if strings.has_prefix(const_str, "\"") &&
+                       strings.has_suffix(const_str, "\"") {
+                        const.value = strings.clone(
+                            strings.trim_prefix(
+                                strings.trim_suffix(const_str, "\""),
+                                "\"",
+                            ),
+                            data.allocator,
+                        )
+                        const.type.spec = runic.Builtin.String
+                    } else if strings.has_prefix(const_str, "'") &&
+                       strings.has_suffix(const_str, "'") &&
+                       len(const_str) == 3 {
+                        const.value = strings.clone(
+                            strings.trim_prefix(
+                                strings.trim_suffix(const_str, "'"),
+                                "'",
+                            ),
+                            data.allocator,
+                        )
+                        const.type.spec = runic.Builtin.SInt8
+                    } else if value_i64, ok_i64 := strconv.parse_i64(
+                        const_str,
+                    ); ok_i64 {
+                        const.value = value_i64
+                    } else if value_f64, ok_f64 := strconv.parse_f64(
+                        const_str,
+                    ); ok_f64 {
+                        const.value = value_f64
+                    } else {
+                        const.value = strings.clone(const_str, data.allocator)
+                    }
+                }
+
+                return .CXChildVisit_Recurse
+            },
+            &data,
+        )
+    }
+
 
     return
 }
@@ -1464,4 +1641,40 @@ validate_unknown_types :: proc(
             validate_unknown_types(&member.type, types)
         }
     }
+}
+
+temp_file :: proc(
+) -> (
+    file: os.Handle,
+    file_path: string,
+    err: errors.Error,
+) {
+    file_name: strings.Builder
+
+    when ODIN_OS == .Windows {
+        os.make_directory("C:\\temp")
+        strings.write_string(&file_name, "C:\\temp\\runic_macros")
+    } else {
+        strings.write_string(&file_name, "/tmp/runic_macros")
+    }
+
+    MAX_TRIES :: 100
+
+    for _ in 0 ..< MAX_TRIES {
+        strings.write_rune(&file_name, '_')
+
+        os_err: os.Errno = ---
+        file, os_err = os.open(
+            strings.to_string(file_name),
+            os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
+            0o777,
+        )
+        if os_err == 0 {
+            file_path = strings.to_string(file_name)
+            return
+        }
+    }
+
+    err = errors.message("MAX_TRIES reached")
+    return
 }

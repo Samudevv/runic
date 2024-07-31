@@ -1011,17 +1011,21 @@ generate_runestone :: proc(
                     var_name := clang.getCursorSpelling(cursor)
                     defer clang.disposeString(var_name)
 
-                    var_name_cstr := cast([^]byte)clang.getCString(var_name)
-                    start := 0
-                    for var_name_cstr[start] == '_' {
-                        start += 1
+                    var_name_str := strings.clone_from_cstring(
+                        clang.getCString(var_name),
+                        data.allocator,
+                    )
+
+                    start: int = ---
+                    for r, idx in var_name_str {
+                        if r == 'R' {
+                            start = idx
+                            break
+                        }
                     }
                     start += 1
 
-                    var_name_str := strings.clone_from_cstring(
-                        cast(cstring)var_name_cstr[start:],
-                        data.allocator,
-                    )
+                    var_name_str = var_name_str[start:]
 
                     om.insert(
                         &data.rs.constants,

@@ -91,6 +91,21 @@ generate_runestone :: proc(
         }
     }
 
+    if include_dirs, ok := runic.platform_value_get(
+        []string,
+        rf.includedirs,
+        plat,
+    ); ok {
+        for inc in include_dirs {
+            arg := strings.clone_to_cstring(
+                fmt.aprintf("-I{}", inc, allocator = arena_alloc),
+                arena_alloc,
+            )
+
+            append(&clang_flags, arg)
+        }
+    }
+
     headers := runic.platform_value_get([]string, rf.headers, plat)
     overwrite := runic.platform_value_get(
         runic.OverwriteSet,

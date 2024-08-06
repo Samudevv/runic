@@ -18,3 +18,5 @@ void (**hello_world)();
 int (****const foo)();
 
 void(*signal(int, void (*)(int)))(int);
+
+typedef void (*const consty)(int a, int b);

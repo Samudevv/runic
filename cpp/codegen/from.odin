@@ -1212,9 +1212,7 @@ clang_type_to_runic_type :: proc(
             }
         }
 
-        // TODO: look how to handle this for const function pointers
         if clang.isConstQualifiedType(pointee) != 0 {
-            // NOTE: Not Sure
             if len(tp.array_info) != 0 {
                 tp.array_info[len(tp.array_info) - 1].pointer_info.read_only =
                     true

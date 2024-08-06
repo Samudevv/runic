@@ -443,7 +443,7 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 2)
+    expect_value(t, om.length(rs.types), 3)
     expect_value(t, om.length(rs.symbols), 6)
 
     hello := om.get(rs.symbols, "hello")
@@ -457,6 +457,9 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
 
     expect_value(t, len(by.parameters), 4)
     expect_value(t, len(by.parameters[3].type.spec.(runic.Struct).members), 2)
+
+    consty := om.get(rs.types, "consty")
+    expect_value(t, consty.read_only, true)
 }
 
 @(test)

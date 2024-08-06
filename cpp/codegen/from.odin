@@ -1029,12 +1029,13 @@ generate_runestone :: proc(
         macro_index := clang.createIndex(0, 0)
         defer clang.disposeIndex(macro_index)
 
-        cmd := [?]cstring{"-xc", "--std=c99"}
+        append(&clang_flags, "-xc")
+        append(&clang_flags, "--std=c99")
         unit := clang.parseTranslationUnit(
             macro_index,
             macro_file_name_cstr,
-            &cmd[0],
-            len(cmd),
+            raw_data(clang_flags),
+            i32(len(clang_flags)),
             nil,
             0,
             u32(clang.CXTranslationUnit_Flags.CXTranslationUnit_None),
@@ -1128,6 +1129,31 @@ generate_runestone :: proc(
                     ); ok_f64 {
                         const.value = value_f64
                     } else {
+                        name := entry.key
+
+                        for &sym_entry in data.rs.symbols.data {
+                            sym_name, sym := sym_entry.key, &sym_entry.value
+                            if const_str == sym_name {
+                                append(&sym.aliases, name)
+                                om.delete_key(&data.rs.constants, name)
+                                return .CXChildVisit_Recurse
+                            }
+                        }
+
+                        for type_entry in data.rs.types.data {
+                            type_name := type_entry.key
+
+                            if const_str == type_name {
+                                om.insert(
+                                    &data.rs.types,
+                                    name,
+                                    runic.Type{spec = type_name},
+                                )
+                                om.delete_key(&data.rs.constants, name)
+                                return .CXChildVisit_Recurse
+                            }
+                        }
+
                         const.value = strings.clone(const_str, data.allocator)
                     }
                 }

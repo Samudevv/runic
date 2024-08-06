@@ -1,7 +1,5 @@
 package cpp_codegen
 
-// import "core:fmt"
-// import "core:slice"
 import "core:testing"
 import om "root:ordered_map"
 import "root:runic"
@@ -459,10 +457,18 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     by := bye.value.(runic.Type).spec.(runic.FunctionPointer)
 
     expect_value(t, len(by.parameters), 4)
-    expect_value(t, by.parameters[3].type.spec.(string), "param3_struct_anon_0")
+    expect_value(t, by.parameters[3].type.spec.(string), "s_struct_anon_0")
 
     consty := om.get(rs.types, "consty")
+    coy := consty.spec.(runic.FunctionPointer)
     expect_value(t, consty.read_only, true)
+    expect_value(t, len(coy.parameters), 2)
+    expect_value(t, coy.parameters[0].name, "a")
+    expect_value(t, coy.parameters[1].name, "b")
+
+    signal_func := om.get(rs.symbols, "signal")
+    _, signal_rt_is_fp := signal_func.value.(runic.Function).return_type.spec.(runic.FunctionPointer)
+    expect(t, signal_rt_is_fp)
 }
 
 @(test)

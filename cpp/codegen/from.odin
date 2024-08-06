@@ -15,6 +15,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
+// TODO: handle param names and such that are keywords or types and such
 package cpp_codegen
 
 import "base:runtime"
@@ -1389,10 +1390,9 @@ clang_type_to_runic_type :: proc(
 
     case .CXType_Pointer:
         pointee := clang.getPointeeType(type)
-        pointee_cursor := clang.getTypeDeclaration(pointee)
         tp, types = clang_type_to_runic_type(
             pointee,
-            pointee_cursor,
+            cursor,
             isz,
             anon_idx,
         ) or_return
@@ -1755,25 +1755,41 @@ clang_type_to_runic_type :: proc(
         func.variadic =
             num_params != 0 && clang.isFunctionTypeVariadic(type) != 0
 
+        Func_Data :: struct {
+            param_idx:  int,
+            num_params: i32,
+            func:       ^runic.Function,
+            allocator:  runtime.Allocator,
+        }
+
+        data := Func_Data {
+            num_params = num_params,
+            func       = &func,
+            allocator  = allocator,
+        }
+
+        clang.visitChildren(cursor, proc "c" (cursor, parent: clang.CXCursor, client_data: clang.CXClientData) -> clang.CXChildVisitResult {
+                data := cast(^Func_Data)client_data
+                if data.param_idx == int(data.num_params) do return .CXChildVisit_Break
+                defer data.param_idx += 1
+                context = runtime.default_context()
+
+                display_name := clang.getCursorDisplayName(cursor)
+                defer clang.disposeString(display_name)
+
+                param_name_str := strings.clone_from_cstring(clang.getCString(display_name), data.allocator)
+                if param_name_str == "" {
+                    param_name_str = fmt.aprintf("param{}", data.param_idx, allocator = data.allocator)
+                }
+
+                append(&data.func.parameters, runic.Member{name = param_name_str})
+
+                return .CXChildVisit_Continue
+            }, &data)
+
         for idx in 0 ..< num_params {
             param_type := clang.getArgType(type, u32(idx))
-            param_cursor := clang.Cursor_getArgument(cursor, u32(idx))
-            param_name := clang.getCursorSpelling(param_cursor)
             param_type_cursor := clang.getTypeDeclaration(param_type)
-
-            defer clang.disposeString(param_name)
-
-            param_name_str := strings.clone_from_cstring(
-                clang.getCString(param_name),
-                allocator,
-            )
-            if param_name_str == "" {
-                param_name_str = fmt.aprintf(
-                    "param{}",
-                    idx,
-                    allocator = allocator,
-                )
-            }
 
             if param_type.kind == .CXType_Elaborated {
                 named_type := clang.Type_getNamedType(param_type)
@@ -1802,15 +1818,11 @@ clang_type_to_runic_type :: proc(
                         &type,
                         &types,
                         anon_idx,
-                        param_name_str,
+                        func.parameters[idx].name,
                         allocator,
                     )
 
-                    append(
-                        &func.parameters,
-                        runic.Member{name = param_name_str, type = type},
-                    )
-
+                    func.parameters[idx].type = type
                     continue
                 }
             }
@@ -1828,11 +1840,9 @@ clang_type_to_runic_type :: proc(
             om.extend(&types, elab_types)
             om.delete(elab_types)
 
-            append(
-                &func.parameters,
-                runic.Member{name = param_name_str, type = type},
-            )
+            func.parameters[idx].type = type
         }
+
 
         tp.spec = new_clone(func, allocator)
     case:

@@ -1444,10 +1444,37 @@ clang_type_to_runic_type :: proc(
         type_name := clang.getTypedefName(type)
         defer clang.disposeString(type_name)
 
-        tp.spec = strings.clone_from_cstring(
-            clang.getCString(type_name),
-            allocator,
-        )
+        switch clang.getCString(type_name) {
+        case "int8_t":
+            tp.spec = runic.Builtin.SInt8
+        case "int16_t":
+            tp.spec = runic.Builtin.SInt16
+        case "int32_t":
+            tp.spec = runic.Builtin.SInt32
+        case "int64_t":
+            tp.spec = runic.Builtin.SInt64
+        case "uint8_t":
+            tp.spec = runic.Builtin.UInt8
+        case "uint16_t":
+            tp.spec = runic.Builtin.UInt16
+        case "uint32_t":
+            tp.spec = runic.Builtin.UInt32
+        case "uint64_t":
+            tp.spec = runic.Builtin.UInt64
+        case "size_t":
+            tp.spec = ccdg.int_type(isz.size_t, false)
+        case "intptr_t":
+            tp.spec = ccdg.int_type(isz.intptr_t, true)
+        case "uintptr_t":
+            tp.spec = ccdg.int_type(isz.intptr_t, false)
+        case "ptrdiff_t":
+            tp.spec = ccdg.int_type(isz.intptr_t, true)
+        case:
+            tp.spec = strings.clone_from_cstring(
+                clang.getCString(type_name),
+                allocator,
+            )
+        }
     case .CXType_Record:
         cursor_kind := clang.getCursorKind(cursor)
 

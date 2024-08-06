@@ -19,6 +19,7 @@ package main
 
 import "base:runtime"
 import ccdg "c/codegen"
+import cppcdg "cpp/codegen"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
@@ -101,8 +102,8 @@ main :: proc() {
             rs: runic.Runestone = ---
 
             switch from.language {
-            case "c":
-                rs, err = ccdg.generate_runestone(plat, rune_file_name, from)
+            case "c", "cpp", "cxx", "c++":
+                rs, err = cppcdg.generate_runestone(plat, rune_file_name, from)
             case "odin":
                 when ODIN_OS == .FreeBSD {
                     fmt.eprintfln("from odin is not supported on FreeBSD")

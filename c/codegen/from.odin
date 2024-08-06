@@ -1070,8 +1070,8 @@ int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
                     float_Complex = 8,
                     double_Complex = 16,
                     long_double_Complex = 32,
-                    size_t = 64,
-                    intptr_t = 64,
+                    size_t = 8,
+                    intptr_t = 8,
                 } \
             )
         case .x86, .arm32:
@@ -1089,8 +1089,8 @@ int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
                     float_Complex = 8,
                     double_Complex = 16,
                     long_double_Complex = 24,
-                    size_t = 32,
-                    intptr_t = 32,
+                    size_t = 4,
+                    intptr_t = 4,
                 } \
             )
         }
@@ -1113,8 +1113,8 @@ int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
                     float_Complex = 8,
                     double_Complex = 16,
                     long_double_Complex = 16,
-                    size_t = 64,
-                    intptr_t = 64,
+                    size_t = 8,
+                    intptr_t = 8,
                 } \
             )
         case .x86, .arm32:
@@ -1132,8 +1132,8 @@ int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
                     float_Complex = 8,
                     double_Complex = 16,
                     long_double_Complex = 16,
-                    size_t = 32,
-                    intptr_t = 32,
+                    size_t = 4,
+                    intptr_t = 4,
                 } \
             )
         }

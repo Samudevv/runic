@@ -481,7 +481,7 @@ test_cpp_macros :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    if !expect_value(t, om.length(rs.constants), 12) do return
+    if !expect_value(t, om.length(rs.constants), 10) do return
 
     A := om.get(rs.constants, "A")
     expect_value(t, A.value.(i64), 1)
@@ -490,8 +490,7 @@ test_cpp_macros :: proc(t: ^testing.T) {
     C := om.get(rs.constants, "C")
     expect_value(t, C.value.(i64), 3)
 
-    glCP := om.get(rs.constants, "glCreateProgram")
-    expect_value(t, glCP.value.(string), "__glewCreateProgram")
+    expect(t, !om.contains(rs.constants, "glCreateProgram"))
 
     slashy := om.get(rs.constants, "SLASHY")
     expect_value(t, slashy.value.(string), "COUNT 1 2 3 4")

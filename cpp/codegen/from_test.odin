@@ -181,6 +181,7 @@ test_cpp_enum :: proc(t: ^testing.T) {
     expect_value(t, abc_enum.entries[0].name, "A")
     expect_value(t, abc_enum.entries[1].name, "B")
     expect_value(t, abc_enum.entries[2].name, "C")
+    expect_value(t, abc_enum.type, runic.Builtin.UInt32)
 
     expect_value(t, abc_enum.entries[0].value.(i64), 0)
     expect_value(t, abc_enum.entries[1].value.(i64), 1)
@@ -193,6 +194,7 @@ test_cpp_enum :: proc(t: ^testing.T) {
     expect_value(t, cba_enum.entries[0].name, "M")
     expect_value(t, cba_enum.entries[1].name, "H")
     expect_value(t, cba_enum.entries[2].name, "N")
+    expect_value(t, cba_enum.type, runic.Builtin.UInt32)
 
     expect_value(t, cba_enum.entries[0].value.(i64), 0)
     expect_value(t, cba_enum.entries[1].value.(i64), 1)
@@ -210,6 +212,7 @@ test_cpp_enum :: proc(t: ^testing.T) {
     expect_value(t, con_enum.entries[4].name, "Apple")
     expect_value(t, con_enum.entries[5].name, "Banana")
     expect_value(t, con_enum.entries[6].name, "Calculate")
+    expect_value(t, con_enum.type, runic.Builtin.SInt32)
 
     expect_value(t, con_enum.entries[0].value.(i64), 1)
     expect_value(t, con_enum.entries[1].value.(i64), 5)

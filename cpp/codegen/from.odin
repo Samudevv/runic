@@ -1395,8 +1395,30 @@ clang_type_to_runic_type :: proc(
         }
     case .CXType_Enum:
         e: runic.Enum
-        // TODO: get correct enum type
-        e.type = .SInt32
+
+        enum_int_type := clang.getEnumDeclIntegerType(cursor)
+        enum_type, _ := clang_type_to_runic_type(
+            enum_int_type,
+            clang.getTypeDeclaration(enum_int_type),
+            isz,
+            allocator,
+        ) or_return
+
+        // TODO: handle elaborated enum types
+        #partial switch et in enum_type.spec {
+        case runic.Builtin:
+            e.type = et
+        case:
+            spel := clang.getTypeSpelling(enum_int_type)
+            defer clang.disposeString(spel)
+
+            err = errors.message(
+                "invalid enum type: {}",
+                clang.getCString(spel),
+            )
+            return
+        }
+
         e.entries = make([dynamic]runic.EnumEntry, allocator)
 
         clang.visitChildren(

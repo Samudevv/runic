@@ -97,7 +97,7 @@ generate_runestone :: proc(
         rf.overwrite,
         plat,
     )
-    // ignore := runic.platform_value_get(runic.IgnoreSet, rf.ignore, plat)
+    ignore := runic.platform_value_get(runic.IgnoreSet, rf.ignore, plat)
 
     included_types := make(map[string]clang.CXType, allocator = arena_alloc)
     macros := om.make(string, Macro, allocator = arena_alloc)
@@ -1123,6 +1123,29 @@ generate_runestone :: proc(
         )
     }
 
+    // Ignore stuff
+    for name in ignore.macros {
+        om.delete_key(&rs.constants, name)
+    }
+    for name in ignore.functions {
+        if sym, ok := om.get(rs.symbols, name); ok {
+            if _, ok = sym.value.(runic.Function); ok {
+                om.delete_key(&rs.symbols, name)
+            }
+        }
+    }
+    for name in ignore.variables {
+        if sym, ok := om.get(rs.symbols, name); ok {
+            if _, ok = sym.value.(runic.Type); ok {
+                om.delete_key(&rs.symbols, name)
+            }
+        }
+    }
+    for name in ignore.types {
+        om.delete_key(&rs.types, name)
+    }
+
+    // Overwrite stuff
     for name in overwrite.constants {
         if idx, ok := om.index(rs.constants, name); ok {
             ow_const, ow_err := runic.overwrite_constant(overwrite, name)

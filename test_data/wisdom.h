@@ -1,0 +1,1 @@
+typedef long long wisdom_t;

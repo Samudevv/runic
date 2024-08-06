@@ -266,7 +266,7 @@ test_cpp_attribute :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libattribute.so"}},
-        headers = {
+        headers =  {
             d = {runic.Platform{.Any, .Any} = {"test_data/gnu_attribute.h"}},
         },
     }
@@ -309,7 +309,7 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libelaborated.so"}},
-        headers = {
+        headers =  {
             d = {runic.Platform{.Any, .Any} = {"test_data/elaborated.h"}},
         },
     }
@@ -320,7 +320,7 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 6)
+    expect_value(t, om.length(rs.types), 7)
     expect_value(t, om.length(rs.symbols), 4)
 
     pack := om.get(rs.symbols, "pack")
@@ -349,7 +349,8 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     small_package := om.get(rs.types, "small_package")
     small := small_package.spec.(runic.Struct)
 
-    expect_value(t, len(small.members), 1)
+    expect_value(t, len(small.members), 2)
+    expect_value(t, small.members[1].type.spec.(string), "wisdom_t")
 
     unific := om.get(rs.types, "unific")
     uni := unific.spec.(runic.Union)
@@ -364,6 +365,10 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     zuz_type := zuz.spec.(runic.Struct)
 
     expect_value(t, len(zuz_type.members), 1)
+
+    wisdom_t := om.get(rs.types, "wisdom_t")
+    wisdom := wisdom_t.spec.(runic.Builtin)
+    expect_value(t, wisdom, runic.Builtin.SInt64)
 }
 @(test)
 test_cpp_function :: proc(t: ^testing.T) {
@@ -372,7 +377,7 @@ test_cpp_function :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libfunction.so"}},
-        headers = {
+        headers =  {
             d = {runic.Platform{.Any, .Any} = {"test_data/function.h"}},
         },
     }
@@ -425,8 +430,8 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libfunction_pointer.so"}},
-        headers = {
-            d = {
+        headers =  {
+            d =  {
                 runic.Platform{.Any, .Any} = {"test_data/function_pointer.h"},
             },
         },

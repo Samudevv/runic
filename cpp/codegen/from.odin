@@ -762,13 +762,7 @@ generate_runestone :: proc(
     for &entry in rs.types.data {
         type := &entry.value
         unknowns := check_for_unknown_types(type, rs.types)
-
-        for u in unknowns {
-            if !slice.contains(unknown_types[:], u) {
-                append(&unknown_types, u)
-            }
-        }
-        delete(unknowns)
+        extend_unknown_types(&unknown_types, unknowns)
     }
 
     for &entry in rs.symbols.data {
@@ -777,25 +771,15 @@ generate_runestone :: proc(
         switch &value in sym.value {
         case runic.Function:
             unknowns := check_for_unknown_types(&value.return_type, rs.types)
-            for u in unknowns {
-                append(&unknown_types, u)
-            }
-            delete(unknowns)
+            extend_unknown_types(&unknown_types, unknowns)
 
             for &param in value.parameters {
                 unknowns = check_for_unknown_types(&param.type, rs.types)
-                for u in unknowns {
-                    append(&unknown_types, u)
-                }
-                delete(unknowns)
+                extend_unknown_types(&unknown_types, unknowns)
             }
         case runic.Type:
             unknowns := check_for_unknown_types(&value, rs.types)
-
-            for u in unknowns {
-                append(&unknown_types, u)
-            }
-            delete(unknowns)
+            extend_unknown_types(&unknown_types, unknowns)
         }
     }
 
@@ -820,7 +804,11 @@ generate_runestone :: proc(
                     rs_arena_alloc,
                 )
 
-                // TODO: handle unknown of these types
+                for &entry in types.data {
+                    t := &entry.value
+                    unknowns := check_for_unknown_types(t, data.rs.types)
+                    extend_unknown_types(&unknown_types, unknowns)
+                }
 
                 om.extend(&rs.types, types)
                 om.delete(types)
@@ -830,6 +818,9 @@ generate_runestone :: proc(
                     data.err = nil
                     continue
                 }
+
+                unknowns := check_for_unknown_types(&type, data.rs.types)
+                extend_unknown_types(&unknown_types, unknowns)
 
                 om.insert(&data.rs.types, unknown, type)
                 continue
@@ -844,7 +835,11 @@ generate_runestone :: proc(
                 rs_arena_alloc,
             )
 
-            // TODO: handle unknowns
+            for &entry in types.data {
+                t := &entry.value
+                unknowns := check_for_unknown_types(t, data.rs.types)
+                extend_unknown_types(&unknown_types, unknowns)
+            }
 
             om.extend(&data.rs.types, types)
             om.delete(types)
@@ -855,12 +850,16 @@ generate_runestone :: proc(
                 continue
             }
 
-            // TODO: Insert unknowns at the top
+            unknowns := check_for_unknown_types(&type, data.rs.types)
+            extend_unknown_types(&unknown_types, unknowns)
+
             om.insert(&data.rs.types, unknown, type)
         }
     }
 
     // Validate unknown types
+    // Check if the previously unknown types are now known
+    // If so change the spec to a string
     for &entry in rs.types.data {
         type := &entry.value
         validate_unknown_types(type, rs.types)
@@ -1671,4 +1670,16 @@ temp_file :: proc(
 
     err = errors.message("MAX_TRIES reached")
     return
+}
+
+extend_unknown_types :: #force_inline proc(
+    unknown_types: ^[dynamic]string,
+    unknowns: [dynamic]string,
+) {
+    for u in unknowns {
+        if !slice.contains(unknown_types[:], u) {
+            append(unknown_types, u)
+        }
+    }
+    delete(unknowns)
 }

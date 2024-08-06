@@ -1,5 +1,7 @@
 package cpp_codegen
 
+// import "core:fmt"
+// import "core:slice"
 import "core:testing"
 import om "root:ordered_map"
 import "root:runic"
@@ -112,7 +114,7 @@ test_cpp_struct :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 5)
+    expect_value(t, om.length(rs.types), 7)
 
     abc_t := om.get(rs.types, "abc_t")
     abc_struct := abc_t.spec.(runic.Struct)
@@ -146,13 +148,14 @@ test_cpp_struct :: proc(t: ^testing.T) {
     expect_value(t, len(w_ctx_s.members), 1)
     expect_value(t, w_ctx_s.members[0].name, "window")
 
-    window := w_ctx_s.members[0].type.spec.(runic.Struct)
-    expect_value(t, len(window.members), 3)
-    expect_value(t, window.members[2].name, "x")
+    window := w_ctx_s.members[0].type.spec.(string)
+    expect_value(t, window, "window_struct_anon_1")
 
-    x := window.members[2].type.spec.(runic.Struct)
-    expect_value(t, len(x.members), 1)
-    expect_value(t, x.members[0].name, "str")
+    window_struct := om.get(rs.types, "window_struct_anon_1")
+    window_s := window_struct.spec.(runic.Struct)
+
+    x := window_s.members[2].type.spec.(string)
+    expect_value(t, x, "x_struct_anon_0")
 }
 
 @(test)
@@ -171,7 +174,7 @@ test_cpp_enum :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 4)
+    expect_value(t, om.length(rs.types), 6)
     expect_value(t, om.length(rs.symbols), 1)
 
     abc := om.get(rs.types, "abc_enum")
@@ -239,7 +242,7 @@ test_cpp_union :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 2)
+    expect_value(t, om.length(rs.types), 3)
 
     my_union := om.get(rs.types, "my_union")
     my := my_union.spec.(runic.Union)
@@ -255,11 +258,8 @@ test_cpp_union :: proc(t: ^testing.T) {
     expect_value(t, other.members[0].name, "floaties")
     expect_value(t, other.members[1].name, "inties")
 
-    floaties := other.members[0].type.spec.(runic.Struct)
-
-    expect_value(t, len(floaties.members), 2)
-    expect_value(t, floaties.members[0].name, "f")
-    expect_value(t, floaties.members[1].name, "g")
+    floaties := other.members[0].type.spec.(string)
+    expect_value(t, floaties, "floaties_struct_anon_0")
 }
 
 @(test)
@@ -323,7 +323,7 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 7)
+    expect_value(t, om.length(rs.types), 9)
     expect_value(t, om.length(rs.symbols), 4)
 
     pack := om.get(rs.symbols, "pack")
@@ -337,9 +337,9 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     expect_value(t, bag_type, "small_package")
 
     packer := om.get(rs.symbols, "packer")
-    packer_type := packer.value.(runic.Type).spec.(runic.Struct)
+    packer_type := packer.value.(runic.Type).spec.(string)
 
-    expect_value(t, len(packer_type.members), 2)
+    expect_value(t, packer_type, "packer_struct_anon_1")
 
     tree := om.get(rs.symbols, "tree")
     tree_type := tree.value.(runic.Type)
@@ -361,7 +361,7 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     expect_value(t, len(uni.members), 4)
     expect_value(t, uni.members[0].type.spec.(string), "big_package")
     expect_value(t, uni.members[1].type.spec.(string), "small_package")
-    expect_value(t, len(uni.members[2].type.spec.(runic.Struct).members), 2)
+    expect_value(t, uni.members[2].type.spec.(string), "w_struct_anon_0")
     expect_value(t, uni.members[3].type.spec.(string), "zuz")
 
     zuz := om.get(rs.types, "zuz")
@@ -391,7 +391,7 @@ test_cpp_function :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 0)
+    expect_value(t, om.length(rs.types), 1)
     expect_value(t, om.length(rs.symbols), 8)
 
     hello_world := om.get(rs.symbols, "hello_world")
@@ -423,7 +423,7 @@ test_cpp_function :: proc(t: ^testing.T) {
     baz := om.get(rs.symbols, "baz")
     bz := baz.value.(runic.Function)
 
-    expect_value(t, len(bz.parameters[0].type.spec.(runic.Struct).members), 2)
+    expect_value(t, bz.parameters[0].type.spec.(string), "x_struct_anon_0")
 }
 
 @(test)
@@ -446,7 +446,7 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 3)
+    expect_value(t, om.length(rs.types), 4)
     expect_value(t, om.length(rs.symbols), 6)
 
     hello := om.get(rs.symbols, "hello")
@@ -459,7 +459,7 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     by := bye.value.(runic.Type).spec.(runic.FunctionPointer)
 
     expect_value(t, len(by.parameters), 4)
-    expect_value(t, len(by.parameters[3].type.spec.(runic.Struct).members), 2)
+    expect_value(t, by.parameters[3].type.spec.(string), "param3_struct_anon_0")
 
     consty := om.get(rs.types, "consty")
     expect_value(t, consty.read_only, true)

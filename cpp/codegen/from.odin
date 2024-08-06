@@ -92,12 +92,12 @@ generate_runestone :: proc(
     }
 
     headers := runic.platform_value_get([]string, rf.headers, plat)
-    /*TODO overwrite := runic.platform_value_get(
+    overwrite := runic.platform_value_get(
         runic.OverwriteSet,
         rf.overwrite,
         plat,
     )
-    ignore := runic.platform_value_get(runic.IgnoreSet, rf.ignore, plat)*/
+    // ignore := runic.platform_value_get(runic.IgnoreSet, rf.ignore, plat)
 
     included_types := make(map[string]clang.CXType, allocator = arena_alloc)
     macros := om.make(string, Macro, allocator = arena_alloc)
@@ -1121,6 +1121,82 @@ generate_runestone :: proc(
             },
             &data,
         )
+    }
+
+    for name in overwrite.constants {
+        if idx, ok := om.index(rs.constants, name); ok {
+            ow_const, ow_err := runic.overwrite_constant(overwrite, name)
+            if ow_err != nil {
+                fmt.eprintfln(
+                    "Constant \"{}\" failed to overwrite: {}",
+                    name,
+                    ow_err,
+                )
+                continue
+            }
+
+            if ow_const == nil do continue
+
+            rs.constants.data[idx].value = ow_const.?
+        }
+    }
+
+    for name in overwrite.functions {
+        if idx, ok := om.index(rs.symbols, name); ok {
+            if _, is_func := rs.symbols.data[idx].value.value.(runic.Function); !is_func do continue
+
+            ow_func, ow_err := runic.overwrite_func(overwrite, name)
+            if ow_err != nil {
+                fmt.eprintfln(
+                    "Function \"{}\" failed to overwrite: {}",
+                    name,
+                    ow_err,
+                )
+                continue
+            }
+
+            if ow_func == nil do continue
+
+            rs.symbols.data[idx].value.value = ow_func.?
+        }
+    }
+
+    for name in overwrite.variables {
+        if idx, ok := om.index(rs.symbols, name); ok {
+            if _, is_var := rs.symbols.data[idx].value.value.(runic.Type); !is_var do continue
+
+            ow_var, ow_err := runic.overwrite_var(overwrite, name)
+            if ow_err != nil {
+                fmt.eprintfln(
+                    "Variable \"{}\" failed to overwrite: {}",
+                    name,
+                    ow_err,
+                )
+                continue
+            }
+
+            if ow_var == nil do continue
+
+            rs.symbols.data[idx].value.value = ow_var.?
+        }
+    }
+
+    for name in overwrite.types {
+        if idx, ok := om.index(rs.types, name); ok {
+            ow_type, ow_err := runic.overwrite_type(overwrite, name)
+            if ow_err != nil {
+                fmt.eprintfln(
+                    "Type \"{}\" failed to overwrite: {}",
+                    name,
+                    ow_err,
+                )
+                continue
+            }
+
+            if ow_type == nil do continue
+
+            rs.types.data[idx].value = ow_type.?
+        }
     }
 
 

@@ -141,3 +141,13 @@ extend :: #force_inline proc(
         insert(dst, key, value, loc = loc)
     }
 }
+
+index :: #force_inline proc(
+    using m: OrderedMap($Key, $Value),
+    key: Key,
+) -> (
+    idx: int,
+    ok: bool,
+) #optional_ok {
+    return indices[key]
+}

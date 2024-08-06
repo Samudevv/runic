@@ -1137,9 +1137,6 @@ clang_type_to_runic_type :: proc(
         tp.spec = ccdg.int_type(isz.char, true)
     case .CXType_SChar:
         tp.spec = ccdg.int_type(isz.char, true)
-    case .CXType_WChar:
-        // TODO: find out about wchar_t
-        tp.spec = runic.Builtin.UInt32
     case .CXType_Short:
         tp.spec = ccdg.int_type(isz.short, true)
     case .CXType_Int:
@@ -1165,18 +1162,48 @@ clang_type_to_runic_type :: proc(
         named_name := clang.getCursorDisplayName(named_cursor)
         defer clang.disposeString(named_name)
 
-        tp.spec = strings.clone_from_cstring(
-            clang.getCString(named_name),
-            allocator,
-        )
+        switch clang.getCString(named_name) {
+        case "int8_t":
+            tp.spec = runic.Builtin.SInt8
+        case "int16_t":
+            tp.spec = runic.Builtin.SInt16
+        case "int32_t":
+            tp.spec = runic.Builtin.SInt32
+        case "int64_t":
+            tp.spec = runic.Builtin.SInt64
+        case "uint8_t":
+            tp.spec = runic.Builtin.UInt8
+        case "uint16_t":
+            tp.spec = runic.Builtin.UInt16
+        case "uint32_t":
+            tp.spec = runic.Builtin.UInt32
+        case "uint64_t":
+            tp.spec = runic.Builtin.UInt64
+        case "size_t":
+            tp.spec = ccdg.int_type(isz.size_t, false)
+        case "intptr_t":
+            tp.spec = ccdg.int_type(isz.intptr_t, true)
+        case "uintptr_t":
+            tp.spec = ccdg.int_type(isz.intptr_t, false)
+        case "ptrdiff_t":
+            tp.spec = ccdg.int_type(isz.intptr_t, true)
+        case:
+            tp.spec = strings.clone_from_cstring(
+                clang.getCString(named_name),
+                allocator,
+            )
+        }
+
     case .CXType_Pointer:
         pointee := clang.getPointeeType(type)
         tp, types = clang_type_to_runic_type(pointee, cursor, isz) or_return
 
         if pointee.kind == .CXType_Void {
             tp.spec = runic.Builtin.RawPtr
+        } else if pointee.kind == .CXType_Char_S ||
+           pointee.kind == .CXType_SChar {
+            tp.spec = runic.Builtin.String
         } else {
-            // NOTE: Not Sure
             if len(tp.array_info) != 0 {
                 tp.array_info[len(tp.array_info) - 1].pointer_info.count += 1
             } else if pointee.kind != .CXType_FunctionProto &&
@@ -1545,13 +1572,6 @@ clang_type_to_runic_type :: proc(
             tp.array_info[len(tp.array_info) - 1].read_only = true
         }
         tp.read_only = true
-    }
-
-    if b, ok := tp.spec.(runic.Builtin); ok && b == .SInt8 {
-        if tp.pointer_info.count != 0 {
-            tp.spec = runic.Builtin.String
-            tp.pointer_info.count -= 1
-        }
     }
 
     return

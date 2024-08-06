@@ -983,6 +983,8 @@ Int_Sizes :: struct {
     float_Complex:       uint,
     double_Complex:      uint,
     long_double_Complex: uint,
+    size_t:              uint,
+    intptr_t:            uint,
 }
 
 int_sizes_from_host :: proc() -> (is: Int_Sizes, err: errors.Error) {
@@ -1068,6 +1070,8 @@ int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
                     float_Complex = 8,
                     double_Complex = 16,
                     long_double_Complex = 32,
+                    size_t = 64,
+                    intptr_t = 64,
                 } \
             )
         case .x86, .arm32:
@@ -1085,6 +1089,8 @@ int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
                     float_Complex = 8,
                     double_Complex = 16,
                     long_double_Complex = 24,
+                    size_t = 32,
+                    intptr_t = 32,
                 } \
             )
         }
@@ -1092,7 +1098,7 @@ int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
         switch plat.arch {
         case .Any:
             panic("no int sizes for any arch")
-        case .x86_64, .arm64, .x86, .arm32:
+        case .x86_64, .arm64:
             return(
                  {
                     char = 1,
@@ -1107,6 +1113,27 @@ int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
                     float_Complex = 8,
                     double_Complex = 16,
                     long_double_Complex = 16,
+                    size_t = 64,
+                    intptr_t = 64,
+                } \
+            )
+        case .x86, .arm32:
+            return(
+                 {
+                    char = 1,
+                    short = 2,
+                    Int = 4,
+                    long = 4,
+                    longlong = 8,
+                    float = 4,
+                    double = 8,
+                    long_double = 8,
+                    _Bool = 1,
+                    float_Complex = 8,
+                    double_Complex = 16,
+                    long_double_Complex = 16,
+                    size_t = 32,
+                    intptr_t = 32,
                 } \
             )
         }

@@ -20,6 +20,7 @@ package cpp_codegen
 import "base:runtime"
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strconv"
 import "core:strings"
 import ccdg "root:c/codegen"
@@ -331,15 +332,9 @@ generate_runestone :: proc(
                     )
                 case .CXCursor_VarDecl:
                     switch storage_class {
-                    case .CX_SC_Invalid,
-                         .CX_SC_Static,
-                         .CX_SC_OpenCLWorkGroupLocal,
-                         .CX_SC_PrivateExtern:
+                    case .CX_SC_Invalid, .CX_SC_Static, .CX_SC_OpenCLWorkGroupLocal, .CX_SC_PrivateExtern:
                         return .CXChildVisit_Continue
-                    case .CX_SC_Auto,
-                         .CX_SC_None,
-                         .CX_SC_Register,
-                         .CX_SC_Extern:
+                    case .CX_SC_Auto, .CX_SC_None, .CX_SC_Register, .CX_SC_Extern:
                     }
 
                     if cursor_type.kind == .CXType_Elaborated {
@@ -502,15 +497,9 @@ generate_runestone :: proc(
                 case .CXCursor_FunctionDecl:
                     // NOTE: defining structs, unions and enums with a name inside the parameter list is not supported
                     switch storage_class {
-                    case .CX_SC_Invalid,
-                         .CX_SC_Static,
-                         .CX_SC_OpenCLWorkGroupLocal,
-                         .CX_SC_PrivateExtern:
+                    case .CX_SC_Invalid, .CX_SC_Static, .CX_SC_OpenCLWorkGroupLocal, .CX_SC_PrivateExtern:
                         return .CXChildVisit_Continue
-                    case .CX_SC_Auto,
-                         .CX_SC_None,
-                         .CX_SC_Register,
-                         .CX_SC_Extern:
+                    case .CX_SC_Auto, .CX_SC_None, .CX_SC_Register, .CX_SC_Extern:
                     }
                     if clang.Cursor_isFunctionInlined(cursor) != 0 do return .CXChildVisit_Continue
 
@@ -768,7 +757,6 @@ generate_runestone :: proc(
         }
     }
 
-    // TODO: duplicate unknowns
     // Look for unknown types
     unknown_types := make([dynamic]string, arena_alloc)
     for &entry in rs.types.data {
@@ -776,7 +764,9 @@ generate_runestone :: proc(
         unknowns := check_for_unknown_types(type, rs.types)
 
         for u in unknowns {
-            append(&unknown_types, u)
+            if !slice.contains(unknown_types[:], u) {
+                append(&unknown_types, u)
+            }
         }
         delete(unknowns)
     }
@@ -809,7 +799,7 @@ generate_runestone :: proc(
         }
     }
 
-    // Look for unknown types in includes
+    // Try to find the unknown types in the includes
     for unknown in unknown_types {
         if included_type, ok := included_types[unknown]; ok {
             cursor := clang.getTypeDeclaration(included_type)

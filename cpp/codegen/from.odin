@@ -818,6 +818,10 @@ generate_runestone :: proc(
         }
     }
 
+    for name in ignore.types {
+        om.delete_key(&rs.types, name)
+    }
+
     // Look for unknown types
     unknown_types := make([dynamic]string, arena_alloc)
     for &entry in rs.types.data {
@@ -920,6 +924,9 @@ generate_runestone :: proc(
         }
     }
 
+    for name in ignore.types {
+        om.delete_key(&rs.types, name)
+    }
     // Validate unknown types
     // Check if the previously unknown types are now known
     // If so change the spec to a string
@@ -1181,9 +1188,6 @@ generate_runestone :: proc(
                 om.delete_key(&rs.symbols, name)
             }
         }
-    }
-    for name in ignore.types {
-        om.delete_key(&rs.types, name)
     }
 
     // Overwrite stuff
@@ -1894,18 +1898,19 @@ check_for_unknown_types :: proc(
     case runic.Struct:
         for &member in t.members {
             u := check_for_unknown_types(&member.type, types)
-            for x in u {
-                append(&unknowns, x)
-            }
-            delete(u)
+            extend_unknown_types(&unknowns, u)
         }
     case runic.Union:
         for &member in t.members {
             u := check_for_unknown_types(&member.type, types)
-            for x in u {
-                append(&unknowns, x)
-            }
-            delete(u)
+            extend_unknown_types(&unknowns, u)
+        }
+    case runic.FunctionPointer:
+        u := check_for_unknown_types(&t.return_type, types)
+        extend_unknown_types(&unknowns, u)
+        for &param in t.parameters {
+            u = check_for_unknown_types(&param.type, types)
+            extend_unknown_types(&unknowns, u)
         }
     }
 

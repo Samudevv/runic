@@ -1,7 +1,7 @@
 set windows-shell := ['powershell.exe']
 
 YAML_STATIC := if os() == 'linux' {
-  'true'
+  'false'
 } else if os() == 'windows' {
   'true'
 } else if os() == 'macos' {
@@ -31,8 +31,7 @@ ODIN_FLAGS := (
 ODIN_DEBUG_FLAGS := '-debug -define:YAML_STATIC=' + YAML_STATIC_DEBUG
 ODIN_RELEASE_FLAGS := (
   '-o:speed ' +
-  '-define:YAML_STATIC=' + YAML_STATIC + ' ' +
-  if os() == 'linux' {' -extra-linker-flags=-static'} else {''}
+  '-define:YAML_STATIC=' + YAML_STATIC
 )
 
 BUILD_DIR := 'build'
@@ -43,7 +42,7 @@ default: release
 tools: showc cpp cppp
 all: debug release tools test (example 'olivec') (example 'glew')
 
-release ODIN_JOBS=num_cpus(): build-yaml
+release ODIN_JOBS=num_cpus():
   @{{ CREATE_BUILD_DIR }}
   odin build . {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'runic' + EXE_EXT  }}" {{ ODIN_RELEASE_FLAGS }} -thread-count:{{ ODIN_JOBS }}
 
@@ -104,6 +103,3 @@ clean:
   if (Test-Path -Path 'test_data/example_runestone.ini') { Remove-Item -Path 'test_data/example_runestone.ini' -Recurse -Force -ErrorAction SilentlyContinue }
   if (Test-Path -Path 'test_data/generate_runestone.ini') { Remove-Item -Path 'test_data/generate_runestone.ini' -Recurse -Force -ErrorAction SilentlyContinue }
   @just --justfile examples/olivec/justfile clean
-
-build-yaml:
-  {{ if os() == 'linux' { 'just -f shared/yaml/justfile build' } else { '' } }}

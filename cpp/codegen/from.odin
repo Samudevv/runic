@@ -1328,7 +1328,8 @@ clang_type_to_runic_type :: proc(
     case .CXType_Int:
         extent := clang_get_cursor_extent(cursor)
         if !strings.contains(extent, " int ") {
-            tp.spec = runic.Builtin.Untyped
+            err = clang_source_error(cursor, "\"{}\" type is unknown", extent)
+            return
         } else {
             tp.spec = ccdg.int_type(isz.Int, true)
         }

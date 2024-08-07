@@ -267,7 +267,7 @@ test_cpp_attribute :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libattribute.so"}},
-        headers =  {
+        headers = {
             d = {runic.Platform{.Any, .Any} = {"test_data/gnu_attribute.h"}},
         },
     }
@@ -310,7 +310,7 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libelaborated.so"}},
-        headers =  {
+        headers = {
             d = {runic.Platform{.Any, .Any} = {"test_data/elaborated.h"}},
         },
     }
@@ -378,7 +378,7 @@ test_cpp_function :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libfunction.so"}},
-        headers =  {
+        headers = {
             d = {runic.Platform{.Any, .Any} = {"test_data/function.h"}},
         },
     }
@@ -431,8 +431,8 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libfunction_pointer.so"}},
-        headers =  {
-            d =  {
+        headers = {
+            d = {
                 runic.Platform{.Any, .Any} = {"test_data/function_pointer.h"},
             },
         },
@@ -508,4 +508,28 @@ test_cpp_macros :: proc(t: ^testing.T) {
 
     slashy := om.get(rs.constants, "SLASHY")
     expect_value(t, slashy.value.(string), "COUNT 1 2 3 4")
+}
+
+@(test)
+test_cpp_unknown_int :: proc(t: ^testing.T) {
+    using testing
+
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libunknown_int.so"}},
+        headers = {
+            d = {runic.Platform{.Any, .Any} = {"test_data/unknown_int.h"}},
+        },
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+
+    rs, err := generate_runestone(runic.Platform{.Linux, .x86_64}, "/inline", rf)
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    expect_value(t, om.length(rs.types), 1)
+
+    pointy := om.get(rs.types, "pointy")
+    expect_value(t, pointy.spec.(runic.Builtin), runic.Builtin.SInt64)
 }

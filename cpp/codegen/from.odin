@@ -1291,6 +1291,7 @@ clang_type_to_runic_type :: proc(
     isz: ccdg.Int_Sizes,
     anon_idx: ^int,
     allocator := context.allocator,
+    type_hint: Maybe(string) = nil,
 ) -> (
     tp: runic.Type,
     types: om.OrderedMap(string, runic.Type),
@@ -1326,10 +1327,8 @@ clang_type_to_runic_type :: proc(
     case .CXType_Short:
         tp.spec = ccdg.int_type(isz.short, true)
     case .CXType_Int:
-        extent := clang_get_cursor_extent(cursor)
-        if !strings.contains(extent, " int ") {
-            err = clang_source_error(cursor, "\"{}\" type is unknown", extent)
-            return
+        if th, ok := type_hint.?; ok && th != "int" {
+            tp.spec = handle_builtin_int(th, isz, allocator)
         } else {
             tp.spec = ccdg.int_type(isz.Int, true)
         }
@@ -1974,12 +1973,25 @@ handle_anon_type :: #force_inline proc(
     tp.spec = type_name
 }
 
-handle_builtin_int :: proc(
+handle_builtin_int_cxstring :: proc(
     type_name: clang.CXString,
     isz: ccdg.Int_Sizes,
     allocator: runtime.Allocator,
 ) -> runic.TypeSpecifier {
-    switch clang.getCString(type_name) {
+    type_name_cstr := clang.getCString(type_name)
+    type_name_str := strings.string_from_ptr(
+        cast(^byte)type_name_cstr,
+        len(type_name_cstr),
+    )
+    return handle_builtin_int_string(type_name_str, isz, allocator)
+}
+
+handle_builtin_int_string :: proc(
+    type_name: string,
+    isz: ccdg.Int_Sizes,
+    allocator: runtime.Allocator,
+) -> runic.TypeSpecifier {
+    switch type_name {
     case "int8_t":
         return runic.Builtin.SInt8
     case "int16_t":
@@ -2005,13 +2017,15 @@ handle_builtin_int :: proc(
     case "ptrdiff_t":
         return ccdg.int_type(isz.intptr_t, true)
     case:
-        return strings.clone_from_cstring(
-            clang.getCString(type_name),
-            allocator,
-        )
+        return strings.clone(type_name, allocator)
     }
 
     return runic.Builtin.Untyped
+}
+
+handle_builtin_int :: proc {
+    handle_builtin_int_cxstring,
+    handle_builtin_int_string,
 }
 
 clang_get_cursor_extent :: proc(cursor: clang.CXCursor) -> string {

@@ -1,0 +1,1 @@
+typedef ptrdiff_t pointy;

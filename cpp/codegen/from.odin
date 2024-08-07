@@ -823,9 +823,7 @@ generate_runestone :: proc(
         }
     }
 
-    for name in ignore.types {
-        om.delete_key(&rs.types, name)
-    }
+    runic.ignore_types(&rs.types, ignore)
 
     // Look for unknown types
     unknown_types := make([dynamic]string, arena_alloc)
@@ -929,9 +927,8 @@ generate_runestone :: proc(
         }
     }
 
-    for name in ignore.types {
-        om.delete_key(&rs.types, name)
-    }
+    runic.ignore_types(&rs.types, ignore)
+
     // Validate unknown types
     // Check if the previously unknown types are now known
     // If so change the spec to a string
@@ -1177,23 +1174,8 @@ generate_runestone :: proc(
     }
 
     // Ignore stuff
-    for name in ignore.macros {
-        om.delete_key(&rs.constants, name)
-    }
-    for name in ignore.functions {
-        if sym, ok := om.get(rs.symbols, name); ok {
-            if _, ok = sym.value.(runic.Function); ok {
-                om.delete_key(&rs.symbols, name)
-            }
-        }
-    }
-    for name in ignore.variables {
-        if sym, ok := om.get(rs.symbols, name); ok {
-            if _, ok = sym.value.(runic.Type); ok {
-                om.delete_key(&rs.symbols, name)
-            }
-        }
-    }
+    runic.ignore_constants(&rs.constants, ignore)
+    runic.ignore_symbols(&rs.symbols, ignore)
 
     // Overwrite stuff
     for name in overwrite.constants {

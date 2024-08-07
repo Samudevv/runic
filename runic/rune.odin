@@ -25,6 +25,7 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "root:errors"
+import om "root:ordered_map"
 import "shared:yaml"
 
 Rune :: struct {
@@ -1647,3 +1648,47 @@ overwrite_constant :: proc(
 }
 
 overwrite_var :: overwrite_type
+
+ignore_types :: proc(types: ^om.OrderedMap(string, Type), ignore: IgnoreSet) {
+    for idx := 0; idx < len(types.data); idx += 1 {
+        entry := types.data[idx]
+        name := entry.key
+
+        if single_list_glob(ignore.types, name) {
+            om.delete_key(types, name)
+            idx -= 1
+        }
+    }
+}
+
+ignore_constants :: proc(constants: ^om.OrderedMap(string, Constant), ignore: IgnoreSet) {
+    for idx := 0; idx < len(constants.data); idx += 1 {
+        entry := constants.data[idx]
+        name := entry.key
+
+        if single_list_glob(ignore.macros, name) {
+            om.delete_key(constants, name)
+            idx -= 1
+        }
+    }
+}
+
+ignore_symbols :: proc(symbols: ^om.OrderedMap(string, Symbol), ignore: IgnoreSet) {
+    for idx := 0; idx < len(symbols.data); idx += 1 {
+        entry := symbols.data[idx]
+        name, sym := entry.key, entry.value
+
+        switch _ in sym.value {
+        case Type:
+            if single_list_glob(ignore.variables, name) {
+                om.delete_key(symbols, name)
+                idx -= 1
+            }
+        case Function:
+            if single_list_glob(ignore.functions, name) {
+                om.delete_key(symbols, name)
+                idx -= 1
+            }
+        }
+    }
+}

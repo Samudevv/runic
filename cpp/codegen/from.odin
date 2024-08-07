@@ -1326,7 +1326,12 @@ clang_type_to_runic_type :: proc(
     case .CXType_Short:
         tp.spec = ccdg.int_type(isz.short, true)
     case .CXType_Int:
-        tp.spec = ccdg.int_type(isz.Int, true)
+        extent := clang_get_cursor_extent(cursor)
+        if !strings.contains(extent, " int ") {
+            tp.spec = runic.Builtin.Untyped
+        } else {
+            tp.spec = ccdg.int_type(isz.Int, true)
+        }
     case .CXType_Long:
         tp.spec = ccdg.int_type(isz.long, true)
     case .CXType_LongLong:
@@ -2004,4 +2009,29 @@ handle_builtin_int :: proc(
     }
 
     return runic.Builtin.Untyped
+}
+
+clang_get_cursor_extent :: proc(cursor: clang.CXCursor) -> string {
+    range := clang.getCursorExtent(cursor)
+
+    start := clang.getRangeStart(range)
+    end := clang.getRangeEnd(range)
+
+    start_offset, end_offset: u32 = ---, ---
+    file: clang.CXFile = ---
+    clang.getExpansionLocation(start, &file, nil, nil, &start_offset)
+    clang.getExpansionLocation(end, nil, nil, nil, &end_offset)
+
+    if file == nil do return ""
+
+    unit := clang.Cursor_getTranslationUnit(cursor)
+    buffer_size: clang.size_t = ---
+    buf := cast([^]byte)clang.getFileContents(unit, file, &buffer_size)
+
+    if buffer_size == 0 do return ""
+
+    spel := strings.string_from_ptr(buf, int(buffer_size))
+    spel = spel[start_offset:end_offset]
+
+    return spel
 }

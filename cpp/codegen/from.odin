@@ -1705,6 +1705,8 @@ clang_type_to_runic_type :: proc(
         }
 
         clang.visitChildren(cursor, proc "c" (cursor, parent: clang.CXCursor, client_data: clang.CXClientData) -> clang.CXChildVisitResult {
+                if clang.getCursorKind(cursor) != .CXCursor_ParmDecl do return .CXChildVisit_Continue
+
                 data := cast(^Func_Data)client_data
                 if data.param_idx == int(data.num_params) do return .CXChildVisit_Break
                 defer data.param_idx += 1

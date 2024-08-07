@@ -444,7 +444,7 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 4)
+    expect_value(t, om.length(rs.types), 5)
     expect_value(t, om.length(rs.symbols), 6)
 
     hello := om.get(rs.symbols, "hello")
@@ -469,6 +469,14 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     signal_func := om.get(rs.symbols, "signal")
     _, signal_rt_is_fp := signal_func.value.(runic.Function).return_type.spec.(runic.FunctionPointer)
     expect(t, signal_rt_is_fp)
+
+    create_window_t := om.get(rs.types, "create_window")
+    create_window := create_window_t.spec.(runic.FunctionPointer)
+
+    expect_value(t, len(create_window.parameters), 3)
+    expect_value(t, create_window.parameters[0].name, "name")
+    expect_value(t, create_window.parameters[1].name, "width")
+    expect_value(t, create_window.parameters[2].name, "height")
 }
 
 @(test)

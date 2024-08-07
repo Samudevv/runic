@@ -206,10 +206,21 @@ clang_type_to_runic_type :: proc(
             size = nil,
         }
     case .CXType_Typedef:
-        type_name := clang.getCursorSpelling(cursor)
+        type_name := clang.getTypeSpelling(type)
         defer clang.disposeString(type_name)
 
-        tp.spec = handle_builtin_int(type_name, isz, allocator)
+        type_name_cstr := clang.getCString(type_name)
+        type_name_str := strings.string_from_ptr(
+            cast(^byte)type_name_cstr,
+            len(type_name_cstr),
+        )
+
+        if space_idx := strings.last_index(type_name_str, " ");
+           space_idx != -1 {
+            type_name_str = type_name_str[space_idx + 1:]
+        }
+
+        tp.spec = handle_builtin_int(type_name_str, isz, allocator)
     case .CXType_Record:
         cursor_kind := clang.getCursorKind(cursor)
 
@@ -297,7 +308,6 @@ clang_type_to_runic_type :: proc(
                     }
                 }
 
-                // TODO
                 type_hint: Maybe(string)
                 if cursor_type.kind == .CXType_Int {
                     type_hint = clang_var_decl_get_type_hint(cursor)
@@ -886,3 +896,4 @@ clang_func_return_type_get_type_hint :: proc(
 
     return type_hint
 }
+

@@ -268,11 +268,13 @@ generate_runestone :: proc(
                                union_is_unnamed(named_name)) {
                             if clang.getCString(named_name) !=
                                clang.getCString(type_name) {
+                                spec := handle_builtin_int(
+                                    named_name,
+                                    data.isz,
+                                    rs_arena_alloc,
+                                )
                                 type := runic.Type {
-                                    spec = strings.clone_from_cstring(
-                                        clang.getCString(named_name),
-                                        rs_arena_alloc,
-                                    ),
+                                    spec = spec,
                                 }
 
                                 om.insert(
@@ -1342,38 +1344,7 @@ clang_type_to_runic_type :: proc(
         named_name := clang.getCursorDisplayName(named_cursor)
         defer clang.disposeString(named_name)
 
-        switch clang.getCString(named_name) {
-        case "int8_t":
-            tp.spec = runic.Builtin.SInt8
-        case "int16_t":
-            tp.spec = runic.Builtin.SInt16
-        case "int32_t":
-            tp.spec = runic.Builtin.SInt32
-        case "int64_t":
-            tp.spec = runic.Builtin.SInt64
-        case "uint8_t":
-            tp.spec = runic.Builtin.UInt8
-        case "uint16_t":
-            tp.spec = runic.Builtin.UInt16
-        case "uint32_t":
-            tp.spec = runic.Builtin.UInt32
-        case "uint64_t":
-            tp.spec = runic.Builtin.UInt64
-        case "size_t":
-            tp.spec = ccdg.int_type(isz.size_t, false)
-        case "intptr_t":
-            tp.spec = ccdg.int_type(isz.intptr_t, true)
-        case "uintptr_t":
-            tp.spec = ccdg.int_type(isz.intptr_t, false)
-        case "ptrdiff_t":
-            tp.spec = ccdg.int_type(isz.intptr_t, true)
-        case:
-            tp.spec = strings.clone_from_cstring(
-                clang.getCString(named_name),
-                allocator,
-            )
-        }
-
+        tp.spec = handle_builtin_int(named_name, isz, allocator)
     case .CXType_Pointer:
         pointee := clang.getPointeeType(type)
         tp, types = clang_type_to_runic_type(
@@ -1457,40 +1428,10 @@ clang_type_to_runic_type :: proc(
             size = nil,
         }
     case .CXType_Typedef:
-        type_name := clang.getTypedefName(type)
+        type_name := clang.getCursorSpelling(cursor)
         defer clang.disposeString(type_name)
 
-        switch clang.getCString(type_name) {
-        case "int8_t":
-            tp.spec = runic.Builtin.SInt8
-        case "int16_t":
-            tp.spec = runic.Builtin.SInt16
-        case "int32_t":
-            tp.spec = runic.Builtin.SInt32
-        case "int64_t":
-            tp.spec = runic.Builtin.SInt64
-        case "uint8_t":
-            tp.spec = runic.Builtin.UInt8
-        case "uint16_t":
-            tp.spec = runic.Builtin.UInt16
-        case "uint32_t":
-            tp.spec = runic.Builtin.UInt32
-        case "uint64_t":
-            tp.spec = runic.Builtin.UInt64
-        case "size_t":
-            tp.spec = ccdg.int_type(isz.size_t, false)
-        case "intptr_t":
-            tp.spec = ccdg.int_type(isz.intptr_t, true)
-        case "uintptr_t":
-            tp.spec = ccdg.int_type(isz.intptr_t, false)
-        case "ptrdiff_t":
-            tp.spec = ccdg.int_type(isz.intptr_t, true)
-        case:
-            tp.spec = strings.clone_from_cstring(
-                clang.getCString(type_name),
-                allocator,
-            )
-        }
+        tp.spec = handle_builtin_int(type_name, isz, allocator)
     case .CXType_Record:
         cursor_kind := clang.getCursorKind(cursor)
 
@@ -2019,4 +1960,44 @@ handle_anon_type :: #force_inline proc(
     anon_idx^ += 1
     om.insert(types, type_name, runic.Type{spec = tp.spec})
     tp.spec = type_name
+}
+
+handle_builtin_int :: proc(
+    type_name: clang.CXString,
+    isz: ccdg.Int_Sizes,
+    allocator: runtime.Allocator,
+) -> runic.TypeSpecifier {
+    switch clang.getCString(type_name) {
+    case "int8_t":
+        return runic.Builtin.SInt8
+    case "int16_t":
+        return runic.Builtin.SInt16
+    case "int32_t":
+        return runic.Builtin.SInt32
+    case "int64_t":
+        return runic.Builtin.SInt64
+    case "uint8_t":
+        return runic.Builtin.UInt8
+    case "uint16_t":
+        return runic.Builtin.UInt16
+    case "uint32_t":
+        return runic.Builtin.UInt32
+    case "uint64_t":
+        return runic.Builtin.UInt64
+    case "size_t":
+        return ccdg.int_type(isz.size_t, false)
+    case "intptr_t":
+        return ccdg.int_type(isz.intptr_t, true)
+    case "uintptr_t":
+        return ccdg.int_type(isz.intptr_t, false)
+    case "ptrdiff_t":
+        return ccdg.int_type(isz.intptr_t, true)
+    case:
+        return strings.clone_from_cstring(
+            clang.getCString(type_name),
+            allocator,
+        )
+    }
+
+    return runic.Builtin.Untyped
 }

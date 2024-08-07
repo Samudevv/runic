@@ -17,6 +17,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Install libclang
+        run: sudo apt -y install libclang-dev
+        if: matrix.os == 'ubuntu-latest'
+      - name: Install libclang
+        run: brew install llvm
+        if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
       - uses: korandoru/setup-zig@v1
         name: Install zig
         with:
@@ -26,7 +32,7 @@ jobs:
       - uses: laytan/setup-odin@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          release: dev-2024-07
+          release: dev-2024-08
       - uses: ilammy/msvc-dev-cmd@v1
         if: matrix.os == 'windows-latest'
 

@@ -162,40 +162,32 @@ generate_runestone :: proc(
 
         num_diag := clang.getNumDiagnostics(unit)
         if num_diag != 0 {
-            err_msg: strings.Builder
-            strings.builder_init(&err_msg, errors.error_allocator)
-
             for idx in 0 ..< num_diag {
                 dig := clang.getDiagnostic(unit, idx)
                 defer clang.disposeDiagnostic(dig)
 
                 sev := clang.getDiagnosticSeverity(dig)
-
-                #partial switch sev {
-                case .CXDiagnostic_Error, .CXDiagnostic_Fatal:
-                    dig_msg := clang.formatDiagnostic(
-                        dig,
-                        clang.defaultDiagnosticDisplayOptions(),
-                    )
-                    defer clang.disposeString(dig_msg)
-
-                    dig_str := strings.clone_from_cstring(
-                        clang.getCString(dig_msg),
-                        arena_alloc,
-                    )
-
-                    strings.write_string(&err_msg, dig_str)
-                    strings.write_rune(&err_msg, '\n')
-                }
-            }
-
-            if strings.builder_len(err_msg) != 0 {
-                err = errors.message(
-                    "\"{}\": {}",
-                    header,
-                    strings.to_string(err_msg),
+                dig_msg := clang.formatDiagnostic(
+                    dig,
+                    clang.defaultDiagnosticDisplayOptions(),
                 )
-                return
+                defer clang.disposeString(dig_msg)
+                dig_str := clang.getCString(dig_msg)
+
+                switch sev {
+                case .CXDiagnostic_Error:
+                    fmt.eprint("ERROR: ")
+                case .CXDiagnostic_Fatal:
+                    fmt.eprint("FATAL: ")
+                case .CXDiagnostic_Warning:
+                    fmt.eprint("WARNING: ")
+                case .CXDiagnostic_Note:
+                    fmt.eprint("NOTE: ")
+                case .CXDiagnostic_Ignored:
+                    fmt.eprint("IGNORED: ")
+                }
+
+                fmt.eprintln(dig_str)
             }
         }
 
@@ -354,9 +346,15 @@ generate_runestone :: proc(
                     )
                 case .CXCursor_VarDecl:
                     switch storage_class {
-                    case .CX_SC_Invalid, .CX_SC_Static, .CX_SC_OpenCLWorkGroupLocal, .CX_SC_PrivateExtern:
+                    case .CX_SC_Invalid,
+                         .CX_SC_Static,
+                         .CX_SC_OpenCLWorkGroupLocal,
+                         .CX_SC_PrivateExtern:
                         return .CXChildVisit_Continue
-                    case .CX_SC_Auto, .CX_SC_None, .CX_SC_Register, .CX_SC_Extern:
+                    case .CX_SC_Auto,
+                         .CX_SC_None,
+                         .CX_SC_Register,
+                         .CX_SC_Extern:
                     }
 
                     if cursor_type.kind == .CXType_Elaborated {
@@ -534,9 +532,15 @@ generate_runestone :: proc(
                 case .CXCursor_FunctionDecl:
                     // NOTE: defining structs, unions and enums with a name inside the parameter list is not supported
                     switch storage_class {
-                    case .CX_SC_Invalid, .CX_SC_Static, .CX_SC_OpenCLWorkGroupLocal, .CX_SC_PrivateExtern:
+                    case .CX_SC_Invalid,
+                         .CX_SC_Static,
+                         .CX_SC_OpenCLWorkGroupLocal,
+                         .CX_SC_PrivateExtern:
                         return .CXChildVisit_Continue
-                    case .CX_SC_Auto, .CX_SC_None, .CX_SC_Register, .CX_SC_Extern:
+                    case .CX_SC_Auto,
+                         .CX_SC_None,
+                         .CX_SC_Register,
+                         .CX_SC_Extern:
                     }
                     if clang.Cursor_isFunctionInlined(cursor) != 0 do return .CXChildVisit_Continue
 

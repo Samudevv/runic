@@ -15,7 +15,6 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// TODO: handle param names and such that are keywords or types and such
 package cpp_codegen
 
 import "base:runtime"
@@ -309,6 +308,11 @@ generate_runestone :: proc(
                         break
                     }
 
+                    type_hint: Maybe(string)
+                    if typedef.kind == .CXType_Int {
+                        type_hint = clang_typedef_get_type_hint(cursor)
+                    }
+
                     type: runic.Type = ---
                     types: om.OrderedMap(string, runic.Type) = ---
                     type, types, data.err = clang_type_to_runic_type(
@@ -317,6 +321,7 @@ generate_runestone :: proc(
                         data.isz,
                         data.anon_idx,
                         rs_arena_alloc,
+                        type_hint,
                     )
 
                     om.extend(&data.rs.types, types)
@@ -400,6 +405,12 @@ generate_runestone :: proc(
                         }
                     }
 
+                    // TODO
+                    type_hint: Maybe(string)
+                    if cursor_type.kind == .CXType_Int {
+                        type_hint = clang_get_cursor_extent(cursor)
+                    }
+
                     type: runic.Type = ---
                     types: om.OrderedMap(string, runic.Type) = ---
                     type, types, data.err = clang_type_to_runic_type(
@@ -408,6 +419,7 @@ generate_runestone :: proc(
                         data.isz,
                         data.anon_idx,
                         rs_arena_alloc,
+                        type_hint,
                     )
 
                     om.extend(&data.rs.types, types)
@@ -594,6 +606,8 @@ generate_runestone :: proc(
                         }
                     }
 
+                    type_hint := clang_func_return_type_get_type_hint(cursor)
+
                     types: om.OrderedMap(string, runic.Type) = ---
                     func.return_type, types, data.err =
                         clang_type_to_runic_type(
@@ -602,6 +616,7 @@ generate_runestone :: proc(
                             data.isz,
                             data.anon_idx,
                             rs_arena_alloc,
+                            type_hint,
                         )
 
                     om.extend(&data.rs.types, types)
@@ -701,6 +716,13 @@ generate_runestone :: proc(
                             }
                         }
 
+                        type_hint = nil
+                        if param_type.kind == .CXType_Int {
+                            type_hint = clang_var_decl_get_type_hint(
+                                param_cursor,
+                            )
+                        }
+
                         type: runic.Type = ---
                         type, types, data.err = clang_type_to_runic_type(
                             param_type,
@@ -708,6 +730,7 @@ generate_runestone :: proc(
                             data.isz,
                             data.anon_idx,
                             rs_arena_alloc,
+                            type_hint,
                         )
 
                         om.extend(&data.rs.types, types)

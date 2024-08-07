@@ -269,7 +269,7 @@ test_function_pointer :: proc(t: ^testing.T) {
     if !expect_value(t, len(functions), 0) {
         return
     }
-    if !expect_value(t, len(typedefs), 3) {
+    if !expect_value(t, len(typedefs), 4) {
         return
     }
     if !expect_value(t, len(variables), 5) {

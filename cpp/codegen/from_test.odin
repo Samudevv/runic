@@ -1,5 +1,6 @@
 package cpp_codegen
 
+import "core:fmt"
 import "core:testing"
 import om "root:ordered_map"
 import "root:runic"
@@ -524,12 +525,65 @@ test_cpp_unknown_int :: proc(t: ^testing.T) {
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
 
-    rs, err := generate_runestone(runic.Platform{.Linux, .x86_64}, "/inline", rf)
+    rs, err := generate_runestone(
+        runic.Platform{.Linux, .x86_64},
+        "/inline",
+        rf,
+    )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 1)
+    fmt.println("\n\n\n")
+
+    expect_value(t, om.length(rs.types), 3)
+    expect_value(t, om.length(rs.symbols), 1)
 
     pointy := om.get(rs.types, "pointy")
     expect_value(t, pointy.spec.(runic.Builtin), runic.Builtin.SInt64)
+
+    structy_t := om.get(rs.types, "structy")
+    strc := structy_t.spec.(runic.Struct)
+
+    expect_value(t, len(strc.members), 3)
+    expect_value(
+        t,
+        strc.members[0].type.spec.(runic.Builtin),
+        runic.Builtin.SInt32,
+    )
+    expect_value(t, strc.members[1].type.spec.(runic.Unknown), "heart_t")
+    expect_value(
+        t,
+        strc.members[2].type.spec.(runic.Builtin),
+        runic.Builtin.SInt64,
+    )
+
+    funcy := om.get(rs.symbols, "funcy")
+    fy := funcy.value.(runic.Function)
+
+    expect_value(t, len(fy.parameters), 3)
+    expect_value(
+        t,
+        fy.parameters[0].type.spec.(runic.Builtin),
+        runic.Builtin.SInt32,
+    )
+    expect_value(t, fy.parameters[1].type.spec.(runic.Unknown), "pants_t")
+    expect_value(
+        t,
+        fy.parameters[2].type.spec.(runic.Builtin),
+        runic.Builtin.UInt64,
+    )
+    expect_value(t, fy.return_type.spec.(runic.Unknown), "brown_t")
+
+    f_ptr := om.get(rs.types, "f_ptr")
+    fp := f_ptr.spec.(runic.FunctionPointer)
+
+    expect_value(t, len(fp.parameters), 2)
+    expect_value(t, fp.parameters[0].type.spec.(runic.Unknown), "pants_t")
+    expect_value(
+        t,
+        fp.parameters[1].type.spec.(runic.Builtin),
+        runic.Builtin.SInt8,
+    )
+
+    expect_value(t, fp.return_type.spec.(runic.Builtin), runic.Builtin.SInt8)
 }

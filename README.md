@@ -30,10 +30,9 @@ A **runestone** is an intermediate format that contains all symbols and necessar
 First make sure that all submodules are checked out. Then following dependencies are required:
 
 + [odin](https://odin-lang.org)
-+ [zig](https://ziglang.org) (*required as a preprocessor for C*)
 + [just](https://just.systems/)
 
-Arch Linux: `sudo pacman -S --needed zig base-devel just` <br>
+Arch Linux: `sudo pacman -S --needed base-devel just` <br>
 Ubuntu: `sudo apt install build-essential just`
 
 ### Linux

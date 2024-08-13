@@ -20,13 +20,6 @@ jobs:
       - name: Install libclang
         run: sudo apt -y install libclang-dev
         if: matrix.os == 'ubuntu-latest'
-      - name: Install libclang
-        run: brew install llvm
-        if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
-      - uses: korandoru/setup-zig@v1
-        name: Install zig
-        with:
-          zig-version: 0.12.0
       - uses: extractions/setup-just@v2
         name: Install just
       - uses: laytan/setup-odin@v2

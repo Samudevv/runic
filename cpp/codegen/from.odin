@@ -242,7 +242,7 @@ generate_runestone :: proc(
                     return .Continue
                 }
 
-                #partial switch cursor_kind {
+                cursor_kind_switch: #partial switch cursor_kind {
                 case .TypedefDecl:
                     typedef := clang.getTypedefDeclUnderlyingType(cursor)
 
@@ -266,12 +266,7 @@ generate_runestone :: proc(
                         rs_arena_alloc,
                         type_hint,
                     )
-
-                    if data.err != nil {
-                        fmt.eprintln(data.err, "\n")
-                        data.err = nil
-                        return .Continue
-                    }
+                    if data.err != nil do break
 
                     om.insert(
                         &data.rs.types,
@@ -300,12 +295,7 @@ generate_runestone :: proc(
                         rs_arena_alloc,
                         type_hint,
                     )
-
-                    if data.err != nil {
-                        fmt.eprintln(data.err, "\n")
-                        data.err = nil
-                        return .Continue
-                    }
+                    if data.err != nil do break
 
                     var_name := strings.clone(display_name, rs_arena_alloc)
 
@@ -338,12 +328,7 @@ generate_runestone :: proc(
                         &data.rs.types,
                         rs_arena_alloc,
                     )
-
-                    if data.err != nil {
-                        fmt.eprintln(data.err, "\n")
-                        data.err = nil
-                        return .Continue
-                    }
+                    if data.err != nil do break
 
                     #partial switch spec in type.spec {
                     case runic.Struct:
@@ -390,12 +375,7 @@ generate_runestone :: proc(
                         rs_arena_alloc,
                         type_hint,
                     )
-
-                    if data.err != nil {
-                        fmt.eprintln(data.err, "\n")
-                        data.err = nil
-                        return .Continue
-                    }
+                    if data.err != nil do break
 
                     handle_anon_type(
                         &func.return_type,
@@ -457,12 +437,7 @@ generate_runestone :: proc(
                             rs_arena_alloc,
                             type_hint,
                         )
-
-                        if data.err != nil {
-                            fmt.eprintln(data.err, "\n")
-                            data.err = nil
-                            return .Continue
-                        }
+                        if data.err != nil do break cursor_kind_switch
 
                         handle_anon_type(
                             &type,
@@ -552,6 +527,11 @@ generate_runestone :: proc(
                             ),
                         ),
                     )
+                }
+
+                if data.err != nil {
+                    fmt.eprintln(data.err, "\n")
+                    data.err = nil
                 }
 
                 return .Continue

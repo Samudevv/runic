@@ -345,10 +345,7 @@ clang_type_to_runic_type :: proc(
                     data.allocator,
                     type_hint,
                 )
-
-                if data.err != nil {
-                    return .Break
-                }
+                if data.err != nil do return .Break
 
                 member_name: string = ---
                 if len(display_name) == 0 {
@@ -524,12 +521,9 @@ clang_type_to_runic_type :: proc(
 
                 type: runic.Type = ---
                 type, data.err = clang_type_to_runic_type(param_type, cursor, data.isz, data.anon_idx, data.types, data.allocator, param_hint)
+                if data.err != nil do return .Break
 
                 handle_anon_type(&type, data.types, data.anon_idx, param_name, data.allocator)
-
-                if data.err != nil {
-                    return .Break
-                }
 
                 append(&data.func.parameters, runic.Member{name = param_name, type = type})
 

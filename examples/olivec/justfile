@@ -28,12 +28,12 @@ bindings:
 
 [unix]
 olivec:
-  zig cc -o "{{ BUILD_DIR / 'olivec_impl.c.o' }}" -c --std=c99 olivec_impl.c
+  cc -o "{{ BUILD_DIR / 'olivec_impl.c.o' }}" -c --std=c99 olivec_impl.c
   ar r "{{ BUILD_DIR / 'libolivec.a' }}" "{{ BUILD_DIR / 'olivec_impl.c.o' }}"
 
 [windows]
 olivec:
-  zig cc -o "{{ BUILD_DIR / 'olivec_impl.c.obj' }}" -c --std=c99 olivec_impl.c
+  cl  /Fo "{{ BUILD_DIR / 'olivec_impl.c.obj' }}"  /std:c11 /utf-8 olivec_impl.c
   lib /out:"{{ BUILD_DIR / 'olivec.lib' }}" "{{ BUILD_DIR / 'olivec_impl.c.obj' }}"
 
 STBIMAGE_MAKE := if os_family() == 'unix' {

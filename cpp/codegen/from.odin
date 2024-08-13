@@ -405,10 +405,9 @@ generate_runestone :: proc(
                         }
                     }
 
-                    // TODO
                     type_hint: Maybe(string)
                     if cursor_type.kind == .CXType_Int {
-                        type_hint = clang_get_cursor_extent(cursor)
+                        type_hint = clang_var_decl_get_type_hint(cursor)
                     }
 
                     type: runic.Type = ---

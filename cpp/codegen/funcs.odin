@@ -399,6 +399,16 @@ clang_type_to_runic_type :: proc(
         case .CXCursor_UnionDecl:
             tp.spec = runic.Union{members}
         }
+
+        if len(members) == 0 {
+            display_name := clang.getCursorDisplayName(cursor)
+            defer clang.disposeString(display_name)
+
+            err = errors.message(
+                "{} has no members",
+                clang.getCString(display_name),
+            )
+        }
     case .CXType_Enum:
         e: runic.Enum
 

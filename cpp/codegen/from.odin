@@ -136,10 +136,7 @@ generate_runestone :: proc(
             i32(len(clang_flags)),
             nil,
             0,
-            u32(
-                clang.TranslationUnit_Flags.DetailedPreprocessingRecord |
-                clang.TranslationUnit_Flags.SkipFunctionBodies,
-            ),
+            .DetailedPreprocessingRecord | .SkipFunctionBodies,
         )
 
         if unit == nil {
@@ -1058,10 +1055,7 @@ generate_runestone :: proc(
             i32(len(clang_flags)),
             nil,
             0,
-            u32(
-                clang.TranslationUnit_Flags.SkipFunctionBodies |
-                clang.TranslationUnit_Flags.SingleFileParse,
-            ),
+            .SkipFunctionBodies | .SingleFileParse,
         )
         if unit == nil {
             err = errors.message("failed to parse macro file")

@@ -250,10 +250,22 @@ generate_runestone :: proc(
                     type_name := clang_str(type_name_clang)
                     defer clang.disposeString(type_name_clang)
 
-
                     type_hint: Maybe(string)
                     if typedef.kind == .Int {
                         type_hint = clang_typedef_get_type_hint(cursor)
+                    }
+
+                    if typedef.kind == .Elaborated {
+                        named_type := clang.Type_getNamedType(typedef)
+                        named_cursor := clang.getTypeDeclaration(named_type)
+
+                        named_name_clang := clang.getCursorDisplayName(named_cursor)
+                        named_name := clang_str(named_name_clang)
+                        defer clang.disposeString(named_name_clang)
+
+                        if named_name == type_name {
+                            break
+                        }
                     }
 
                     type: runic.Type = ---
@@ -579,6 +591,19 @@ generate_runestone :: proc(
             cursor := clang.getTypeDeclaration(included_type)
 
             prev_idx := om.length(rs.types)
+
+            if included_type.kind == .Elaborated {
+                named_type := clang.Type_getNamedType(included_type)
+                named_cursor := clang.getTypeDeclaration(named_type)
+                named_name_clang := clang.getCursorDisplayName(named_cursor)
+                named_name := clang_str(named_name_clang)
+                defer clang.disposeString(named_name_clang)
+
+                if named_name == unknown {
+                    included_type = named_type
+                    cursor = named_cursor
+                }
+            }
 
             type: runic.Type = ---
             type, data.err = clang_type_to_runic_type(

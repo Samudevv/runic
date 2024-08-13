@@ -130,7 +130,9 @@ clang_type_to_runic_type :: proc(
             pointee_hint,
         ) or_return
 
-        handle_anon_type(&tp, &types, anon_idx, "pointer", allocator)
+        if _, ok := tp.spec.(runic.FunctionPointer); !ok {
+            handle_anon_type(&tp, &types, anon_idx, "pointer", allocator)
+        }
 
         if pointee.kind == .CXType_Void {
             tp.spec = runic.Builtin.RawPtr
@@ -258,6 +260,21 @@ clang_type_to_runic_type :: proc(
                     return .CXChildVisit_Continue
                 }
 
+                field_size := clang.getFieldDeclBitWidth(cursor)
+
+                if field_size != -1 {
+                    parent_display_name := clang.getCursorDisplayName(parent)
+                    defer clang.disposeString(parent_display_name)
+
+                    data.err = errors.message(
+                        "field \"{}.{}\" has specific bit width of {}",
+                        clang.getCString(parent_display_name),
+                        clang.getCString(display_name),
+                        field_size,
+                    )
+                    return .CXChildVisit_Break
+                }
+
                 if cursor_type.kind == .CXType_Elaborated {
                     named_type := clang.Type_getNamedType(cursor_type)
                     named_cursor := clang.getTypeDeclaration(named_type)
@@ -290,6 +307,13 @@ clang_type_to_runic_type :: proc(
                             clang.getCString(display_name),
                             data.allocator,
                         )
+
+                        if len(member_name) == 0 {
+                            member_name = fmt.aprintf(
+                                "member{}",
+                                len(data.members),
+                            )
+                        }
 
                         handle_anon_type(
                             &type,
@@ -336,8 +360,24 @@ clang_type_to_runic_type :: proc(
                     data.allocator,
                 )
 
+                if len(member_name) == 0 {
+                    member_name = fmt.aprintf(
+                        "member{}",
+                        len(data.members),
+                        allocator = data.allocator,
+                    )
+                }
+
                 #partial switch cursor_kind {
                 case .CXCursor_FieldDecl:
+                    handle_anon_type(
+                        &type,
+                        data.types,
+                        data.anon_idx,
+                        member_name,
+                        data.allocator,
+                    )
+
                     append(
                         data.members,
                         runic.Member{name = member_name, type = type},
@@ -454,8 +494,6 @@ clang_type_to_runic_type :: proc(
                 om.extend(&types, elab_types)
                 om.delete(elab_types)
 
-                handle_anon_type(&type, &types, anon_idx, "func", allocator)
-
                 func.return_type = type
             }
         }
@@ -469,9 +507,18 @@ clang_type_to_runic_type :: proc(
                 allocator,
             ) or_return
 
+
             om.extend(&types, elab_types)
             om.delete(elab_types)
         }
+
+        handle_anon_type(
+            &func.return_type,
+            &types,
+            anon_idx,
+            "func",
+            allocator,
+        )
 
         func.parameters = make([dynamic]runic.Member, allocator)
         func.variadic =
@@ -552,6 +599,8 @@ clang_type_to_runic_type :: proc(
 
                 type: runic.Type = ---
                 type, elab_types, data.err = clang_type_to_runic_type(param_type, cursor, data.isz, data.anon_idx, data.allocator, param_hint)
+
+                handle_anon_type(&type, data.types, data.anon_idx, param_name_str, data.allocator)
 
                 om.extend(data.types, elab_types)
                 om.delete(elab_types)
@@ -762,6 +811,13 @@ handle_anon_type :: #force_inline proc(
             anon_idx^,
             allocator = allocator,
         )
+    case runic.FunctionPointer:
+        type_name = fmt.aprintf(
+            "{}_func_ptr_anon_{}",
+            prefix,
+            anon_idx^,
+            allocator = allocator,
+        )
     case:
         return
     }
@@ -896,4 +952,3 @@ clang_func_return_type_get_type_hint :: proc(
 
     return type_hint
 }
-

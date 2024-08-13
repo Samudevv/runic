@@ -113,7 +113,7 @@ test_cpp_struct :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 7)
+    expect_value(t, om.length(rs.types), 6)
 
     abc_t := om.get(rs.types, "abc_t")
     abc_struct := abc_t.spec.(runic.Struct)
@@ -124,12 +124,8 @@ test_cpp_struct :: proc(t: ^testing.T) {
     expect_value(t, abc_struct.members[2].name, "c")
     expect_value(t, abc_struct.members[3].name, "yzg")
 
-    my_struct := om.get(rs.types, "my_struct")
-    my_struct_s := my_struct.spec.(runic.Struct)
-
-    expect_value(t, len(my_struct_s.members), 2)
-    expect_value(t, my_struct_s.members[0].name, "x")
-    expect_value(t, my_struct_s.members[1].name, "y")
+    _, my_struct := om.get(rs.types, "my_struct")
+    expect_value(t, my_struct, false)
 
     ss_t := om.get(rs.types, "_sszu_")
     ss_t_struct := ss_t.spec.(runic.Struct)
@@ -268,7 +264,7 @@ test_cpp_attribute :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libattribute.so"}},
-        headers = {
+        headers =  {
             d = {runic.Platform{.Any, .Any} = {"test_data/gnu_attribute.h"}},
         },
     }
@@ -311,7 +307,7 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libelaborated.so"}},
-        headers = {
+        headers =  {
             d = {runic.Platform{.Any, .Any} = {"test_data/elaborated.h"}},
         },
     }
@@ -321,6 +317,10 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
+
+    for entry in rs.types.data {
+        fmt.println(entry.key)
+    }
 
     expect_value(t, om.length(rs.types), 9)
     expect_value(t, om.length(rs.symbols), 4)
@@ -379,7 +379,7 @@ test_cpp_function :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libfunction.so"}},
-        headers = {
+        headers =  {
             d = {runic.Platform{.Any, .Any} = {"test_data/function.h"}},
         },
     }
@@ -432,8 +432,8 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libfunction_pointer.so"}},
-        headers = {
-            d = {
+        headers =  {
+            d =  {
                 runic.Platform{.Any, .Any} = {"test_data/function_pointer.h"},
             },
         },
@@ -445,7 +445,7 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 5)
+    expect_value(t, om.length(rs.types), 7)
     expect_value(t, om.length(rs.symbols), 6)
 
     hello := om.get(rs.symbols, "hello")
@@ -468,7 +468,19 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     expect_value(t, coy.parameters[1].name, "b")
 
     signal_func := om.get(rs.symbols, "signal")
-    _, signal_rt_is_fp := signal_func.value.(runic.Function).return_type.spec.(runic.FunctionPointer)
+    signal_rt_name, signal_rt_is_fp := signal_func.value.(runic.Function).return_type.spec.(string)
+    expect(t, signal_rt_is_fp)
+
+    signal_rt := om.get(rs.types, signal_rt_name)
+    _, signal_rt_is_fp = signal_rt.spec.(runic.FunctionPointer)
+    expect(t, signal_rt_is_fp)
+
+    signal_rt_name, signal_rt_is_fp =
+    signal_func.value.(runic.Function).parameters[1].type.spec.(string)
+    expect(t, signal_rt_is_fp)
+
+    signal_rt = om.get(rs.types, signal_rt_name)
+    _, signal_rt_is_fp = signal_rt.spec.(runic.FunctionPointer)
     expect(t, signal_rt_is_fp)
 
     create_window_t := om.get(rs.types, "create_window")
@@ -518,7 +530,7 @@ test_cpp_unknown_int :: proc(t: ^testing.T) {
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libunknown_int.so"}},
-        headers = {
+        headers =  {
             d = {runic.Platform{.Any, .Any} = {"test_data/unknown_int.h"}},
         },
     }

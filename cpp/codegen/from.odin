@@ -122,6 +122,9 @@ generate_runestone :: proc(
         clang.disposeTranslationUnit(unit)
     }
 
+    rs.constants = om.make(string, runic.Constant, allocator = rs_arena_alloc)
+    rs.symbols = om.make(string, runic.Symbol, allocator = rs_arena_alloc)
+    rs.types = om.make(string, runic.Type, allocator = rs_arena_alloc)
 
     for header in headers {
         header_cstr := strings.clone_to_cstring(header, arena_alloc)
@@ -179,14 +182,6 @@ generate_runestone :: proc(
                 fmt.eprintln(dig_str)
             }
         }
-
-        rs.constants = om.make(
-            string,
-            runic.Constant,
-            allocator = rs_arena_alloc,
-        )
-        rs.symbols = om.make(string, runic.Symbol, allocator = rs_arena_alloc)
-        rs.types = om.make(string, runic.Type, allocator = rs_arena_alloc)
 
         cursor := clang.getTranslationUnitCursor(unit)
 
@@ -343,15 +338,9 @@ generate_runestone :: proc(
                     )
                 case .CXCursor_VarDecl:
                     switch storage_class {
-                    case .CX_SC_Invalid,
-                         .CX_SC_Static,
-                         .CX_SC_OpenCLWorkGroupLocal,
-                         .CX_SC_PrivateExtern:
+                    case .CX_SC_Invalid, .CX_SC_Static, .CX_SC_OpenCLWorkGroupLocal, .CX_SC_PrivateExtern:
                         return .CXChildVisit_Continue
-                    case .CX_SC_Auto,
-                         .CX_SC_None,
-                         .CX_SC_Register,
-                         .CX_SC_Extern:
+                    case .CX_SC_Auto, .CX_SC_None, .CX_SC_Register, .CX_SC_Extern:
                     }
 
                     if cursor_type.kind == .CXType_Elaborated {
@@ -535,15 +524,9 @@ generate_runestone :: proc(
                 case .CXCursor_FunctionDecl:
                     // NOTE: defining structs, unions and enums with a name inside the parameter list is not supported
                     switch storage_class {
-                    case .CX_SC_Invalid,
-                         .CX_SC_Static,
-                         .CX_SC_OpenCLWorkGroupLocal,
-                         .CX_SC_PrivateExtern:
+                    case .CX_SC_Invalid, .CX_SC_Static, .CX_SC_OpenCLWorkGroupLocal, .CX_SC_PrivateExtern:
                         return .CXChildVisit_Continue
-                    case .CX_SC_Auto,
-                         .CX_SC_None,
-                         .CX_SC_Register,
-                         .CX_SC_Extern:
+                    case .CX_SC_Auto, .CX_SC_None, .CX_SC_Register, .CX_SC_Extern:
                     }
                     if clang.Cursor_isFunctionInlined(cursor) != 0 do return .CXChildVisit_Continue
 
@@ -588,44 +571,49 @@ generate_runestone :: proc(
                                 return .CXChildVisit_Continue
                             }
 
-                            func_name_str := strings.string_from_ptr(
-                                cast([^]byte)clang.getCString(func_name),
-                                len(clang.getCString(func_name)),
-                            )
-
-                            handle_anon_type(
-                                &type,
-                                &data.rs.types,
-                                data.anon_idx,
-                                func_name_str,
-                                rs_arena_alloc,
-                            )
 
                             func.return_type = type
                         }
                     }
 
-                    type_hint := clang_func_return_type_get_type_hint(cursor)
-
-                    types: om.OrderedMap(string, runic.Type) = ---
-                    func.return_type, types, data.err =
-                        clang_type_to_runic_type(
-                            cursor_return_type,
+                    if func.return_type.spec == nil {
+                        type_hint := clang_func_return_type_get_type_hint(
                             cursor,
-                            data.isz,
-                            data.anon_idx,
-                            rs_arena_alloc,
-                            type_hint,
                         )
 
-                    om.extend(&data.rs.types, types)
-                    om.delete(types)
+                        types: om.OrderedMap(string, runic.Type) = ---
+                        func.return_type, types, data.err =
+                            clang_type_to_runic_type(
+                                cursor_return_type,
+                                cursor,
+                                data.isz,
+                                data.anon_idx,
+                                rs_arena_alloc,
+                                type_hint,
+                            )
 
-                    if data.err != nil {
-                        fmt.eprintln(data.err, "\n")
-                        data.err = nil
-                        return .CXChildVisit_Continue
+                        om.extend(&data.rs.types, types)
+                        om.delete(types)
+
+                        if data.err != nil {
+                            fmt.eprintln(data.err, "\n")
+                            data.err = nil
+                            return .CXChildVisit_Continue
+                        }
                     }
+
+                    func_name_str := strings.string_from_ptr(
+                        cast([^]byte)clang.getCString(func_name),
+                        len(clang.getCString(func_name)),
+                    )
+
+                    handle_anon_type(
+                        &func.return_type,
+                        &data.rs.types,
+                        data.anon_idx,
+                        func_name_str,
+                        rs_arena_alloc,
+                    )
 
                     func.parameters = make(
                         [dynamic]runic.Member,
@@ -715,7 +703,7 @@ generate_runestone :: proc(
                             }
                         }
 
-                        type_hint = nil
+                        type_hint: Maybe(string)
                         if param_type.kind == .CXType_Int {
                             type_hint = clang_var_decl_get_type_hint(
                                 param_cursor,
@@ -723,6 +711,7 @@ generate_runestone :: proc(
                         }
 
                         type: runic.Type = ---
+                        types: om.OrderedMap(string, runic.Type) = ---
                         type, types, data.err = clang_type_to_runic_type(
                             param_type,
                             param_cursor,
@@ -740,6 +729,14 @@ generate_runestone :: proc(
                             data.err = nil
                             return .CXChildVisit_Continue
                         }
+
+                        handle_anon_type(
+                            &type,
+                            &data.rs.types,
+                            data.anon_idx,
+                            param_name_str,
+                            rs_arena_alloc,
+                        )
 
                         append(
                             &func.parameters,

@@ -195,36 +195,40 @@ generate_runestone :: proc(
                 cursor_kind := clang.getCursorKind(cursor)
                 cursor_type := clang.getCursorType(cursor)
                 cursor_location := clang.getCursorLocation(cursor)
-                display_name := clang.getCursorDisplayName(cursor)
+                display_name_clang := clang.getCursorDisplayName(cursor)
+                display_name := clang_str(display_name_clang)
                 storage_class := clang.Cursor_getStorageClass(cursor)
 
-                defer clang.disposeString(display_name)
+                defer clang.disposeString(display_name_clang)
 
                 if clang.Location_isFromMainFile(cursor_location) == 0 {
                     #partial switch cursor_kind {
                     case .TypedefDecl:
                         typedef := clang.getTypedefDeclUnderlyingType(cursor)
 
-                        type_name := clang.getTypedefName(cursor_type)
-                        defer clang.disposeString(type_name)
+                        type_name_clang := clang.getTypedefName(cursor_type)
+                        type_name := strings.clone(
+                            clang_str(type_name_clang),
+                            data.arena_alloc,
+                        )
+                        clang.disposeString(type_name_clang)
 
-                        data.included_types[strings.clone_from_cstring(clang.getCString(type_name), data.arena_alloc)] =
-                            typedef
+                        data.included_types[type_name] = typedef
                     case .StructDecl:
                         if struct_is_unnamed(display_name) do break
+                        display_name = strings.clone(display_name, data.arena_alloc)
 
-                        data.included_types[strings.clone_from_cstring(clang.getCString(display_name), data.arena_alloc)] =
-                            cursor_type
+                        data.included_types[display_name] = cursor_type
                     case .EnumDecl:
                         if enum_is_unnamed(display_name) do break
+                        display_name = strings.clone(display_name, data.arena_alloc)
 
-                        data.included_types[strings.clone_from_cstring(clang.getCString(display_name), data.arena_alloc)] =
-                            cursor_type
+                        data.included_types[display_name] = cursor_type
                     case .UnionDecl:
                         if union_is_unnamed(display_name) do break
+                        display_name = strings.clone(display_name, data.arena_alloc)
 
-                        data.included_types[strings.clone_from_cstring(clang.getCString(display_name), data.arena_alloc)] =
-                            cursor_type
+                        data.included_types[display_name] = cursor_type
                     }
 
                     return .Continue
@@ -234,8 +238,10 @@ generate_runestone :: proc(
                 case .TypedefDecl:
                     typedef := clang.getTypedefDeclUnderlyingType(cursor)
 
-                    type_name := clang.getTypedefName(cursor_type)
-                    defer clang.disposeString(type_name)
+                    type_name_clang := clang.getTypedefName(cursor_type)
+                    type_name := clang_str(type_name_clang)
+                    defer clang.disposeString(type_name_clang)
+
 
                     type_hint: Maybe(string)
                     if typedef.kind == .Int {
@@ -264,10 +270,7 @@ generate_runestone :: proc(
 
                     om.insert(
                         &data.rs.types,
-                        strings.clone_from_cstring(
-                            clang.getCString(type_name),
-                            rs_arena_alloc,
-                        ),
+                        strings.clone(type_name, rs_arena_alloc),
                         type,
                     )
                 case .VarDecl:
@@ -302,10 +305,7 @@ generate_runestone :: proc(
                         return .Continue
                     }
 
-                    var_name := strings.clone_from_cstring(
-                        clang.getCString(display_name),
-                        rs_arena_alloc,
-                    )
+                    var_name := strings.clone(display_name, rs_arena_alloc)
 
                     if _, ok := type.spec.(runic.FunctionPointer); !ok {
                         handle_anon_type(
@@ -350,10 +350,7 @@ generate_runestone :: proc(
 
                     om.insert(
                         &data.rs.types,
-                        strings.clone_from_cstring(
-                            clang.getCString(display_name),
-                            rs_arena_alloc,
-                        ),
+                        strings.clone(display_name, rs_arena_alloc),
                         type,
                     )
                 case .EnumDecl:
@@ -380,10 +377,7 @@ generate_runestone :: proc(
 
                     om.insert(
                         &data.rs.types,
-                        strings.clone_from_cstring(
-                            clang.getCString(display_name),
-                            rs_arena_alloc,
-                        ),
+                        strings.clone(display_name, rs_arena_alloc),
                         type,
                     )
                 case .UnionDecl:
@@ -408,10 +402,7 @@ generate_runestone :: proc(
                         return .Continue
                     }
 
-                    union_name := strings.clone_from_cstring(
-                        clang.getCString(display_name),
-                        rs_arena_alloc,
-                    )
+                    union_name := strings.clone(display_name, rs_arena_alloc)
 
                     om.insert(&data.rs.types, union_name, type)
                 case .FunctionDecl:
@@ -428,8 +419,9 @@ generate_runestone :: proc(
 
                     func: runic.Function
 
-                    func_name := clang.getCursorSpelling(cursor)
-                    defer clang.disposeString(func_name)
+                    func_name_clang := clang.getCursorSpelling(cursor)
+                    func_name := clang_str(func_name_clang)
+                    defer clang.disposeString(func_name_clang)
 
                     type_hint := clang_func_return_type_get_type_hint(cursor)
 
@@ -453,16 +445,11 @@ generate_runestone :: proc(
                         return .Continue
                     }
 
-                    func_name_str := strings.string_from_ptr(
-                        cast([^]byte)clang.getCString(func_name),
-                        len(clang.getCString(func_name)),
-                    )
-
                     handle_anon_type(
                         &func.return_type,
                         &data.rs.types,
                         data.anon_idx,
-                        func_name_str,
+                        func_name,
                         rs_arena_alloc,
                     )
 
@@ -480,19 +467,24 @@ generate_runestone :: proc(
                             u32(idx),
                         )
                         param_type := clang.getCursorType(param_cursor)
-                        param_name := clang.getCursorSpelling(param_cursor)
-
-                        defer clang.disposeString(param_name)
-
-                        param_name_str := strings.clone_from_cstring(
-                            clang.getCString(param_name),
-                            rs_arena_alloc,
+                        param_name_clang := clang.getCursorSpelling(
+                            param_cursor,
                         )
-                        if param_name_str == "" {
+                        param_name := clang_str(param_name_clang)
+
+                        defer clang.disposeString(param_name_clang)
+
+                        param_name_str: string = ---
+                        if len(param_name) == 0 {
                             param_name_str = fmt.aprintf(
                                 "param{}",
                                 idx,
                                 allocator = rs_arena_alloc,
+                            )
+                        } else {
+                            param_name_str = strings.clone(
+                                param_name,
+                                rs_arena_alloc,
                             )
                         }
 
@@ -538,10 +530,7 @@ generate_runestone :: proc(
 
                     om.insert(
                         &data.rs.symbols,
-                        strings.clone_from_cstring(
-                            clang.getCString(func_name),
-                            rs_arena_alloc,
-                        ),
+                        strings.clone(func_name, rs_arena_alloc),
                         runic.Symbol{value = func},
                     )
                 case .MacroDefinition:
@@ -834,16 +823,12 @@ generate_runestone :: proc(
 
                 #partial switch cursor_kind {
                 case .VarDecl:
-                    var_name := clang.getCursorSpelling(cursor)
-                    defer clang.disposeString(var_name)
-
-                    var_name_str := strings.clone_from_cstring(
-                        clang.getCString(var_name),
-                        data.allocator,
-                    )
+                    var_name_clang := clang.getCursorSpelling(cursor)
+                    var_name := clang_str(var_name_clang)
+                    defer clang.disposeString(var_name_clang)
 
                     start: int = ---
-                    for r, idx in var_name_str {
+                    for r, idx in var_name {
                         if r == 'R' {
                             start = idx
                             break
@@ -851,7 +836,10 @@ generate_runestone :: proc(
                     }
                     start += 1
 
-                    var_name_str = var_name_str[start:]
+                    var_name_str := strings.clone(
+                        var_name[start:],
+                        data.allocator,
+                    )
 
                     om.insert(
                         &data.rs.constants,
@@ -859,46 +847,43 @@ generate_runestone :: proc(
                         runic.Constant{},
                     )
                 case .StringLiteral:
-                    const_value := clang.getCursorSpelling(cursor)
-                    defer clang.disposeString(const_value)
+                    const_value_clang := clang.getCursorSpelling(cursor)
+                    const_value := clang_str(const_value_clang)
+                    defer clang.disposeString(const_value_clang)
 
-                    const_str := strings.string_from_ptr(
-                        cast(^byte)clang.getCString(const_value),
-                        len(clang.getCString(const_value)),
-                    )
-                    const_str = const_str[1:len(const_str) - 1]
+                    const_value = const_value[1:len(const_value) - 1]
 
                     entry := &data.rs.constants.data[len(data.rs.constants.data) - 1]
                     const := &entry.value
                     const.type.spec = runic.Builtin.Untyped
 
-                    if strings.has_prefix(const_str, "\"") &&
-                       strings.has_suffix(const_str, "\"") {
+                    if strings.has_prefix(const_value, "\"") &&
+                       strings.has_suffix(const_value, "\"") {
                         const.value = strings.clone(
                             strings.trim_prefix(
-                                strings.trim_suffix(const_str, "\""),
+                                strings.trim_suffix(const_value, "\""),
                                 "\"",
                             ),
                             data.allocator,
                         )
                         const.type.spec = runic.Builtin.String
-                    } else if strings.has_prefix(const_str, "'") &&
-                       strings.has_suffix(const_str, "'") &&
-                       len(const_str) == 3 {
+                    } else if strings.has_prefix(const_value, "'") &&
+                       strings.has_suffix(const_value, "'") &&
+                       len(const_value) == 3 {
                         const.value = strings.clone(
                             strings.trim_prefix(
-                                strings.trim_suffix(const_str, "'"),
+                                strings.trim_suffix(const_value, "'"),
                                 "'",
                             ),
                             data.allocator,
                         )
                         const.type.spec = runic.Builtin.SInt8
                     } else if value_i64, ok_i64 := strconv.parse_i64(
-                        const_str,
+                        const_value,
                     ); ok_i64 {
                         const.value = value_i64
                     } else if value_f64, ok_f64 := strconv.parse_f64(
-                        const_str,
+                        const_value,
                     ); ok_f64 {
                         const.value = value_f64
                     } else {
@@ -906,7 +891,7 @@ generate_runestone :: proc(
 
                         for &sym_entry in data.rs.symbols.data {
                             sym_name, sym := sym_entry.key, &sym_entry.value
-                            if const_str == sym_name {
+                            if const_value == sym_name {
                                 append(&sym.aliases, name)
                                 om.delete_key(&data.rs.constants, name)
                                 return .Recurse
@@ -916,7 +901,7 @@ generate_runestone :: proc(
                         for type_entry in data.rs.types.data {
                             type_name := type_entry.key
 
-                            if const_str == type_name {
+                            if const_value == type_name {
                                 om.insert(
                                     &data.rs.types,
                                     name,
@@ -927,7 +912,10 @@ generate_runestone :: proc(
                             }
                         }
 
-                        const.value = strings.clone(const_str, data.allocator)
+                        const.value = strings.clone(
+                            const_value,
+                            data.allocator,
+                        )
                     }
                 }
 

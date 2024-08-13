@@ -21,25 +21,58 @@ RecordData :: struct {
     anon_idx:  ^int,
 }
 
-struct_is_unnamed :: proc(display_name: clang.String) -> bool {
-    str := strings.clone_from_cstring(clang.getCString(display_name))
-    defer delete(str)
-
-    return str == "" || strings.has_prefix(str, "struct (unnamed")
+struct_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
+    return(
+        display_name == "" ||
+        strings.has_prefix(display_name, "struct (unnamed") \
+    )
 }
 
-enum_is_unnamed :: proc(display_name: clang.String) -> bool {
-    str := strings.clone_from_cstring(clang.getCString(display_name))
-    defer delete(str)
-
-    return str == "" || strings.has_prefix(str, "enum (unnamed")
+struct_is_unnamed_clang :: #force_inline proc(
+    display_name: clang.String,
+) -> bool {
+    return struct_is_unnamed_string(clang_str(display_name))
 }
 
-union_is_unnamed :: proc(display_name: clang.String) -> bool {
-    str := strings.clone_from_cstring(clang.getCString(display_name))
-    defer delete(str)
+struct_is_unnamed :: proc {
+    struct_is_unnamed_clang,
+    struct_is_unnamed_string,
+}
 
-    return str == "" || strings.has_prefix(str, "union (unnamed")
+enum_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
+    return(
+        display_name == "" ||
+        strings.has_prefix(display_name, "enum (unnamed") \
+    )
+}
+
+enum_is_unnamed_clang :: #force_inline proc(
+    display_name: clang.String,
+) -> bool {
+    return enum_is_unnamed_string(clang_str(display_name))
+}
+
+enum_is_unnamed :: proc {
+    enum_is_unnamed_clang,
+    enum_is_unnamed_string,
+}
+
+union_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
+    return(
+        display_name == "" ||
+        strings.has_prefix(display_name, "union (unnamed") \
+    )
+}
+
+union_is_unnamed_clang :: #force_inline proc(
+    display_name: clang.String,
+) -> bool {
+    return union_is_unnamed_string(clang_str(display_name))
+}
+
+union_is_unnamed :: proc {
+    union_is_unnamed_clang,
+    union_is_unnamed_string,
 }
 
 clang_type_to_runic_type :: proc(
@@ -126,8 +159,6 @@ clang_type_to_runic_type :: proc(
 
             om.extend(&types, elab_types)
             om.delete(elab_types)
-
-            fmt.printfln("Got tp={}", tp.spec)
         } else {
             tp.spec = handle_builtin_int(named_name, isz, allocator)
         }
@@ -227,21 +258,15 @@ clang_type_to_runic_type :: proc(
             size = nil,
         }
     case .Typedef:
-        type_name := clang.getTypeSpelling(type)
-        defer clang.disposeString(type_name)
+        type_name_clang := clang.getTypeSpelling(type)
+        type_name := clang_str(type_name_clang)
+        defer clang.disposeString(type_name_clang)
 
-        type_name_cstr := clang.getCString(type_name)
-        type_name_str := strings.string_from_ptr(
-            cast(^byte)type_name_cstr,
-            len(type_name_cstr),
-        )
-
-        if space_idx := strings.last_index(type_name_str, " ");
-           space_idx != -1 {
-            type_name_str = type_name_str[space_idx + 1:]
+        if space_idx := strings.last_index(type_name, " "); space_idx != -1 {
+            type_name = type_name[space_idx + 1:]
         }
 
-        tp.spec = handle_builtin_int(type_name_str, isz, allocator)
+        tp.spec = handle_builtin_int(type_name, isz, allocator)
     case .Record:
         cursor_kind := clang.getCursorKind(cursor)
 
@@ -267,9 +292,10 @@ clang_type_to_runic_type :: proc(
 
                 cursor_type := clang.getCursorType(cursor)
                 cursor_kind := clang.getCursorKind(cursor)
-                display_name := clang.getCursorDisplayName(cursor)
+                display_name_clang := clang.getCursorDisplayName(cursor)
+                display_name := clang_str(display_name_clang)
 
-                defer clang.disposeString(display_name)
+                defer clang.disposeString(display_name_clang)
 
                 if (cursor_type.kind == .Record &&
                        (struct_is_unnamed(display_name) ||
@@ -288,7 +314,7 @@ clang_type_to_runic_type :: proc(
                     data.err = errors.message(
                         "field \"{}.{}\" has specific bit width of {}",
                         clang.getCString(parent_display_name),
-                        clang.getCString(display_name),
+                        display_name,
                         field_size,
                     )
                     return .Break
@@ -317,17 +343,15 @@ clang_type_to_runic_type :: proc(
                     return .Break
                 }
 
-                member_name := strings.clone_from_cstring(
-                    clang.getCString(display_name),
-                    data.allocator,
-                )
-
-                if len(member_name) == 0 {
+                member_name: string = ---
+                if len(display_name) == 0 {
                     member_name = fmt.aprintf(
                         "member{}",
                         len(data.members),
                         allocator = data.allocator,
                     )
+                } else {
+                    member_name = strings.clone(display_name, data.allocator)
                 }
 
                 #partial switch cursor_kind {
@@ -410,19 +434,17 @@ clang_type_to_runic_type :: proc(
                 context = runtime.default_context()
                 rs_arena_alloc := e.entries.allocator
 
-                display_name := clang.getCursorDisplayName(cursor)
+                display_name_clang := clang.getCursorDisplayName(cursor)
+                display_name := clang_str(display_name_clang)
 
-                defer clang.disposeString(display_name)
+                defer clang.disposeString(display_name_clang)
 
                 value := clang.getEnumConstantDeclValue(cursor)
 
                 append(
                     &e.entries,
                     runic.EnumEntry {
-                        name = strings.clone_from_cstring(
-                            clang.getCString(display_name),
-                            rs_arena_alloc,
-                        ),
+                        name = strings.clone(display_name, rs_arena_alloc),
                         value = i64(value),
                     },
                 )
@@ -497,13 +519,16 @@ clang_type_to_runic_type :: proc(
                 context = runtime.default_context()
 
                 param_type := clang.getCursorType(cursor)
-                display_name := clang.getCursorDisplayName(cursor)
+                display_name_clang := clang.getCursorDisplayName(cursor)
+                display_name := clang_str(display_name_clang)
 
-                defer clang.disposeString(display_name)
+                defer clang.disposeString(display_name_clang)
 
-                param_name_str := strings.clone_from_cstring(clang.getCString(display_name), data.allocator)
-                if param_name_str == "" {
-                    param_name_str = fmt.aprintf("param{}", data.param_idx, allocator = data.allocator)
+                param_name: string = ---
+                if len(display_name) == 0 {
+                    param_name = fmt.aprintf("param{}", data.param_idx, allocator = data.allocator)
+                } else {
+                    param_name = strings.clone(display_name, data.allocator)
                 }
 
                 elab_types: om.OrderedMap(string, runic.Type) = ---
@@ -516,7 +541,7 @@ clang_type_to_runic_type :: proc(
                 type: runic.Type = ---
                 type, elab_types, data.err = clang_type_to_runic_type(param_type, cursor, data.isz, data.anon_idx, data.allocator, param_hint)
 
-                handle_anon_type(&type, data.types, data.anon_idx, param_name_str, data.allocator)
+                handle_anon_type(&type, data.types, data.anon_idx, param_name, data.allocator)
 
                 om.extend(data.types, elab_types)
                 om.delete(elab_types)
@@ -525,7 +550,7 @@ clang_type_to_runic_type :: proc(
                     return .Break
                 }
 
-                append(&data.func.parameters, runic.Member{name = param_name_str, type = type})
+                append(&data.func.parameters, runic.Member{name = param_name, type = type})
 
                 return .Continue
             }, &data)
@@ -748,12 +773,7 @@ handle_builtin_int_cxstring :: proc(
     isz: ccdg.Int_Sizes,
     allocator: runtime.Allocator,
 ) -> runic.TypeSpecifier {
-    type_name_cstr := clang.getCString(type_name)
-    type_name_str := strings.string_from_ptr(
-        cast(^byte)type_name_cstr,
-        len(type_name_cstr),
-    )
-    return handle_builtin_int_string(type_name_str, isz, allocator)
+    return handle_builtin_int_string(clang_str(type_name), isz, allocator)
 }
 
 handle_builtin_int_string :: proc(
@@ -867,4 +887,9 @@ clang_func_return_type_get_type_hint :: proc(
     if strings.contains(type_hint, "*") do return nil
 
     return type_hint
+}
+
+clang_str :: #force_inline proc(clang_str: clang.String) -> string {
+    cstr := clang.getCString(clang_str)
+    return strings.string_from_ptr(cast(^byte)cstr, len(cstr))
 }

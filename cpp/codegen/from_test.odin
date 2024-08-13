@@ -1,6 +1,5 @@
 package cpp_codegen
 
-import "core:fmt"
 import "core:testing"
 import om "root:ordered_map"
 import "root:runic"
@@ -318,10 +317,6 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    for entry in rs.types.data {
-        fmt.println(entry.key)
-    }
-
     expect_value(t, om.length(rs.types), 9)
     expect_value(t, om.length(rs.symbols), 4)
 
@@ -544,8 +539,6 @@ test_cpp_unknown_int :: proc(t: ^testing.T) {
     )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
-
-    fmt.println("\n\n\n")
 
     expect_value(t, om.length(rs.types), 3)
     expect_value(t, om.length(rs.symbols), 1)

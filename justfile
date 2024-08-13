@@ -19,6 +19,12 @@ YAML_STATIC_DEBUG := if os() == 'windows' {
   'false'
 }
 
+EXTRA_LINKER_FLAGS := if os() == 'macos' {
+  '-extra-linker-flags:"-L' + shell('brew --prefix llvm') + '/lib"'
+} else {
+  ''
+}
+
 ODIN_FLAGS := (
   '-vet-shadowing ' +
   '-vet-unused ' +
@@ -26,7 +32,8 @@ ODIN_FLAGS := (
   '-warnings-as-errors ' +
   '-error-pos-style:unix ' +
   '-collection:root=. ' +
-  '-collection:shared=shared'
+  '-collection:shared=shared ' +
+  EXTRA_LINKER_FLAGS
 )
 ODIN_DEBUG_FLAGS := '-debug -define:YAML_STATIC=' + YAML_STATIC_DEBUG
 ODIN_RELEASE_FLAGS := (

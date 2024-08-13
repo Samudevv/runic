@@ -20,6 +20,9 @@ jobs:
       - name: Install libclang
         run: sudo apt -y install libclang-dev
         if: matrix.os == 'ubuntu-latest'
+      - name: Install llvm
+        run: brew install llvm
+        if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
       - uses: extractions/setup-just@v2
         name: Install just
       - uses: laytan/setup-odin@v2

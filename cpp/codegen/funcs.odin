@@ -20,6 +20,18 @@ RecordData :: struct {
     anon_idx:  ^int,
 }
 
+@(private = "file")
+Func_Data :: struct {
+    param_idx:  int,
+    num_params: i32,
+    func:       ^runic.Function,
+    allocator:  runtime.Allocator,
+    isz:        Int_Sizes,
+    anon_idx:   ^int,
+    err:        errors.Error,
+    types:      ^om.OrderedMap(string, runic.Type),
+}
+
 struct_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
     return(
         display_name == "" ||
@@ -79,11 +91,11 @@ clang_type_to_runic_type :: proc(
     cursor: clang.Cursor,
     isz: Int_Sizes,
     anon_idx: ^int,
+    types: ^om.OrderedMap(string, runic.Type),
     allocator := context.allocator,
     type_hint: Maybe(string) = nil,
 ) -> (
     tp: runic.Type,
-    types: om.OrderedMap(string, runic.Type),
     err: errors.Error,
 ) {
     #partial switch type.kind {
@@ -147,17 +159,14 @@ clang_type_to_runic_type :: proc(
         if struct_is_unnamed(named_name) ||
            enum_is_unnamed(named_name) ||
            union_is_unnamed(named_name) {
-            elab_types: om.OrderedMap(string, runic.Type) = ---
-            tp, elab_types = clang_type_to_runic_type(
+            tp = clang_type_to_runic_type(
                 named_type,
                 named_cursor,
                 isz,
                 anon_idx,
+                types,
                 allocator,
             ) or_return
-
-            om.extend(&types, elab_types)
-            om.delete(elab_types)
         } else {
             tp.spec = handle_builtin_int(named_name, isz, allocator)
         }
@@ -171,17 +180,18 @@ clang_type_to_runic_type :: proc(
             pointee_hint = clang_var_decl_get_type_hint(cursor)
         }
 
-        tp, types = clang_type_to_runic_type(
+        tp = clang_type_to_runic_type(
             pointee,
             cursor,
             isz,
             anon_idx,
+            types,
             allocator,
             pointee_hint,
         ) or_return
 
         if _, ok := tp.spec.(runic.FunctionPointer); !ok {
-            handle_anon_type(&tp, &types, anon_idx, "pointer", allocator)
+            handle_anon_type(&tp, types, anon_idx, "pointer", allocator)
         }
 
         if pointee.kind == .Void {
@@ -207,16 +217,17 @@ clang_type_to_runic_type :: proc(
         }
     case .ConstantArray:
         arr_type := clang.getArrayElementType(type)
-        tp, types = clang_type_to_runic_type(
+        tp = clang_type_to_runic_type(
             arr_type,
             cursor,
             isz,
             anon_idx,
+            types,
             allocator,
             type_hint,
         ) or_return
 
-        handle_anon_type(&tp, &types, anon_idx, "array", allocator)
+        handle_anon_type(&tp, types, anon_idx, "array", allocator)
 
         // NOTE: Probably dangerous, because it uses the values and sizes from the host platform
         arr_size := clang.getArraySize(type)
@@ -234,16 +245,17 @@ clang_type_to_runic_type :: proc(
         }
     case .IncompleteArray:
         arr_type := clang.getArrayElementType(type)
-        tp, types = clang_type_to_runic_type(
+        tp = clang_type_to_runic_type(
             arr_type,
             cursor,
             isz,
             anon_idx,
+            types,
             allocator,
             type_hint,
         ) or_return
 
-        handle_anon_type(&tp, &types, anon_idx, "array", allocator)
+        handle_anon_type(&tp, types, anon_idx, "array", allocator)
 
         if len(tp.array_info) == 0 {
             tp.array_info = make([dynamic]runic.Array, allocator)
@@ -270,13 +282,12 @@ clang_type_to_runic_type :: proc(
         cursor_kind := clang.getCursorKind(cursor)
 
         members := make([dynamic]runic.Member, allocator)
-        types = om.make(string, runic.Type)
 
         data := RecordData {
             members   = &members,
             allocator = allocator,
             isz       = isz,
-            types     = &types,
+            types     = types,
             anon_idx  = anon_idx,
         }
 
@@ -325,18 +336,15 @@ clang_type_to_runic_type :: proc(
                 }
 
                 type: runic.Type = ---
-                elab_types: om.OrderedMap(string, runic.Type) = ---
-                type, elab_types, data.err = clang_type_to_runic_type(
+                type, data.err = clang_type_to_runic_type(
                     cursor_type,
                     cursor,
                     data.isz,
                     data.anon_idx,
+                    data.types,
                     data.allocator,
                     type_hint,
                 )
-
-                om.extend(data.types, elab_types)
-                om.delete(elab_types)
 
                 if data.err != nil {
                     return .Break
@@ -398,11 +406,12 @@ clang_type_to_runic_type :: proc(
         e: runic.Enum
 
         enum_int_type := clang.getEnumDeclIntegerType(cursor)
-        enum_type, _ := clang_type_to_runic_type(
+        enum_type := clang_type_to_runic_type(
             enum_int_type,
             clang.getTypeDeclaration(enum_int_type),
             isz,
             anon_idx,
+            types,
             allocator,
         ) or_return
 
@@ -455,48 +464,26 @@ clang_type_to_runic_type :: proc(
 
         tp.spec = e
     case .FunctionNoProto, .FunctionProto:
-        types = om.make(string, runic.Type, allocator = allocator)
-        elab_types: om.OrderedMap(string, runic.Type) = ---
-
         type_return_type := clang.getResultType(type)
         return_type_cursor := clang.getTypeDeclaration(type_return_type)
         num_params := clang.getNumArgTypes(type)
 
         func: runic.Function
 
-        func.return_type, elab_types = clang_type_to_runic_type(
+        func.return_type = clang_type_to_runic_type(
             type_return_type,
             return_type_cursor,
             isz,
             anon_idx,
+            types,
             allocator,
         ) or_return
 
-        om.extend(&types, elab_types)
-        om.delete(elab_types)
-
-        handle_anon_type(
-            &func.return_type,
-            &types,
-            anon_idx,
-            "func",
-            allocator,
-        )
+        handle_anon_type(&func.return_type, types, anon_idx, "func", allocator)
 
         func.parameters = make([dynamic]runic.Member, allocator)
         func.variadic =
             num_params != 0 && clang.isFunctionTypeVariadic(type) != 0
-
-        Func_Data :: struct {
-            param_idx:  int,
-            num_params: i32,
-            func:       ^runic.Function,
-            allocator:  runtime.Allocator,
-            isz:        Int_Sizes,
-            anon_idx:   ^int,
-            err:        errors.Error,
-            types:      ^om.OrderedMap(string, runic.Type),
-        }
 
         data := Func_Data {
             num_params = num_params,
@@ -504,7 +491,7 @@ clang_type_to_runic_type :: proc(
             allocator  = allocator,
             isz        = isz,
             anon_idx   = anon_idx,
-            types      = &types,
+            types      = types,
         }
 
         // NOTE: If the return type of the function pointer is unknown the children can not be visited
@@ -530,20 +517,15 @@ clang_type_to_runic_type :: proc(
                     param_name = strings.clone(display_name, data.allocator)
                 }
 
-                elab_types: om.OrderedMap(string, runic.Type) = ---
-
                 param_hint: Maybe(string)
                 if param_type.kind == .Int {
                     param_hint = clang_var_decl_get_type_hint(cursor)
                 }
 
                 type: runic.Type = ---
-                type, elab_types, data.err = clang_type_to_runic_type(param_type, cursor, data.isz, data.anon_idx, data.allocator, param_hint)
+                type, data.err = clang_type_to_runic_type(param_type, cursor, data.isz, data.anon_idx, data.types, data.allocator, param_hint)
 
                 handle_anon_type(&type, data.types, data.anon_idx, param_name, data.allocator)
-
-                om.extend(data.types, elab_types)
-                om.delete(elab_types)
 
                 if data.err != nil {
                     return .Break
@@ -567,7 +549,6 @@ clang_type_to_runic_type :: proc(
             )
             return
         }
-
 
         tp.spec = new_clone(func, allocator)
     case:

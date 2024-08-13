@@ -215,17 +215,26 @@ generate_runestone :: proc(
                         data.included_types[type_name] = typedef
                     case .StructDecl:
                         if struct_is_unnamed(display_name) do break
-                        display_name = strings.clone(display_name, data.arena_alloc)
+                        display_name = strings.clone(
+                            display_name,
+                            data.arena_alloc,
+                        )
 
                         data.included_types[display_name] = cursor_type
                     case .EnumDecl:
                         if enum_is_unnamed(display_name) do break
-                        display_name = strings.clone(display_name, data.arena_alloc)
+                        display_name = strings.clone(
+                            display_name,
+                            data.arena_alloc,
+                        )
 
                         data.included_types[display_name] = cursor_type
                     case .UnionDecl:
                         if union_is_unnamed(display_name) do break
-                        display_name = strings.clone(display_name, data.arena_alloc)
+                        display_name = strings.clone(
+                            display_name,
+                            data.arena_alloc,
+                        )
 
                         data.included_types[display_name] = cursor_type
                     }
@@ -248,18 +257,15 @@ generate_runestone :: proc(
                     }
 
                     type: runic.Type = ---
-                    types: om.OrderedMap(string, runic.Type) = ---
-                    type, types, data.err = clang_type_to_runic_type(
+                    type, data.err = clang_type_to_runic_type(
                         typedef,
                         cursor,
                         data.isz,
                         data.anon_idx,
+                        &data.rs.types,
                         rs_arena_alloc,
                         type_hint,
                     )
-
-                    om.extend(&data.rs.types, types)
-                    om.delete(types)
 
                     if data.err != nil {
                         fmt.eprintln(data.err, "\n")
@@ -285,18 +291,15 @@ generate_runestone :: proc(
                     }
 
                     type: runic.Type = ---
-                    types: om.OrderedMap(string, runic.Type) = ---
-                    type, types, data.err = clang_type_to_runic_type(
+                    type, data.err = clang_type_to_runic_type(
                         cursor_type,
                         cursor,
                         data.isz,
                         data.anon_idx,
+                        &data.rs.types,
                         rs_arena_alloc,
                         type_hint,
                     )
-
-                    om.extend(&data.rs.types, types)
-                    om.delete(types)
 
                     if data.err != nil {
                         fmt.eprintln(data.err, "\n")
@@ -325,17 +328,14 @@ generate_runestone :: proc(
                     if struct_is_unnamed(display_name) do return .Continue
 
                     type: runic.Type = ---
-                    types: om.OrderedMap(string, runic.Type) = ---
-                    type, types, data.err = clang_type_to_runic_type(
+                    type, data.err = clang_type_to_runic_type(
                         cursor_type,
                         cursor,
                         data.isz,
                         data.anon_idx,
+                        &data.rs.types,
                         rs_arena_alloc,
                     )
-
-                    om.extend(&data.rs.types, types)
-                    om.delete(types)
 
                     if data.err != nil {
                         fmt.eprintln(data.err, "\n")
@@ -356,17 +356,14 @@ generate_runestone :: proc(
                     if enum_is_unnamed(display_name) do return .Continue
 
                     type: runic.Type = ---
-                    types: om.OrderedMap(string, runic.Type) = ---
-                    type, types, data.err = clang_type_to_runic_type(
+                    type, data.err = clang_type_to_runic_type(
                         cursor_type,
                         cursor,
                         data.isz,
                         data.anon_idx,
+                        &data.rs.types,
                         rs_arena_alloc,
                     )
-
-                    om.extend(&data.rs.types, types)
-                    om.delete(types)
 
                     if data.err != nil {
                         fmt.eprintln(data.err, "\n")
@@ -383,17 +380,14 @@ generate_runestone :: proc(
                     if union_is_unnamed(display_name) do return .Continue
 
                     type: runic.Type = ---
-                    types: om.OrderedMap(string, runic.Type) = ---
-                    type, types, data.err = clang_type_to_runic_type(
+                    type, data.err = clang_type_to_runic_type(
                         cursor_type,
                         cursor,
                         data.isz,
                         data.anon_idx,
+                        &data.rs.types,
                         rs_arena_alloc,
                     )
-
-                    om.extend(&data.rs.types, types)
-                    om.delete(types)
 
                     if data.err != nil {
                         fmt.eprintln(data.err, "\n")
@@ -424,19 +418,15 @@ generate_runestone :: proc(
 
                     type_hint := clang_func_return_type_get_type_hint(cursor)
 
-                    types: om.OrderedMap(string, runic.Type) = ---
-                    func.return_type, types, data.err =
-                        clang_type_to_runic_type(
-                            cursor_return_type,
-                            cursor,
-                            data.isz,
-                            data.anon_idx,
-                            rs_arena_alloc,
-                            type_hint,
-                        )
-
-                    om.extend(&data.rs.types, types)
-                    om.delete(types)
+                    func.return_type, data.err = clang_type_to_runic_type(
+                        cursor_return_type,
+                        cursor,
+                        data.isz,
+                        data.anon_idx,
+                        &data.rs.types,
+                        rs_arena_alloc,
+                        type_hint,
+                    )
 
                     if data.err != nil {
                         fmt.eprintln(data.err, "\n")
@@ -495,17 +485,15 @@ generate_runestone :: proc(
                         }
 
                         type: runic.Type = ---
-                        type, types, data.err = clang_type_to_runic_type(
+                        type, data.err = clang_type_to_runic_type(
                             param_type,
                             param_cursor,
                             data.isz,
                             data.anon_idx,
+                            &data.rs.types,
                             rs_arena_alloc,
                             type_hint,
                         )
-
-                        om.extend(&data.rs.types, types)
-                        om.delete(types)
 
                         if data.err != nil {
                             fmt.eprintln(data.err, "\n")
@@ -647,24 +635,23 @@ generate_runestone :: proc(
         if included_type, ok := included_types[unknown]; ok {
             cursor := clang.getTypeDeclaration(included_type)
 
+            prev_idx := om.length(rs.types)
+
             type: runic.Type = ---
-            types: om.OrderedMap(string, runic.Type) = ---
-            type, types, data.err = clang_type_to_runic_type(
+            type, data.err = clang_type_to_runic_type(
                 included_type,
                 cursor,
                 data.isz,
                 data.anon_idx,
+                &rs.types,
                 rs_arena_alloc,
             )
 
-            for &entry in types.data {
+            for &entry in rs.types.data[prev_idx:] {
                 t := &entry.value
                 unknowns := check_for_unknown_types(t, data.rs.types)
                 extend_unknown_types(&unknown_types, unknowns)
             }
-
-            om.extend(&data.rs.types, types)
-            om.delete(types)
 
             if data.err != nil {
                 fmt.eprintln(data.err, "\n")

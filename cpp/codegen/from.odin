@@ -324,8 +324,10 @@ generate_runestone :: proc(
                         var_name,
                         runic.Symbol{value = type},
                     )
-                case .StructDecl:
-                    if struct_is_unnamed(display_name) do return .Continue
+                case .StructDecl, .UnionDecl, .EnumDecl:
+                    if cursor_kind == .StructDecl && struct_is_unnamed(display_name) do return .Continue
+                    if cursor_kind == .UnionDecl && union_is_unnamed(display_name) do return .Continue
+                    if cursor_kind == .EnumDecl && enum_is_unnamed(display_name) do return .Continue
 
                     type: runic.Type = ---
                     type, data.err = clang_type_to_runic_type(
@@ -343,8 +345,15 @@ generate_runestone :: proc(
                         return .Continue
                     }
 
-                    if len(type.spec.(runic.Struct).members) == 0 {
-                        break
+                    #partial switch spec in type.spec {
+                    case runic.Struct:
+                        if len(spec.members) == 0 do return .Continue
+                    case runic.Union:
+                        if len(spec.members) == 0 do return .Continue
+                    case runic.Enum:
+                        if len(spec.entries) == 0 {
+                            type.spec = spec.type
+                        }
                     }
 
                     om.insert(
@@ -352,52 +361,6 @@ generate_runestone :: proc(
                         strings.clone(display_name, rs_arena_alloc),
                         type,
                     )
-                case .EnumDecl:
-                    if enum_is_unnamed(display_name) do return .Continue
-
-                    type: runic.Type = ---
-                    type, data.err = clang_type_to_runic_type(
-                        cursor_type,
-                        cursor,
-                        data.isz,
-                        data.anon_idx,
-                        &data.rs.types,
-                        rs_arena_alloc,
-                    )
-
-                    if data.err != nil {
-                        fmt.eprintln(data.err, "\n")
-                        data.err = nil
-                        return .Continue
-                    }
-
-                    om.insert(
-                        &data.rs.types,
-                        strings.clone(display_name, rs_arena_alloc),
-                        type,
-                    )
-                case .UnionDecl:
-                    if union_is_unnamed(display_name) do return .Continue
-
-                    type: runic.Type = ---
-                    type, data.err = clang_type_to_runic_type(
-                        cursor_type,
-                        cursor,
-                        data.isz,
-                        data.anon_idx,
-                        &data.rs.types,
-                        rs_arena_alloc,
-                    )
-
-                    if data.err != nil {
-                        fmt.eprintln(data.err, "\n")
-                        data.err = nil
-                        return .Continue
-                    }
-
-                    union_name := strings.clone(display_name, rs_arena_alloc)
-
-                    om.insert(&data.rs.types, union_name, type)
                 case .FunctionDecl:
                     // NOTE: defining structs, unions and enums with a name inside the parameter list is not supported
                     switch storage_class {

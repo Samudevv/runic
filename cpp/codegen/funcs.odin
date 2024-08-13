@@ -21,21 +21,21 @@ RecordData :: struct {
     anon_idx:  ^int,
 }
 
-struct_is_unnamed :: proc(display_name: clang.CXString) -> bool {
+struct_is_unnamed :: proc(display_name: clang.String) -> bool {
     str := strings.clone_from_cstring(clang.getCString(display_name))
     defer delete(str)
 
     return str == "" || strings.has_prefix(str, "struct (unnamed")
 }
 
-enum_is_unnamed :: proc(display_name: clang.CXString) -> bool {
+enum_is_unnamed :: proc(display_name: clang.String) -> bool {
     str := strings.clone_from_cstring(clang.getCString(display_name))
     defer delete(str)
 
     return str == "" || strings.has_prefix(str, "enum (unnamed")
 }
 
-union_is_unnamed :: proc(display_name: clang.CXString) -> bool {
+union_is_unnamed :: proc(display_name: clang.String) -> bool {
     str := strings.clone_from_cstring(clang.getCString(display_name))
     defer delete(str)
 
@@ -43,8 +43,8 @@ union_is_unnamed :: proc(display_name: clang.CXString) -> bool {
 }
 
 clang_type_to_runic_type :: proc(
-    type: clang.CXType,
-    cursor: clang.CXCursor,
+    type: clang.Type,
+    cursor: clang.Cursor,
     isz: ccdg.Int_Sizes,
     anon_idx: ^int,
     allocator := context.allocator,
@@ -55,55 +55,55 @@ clang_type_to_runic_type :: proc(
     err: errors.Error,
 ) {
     #partial switch type.kind {
-    case .CXType_Void:
+    case .Void:
         tp.spec = runic.Builtin.Void
-    case .CXType_Bool:
+    case .Bool:
         tp.spec = ccdg.bool_type(isz._Bool)
-    case .CXType_Char_U:
+    case .Char_U:
         tp.spec = ccdg.int_type(isz.char, false)
-    case .CXType_UChar:
+    case .UChar:
         tp.spec = ccdg.int_type(isz.char, false)
-    case .CXType_Char16:
+    case .Char16:
         tp.spec = runic.Builtin.SInt16
-    case .CXType_Char32:
+    case .Char32:
         tp.spec = runic.Builtin.SInt32
-    case .CXType_UShort:
+    case .UShort:
         tp.spec = ccdg.int_type(isz.short, false)
-    case .CXType_UInt:
+    case .UInt:
         tp.spec = ccdg.int_type(isz.Int, false)
-    case .CXType_ULong:
+    case .ULong:
         tp.spec = ccdg.int_type(isz.long, false)
-    case .CXType_ULongLong:
+    case .ULongLong:
         tp.spec = ccdg.int_type(isz.longlong, false)
-    case .CXType_UInt128:
+    case .UInt128:
         tp.spec = runic.Builtin.SInt128
-    case .CXType_Char_S:
+    case .Char_S:
         tp.spec = ccdg.int_type(isz.char, true)
-    case .CXType_SChar:
+    case .SChar:
         tp.spec = ccdg.int_type(isz.char, true)
-    case .CXType_Short:
+    case .Short:
         tp.spec = ccdg.int_type(isz.short, true)
-    case .CXType_Int:
+    case .Int:
         if th, ok := type_hint.?; ok && th != "int" {
             tp.spec = handle_builtin_int(th, isz, allocator)
         } else {
             tp.spec = ccdg.int_type(isz.Int, true)
         }
-    case .CXType_Long:
+    case .Long:
         tp.spec = ccdg.int_type(isz.long, true)
-    case .CXType_LongLong:
+    case .LongLong:
         tp.spec = ccdg.int_type(isz.longlong, true)
-    case .CXType_Int128:
+    case .Int128:
         tp.spec = runic.Builtin.SInt128
-    case .CXType_Float:
+    case .Float:
         tp.spec = ccdg.float_type(isz.float)
-    case .CXType_Double:
+    case .Double:
         tp.spec = ccdg.float_type(isz.double)
-    case .CXType_LongDouble:
+    case .LongDouble:
         tp.spec = ccdg.float_type(isz.long_double)
-    case .CXType_Float128:
+    case .Float128:
         tp.spec = runic.Builtin.Float128
-    case .CXType_Elaborated:
+    case .Elaborated:
         named_type := clang.Type_getNamedType(type)
         named_cursor := clang.getTypeDeclaration(named_type)
 
@@ -111,13 +111,13 @@ clang_type_to_runic_type :: proc(
         defer clang.disposeString(named_name)
 
         tp.spec = handle_builtin_int(named_name, isz, allocator)
-    case .CXType_Pointer:
+    case .Pointer:
         pointee := clang.getPointeeType(type)
 
         pointee_hint: Maybe(string)
         if type_hint != nil {
             pointee_hint = type_hint
-        } else if pointee.kind == .CXType_Int {
+        } else if pointee.kind == .Int {
             pointee_hint = clang_var_decl_get_type_hint(cursor)
         }
 
@@ -134,16 +134,16 @@ clang_type_to_runic_type :: proc(
             handle_anon_type(&tp, &types, anon_idx, "pointer", allocator)
         }
 
-        if pointee.kind == .CXType_Void {
+        if pointee.kind == .Void {
             tp.spec = runic.Builtin.RawPtr
-        } else if pointee.kind == .CXType_Char_S ||
-           pointee.kind == .CXType_SChar {
+        } else if pointee.kind == .Char_S ||
+           pointee.kind == .SChar {
             tp.spec = runic.Builtin.String
         } else {
             if len(tp.array_info) != 0 {
                 tp.array_info[len(tp.array_info) - 1].pointer_info.count += 1
-            } else if pointee.kind != .CXType_FunctionProto &&
-               pointee.kind != .CXType_FunctionNoProto {
+            } else if pointee.kind != .FunctionProto &&
+               pointee.kind != .FunctionNoProto {
                 tp.pointer_info.count += 1
             }
         }
@@ -156,7 +156,7 @@ clang_type_to_runic_type :: proc(
                 tp.pointer_info.read_only = true
             }
         }
-    case .CXType_ConstantArray:
+    case .ConstantArray:
         arr_type := clang.getArrayElementType(type)
         tp, types = clang_type_to_runic_type(
             arr_type,
@@ -183,7 +183,7 @@ clang_type_to_runic_type :: proc(
         tp.array_info[0] = runic.Array {
             size = u64(arr_size),
         }
-    case .CXType_IncompleteArray:
+    case .IncompleteArray:
         arr_type := clang.getArrayElementType(type)
         tp, types = clang_type_to_runic_type(
             arr_type,
@@ -207,7 +207,7 @@ clang_type_to_runic_type :: proc(
         tp.array_info[0] = runic.Array {
             size = nil,
         }
-    case .CXType_Typedef:
+    case .Typedef:
         type_name := clang.getTypeSpelling(type)
         defer clang.disposeString(type_name)
 
@@ -223,7 +223,7 @@ clang_type_to_runic_type :: proc(
         }
 
         tp.spec = handle_builtin_int(type_name_str, isz, allocator)
-    case .CXType_Record:
+    case .Record:
         cursor_kind := clang.getCursorKind(cursor)
 
         members := make([dynamic]runic.Member, allocator)
@@ -240,9 +240,9 @@ clang_type_to_runic_type :: proc(
         clang.visitChildren(
             cursor,
             proc "c" (
-                cursor, parent: clang.CXCursor,
-                client_data: clang.CXClientData,
-            ) -> clang.CXChildVisitResult {
+                cursor, parent: clang.Cursor,
+                client_data: clang.ClientData,
+            ) -> clang.ChildVisitResult {
                 data := cast(^RecordData)client_data
                 context = runtime.default_context()
 
@@ -252,12 +252,12 @@ clang_type_to_runic_type :: proc(
 
                 defer clang.disposeString(display_name)
 
-                if (cursor_type.kind == .CXType_Record &&
+                if (cursor_type.kind == .Record &&
                        (struct_is_unnamed(display_name) ||
                                union_is_unnamed(display_name))) ||
-                   (cursor_type.kind == .CXType_Enum &&
+                   (cursor_type.kind == .Enum &&
                            enum_is_unnamed(display_name)) {
-                    return .CXChildVisit_Continue
+                    return .Continue
                 }
 
                 field_size := clang.getFieldDeclBitWidth(cursor)
@@ -272,10 +272,10 @@ clang_type_to_runic_type :: proc(
                         clang.getCString(display_name),
                         field_size,
                     )
-                    return .CXChildVisit_Break
+                    return .Break
                 }
 
-                if cursor_type.kind == .CXType_Elaborated {
+                if cursor_type.kind == .Elaborated {
                     named_type := clang.Type_getNamedType(cursor_type)
                     named_cursor := clang.getTypeDeclaration(named_type)
 
@@ -300,7 +300,7 @@ clang_type_to_runic_type :: proc(
                         om.delete(elab_types)
 
                         if data.err != nil {
-                            return .CXChildVisit_Break
+                            return .Break
                         }
 
                         member_name := strings.clone_from_cstring(
@@ -328,12 +328,12 @@ clang_type_to_runic_type :: proc(
                             runic.Member{name = member_name, type = type},
                         )
 
-                        return .CXChildVisit_Continue
+                        return .Continue
                     }
                 }
 
                 type_hint: Maybe(string)
-                if cursor_type.kind == .CXType_Int {
+                if cursor_type.kind == .Int {
                     type_hint = clang_var_decl_get_type_hint(cursor)
                 }
 
@@ -352,7 +352,7 @@ clang_type_to_runic_type :: proc(
                 om.delete(elab_types)
 
                 if data.err != nil {
-                    return .CXChildVisit_Break
+                    return .Break
                 }
 
                 member_name := strings.clone_from_cstring(
@@ -369,7 +369,7 @@ clang_type_to_runic_type :: proc(
                 }
 
                 #partial switch cursor_kind {
-                case .CXCursor_FieldDecl:
+                case .FieldDecl:
                     handle_anon_type(
                         &type,
                         data.types,
@@ -386,7 +386,7 @@ clang_type_to_runic_type :: proc(
                     om.insert(data.types, member_name, type)
                 }
 
-                return .CXChildVisit_Continue
+                return .Continue
             },
             &data,
         )
@@ -394,9 +394,9 @@ clang_type_to_runic_type :: proc(
         err = data.err
 
         #partial switch cursor_kind {
-        case .CXCursor_StructDecl:
+        case .StructDecl:
             tp.spec = runic.Struct{members}
-        case .CXCursor_UnionDecl:
+        case .UnionDecl:
             tp.spec = runic.Union{members}
         }
 
@@ -409,7 +409,7 @@ clang_type_to_runic_type :: proc(
                 clang.getCString(display_name),
             )
         }
-    case .CXType_Enum:
+    case .Enum:
         e: runic.Enum
 
         enum_int_type := clang.getEnumDeclIntegerType(cursor)
@@ -441,9 +441,9 @@ clang_type_to_runic_type :: proc(
         clang.visitChildren(
             cursor,
             proc "c" (
-                cursor, parent: clang.CXCursor,
-                client_data: clang.CXClientData,
-            ) -> clang.CXChildVisitResult {
+                cursor, parent: clang.Cursor,
+                client_data: clang.ClientData,
+            ) -> clang.ChildVisitResult {
                 e := cast(^runic.Enum)client_data
                 context = runtime.default_context()
                 rs_arena_alloc := e.entries.allocator
@@ -465,13 +465,13 @@ clang_type_to_runic_type :: proc(
                     },
                 )
 
-                return .CXChildVisit_Continue
+                return .Continue
             },
             &e,
         )
 
         tp.spec = e
-    case .CXType_FunctionNoProto, .CXType_FunctionProto:
+    case .FunctionNoProto, .FunctionProto:
         types = om.make(string, runic.Type, allocator = allocator)
         elab_types: om.OrderedMap(string, runic.Type) = ---
 
@@ -481,7 +481,7 @@ clang_type_to_runic_type :: proc(
 
         func: runic.Function
 
-        if type_return_type.kind == .CXType_Elaborated {
+        if type_return_type.kind == .Elaborated {
             named_type := clang.Type_getNamedType(type_return_type)
             named_cursor := clang.getTypeDeclaration(named_type)
 
@@ -555,11 +555,11 @@ clang_type_to_runic_type :: proc(
         }
 
         // NOTE: If the return type of the function pointer is unknown the children can not be visited
-        clang.visitChildren(cursor, proc "c" (cursor, parent: clang.CXCursor, client_data: clang.CXClientData) -> clang.CXChildVisitResult {
-                if clang.getCursorKind(cursor) != .CXCursor_ParmDecl do return .CXChildVisit_Continue
+        clang.visitChildren(cursor, proc "c" (cursor, parent: clang.Cursor, client_data: clang.ClientData) -> clang.ChildVisitResult {
+                if clang.getCursorKind(cursor) != .ParmDecl do return .Continue
 
                 data := cast(^Func_Data)client_data
-                if data.param_idx == int(data.num_params) do return .CXChildVisit_Break
+                if data.param_idx == int(data.num_params) do return .Break
                 defer data.param_idx += 1
 
                 context = runtime.default_context()
@@ -576,7 +576,7 @@ clang_type_to_runic_type :: proc(
 
                 elab_types: om.OrderedMap(string, runic.Type) = ---
 
-                if param_type.kind == .CXType_Elaborated {
+                if param_type.kind == .Elaborated {
                     named_type := clang.Type_getNamedType(param_type)
                     named_cursor := clang.getTypeDeclaration(named_type)
 
@@ -592,18 +592,18 @@ clang_type_to_runic_type :: proc(
                         om.delete(elab_types)
 
                         if data.err != nil {
-                            return .CXChildVisit_Break
+                            return .Break
                         }
 
                         handle_anon_type(&type, data.types, data.anon_idx, param_name_str, data.allocator)
 
                         append(&data.func.parameters, runic.Member{name = param_name_str, type = type})
-                        return .CXChildVisit_Continue
+                        return .Continue
                     }
                 }
 
                 param_hint: Maybe(string)
-                if param_type.kind == .CXType_Int {
+                if param_type.kind == .Int {
                     param_hint = clang_var_decl_get_type_hint(cursor)
                 }
 
@@ -616,12 +616,12 @@ clang_type_to_runic_type :: proc(
                 om.delete(elab_types)
 
                 if data.err != nil {
-                    return .CXChildVisit_Break
+                    return .Break
                 }
 
                 append(&data.func.parameters, runic.Member{name = param_name_str, type = type})
 
-                return .CXChildVisit_Continue
+                return .Continue
             }, &data)
 
         if data.err != nil {
@@ -663,7 +663,7 @@ clang_type_to_runic_type :: proc(
 }
 
 clang_source_error :: proc(
-    cursor: clang.CXCursor,
+    cursor: clang.Cursor,
     msg: string,
     args: ..any,
     loc := #caller_location,
@@ -671,7 +671,7 @@ clang_source_error :: proc(
     cursor_loc := clang.getCursorLocation(cursor)
 
     line, column, offset: u32 = ---, ---, ---
-    file: clang.CXFile = ---
+    file: clang.File = ---
 
     clang.getExpansionLocation(cursor_loc, &file, &line, &column, &offset)
 
@@ -838,7 +838,7 @@ handle_anon_type :: #force_inline proc(
 }
 
 handle_builtin_int_cxstring :: proc(
-    type_name: clang.CXString,
+    type_name: clang.String,
     isz: ccdg.Int_Sizes,
     allocator: runtime.Allocator,
 ) -> runic.TypeSpecifier {
@@ -892,14 +892,14 @@ handle_builtin_int :: proc {
     handle_builtin_int_string,
 }
 
-clang_get_cursor_extent :: proc(cursor: clang.CXCursor) -> string {
+clang_get_cursor_extent :: proc(cursor: clang.Cursor) -> string {
     range := clang.getCursorExtent(cursor)
 
     start := clang.getRangeStart(range)
     end := clang.getRangeEnd(range)
 
     start_offset, end_offset: u32 = ---, ---
-    file: clang.CXFile = ---
+    file: clang.File = ---
     clang.getExpansionLocation(start, &file, nil, nil, &start_offset)
     clang.getExpansionLocation(end, nil, nil, nil, &end_offset)
 
@@ -917,7 +917,7 @@ clang_get_cursor_extent :: proc(cursor: clang.CXCursor) -> string {
     return spel
 }
 
-clang_typedef_get_type_hint :: proc(cursor: clang.CXCursor) -> Maybe(string) {
+clang_typedef_get_type_hint :: proc(cursor: clang.Cursor) -> Maybe(string) {
     extent := clang_get_cursor_extent(cursor)
     split := strings.split_multi(extent, {" ", "\n", "\r", "\t"})
     defer delete(split)
@@ -930,7 +930,7 @@ clang_typedef_get_type_hint :: proc(cursor: clang.CXCursor) -> Maybe(string) {
     return type_hint
 }
 
-clang_var_decl_get_type_hint :: proc(cursor: clang.CXCursor) -> Maybe(string) {
+clang_var_decl_get_type_hint :: proc(cursor: clang.Cursor) -> Maybe(string) {
     extent := clang_get_cursor_extent(cursor)
     split := strings.split_multi(extent, {" ", "\n", "\r", "\t"})
     defer delete(split)
@@ -944,7 +944,7 @@ clang_var_decl_get_type_hint :: proc(cursor: clang.CXCursor) -> Maybe(string) {
 }
 
 clang_func_return_type_get_type_hint :: proc(
-    cursor: clang.CXCursor,
+    cursor: clang.Cursor,
 ) -> Maybe(string) {
     extent := clang_get_cursor_extent(cursor)
     rt_func := strings.split_n(extent, "(", 2)

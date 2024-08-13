@@ -41,7 +41,7 @@ ClientData :: struct {
     arena_alloc:    runtime.Allocator,
     err:            errors.Error,
     isz:            ccdg.Int_Sizes,
-    included_types: ^map[string]clang.CXType,
+    included_types: ^map[string]clang.Type,
     macros:         ^om.OrderedMap(string, Macro),
     anon_idx:       ^int,
 }
@@ -103,7 +103,7 @@ generate_runestone :: proc(
     )
     ignore := runic.platform_value_get(runic.IgnoreSet, rf.ignore, plat)
 
-    included_types := make(map[string]clang.CXType, allocator = arena_alloc)
+    included_types := make(map[string]clang.Type, allocator = arena_alloc)
     macros := om.make(string, Macro, allocator = arena_alloc)
     anon_idx: int
     data := ClientData {
@@ -117,7 +117,7 @@ generate_runestone :: proc(
     }
     index := clang.createIndex(0, 0)
     defer clang.disposeIndex(index)
-    units := make([dynamic]clang.CXTranslationUnit, arena_alloc)
+    units := make([dynamic]clang.TranslationUnit, arena_alloc)
     defer for unit in units {
         clang.disposeTranslationUnit(unit)
     }
@@ -137,8 +137,8 @@ generate_runestone :: proc(
             nil,
             0,
             u32(
-                clang.CXTranslationUnit_Flags.CXTranslationUnit_DetailedPreprocessingRecord |
-                clang.CXTranslationUnit_Flags.CXTranslationUnit_SkipFunctionBodies,
+                clang.TranslationUnit_Flags.DetailedPreprocessingRecord |
+                clang.TranslationUnit_Flags.SkipFunctionBodies,
             ),
         )
 
@@ -167,15 +167,15 @@ generate_runestone :: proc(
                 dig_str := clang.getCString(dig_msg)
 
                 switch sev {
-                case .CXDiagnostic_Error:
+                case .Error:
                     fmt.eprint("ERROR: ")
-                case .CXDiagnostic_Fatal:
+                case .Fatal:
                     fmt.eprint("FATAL: ")
-                case .CXDiagnostic_Warning:
+                case .Warning:
                     fmt.eprint("WARNING: ")
-                case .CXDiagnostic_Note:
+                case .Note:
                     fmt.eprint("NOTE: ")
-                case .CXDiagnostic_Ignored:
+                case .Ignored:
                     fmt.eprint("IGNORED: ")
                 }
 
@@ -188,9 +188,9 @@ generate_runestone :: proc(
         clang.visitChildren(
             cursor,
             proc "c" (
-                cursor, parent: clang.CXCursor,
-                client_data: clang.CXClientData,
-            ) -> clang.CXChildVisitResult {
+                cursor, parent: clang.Cursor,
+                client_data: clang.ClientData,
+            ) -> clang.ChildVisitResult {
                 data := cast(^ClientData)client_data
                 context = runtime.default_context()
                 rs_arena_alloc := data.allocator
@@ -205,7 +205,7 @@ generate_runestone :: proc(
 
                 if clang.Location_isFromMainFile(cursor_location) == 0 {
                     #partial switch cursor_kind {
-                    case .CXCursor_TypedefDecl:
+                    case .TypedefDecl:
                         typedef := clang.getTypedefDeclUnderlyingType(cursor)
 
                         type_name := clang.getTypedefName(cursor_type)
@@ -213,34 +213,34 @@ generate_runestone :: proc(
 
                         data.included_types[strings.clone_from_cstring(clang.getCString(type_name), data.arena_alloc)] =
                             typedef
-                    case .CXCursor_StructDecl:
+                    case .StructDecl:
                         if struct_is_unnamed(display_name) do break
 
                         data.included_types[strings.clone_from_cstring(clang.getCString(display_name), data.arena_alloc)] =
                             cursor_type
-                    case .CXCursor_EnumDecl:
+                    case .EnumDecl:
                         if enum_is_unnamed(display_name) do break
 
                         data.included_types[strings.clone_from_cstring(clang.getCString(display_name), data.arena_alloc)] =
                             cursor_type
-                    case .CXCursor_UnionDecl:
+                    case .UnionDecl:
                         if union_is_unnamed(display_name) do break
 
                         data.included_types[strings.clone_from_cstring(clang.getCString(display_name), data.arena_alloc)] =
                             cursor_type
                     }
 
-                    return .CXChildVisit_Continue
+                    return .Continue
                 }
 
                 #partial switch cursor_kind {
-                case .CXCursor_TypedefDecl:
+                case .TypedefDecl:
                     typedef := clang.getTypedefDeclUnderlyingType(cursor)
 
                     type_name := clang.getTypedefName(cursor_type)
                     defer clang.disposeString(type_name)
 
-                    if typedef.kind == .CXType_Elaborated {
+                    if typedef.kind == .Elaborated {
                         named_type := clang.Type_getNamedType(typedef)
                         named_cursor := clang.getTypeDeclaration(named_type)
 
@@ -287,7 +287,7 @@ generate_runestone :: proc(
                             if data.err != nil {
                                 fmt.eprintln(data.err, "\n")
                                 data.err = nil
-                                return .CXChildVisit_Continue
+                                return .Continue
                             }
 
                             om.insert(
@@ -304,7 +304,7 @@ generate_runestone :: proc(
                     }
 
                     type_hint: Maybe(string)
-                    if typedef.kind == .CXType_Int {
+                    if typedef.kind == .Int {
                         type_hint = clang_typedef_get_type_hint(cursor)
                     }
 
@@ -325,7 +325,7 @@ generate_runestone :: proc(
                     if data.err != nil {
                         fmt.eprintln(data.err, "\n")
                         data.err = nil
-                        return .CXChildVisit_Continue
+                        return .Continue
                     }
 
                     om.insert(
@@ -336,14 +336,14 @@ generate_runestone :: proc(
                         ),
                         type,
                     )
-                case .CXCursor_VarDecl:
+                case .VarDecl:
                     switch storage_class {
-                    case .CX_SC_Invalid, .CX_SC_Static, .CX_SC_OpenCLWorkGroupLocal, .CX_SC_PrivateExtern:
-                        return .CXChildVisit_Continue
-                    case .CX_SC_Auto, .CX_SC_None, .CX_SC_Register, .CX_SC_Extern:
+                    case .Invalid, .Static, .OpenCLWorkGroupLocal, .PrivateExtern:
+                        return .Continue
+                    case .Auto, .None, .Register, .Extern:
                     }
 
-                    if cursor_type.kind == .CXType_Elaborated {
+                    if cursor_type.kind == .Elaborated {
                         named_type := clang.Type_getNamedType(cursor_type)
                         named_cursor := clang.getTypeDeclaration(named_type)
 
@@ -369,7 +369,7 @@ generate_runestone :: proc(
                             if data.err != nil {
                                 fmt.eprintln(data.err, "\n")
                                 data.err = nil
-                                return .CXChildVisit_Continue
+                                return .Continue
                             }
 
                             var_name := strings.clone_from_cstring(
@@ -395,7 +395,7 @@ generate_runestone :: proc(
                     }
 
                     type_hint: Maybe(string)
-                    if cursor_type.kind == .CXType_Int {
+                    if cursor_type.kind == .Int {
                         type_hint = clang_var_decl_get_type_hint(cursor)
                     }
 
@@ -416,7 +416,7 @@ generate_runestone :: proc(
                     if data.err != nil {
                         fmt.eprintln(data.err, "\n")
                         data.err = nil
-                        return .CXChildVisit_Continue
+                        return .Continue
                     }
 
                     var_name := strings.clone_from_cstring(
@@ -429,8 +429,8 @@ generate_runestone :: proc(
                         var_name,
                         runic.Symbol{value = type},
                     )
-                case .CXCursor_StructDecl:
-                    if struct_is_unnamed(display_name) do return .CXChildVisit_Continue
+                case .StructDecl:
+                    if struct_is_unnamed(display_name) do return .Continue
 
                     type: runic.Type = ---
                     types: om.OrderedMap(string, runic.Type) = ---
@@ -448,7 +448,7 @@ generate_runestone :: proc(
                     if data.err != nil {
                         fmt.eprintln(data.err, "\n")
                         data.err = nil
-                        return .CXChildVisit_Continue
+                        return .Continue
                     }
 
                     if len(type.spec.(runic.Struct).members) == 0 {
@@ -463,8 +463,8 @@ generate_runestone :: proc(
                         ),
                         type,
                     )
-                case .CXCursor_EnumDecl:
-                    if enum_is_unnamed(display_name) do return .CXChildVisit_Continue
+                case .EnumDecl:
+                    if enum_is_unnamed(display_name) do return .Continue
 
                     type: runic.Type = ---
                     types: om.OrderedMap(string, runic.Type) = ---
@@ -482,7 +482,7 @@ generate_runestone :: proc(
                     if data.err != nil {
                         fmt.eprintln(data.err, "\n")
                         data.err = nil
-                        return .CXChildVisit_Continue
+                        return .Continue
                     }
 
                     om.insert(
@@ -493,8 +493,8 @@ generate_runestone :: proc(
                         ),
                         type,
                     )
-                case .CXCursor_UnionDecl:
-                    if union_is_unnamed(display_name) do return .CXChildVisit_Continue
+                case .UnionDecl:
+                    if union_is_unnamed(display_name) do return .Continue
 
                     type: runic.Type = ---
                     types: om.OrderedMap(string, runic.Type) = ---
@@ -512,7 +512,7 @@ generate_runestone :: proc(
                     if data.err != nil {
                         fmt.eprintln(data.err, "\n")
                         data.err = nil
-                        return .CXChildVisit_Continue
+                        return .Continue
                     }
 
                     union_name := strings.clone_from_cstring(
@@ -521,14 +521,14 @@ generate_runestone :: proc(
                     )
 
                     om.insert(&data.rs.types, union_name, type)
-                case .CXCursor_FunctionDecl:
+                case .FunctionDecl:
                     // NOTE: defining structs, unions and enums with a name inside the parameter list is not supported
                     switch storage_class {
-                    case .CX_SC_Invalid, .CX_SC_Static, .CX_SC_OpenCLWorkGroupLocal, .CX_SC_PrivateExtern:
-                        return .CXChildVisit_Continue
-                    case .CX_SC_Auto, .CX_SC_None, .CX_SC_Register, .CX_SC_Extern:
+                    case .Invalid, .Static, .OpenCLWorkGroupLocal, .PrivateExtern:
+                        return .Continue
+                    case .Auto, .None, .Register, .Extern:
                     }
-                    if clang.Cursor_isFunctionInlined(cursor) != 0 do return .CXChildVisit_Continue
+                    if clang.Cursor_isFunctionInlined(cursor) != 0 do return .Continue
 
                     cursor_return_type := clang.getCursorResultType(cursor)
                     num_params := clang.Cursor_getNumArguments(cursor)
@@ -538,7 +538,7 @@ generate_runestone :: proc(
                     func_name := clang.getCursorSpelling(cursor)
                     defer clang.disposeString(func_name)
 
-                    if cursor_return_type.kind == .CXType_Elaborated {
+                    if cursor_return_type.kind == .Elaborated {
                         named_type := clang.Type_getNamedType(
                             cursor_return_type,
                         )
@@ -568,7 +568,7 @@ generate_runestone :: proc(
                             if data.err != nil {
                                 fmt.eprintln(data.err, "\n")
                                 data.err = nil
-                                return .CXChildVisit_Continue
+                                return .Continue
                             }
 
 
@@ -598,7 +598,7 @@ generate_runestone :: proc(
                         if data.err != nil {
                             fmt.eprintln(data.err, "\n")
                             data.err = nil
-                            return .CXChildVisit_Continue
+                            return .Continue
                         }
                     }
 
@@ -645,7 +645,7 @@ generate_runestone :: proc(
                             )
                         }
 
-                        if param_type.kind == .CXType_Elaborated {
+                        if param_type.kind == .Elaborated {
                             named_type := clang.Type_getNamedType(param_type)
                             named_cursor := clang.getTypeDeclaration(
                                 named_type,
@@ -680,7 +680,7 @@ generate_runestone :: proc(
                                 if data.err != nil {
                                     fmt.eprintln(data.err, "\n")
                                     data.err = nil
-                                    return .CXChildVisit_Continue
+                                    return .Continue
                                 }
 
                                 handle_anon_type(
@@ -704,7 +704,7 @@ generate_runestone :: proc(
                         }
 
                         type_hint: Maybe(string)
-                        if param_type.kind == .CXType_Int {
+                        if param_type.kind == .Int {
                             type_hint = clang_var_decl_get_type_hint(
                                 param_cursor,
                             )
@@ -727,7 +727,7 @@ generate_runestone :: proc(
                         if data.err != nil {
                             fmt.eprintln(data.err, "\n")
                             data.err = nil
-                            return .CXChildVisit_Continue
+                            return .Continue
                         }
 
                         handle_anon_type(
@@ -752,13 +752,13 @@ generate_runestone :: proc(
                         ),
                         runic.Symbol{value = func},
                     )
-                case .CXCursor_MacroDefinition:
+                case .MacroDefinition:
                     cursor_extent := clang.getCursorExtent(cursor)
                     cursor_start := clang.getRangeStart(cursor_extent)
                     cursor_end := clang.getRangeEnd(cursor_extent)
 
                     start_offset, end_offset: u32 = ---, ---
-                    file: clang.CXFile = ---
+                    file: clang.File = ---
                     clang.getSpellingLocation(
                         cursor_start,
                         &file,
@@ -808,7 +808,7 @@ generate_runestone :: proc(
                             0,
                         },
                     )
-                case .CXCursor_MacroExpansion, .CXCursor_InclusionDirective:
+                case .MacroExpansion, .InclusionDirective:
                 // Ignore
                 case:
                     fmt.eprintln(
@@ -823,7 +823,7 @@ generate_runestone :: proc(
                     )
                 }
 
-                return .CXChildVisit_Continue
+                return .Continue
             },
             &data,
         )
@@ -867,7 +867,7 @@ generate_runestone :: proc(
         if included_type, ok := included_types[unknown]; ok {
             cursor := clang.getTypeDeclaration(included_type)
 
-            if included_type.kind == .CXType_Elaborated {
+            if included_type.kind == .Elaborated {
                 named_type := clang.Type_getNamedType(included_type)
                 named_cursor := clang.getTypeDeclaration(named_type)
 
@@ -1059,8 +1059,8 @@ generate_runestone :: proc(
             nil,
             0,
             u32(
-                clang.CXTranslationUnit_Flags.CXTranslationUnit_SkipFunctionBodies |
-                clang.CXTranslationUnit_Flags.CXTranslationUnit_SingleFileParse,
+                clang.TranslationUnit_Flags.SkipFunctionBodies |
+                clang.TranslationUnit_Flags.SingleFileParse,
             ),
         )
         if unit == nil {
@@ -1074,16 +1074,16 @@ generate_runestone :: proc(
         clang.visitChildren(
             cursor,
             proc "c" (
-                cursor, parent: clang.CXCursor,
-                client_data: clang.CXClientData,
-            ) -> clang.CXChildVisitResult {
+                cursor, parent: clang.Cursor,
+                client_data: clang.ClientData,
+            ) -> clang.ChildVisitResult {
                 data := cast(^ClientData)client_data
                 context = runtime.default_context()
 
                 cursor_kind := clang.getCursorKind(cursor)
 
                 #partial switch cursor_kind {
-                case .CXCursor_VarDecl:
+                case .VarDecl:
                     var_name := clang.getCursorSpelling(cursor)
                     defer clang.disposeString(var_name)
 
@@ -1108,7 +1108,7 @@ generate_runestone :: proc(
                         var_name_str,
                         runic.Constant{},
                     )
-                case .CXCursor_StringLiteral:
+                case .StringLiteral:
                     const_value := clang.getCursorSpelling(cursor)
                     defer clang.disposeString(const_value)
 
@@ -1159,7 +1159,7 @@ generate_runestone :: proc(
                             if const_str == sym_name {
                                 append(&sym.aliases, name)
                                 om.delete_key(&data.rs.constants, name)
-                                return .CXChildVisit_Recurse
+                                return .Recurse
                             }
                         }
 
@@ -1173,7 +1173,7 @@ generate_runestone :: proc(
                                     runic.Type{spec = type_name},
                                 )
                                 om.delete_key(&data.rs.constants, name)
-                                return .CXChildVisit_Recurse
+                                return .Recurse
                             }
                         }
 
@@ -1181,7 +1181,7 @@ generate_runestone :: proc(
                     }
                 }
 
-                return .CXChildVisit_Recurse
+                return .Recurse
             },
             &data,
         )

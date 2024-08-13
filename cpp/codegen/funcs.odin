@@ -695,7 +695,7 @@ temp_file :: proc(
         os_err: os.Errno = ---
         file, os_err = os.open(
             strings.to_string(file_name),
-            os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
+            os.O_WRONLY | os.O_CREATE | os.O_EXCL,
             0o777,
         )
         if os_err == 0 {

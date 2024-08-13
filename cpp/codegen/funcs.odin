@@ -110,7 +110,27 @@ clang_type_to_runic_type :: proc(
         named_name := clang.getCursorDisplayName(named_cursor)
         defer clang.disposeString(named_name)
 
-        tp.spec = handle_builtin_int(named_name, isz, allocator)
+        // If a struct is declared inline it is also elaborated
+        // This checks if such an unnamed struct, union or enum is encountered
+        if struct_is_unnamed(named_name) ||
+           enum_is_unnamed(named_name) ||
+           union_is_unnamed(named_name) {
+            elab_types: om.OrderedMap(string, runic.Type) = ---
+            tp, elab_types = clang_type_to_runic_type(
+                named_type,
+                named_cursor,
+                isz,
+                anon_idx,
+                allocator,
+            ) or_return
+
+            om.extend(&types, elab_types)
+            om.delete(elab_types)
+
+            fmt.printfln("Got tp={}", tp.spec)
+        } else {
+            tp.spec = handle_builtin_int(named_name, isz, allocator)
+        }
     case .Pointer:
         pointee := clang.getPointeeType(type)
 
@@ -136,8 +156,7 @@ clang_type_to_runic_type :: proc(
 
         if pointee.kind == .Void {
             tp.spec = runic.Builtin.RawPtr
-        } else if pointee.kind == .Char_S ||
-           pointee.kind == .SChar {
+        } else if pointee.kind == .Char_S || pointee.kind == .SChar {
             tp.spec = runic.Builtin.String
         } else {
             if len(tp.array_info) != 0 {
@@ -273,63 +292,6 @@ clang_type_to_runic_type :: proc(
                         field_size,
                     )
                     return .Break
-                }
-
-                if cursor_type.kind == .Elaborated {
-                    named_type := clang.Type_getNamedType(cursor_type)
-                    named_cursor := clang.getTypeDeclaration(named_type)
-
-                    named_name := clang.getCursorDisplayName(named_cursor)
-                    defer clang.disposeString(named_name)
-
-                    if struct_is_unnamed(named_name) ||
-                       enum_is_unnamed(named_name) ||
-                       union_is_unnamed(named_name) {
-
-                        type: runic.Type = ---
-                        elab_types: om.OrderedMap(string, runic.Type) = ---
-                        type, elab_types, data.err = clang_type_to_runic_type(
-                            named_type,
-                            named_cursor,
-                            data.isz,
-                            data.anon_idx,
-                            data.allocator,
-                        )
-
-                        om.extend(data.types, elab_types)
-                        om.delete(elab_types)
-
-                        if data.err != nil {
-                            return .Break
-                        }
-
-                        member_name := strings.clone_from_cstring(
-                            clang.getCString(display_name),
-                            data.allocator,
-                        )
-
-                        if len(member_name) == 0 {
-                            member_name = fmt.aprintf(
-                                "member{}",
-                                len(data.members),
-                            )
-                        }
-
-                        handle_anon_type(
-                            &type,
-                            data.types,
-                            data.anon_idx,
-                            member_name,
-                            data.allocator,
-                        )
-
-                        append(
-                            data.members,
-                            runic.Member{name = member_name, type = type},
-                        )
-
-                        return .Continue
-                    }
                 }
 
                 type_hint: Maybe(string)
@@ -481,46 +443,16 @@ clang_type_to_runic_type :: proc(
 
         func: runic.Function
 
-        if type_return_type.kind == .Elaborated {
-            named_type := clang.Type_getNamedType(type_return_type)
-            named_cursor := clang.getTypeDeclaration(named_type)
+        func.return_type, elab_types = clang_type_to_runic_type(
+            type_return_type,
+            return_type_cursor,
+            isz,
+            anon_idx,
+            allocator,
+        ) or_return
 
-            named_name := clang.getCursorDisplayName(named_cursor)
-            defer clang.disposeString(named_name)
-
-            if struct_is_unnamed(named_name) ||
-               enum_is_unnamed(named_name) ||
-               union_is_unnamed(named_name) {
-
-                type: runic.Type = ---
-                type, elab_types = clang_type_to_runic_type(
-                    named_type,
-                    named_cursor,
-                    isz,
-                    anon_idx,
-                    allocator,
-                ) or_return
-
-                om.extend(&types, elab_types)
-                om.delete(elab_types)
-
-                func.return_type = type
-            }
-        }
-
-        if func.return_type.spec == nil {
-            func.return_type, elab_types = clang_type_to_runic_type(
-                type_return_type,
-                return_type_cursor,
-                isz,
-                anon_idx,
-                allocator,
-            ) or_return
-
-
-            om.extend(&types, elab_types)
-            om.delete(elab_types)
-        }
+        om.extend(&types, elab_types)
+        om.delete(elab_types)
 
         handle_anon_type(
             &func.return_type,
@@ -575,32 +507,6 @@ clang_type_to_runic_type :: proc(
                 }
 
                 elab_types: om.OrderedMap(string, runic.Type) = ---
-
-                if param_type.kind == .Elaborated {
-                    named_type := clang.Type_getNamedType(param_type)
-                    named_cursor := clang.getTypeDeclaration(named_type)
-
-                    named_name := clang.getCursorDisplayName(named_cursor)
-                    defer clang.disposeString(named_name)
-
-                    if struct_is_unnamed(named_name) || enum_is_unnamed(named_name) || union_is_unnamed(named_name) {
-
-                        type: runic.Type = ---
-                        type, elab_types, data.err = clang_type_to_runic_type(named_type, named_cursor, data.isz, data.anon_idx, data.allocator)
-
-                        om.extend(data.types, elab_types)
-                        om.delete(elab_types)
-
-                        if data.err != nil {
-                            return .Break
-                        }
-
-                        handle_anon_type(&type, data.types, data.anon_idx, param_name_str, data.allocator)
-
-                        append(&data.func.parameters, runic.Member{name = param_name_str, type = type})
-                        return .Continue
-                    }
-                }
 
                 param_hint: Maybe(string)
                 if param_type.kind == .Int {

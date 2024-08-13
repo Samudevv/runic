@@ -906,7 +906,7 @@ clang_get_cursor_extent :: proc(cursor: clang.CXCursor) -> string {
     if file == nil do return ""
 
     unit := clang.Cursor_getTranslationUnit(cursor)
-    buffer_size: clang.size_t = ---
+    buffer_size: u64 = ---
     buf := cast([^]byte)clang.getFileContents(unit, file, &buffer_size)
 
     if buffer_size == 0 do return ""

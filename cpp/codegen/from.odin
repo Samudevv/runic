@@ -776,7 +776,7 @@ generate_runestone :: proc(
 
                     unit := clang.Cursor_getTranslationUnit(cursor)
 
-                    buffer_size: clang.size_t = ---
+                    buffer_size: u64 = ---
                     buf := clang.getFileContents(unit, file, &buffer_size)
                     buffer := strings.string_from_ptr(
                         cast(^byte)buf,

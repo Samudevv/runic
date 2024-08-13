@@ -5,7 +5,6 @@ import "core:fmt"
 import "core:os"
 import "core:slice"
 import "core:strings"
-import ccdg "root:c/codegen"
 import "root:errors"
 import om "root:ordered_map"
 import "root:runic"
@@ -16,7 +15,7 @@ RecordData :: struct {
     members:   ^[dynamic]runic.Member,
     allocator: runtime.Allocator,
     err:       errors.Error,
-    isz:       ccdg.Int_Sizes,
+    isz:       Int_Sizes,
     types:     ^om.OrderedMap(string, runic.Type),
     anon_idx:  ^int,
 }
@@ -78,7 +77,7 @@ union_is_unnamed :: proc {
 clang_type_to_runic_type :: proc(
     type: clang.Type,
     cursor: clang.Cursor,
-    isz: ccdg.Int_Sizes,
+    isz: Int_Sizes,
     anon_idx: ^int,
     allocator := context.allocator,
     type_hint: Maybe(string) = nil,
@@ -91,49 +90,49 @@ clang_type_to_runic_type :: proc(
     case .Void:
         tp.spec = runic.Builtin.Void
     case .Bool:
-        tp.spec = ccdg.bool_type(isz._Bool)
+        tp.spec = bool_type(isz._Bool)
     case .Char_U:
-        tp.spec = ccdg.int_type(isz.char, false)
+        tp.spec = int_type(isz.char, false)
     case .UChar:
-        tp.spec = ccdg.int_type(isz.char, false)
+        tp.spec = int_type(isz.char, false)
     case .Char16:
         tp.spec = runic.Builtin.SInt16
     case .Char32:
         tp.spec = runic.Builtin.SInt32
     case .UShort:
-        tp.spec = ccdg.int_type(isz.short, false)
+        tp.spec = int_type(isz.short, false)
     case .UInt:
-        tp.spec = ccdg.int_type(isz.Int, false)
+        tp.spec = int_type(isz.Int, false)
     case .ULong:
-        tp.spec = ccdg.int_type(isz.long, false)
+        tp.spec = int_type(isz.long, false)
     case .ULongLong:
-        tp.spec = ccdg.int_type(isz.longlong, false)
+        tp.spec = int_type(isz.longlong, false)
     case .UInt128:
         tp.spec = runic.Builtin.SInt128
     case .Char_S:
-        tp.spec = ccdg.int_type(isz.char, true)
+        tp.spec = int_type(isz.char, true)
     case .SChar:
-        tp.spec = ccdg.int_type(isz.char, true)
+        tp.spec = int_type(isz.char, true)
     case .Short:
-        tp.spec = ccdg.int_type(isz.short, true)
+        tp.spec = int_type(isz.short, true)
     case .Int:
         if th, ok := type_hint.?; ok && th != "int" {
             tp.spec = handle_builtin_int(th, isz, allocator)
         } else {
-            tp.spec = ccdg.int_type(isz.Int, true)
+            tp.spec = int_type(isz.Int, true)
         }
     case .Long:
-        tp.spec = ccdg.int_type(isz.long, true)
+        tp.spec = int_type(isz.long, true)
     case .LongLong:
-        tp.spec = ccdg.int_type(isz.longlong, true)
+        tp.spec = int_type(isz.longlong, true)
     case .Int128:
         tp.spec = runic.Builtin.SInt128
     case .Float:
-        tp.spec = ccdg.float_type(isz.float)
+        tp.spec = float_type(isz.float)
     case .Double:
-        tp.spec = ccdg.float_type(isz.double)
+        tp.spec = float_type(isz.double)
     case .LongDouble:
-        tp.spec = ccdg.float_type(isz.long_double)
+        tp.spec = float_type(isz.long_double)
     case .Float128:
         tp.spec = runic.Builtin.Float128
     case .Elaborated:
@@ -493,7 +492,7 @@ clang_type_to_runic_type :: proc(
             num_params: i32,
             func:       ^runic.Function,
             allocator:  runtime.Allocator,
-            isz:        ccdg.Int_Sizes,
+            isz:        Int_Sizes,
             anon_idx:   ^int,
             err:        errors.Error,
             types:      ^om.OrderedMap(string, runic.Type),
@@ -770,7 +769,7 @@ handle_anon_type :: #force_inline proc(
 
 handle_builtin_int_cxstring :: proc(
     type_name: clang.String,
-    isz: ccdg.Int_Sizes,
+    isz: Int_Sizes,
     allocator: runtime.Allocator,
 ) -> runic.TypeSpecifier {
     return handle_builtin_int_string(clang_str(type_name), isz, allocator)
@@ -778,7 +777,7 @@ handle_builtin_int_cxstring :: proc(
 
 handle_builtin_int_string :: proc(
     type_name: string,
-    isz: ccdg.Int_Sizes,
+    isz: Int_Sizes,
     allocator: runtime.Allocator,
 ) -> runic.TypeSpecifier {
     switch type_name {
@@ -799,13 +798,13 @@ handle_builtin_int_string :: proc(
     case "uint64_t":
         return runic.Builtin.UInt64
     case "size_t":
-        return ccdg.int_type(isz.size_t, false)
+        return int_type(isz.size_t, false)
     case "intptr_t":
-        return ccdg.int_type(isz.intptr_t, true)
+        return int_type(isz.intptr_t, true)
     case "uintptr_t":
-        return ccdg.int_type(isz.intptr_t, false)
+        return int_type(isz.intptr_t, false)
     case "ptrdiff_t":
-        return ccdg.int_type(isz.intptr_t, true)
+        return int_type(isz.intptr_t, true)
     case:
         return strings.clone(type_name, allocator)
     }

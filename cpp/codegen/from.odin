@@ -22,7 +22,6 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
-import ccdg "root:c/codegen"
 import "root:errors"
 import om "root:ordered_map"
 import "root:runic"
@@ -40,7 +39,7 @@ ClientData :: struct {
     allocator:      runtime.Allocator,
     arena_alloc:    runtime.Allocator,
     err:            errors.Error,
-    isz:            ccdg.Int_Sizes,
+    isz:            Int_Sizes,
     included_types: ^map[string]clang.Type,
     macros:         ^om.OrderedMap(string, Macro),
     anon_idx:       ^int,
@@ -110,7 +109,7 @@ generate_runestone :: proc(
         rs             = &rs,
         allocator      = rs_arena_alloc,
         arena_alloc    = arena_alloc,
-        isz            = ccdg.int_sizes_from_platform(plat),
+        isz            = int_sizes_from_platform(plat),
         included_types = &included_types,
         macros         = &macros,
         anon_idx       = &anon_idx,

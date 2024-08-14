@@ -42,7 +42,7 @@ ODIN_RELEASE_FLAGS := (
 )
 
 BUILD_DIR := 'build'
-CREATE_BUILD_DIR := if os_family() == 'unix' {'mkdir -p "' + BUILD_DIR + '"'} else {'New-Item -Path "' + BUILD_DIR + '" -ItemType Directory -Force'}
+CREATE_BUILD_DIR := if os_family() == 'unix' {'mkdir -p "' + BUILD_DIR + '"'} else {'New-Item -Path "' + BUILD_DIR + '" -ItemType Directory -Force | Out-Null'}
 EXE_EXT := if os_family() == 'unix' {''} else {'.exe'}
 
 default: release

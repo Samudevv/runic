@@ -33,7 +33,7 @@ olivec:
 
 [windows]
 olivec:
-  cl  /Fo "{{ BUILD_DIR / 'olivec_impl.c.obj' }}"  /std:c11 /utf-8 olivec_impl.c
+  cl /c /Fo"{{ BUILD_DIR / 'olivec_impl.c.obj' }}" /std:c11 /utf-8 olivec_impl.c
   lib /out:"{{ BUILD_DIR / 'olivec.lib' }}" "{{ BUILD_DIR / 'olivec_impl.c.obj' }}"
 
 STBIMAGE_MAKE := if os_family() == 'unix' {

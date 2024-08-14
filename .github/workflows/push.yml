@@ -22,10 +22,10 @@ jobs:
       - name: Install libclang
         run: sudo apt -y install libclang-dev
         if: matrix.os == 'ubuntu-latest'
-      - name: Install libclang
+      - name: Copy libclang
         run: |
           New-Item -Path build -ItemType Directory
-          just -f .\shared\libclang\justfile install-library (Resolve-Path build)
+          Copy-Item -Path .\shared\libclang\lib\windows\x86_64\libclang.dll -Destination .\build\
         if: matrix.os == 'windows-latest'
       - name: Install llvm
         run: brew install llvm

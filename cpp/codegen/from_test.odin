@@ -156,6 +156,8 @@ test_cpp_struct :: proc(t: ^testing.T) {
 test_cpp_enum :: proc(t: ^testing.T) {
     using testing
 
+    host := runic.platform_from_host()
+
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libenum.so"}},
@@ -178,7 +180,11 @@ test_cpp_enum :: proc(t: ^testing.T) {
     expect_value(t, abc_enum.entries[0].name, "A")
     expect_value(t, abc_enum.entries[1].name, "B")
     expect_value(t, abc_enum.entries[2].name, "C")
-    expect_value(t, abc_enum.type, runic.Builtin.UInt32)
+    if host.os == .Windows {
+        expect_value(t, abc_enum.type, runic.Builtin.SInt32)
+    } else {
+        expect_value(t, abc_enum.type, runic.Builtin.UInt32)
+    }
 
     expect_value(t, abc_enum.entries[0].value.(i64), 0)
     expect_value(t, abc_enum.entries[1].value.(i64), 1)
@@ -191,7 +197,11 @@ test_cpp_enum :: proc(t: ^testing.T) {
     expect_value(t, cba_enum.entries[0].name, "M")
     expect_value(t, cba_enum.entries[1].name, "H")
     expect_value(t, cba_enum.entries[2].name, "N")
-    expect_value(t, cba_enum.type, runic.Builtin.UInt32)
+    if host.os == .Windows {
+        expect_value(t, cba_enum.type, runic.Builtin.SInt32)
+    } else {
+        expect_value(t, cba_enum.type, runic.Builtin.UInt32)
+    }
 
     expect_value(t, cba_enum.entries[0].value.(i64), 0)
     expect_value(t, cba_enum.entries[1].value.(i64), 1)

@@ -52,14 +52,11 @@ jobs:
         run: just
         if: matrix.os != 'windows-latest'
       - name: Build runic release
-        run: .\build.cmd
+        run: just package
         if: matrix.os == 'windows-latest'
       - name: Rename runic artifact
         run: mv build/runic build/runic.${{ env.plat }}
         if: matrix.os != 'windows-latest'
-      - name: Rename runic artifact
-        run: Rename-Item -Path build/runic.exe -NewName runic.${{ env.plat }}.exe
-        if: matrix.os == 'windows-latest'
 
       - uses: actions/upload-artifact@v4
         if: matrix.os != 'windows-latest'
@@ -73,7 +70,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         with:
           name: runic-${{ env.plat }}
-          path: ${{ github.workspace }}/build/runic.${{ env.plat }}.exe
+          path: ${{ github.workspace }}/build/package/*
           if-no-files-found: warn
           overwrite: true
           compression-level: 0

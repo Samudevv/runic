@@ -82,10 +82,9 @@ example EXAMPLE: debug
 ARCH := if arch() == 'aarch64' { 'arm64' } else { arch() }
 [windows]
 package: release (make-directory BUILD_DIR / 'package')
-  Copy-Item -Path "{{ BUILD_DIR / 'runic.exe' }}" -Destination "{{ BUILD_DIR / 'package' }}"
-  Copy-Item -Path "{{ justfile_directory() / 'shared/libclang/lib/windows' / ARCH / 'libclang.dll' }}" -Destination "{{ BUILD_DIR / 'package' }}"
+  Copy-Item -Path "{{ BUILD_DIR / 'runic.exe' }}" -Destination "{{ BUILD_DIR / 'package' }}" -Force
+  Copy-Item -Path "{{ justfile_directory() / 'shared/libclang/lib/windows' / ARCH / 'libclang.dll' }}" -Destination "{{ BUILD_DIR / 'package' }}" -Force
   Compress-Archive -Path "{{ BUILD_DIR / 'package/*' }}" -DestinationPath "{{ BUILD_DIR / 'runic.zip' }}"
-  Remove-Item -Path "{{ BUILD_DIR / 'package' }}" -Recurse -Force
 
 [unix]
 clean:

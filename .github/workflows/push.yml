@@ -20,6 +20,9 @@ jobs:
       - name: Install libclang
         run: sudo apt -y install libclang-dev
         if: matrix.os == 'ubuntu-latest'
+      - name: Install libclang
+        run: just -f .\shared\libclang\justfile install-library (Resolve-Path build)
+        if: matrix.os == 'windows-latest'
       - name: Install llvm
         run: brew install llvm
         if: matrix.os == 'macos-13' || matrix.os == 'macos-14'

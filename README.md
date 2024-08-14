@@ -36,9 +36,9 @@ First make sure that all submodules are checked out. Then following dependencies
 
 Arch Linux: `sudo pacman -S --needed --noconfirm base-devel just clang libyaml` <br>
 Ubuntu 24.04: `sudo apt install -y build-essential just libclang-18-dev libyaml-dev` <br>
-Ubuntu 22.04: `sudo apt install -y build-essential libclang-dev libyaml-dev` <br> *On older Ubuntu systems libclang-18-dev does not exist, so the newest version should be installed. The package just also does not exist, but a statically linked executable can be downloaded directly from the releases page of the repository*
+Ubuntu 22.04: `sudo apt install -y build-essential libclang-dev libyaml-dev` <br> *On older Ubuntu systems `libclang-18-dev` does not exist, so the newest version should be installed. The package `just` also does not exist, but a statically linked executable can be downloaded directly from the releases page of the repository*
 
-MacOS: `brew install llvm@18` *libyaml is already packaged into the odin library*
+MacOS: `brew install llvm@18` *libyaml is already packaged into the odin library* <br>
 Windows: All dependencies are already provided for the `x86_64` architecture
 
 ### Linux

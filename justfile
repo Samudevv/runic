@@ -20,7 +20,7 @@ YAML_STATIC_DEBUG := if os() == 'windows' {
 }
 
 EXTRA_LINKER_FLAGS := if os() == 'macos' {
-  '-extra-linker-flags:"-L' + shell('brew --prefix llvm') + '/lib"'
+  '-extra-linker-flags:"-L' + shell('brew --prefix llvm@18') + '/lib"'
 } else {
   ''
 }
@@ -86,13 +86,6 @@ package: release (make-directory BUILD_DIR / 'package')
   Copy-Item -Path "{{ justfile_directory() / 'shared/libclang/lib/windows' / ARCH / 'libclang.dll' }}" -Destination "{{ BUILD_DIR / 'package' }}"
   Compress-Archive -Path "{{ BUILD_DIR / 'package/*' }}" -DestinationPath "{{ BUILD_DIR / 'runic.zip' }}"
   Remove-Item -Path "{{ BUILD_DIR / 'package' }}" -Recurse -Force
-
-[macos]
-package: release (make-directory BUILD_DIR / 'package')
-  cp "{{ BUILD_DIR / 'runic' }}" "{{ BUILD_DIR / 'package' }}"
-  cp "{{ shell('brew --prefix llvm') / 'lib/libclang.dylib' }}" "{{ BUILD_DIR / 'package' }}"
-  cd "{{ BUILD_DIR / 'package' }}" && zip runic.zip *
-  rm -r "{{ BUILD_DIR / 'package' }}"
 
 [unix]
 clean:

@@ -174,6 +174,9 @@ generate_runestone :: proc(
     case .Any:
     // Everything stays undefined
     }
+    for d in platform_defines {
+        append(&clang_flags, d)
+    }
 
 
     if rune_defines, ok := runic.platform_value_get(
@@ -266,6 +269,7 @@ generate_runestone :: proc(
 
         append(&units, unit)
 
+        is_fatal: bool
         num_diag := clang.getNumDiagnostics(unit)
         if num_diag != 0 {
             for idx in 0 ..< num_diag {
@@ -283,8 +287,10 @@ generate_runestone :: proc(
                 switch sev {
                 case .Error:
                     fmt.eprint("ERROR: ")
+                    is_fatal = true
                 case .Fatal:
                     fmt.eprint("FATAL: ")
+                    is_fatal = true
                 case .Warning:
                     fmt.eprint("WARNING: ")
                 case .Note:
@@ -295,6 +301,12 @@ generate_runestone :: proc(
 
                 fmt.eprintln(dig_str)
             }
+        }
+
+        if is_fatal {
+            fmt.eprintln(
+                "Errors occurred. The resulting runestone can not be trusted! Make sure to fix the errors accordingly. If system includes can not be found you may want to add them from https://git.musl-libc.org/cgit/musl/",
+            )
         }
 
         cursor := clang.getTranslationUnitCursor(unit)

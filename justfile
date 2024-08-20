@@ -1,7 +1,7 @@
 set windows-shell := ['powershell.exe']
 
 YAML_STATIC := if os() == 'linux' {
-  'true'
+  'false'
 } else if os() == 'windows' {
   'true'
 } else if os() == 'macos' {
@@ -19,6 +19,12 @@ YAML_STATIC_DEBUG := if os() == 'windows' {
   'false'
 }
 
+EXTRA_LINKER_FLAGS := if os() == 'macos' {
+  '-extra-linker-flags:"-L' + shell('brew --prefix llvm@18') + '/lib"'
+} else {
+  ''
+}
+
 ODIN_FLAGS := (
   '-vet-shadowing ' +
   '-vet-unused ' +
@@ -26,53 +32,45 @@ ODIN_FLAGS := (
   '-warnings-as-errors ' +
   '-error-pos-style:unix ' +
   '-collection:root=. ' +
-  '-collection:shared=shared'
+  '-collection:shared=shared ' +
+  EXTRA_LINKER_FLAGS
 )
 ODIN_DEBUG_FLAGS := '-debug -define:YAML_STATIC=' + YAML_STATIC_DEBUG
 ODIN_RELEASE_FLAGS := (
   '-o:speed ' +
-  '-define:YAML_STATIC=' + YAML_STATIC + ' ' +
-  if os() == 'linux' {' -extra-linker-flags=-static'} else {''}
+  '-define:YAML_STATIC=' + YAML_STATIC
 )
 
 BUILD_DIR := 'build'
-CREATE_BUILD_DIR := if os_family() == 'unix' {'mkdir -p "' + BUILD_DIR + '"'} else {'New-Item -Path "' + BUILD_DIR + '" -ItemType Directory -Force'}
 EXE_EXT := if os_family() == 'unix' {''} else {'.exe'}
 
 default: release
 tools: showc cpp cppp
 all: debug release tools test (example 'olivec') (example 'glew')
 
-release ODIN_JOBS=num_cpus(): build-yaml
-  @{{ CREATE_BUILD_DIR }}
+release ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
   odin build . {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'runic' + EXE_EXT  }}" {{ ODIN_RELEASE_FLAGS }} -thread-count:{{ ODIN_JOBS }}
 
-debug ODIN_JOBS=num_cpus():
-  @{{ CREATE_BUILD_DIR }}
+debug ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
   odin build . {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'runic_debug' + EXE_EXT }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }}
 
-test PACKAGE='.' ODIN_TESTS='' ODIN_JOBS=num_cpus(): (win_cat ODIN_JOBS)
-  @{{ CREATE_BUILD_DIR }}
-  odin test {{ PACKAGE }} {{ ODIN_FLAGS }} -all-packages -out:"{{ BUILD_DIR / 'runic_test' + EXE_EXT }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }} {{ if ODIN_TESTS == '' {''} else {'-define:ODIN_TEST_NAMES=' + ODIN_TESTS} }} -define:ODIN_TEST_THREADS=1
+test PACKAGE='.' ODIN_TESTS='' ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
+  odin test {{ PACKAGE }} {{ ODIN_FLAGS }} {{ if PACKAGE == '.' { '-all-packages' } else { '' } }} -out:"{{ BUILD_DIR / 'runic_test' + EXE_EXT }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }} {{ if ODIN_TESTS == '' {''} else {'-define:ODIN_TEST_NAMES=' + ODIN_TESTS} }} -define:ODIN_TEST_THREADS=1
 
 [unix]
 win_cat ODIN_JOBS=num_cpus():
 
 [windows]
-win_cat ODIN_JOBS=num_cpus():
-  @{{ CREATE_BUILD_DIR }}
+win_cat ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
   odin build test_data/win_cat.odin -file {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'win_cat.exe' }}" -thread-count:{{ ODIN_JOBS }}
 
-showc ODIN_JOBS=num_cpus():
-  @{{ CREATE_BUILD_DIR }}
+showc ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
   odin build c/showc {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'showc' + EXE_EXT }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }}
 
-cppp ODIN_JOBS=num_cpus():
-  @{{ CREATE_BUILD_DIR }}
+cppp ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
   odin build c/ppp {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'cppp' + EXE_EXT }}" {{ ODIN_RELEASE_FLAGS }} -thread-count:{{ ODIN_JOBS }}
 
-cpp ODIN_JOBS=num_cpus():
-  @{{ CREATE_BUILD_DIR }}
+cpp ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
   odin build c/pp {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'cpp' + EXE_EXT }}" {{ ODIN_RELEASE_FLAGS }} -thread-count:{{ ODIN_JOBS }}
 
 check PACKAGE='.' TARGET='' ODIN_JOBS=num_cpus():
@@ -80,6 +78,15 @@ check PACKAGE='.' TARGET='' ODIN_JOBS=num_cpus():
 
 example EXAMPLE: debug
   @just --justfile "{{ 'examples' / EXAMPLE / 'justfile' }}" example
+
+ARCH := if arch() == 'aarch64' { 'arm64' } else { arch() }
+[windows]
+package: release (make-directory BUILD_DIR / 'package')
+  Copy-Item -Path "{{ BUILD_DIR / 'runic.exe' }}" -Destination "{{ BUILD_DIR / 'package' }}" -Force
+  Copy-Item -Path "{{ justfile_directory() / 'shared/libclang/lib/windows' / ARCH / 'libclang.dll' }}" -Destination "{{ BUILD_DIR / 'package' }}" -Force
+  Copy-Item -Path "{{ justfile_directory() / 'shared/libclang/README.md' }}" -Destination "{{ BUILD_DIR / 'package/libclang-LICENSE.md' }}" -Force
+  Copy-Item -Path "{{ justfile_directory() / 'shared/yaml/README.md' }}" -Destination "{{ BUILD_DIR / 'package/libyaml-LICENSE.md' }}" -Force
+  Compress-Archive -Path "{{ BUILD_DIR / 'package/*' }}" -DestinationPath "{{ BUILD_DIR / 'runic.zip' }}"
 
 [unix]
 clean:
@@ -105,5 +112,10 @@ clean:
   if (Test-Path -Path 'test_data/generate_runestone.ini') { Remove-Item -Path 'test_data/generate_runestone.ini' -Recurse -Force -ErrorAction SilentlyContinue }
   @just --justfile examples/olivec/justfile clean
 
-build-yaml:
-  {{ if os() == 'linux' { 'just -f shared/yaml/justfile build' } else { '' } }}
+[unix]
+make-directory DIR:
+  @mkdir -p "{{ DIR }}"
+
+[windows]
+make-directory DIR:
+  @New-Item -Path "{{ DIR }}" -ItemType Directory -Force | Out-Null

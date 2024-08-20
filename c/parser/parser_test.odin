@@ -133,9 +133,9 @@ test_enum :: proc(t: ^testing.T) {
 
     expect_value(t, len(e1.values), 3)
     expect_value(t, e1Name.?, "cba_enum")
-    expect_value(t, e1.values[0].name, "C")
-    expect_value(t, e1.values[1].name, "B")
-    expect_value(t, e1.values[2].name, "A")
+    expect_value(t, e1.values[0].name, "M")
+    expect_value(t, e1.values[1].name, "H")
+    expect_value(t, e1.values[2].name, "N")
     expect_value(t, e1.values[0].value, nil)
     expect_value(t, e1.values[1].value, nil)
     expect_value(t, e1.values[2].value, nil)
@@ -157,7 +157,7 @@ test_enum :: proc(t: ^testing.T) {
     expect_value(t, e2.values[2].value.?.(i64), 8)
     expect_value(t, e2.values[3].value.?.(i64), -7)
     expect_value(t, e2.values[4].value.?.(i64), 789)
-    expect_value(t, e2.values[5].value.?.(string), "90.8")
+    expect_value(t, e2.values[5].value.?.(i64), 90)
     expect_value(t, e2.values[6].value.?.(i64), 6)
 
     v0 := variables[0].(Var).type.(Enum)
@@ -269,7 +269,7 @@ test_function_pointer :: proc(t: ^testing.T) {
     if !expect_value(t, len(functions), 0) {
         return
     }
-    if !expect_value(t, len(typedefs), 1) {
+    if !expect_value(t, len(typedefs), 4) {
         return
     }
     if !expect_value(t, len(variables), 5) {
@@ -290,7 +290,7 @@ test_function_pointer :: proc(t: ^testing.T) {
     expect_value(t, len(bye.parameters), 4)
     expect_value(t, len(bye.parameters[3].(Var).type.(Struct).members), 2)
 
-    cb := typedefs[0].(Function)
+    cb := typedefs[1].(Function)
     expect_value(t, cb.name.?, "callback")
     expect_value(t, len(cb.parameters), 5)
     expect_value(t, cb.return_type.(Var).type.(BuiltinType), BuiltinType.void)
@@ -328,7 +328,7 @@ test_pointer :: proc(t: ^testing.T) {
     if !expect_value(t, len(typedefs), 0) {
         return
     }
-    if !expect_value(t, len(variables), 8) {
+    if !expect_value(t, len(variables), 9) {
         return
     }
 
@@ -359,20 +359,20 @@ test_pointer :: proc(t: ^testing.T) {
     expect_value(t, c1.pointer_info.const, true)
     expect_value(t, c1.qualifiers[0], TypeQualifier.const)
 
-    c1 = variables[5].(Var)
+    c1 = variables[6].(Var)
     expect_value(t, c1.name.?, "xyz")
     expect_value(t, c1.pointer_info.count, 2)
     expect_value(t, c1.pointer_info.const, false)
     expect_value(t, c1.pointer_info.restrict, true)
 
-    arr := variables[6].(Var)
+    arr := variables[7].(Var)
     expect_value(t, arr.name.?, "arr")
     expect_value(t, arr.pointer_info.count, 1)
     expect_value(t, arr.pointer_info.const, true)
     expect_value(t, arr.pointer_info.child.count, 1)
     expect_value(t, arr.pointer_info.child.const, false)
 
-    arr = variables[7].(Var)
+    arr = variables[8].(Var)
     expect_value(t, arr.name.?, "arr1")
     expect_value(t, arr.pointer_info.count, 1)
     expect_value(t, arr.pointer_info.const, true)

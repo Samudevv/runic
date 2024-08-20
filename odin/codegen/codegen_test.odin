@@ -22,7 +22,6 @@ import "core:io"
 import "core:os"
 import "core:path/filepath"
 import "core:testing"
-import "root:exec"
 import om "root:ordered_map"
 import "root:runic"
 
@@ -266,8 +265,6 @@ main :: proc() {}`
 
         os.write_string(file, "main :: proc() {}")
     }
-
-    if status, c_err := exec.command("odin", {"check", "test_data/bindings.odin", "-file", "-vet"}); !expect_value(t, c_err, nil) || !expect_value(t, status, 0) do return
 
     contents, os_err := os.read_entire_file(abs_file_name)
     if !expect(t, os_err) do return

@@ -1,3 +1,5 @@
+typedef void GLFWwindow;
+
 void (*hello)();
 
 unsigned long long int (*bye)(
@@ -16,3 +18,7 @@ void (**hello_world)();
 int (****const foo)();
 
 void(*signal(int, void (*)(int)))(int);
+
+typedef void (*const consty)(int a, int b);
+
+typedef GLFWwindow* (*create_window)(const char* name, int width, int height);

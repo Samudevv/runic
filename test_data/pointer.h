@@ -4,7 +4,7 @@ int **const c;
 const char *str;
 const char **const c1;
 
-unsigned *;
+unsigned * _;
 
 int **__restrict xyz;
 

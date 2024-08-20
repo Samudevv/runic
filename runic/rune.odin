@@ -25,6 +25,7 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "root:errors"
+import om "root:ordered_map"
 import "shared:yaml"
 
 Rune :: struct {
@@ -53,6 +54,7 @@ From :: struct {
     headers:     PlatformValue([]string),
     includedirs: PlatformValue([]string),
     defines:     PlatformValue(map[string]string),
+    flags:       PlatformValue([]cstring),
     // Odin
     packages:    PlatformValue([]string),
 }
@@ -806,6 +808,49 @@ parse_rune :: proc(
                     }
 
                     f.defines.d[plat] = d_map
+                case "flags":
+                    flags := make([dynamic]cstring, rn_arena_alloc)
+
+                    if value == nil {
+                        f.flags.d[plat] = flags[:]
+                    }
+
+                    #partial switch v in value {
+                    case yaml.Sequence:
+                        for f, idx in v {
+                            if f_str, ok := f.(string); ok {
+                                append(
+                                    &flags,
+                                    strings.clone_to_cstring(
+                                        f_str,
+                                        rn_arena_alloc,
+                                    ),
+                                )
+                            } else {
+                                err = errors.message(
+                                    "\"from.{}\"[{}] has invalud type %T",
+                                    key,
+                                    idx,
+                                    f,
+                                )
+                                return
+                            }
+                        }
+                    case string:
+                        append(
+                            &flags,
+                            strings.clone_to_cstring(v, rn_arena_alloc),
+                        )
+                    case:
+                        err = errors.message(
+                            "\"from.{}\" has invalid type %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
+
+                    f.flags.d[plat] = flags[:]
                 case "packages":
                     p_seq := make([dynamic]string, rn_arena_alloc)
 
@@ -1647,3 +1692,53 @@ overwrite_constant :: proc(
 }
 
 overwrite_var :: overwrite_type
+
+ignore_types :: proc(types: ^om.OrderedMap(string, Type), ignore: IgnoreSet) {
+    for idx := 0; idx < len(types.data); idx += 1 {
+        entry := types.data[idx]
+        name := entry.key
+
+        if single_list_glob(ignore.types, name) {
+            om.delete_key(types, name)
+            idx -= 1
+        }
+    }
+}
+
+ignore_constants :: proc(
+    constants: ^om.OrderedMap(string, Constant),
+    ignore: IgnoreSet,
+) {
+    for idx := 0; idx < len(constants.data); idx += 1 {
+        entry := constants.data[idx]
+        name := entry.key
+
+        if single_list_glob(ignore.macros, name) {
+            om.delete_key(constants, name)
+            idx -= 1
+        }
+    }
+}
+
+ignore_symbols :: proc(
+    symbols: ^om.OrderedMap(string, Symbol),
+    ignore: IgnoreSet,
+) {
+    for idx := 0; idx < len(symbols.data); idx += 1 {
+        entry := symbols.data[idx]
+        name, sym := entry.key, entry.value
+
+        switch _ in sym.value {
+        case Type:
+            if single_list_glob(ignore.variables, name) {
+                om.delete_key(symbols, name)
+                idx -= 1
+            }
+        case Function:
+            if single_list_glob(ignore.functions, name) {
+                om.delete_key(symbols, name)
+                idx -= 1
+            }
+        }
+    }
+}

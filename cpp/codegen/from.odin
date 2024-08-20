@@ -15,6 +15,8 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
+// TODO: check out clang.isAnonymous and clang.isAnonymousRecordDecl
+// clang.Type_visitFields
 package cpp_codegen
 
 import "base:runtime"
@@ -330,7 +332,7 @@ generate_runestone :: proc(
 
                 defer clang.disposeString(display_name_clang)
 
-                if clang.Location_isFromMainFile(cursor_location) == 0 {
+                if !clang.Location_isFromMainFile(cursor_location) {
                     #partial switch cursor_kind {
                     case .TypedefDecl:
                         typedef := clang.getTypedefDeclUnderlyingType(cursor)
@@ -539,9 +541,10 @@ generate_runestone :: proc(
                         [dynamic]runic.Member,
                         rs_arena_alloc,
                     )
-                    func.variadic =
+                    func.variadic = bool(
                         num_params != 0 &&
-                        clang.isFunctionTypeVariadic(cursor_type) != 0
+                        clang.isFunctionTypeVariadic(cursor_type),
+                    )
 
                     for idx in 0 ..< num_params {
                         param_cursor := clang.Cursor_getArgument(

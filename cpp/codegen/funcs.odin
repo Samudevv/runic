@@ -217,7 +217,7 @@ clang_type_to_runic_type :: proc(
             }
         }
 
-        if clang.isConstQualifiedType(pointee) != 0 {
+        if clang.isConstQualifiedType(pointee) {
             if len(tp.array_info) != 0 {
                 tp.array_info[len(tp.array_info) - 1].pointer_info.read_only =
                     true
@@ -453,7 +453,7 @@ clang_type_to_runic_type :: proc(
 
         func.parameters = make([dynamic]runic.Member, allocator)
         func.variadic =
-            num_params != 0 && clang.isFunctionTypeVariadic(type) != 0
+            bool(num_params != 0 && clang.isFunctionTypeVariadic(type))
 
         data := FuncParamsData {
             num_params = num_params,
@@ -522,7 +522,7 @@ clang_type_to_runic_type :: proc(
         return
     }
 
-    if clang.isConstQualifiedType(type) != 0 {
+    if clang.isConstQualifiedType(type) {
         if len(tp.array_info) != 0 {
             tp.array_info[len(tp.array_info) - 1].read_only = true
         }

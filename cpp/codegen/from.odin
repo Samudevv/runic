@@ -206,6 +206,12 @@ generate_runestone :: proc(
         }
     }
 
+    if flags, ok := runic.platform_value_get([]cstring, rf.flags, plat); ok {
+        for f in flags {
+            append(&clang_flags, f)
+        }
+    }
+
     headers := runic.platform_value_get([]string, rf.headers, plat)
     overwrite := runic.platform_value_get(
         runic.OverwriteSet,

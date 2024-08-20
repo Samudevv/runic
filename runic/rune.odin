@@ -54,6 +54,7 @@ From :: struct {
     headers:     PlatformValue([]string),
     includedirs: PlatformValue([]string),
     defines:     PlatformValue(map[string]string),
+    flags:       PlatformValue([]cstring),
     // Odin
     packages:    PlatformValue([]string),
 }
@@ -807,6 +808,49 @@ parse_rune :: proc(
                     }
 
                     f.defines.d[plat] = d_map
+                case "flags":
+                    flags := make([dynamic]cstring, rn_arena_alloc)
+
+                    if value == nil {
+                        f.flags.d[plat] = flags[:]
+                    }
+
+                    #partial switch v in value {
+                    case yaml.Sequence:
+                        for f, idx in v {
+                            if f_str, ok := f.(string); ok {
+                                append(
+                                    &flags,
+                                    strings.clone_to_cstring(
+                                        f_str,
+                                        rn_arena_alloc,
+                                    ),
+                                )
+                            } else {
+                                err = errors.message(
+                                    "\"from.{}\"[{}] has invalud type %T",
+                                    key,
+                                    idx,
+                                    f,
+                                )
+                                return
+                            }
+                        }
+                    case string:
+                        append(
+                            &flags,
+                            strings.clone_to_cstring(v, rn_arena_alloc),
+                        )
+                    case:
+                        err = errors.message(
+                            "\"from.{}\" has invalid type %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
+
+                    f.flags.d[plat] = flags[:]
                 case "packages":
                     p_seq := make([dynamic]string, rn_arena_alloc)
 
@@ -1661,7 +1705,10 @@ ignore_types :: proc(types: ^om.OrderedMap(string, Type), ignore: IgnoreSet) {
     }
 }
 
-ignore_constants :: proc(constants: ^om.OrderedMap(string, Constant), ignore: IgnoreSet) {
+ignore_constants :: proc(
+    constants: ^om.OrderedMap(string, Constant),
+    ignore: IgnoreSet,
+) {
     for idx := 0; idx < len(constants.data); idx += 1 {
         entry := constants.data[idx]
         name := entry.key
@@ -1673,7 +1720,10 @@ ignore_constants :: proc(constants: ^om.OrderedMap(string, Constant), ignore: Ig
     }
 }
 
-ignore_symbols :: proc(symbols: ^om.OrderedMap(string, Symbol), ignore: IgnoreSet) {
+ignore_symbols :: proc(
+    symbols: ^om.OrderedMap(string, Symbol),
+    ignore: IgnoreSet,
+) {
     for idx := 0; idx < len(symbols.data); idx += 1 {
         entry := symbols.data[idx]
         name, sym := entry.key, entry.value

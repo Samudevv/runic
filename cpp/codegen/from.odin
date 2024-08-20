@@ -64,6 +64,118 @@ generate_runestone :: proc(
 
     clang_flags := make([dynamic]cstring, arena_alloc)
 
+    // Macros for all operating systems: https://sourceforge.net/p/predef/wiki/OperatingSystems/
+    // Macros for all architectures: https://sourceforge.net/p/predef/wiki/Architectures/
+    // Undefine all platform related macros
+    UNDEFINES :: [?]cstring {
+        // Android
+        "-U__ANDROID__",
+        // BSD
+        "-U__FreeBSD__",
+        "-U__FreeBSD_kernel__",
+        "-U__NetBSD__",
+        "-U__OpenBSD__",
+        "-U__bsdi__",
+        "-U__DragonFly__",
+        "-U_SYSTYPE_BSD",
+        "-UBSD",
+        // Linux
+        "-U__GLIBC__",
+        "-U__gnu_linux__",
+        "-U__linux__",
+        "-Ulinux",
+        "-U__linux",
+        // MacOS
+        "-Umacintosh",
+        "-UMacintosh",
+        "-U__APPLE__",
+        "-U__MACH__",
+        // Windows
+        "-U_WIN16",
+        "-U_WIN32",
+        "-U_WIN64",
+        // AMD64 & x86_64
+        "-U__amd64__",
+        "-U__amd64",
+        "-U__x86_64__",
+        "-U__x86_64",
+        // ARM
+        "-U__arm__",
+        "-U__thumb__",
+        "-U__aarch64__",
+        // x86
+        "-Ui386",
+        "-U__i386",
+        "-U__i386__",
+        "-U__i486__",
+        "-U__i586__",
+        "-U__i686__",
+    }
+    for u in UNDEFINES {
+        append(&clang_flags, u)
+    }
+
+    // Define platform related macros
+    platform_defines: []cstring
+    switch plat.os {
+    case .Linux:
+        platform_defines = []cstring {
+            "-D__GLIBC__",
+            "-D__gnu_linux__",
+            "-D__linux__",
+            "-Dlinux",
+            "-D__linux",
+        }
+    case .Macos:
+        platform_defines = []cstring {
+            "-Dmacintosh",
+            "-DMacintosh",
+            "-D__APPLE__",
+            "-D__MACH__",
+        }
+    case .Windows:
+        platform_defines = []cstring{"-D_WIN16", "-D_WIN32", "-D_WIN64"}
+    case .BSD:
+        platform_defines = []cstring {
+            "-D__FreeBSD__",
+            "-D__FreeBSD_kernel__",
+            "-D__bsdi__",
+            "-D_SYSTYPE_BSD",
+            "-DBSD",
+        }
+    case .Any:
+    // Everything stays undefined
+    }
+    for d in platform_defines {
+        append(&clang_flags, d)
+    }
+
+    switch plat.arch {
+    case .x86:
+        platform_defines = []cstring {
+            "-Di386",
+            "-D__i386",
+            "-D__i386__",
+            "-D__i486__",
+            "-D__i586__",
+            "-D__i686__",
+        }
+    case .x86_64:
+        platform_defines = []cstring {
+            "-D__amd64__",
+            "-D__amd64",
+            "-D__x86_64__",
+            "-D__x86_64",
+        }
+    case .arm32:
+        platform_defines = []cstring{"-D__arm__"}
+    case .arm64:
+        platform_defines = []cstring{"-D__arm__", "-D__aarch64__"}
+    case .Any:
+    // Everything stays undefined
+    }
+
+
     if rune_defines, ok := runic.platform_value_get(
         map[string]string,
         rf.defines,
@@ -242,7 +354,7 @@ generate_runestone :: proc(
                     return .Continue
                 }
 
-                cursor_kind_switch: #partial switch cursor_kind {
+                #partial cursor_kind_switch: switch cursor_kind {
                 case .TypedefDecl:
                     typedef := clang.getTypedefDeclUnderlyingType(cursor)
 
@@ -259,7 +371,9 @@ generate_runestone :: proc(
                         named_type := clang.Type_getNamedType(typedef)
                         named_cursor := clang.getTypeDeclaration(named_type)
 
-                        named_name_clang := clang.getCursorDisplayName(named_cursor)
+                        named_name_clang := clang.getCursorDisplayName(
+                            named_cursor,
+                        )
                         named_name := clang_str(named_name_clang)
                         defer clang.disposeString(named_name_clang)
 
@@ -287,7 +401,10 @@ generate_runestone :: proc(
                     )
                 case .VarDecl:
                     switch storage_class {
-                    case .Invalid, .Static, .OpenCLWorkGroupLocal, .PrivateExtern:
+                    case .Invalid,
+                         .Static,
+                         .OpenCLWorkGroupLocal,
+                         .PrivateExtern:
                         return .Continue
                     case .Auto, .None, .Register, .Extern:
                     }
@@ -361,7 +478,10 @@ generate_runestone :: proc(
                 case .FunctionDecl:
                     // NOTE: defining structs, unions and enums with a name inside the parameter list is not supported
                     switch storage_class {
-                    case .Invalid, .Static, .OpenCLWorkGroupLocal, .PrivateExtern:
+                    case .Invalid,
+                         .Static,
+                         .OpenCLWorkGroupLocal,
+                         .PrivateExtern:
                         return .Continue
                     case .Auto, .None, .Register, .Extern:
                     }

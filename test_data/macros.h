@@ -6,7 +6,9 @@
 #define B 2
 #define C 3
 
-#ifdef _WIN32
+#ifdef __linux__
+#define ODIN_LINUX
+#elif defined(_WIN32)
 #define ODIN_WINDOWS
 #else
 #define ODIN_POSIX
@@ -14,6 +16,8 @@
 
 #ifdef ODIN_WINDOWS
 #define PLAT windows
+#elif defined(ODIN_LINUX)
+#define PLAT linux
 #else
 #define PLAT posix
 #endif
@@ -22,6 +26,8 @@
 int posix_func(int a, int b);
 #elif PLAT == windows
 int windows_func(int a, int b);
+#elif PLAT == linux
+int linux_func(int a, int b);
 #else
 int unknown_func(int a, int b);
 #endif

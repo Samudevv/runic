@@ -505,7 +505,7 @@ generate_runestone :: proc(
                         return .Continue
                     case .Auto, .None, .Register, .Extern:
                     }
-                    if clang.Cursor_isFunctionInlined(cursor) != 0 do return .Continue
+                    if clang.Cursor_isFunctionInlined(cursor) do return .Continue
 
                     cursor_return_type := clang.getCursorResultType(cursor)
                     num_params := clang.Cursor_getNumArguments(cursor)
@@ -663,8 +663,7 @@ generate_runestone :: proc(
                         strings.trim_right_space(macro_name),
                         Macro {
                             def = strings.trim_left_space(macro_value),
-                            func = clang.Cursor_isMacroFunctionLike(cursor) !=
-                            0,
+                            func = bool(clang.Cursor_isMacroFunctionLike(cursor)),
                         },
                     )
                 case .MacroExpansion, .InclusionDirective:

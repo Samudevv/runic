@@ -2,7 +2,7 @@
 
 ## 0.3 (End of August)
 
-+ [ ] libclang as backend of C parser
++ [x] libclang as backend of C parser
 
 ## 0.4 (?)
 

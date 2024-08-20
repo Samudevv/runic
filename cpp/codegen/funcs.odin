@@ -21,7 +21,7 @@ RecordData :: struct {
 }
 
 @(private = "file")
-Func_Data :: struct {
+FuncParamsData :: struct {
     param_idx:  int,
     num_params: i32,
     func:       ^runic.Function,
@@ -32,6 +32,7 @@ Func_Data :: struct {
     types:      ^om.OrderedMap(string, runic.Type),
 }
 
+@(private = "file")
 struct_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
     return(
         display_name == "" ||
@@ -39,17 +40,20 @@ struct_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
     )
 }
 
+@(private = "file")
 struct_is_unnamed_clang :: #force_inline proc(
     display_name: clang.String,
 ) -> bool {
     return struct_is_unnamed_string(clang_str(display_name))
 }
 
+@(private)
 struct_is_unnamed :: proc {
     struct_is_unnamed_clang,
     struct_is_unnamed_string,
 }
 
+@(private = "file")
 enum_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
     return(
         display_name == "" ||
@@ -57,17 +61,20 @@ enum_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
     )
 }
 
+@(private = "file")
 enum_is_unnamed_clang :: #force_inline proc(
     display_name: clang.String,
 ) -> bool {
     return enum_is_unnamed_string(clang_str(display_name))
 }
 
+@(private)
 enum_is_unnamed :: proc {
     enum_is_unnamed_clang,
     enum_is_unnamed_string,
 }
 
+@(private = "file")
 union_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
     return(
         display_name == "" ||
@@ -75,17 +82,20 @@ union_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
     )
 }
 
+@(private = "file")
 union_is_unnamed_clang :: #force_inline proc(
     display_name: clang.String,
 ) -> bool {
     return union_is_unnamed_string(clang_str(display_name))
 }
 
+@(private)
 union_is_unnamed :: proc {
     union_is_unnamed_clang,
     union_is_unnamed_string,
 }
 
+@(private)
 clang_type_to_runic_type :: proc(
     type: clang.Type,
     cursor: clang.Cursor,
@@ -291,12 +301,7 @@ clang_type_to_runic_type :: proc(
             anon_idx  = anon_idx,
         }
 
-        clang.visitChildren(
-            cursor,
-            proc "c" (
-                cursor, parent: clang.Cursor,
-                client_data: clang.ClientData,
-            ) -> clang.ChildVisitResult {
+        clang.visitChildren(cursor, proc "c" (cursor, parent: clang.Cursor, client_data: clang.ClientData) -> clang.ChildVisitResult {
                 data := cast(^RecordData)client_data
                 context = runtime.default_context()
 
@@ -307,11 +312,7 @@ clang_type_to_runic_type :: proc(
 
                 defer clang.disposeString(display_name_clang)
 
-                if (cursor_type.kind == .Record &&
-                       (struct_is_unnamed(display_name) ||
-                               union_is_unnamed(display_name))) ||
-                   (cursor_type.kind == .Enum &&
-                           enum_is_unnamed(display_name)) {
+                if (cursor_type.kind == .Record && (struct_is_unnamed(display_name) || union_is_unnamed(display_name))) || (cursor_type.kind == .Enum && enum_is_unnamed(display_name)) {
                     return .Continue
                 }
 
@@ -321,12 +322,7 @@ clang_type_to_runic_type :: proc(
                     parent_display_name := clang.getCursorDisplayName(parent)
                     defer clang.disposeString(parent_display_name)
 
-                    data.err = errors.message(
-                        "field \"{}.{}\" has specific bit width of {}",
-                        clang.getCString(parent_display_name),
-                        display_name,
-                        field_size,
-                    )
+                    data.err = errors.message("field \"{}.{}\" has specific bit width of {}", clang.getCString(parent_display_name), display_name, field_size)
                     return .Break
                 }
 
@@ -336,50 +332,27 @@ clang_type_to_runic_type :: proc(
                 }
 
                 type: runic.Type = ---
-                type, data.err = clang_type_to_runic_type(
-                    cursor_type,
-                    cursor,
-                    data.isz,
-                    data.anon_idx,
-                    data.types,
-                    data.allocator,
-                    type_hint,
-                )
+                type, data.err = clang_type_to_runic_type(cursor_type, cursor, data.isz, data.anon_idx, data.types, data.allocator, type_hint)
                 if data.err != nil do return .Break
 
                 member_name: string = ---
                 if len(display_name) == 0 {
-                    member_name = fmt.aprintf(
-                        "member{}",
-                        len(data.members),
-                        allocator = data.allocator,
-                    )
+                    member_name = fmt.aprintf("member{}", len(data.members), allocator = data.allocator)
                 } else {
                     member_name = strings.clone(display_name, data.allocator)
                 }
 
                 #partial switch cursor_kind {
                 case .FieldDecl:
-                    handle_anon_type(
-                        &type,
-                        data.types,
-                        data.anon_idx,
-                        member_name,
-                        data.allocator,
-                    )
+                    handle_anon_type(&type, data.types, data.anon_idx, member_name, data.allocator)
 
-                    append(
-                        data.members,
-                        runic.Member{name = member_name, type = type},
-                    )
+                    append(data.members, runic.Member{name = member_name, type = type})
                 case:
                     om.insert(data.types, member_name, type)
                 }
 
                 return .Continue
-            },
-            &data,
-        )
+            }, &data)
 
         err = data.err
 
@@ -482,7 +455,7 @@ clang_type_to_runic_type :: proc(
         func.variadic =
             num_params != 0 && clang.isFunctionTypeVariadic(type) != 0
 
-        data := Func_Data {
+        data := FuncParamsData {
             num_params = num_params,
             func       = &func,
             allocator  = allocator,
@@ -494,12 +467,11 @@ clang_type_to_runic_type :: proc(
         // NOTE: If the return type of the function pointer is unknown the children can not be visited
         clang.visitChildren(cursor, proc "c" (cursor, parent: clang.Cursor, client_data: clang.ClientData) -> clang.ChildVisitResult {
                 if clang.getCursorKind(cursor) != .ParmDecl do return .Continue
+                data := cast(^FuncParamsData)client_data
+                context = runtime.default_context()
 
-                data := cast(^Func_Data)client_data
                 if data.param_idx == int(data.num_params) do return .Break
                 defer data.param_idx += 1
-
-                context = runtime.default_context()
 
                 param_type := clang.getCursorType(cursor)
                 display_name_clang := clang.getCursorDisplayName(cursor)
@@ -546,14 +518,7 @@ clang_type_to_runic_type :: proc(
 
         tp.spec = new_clone(func, allocator)
     case:
-        type_spell := clang.getTypeKindSpelling(type.kind)
-        defer clang.disposeString(type_spell)
-
-        err = clang_source_error(
-            cursor,
-            "unsupported type \"{}\"",
-            clang.getCString(type_spell),
-        )
+        err = clang_source_error(cursor, "unsupported type \"{}\"", type.kind)
         return
     }
 
@@ -567,6 +532,7 @@ clang_type_to_runic_type :: proc(
     return
 }
 
+@(private)
 clang_source_error :: proc(
     cursor: clang.Cursor,
     msg: string,
@@ -593,6 +559,7 @@ clang_source_error :: proc(
     )
 }
 
+@(private)
 check_for_unknown_types :: proc(
     type: ^runic.Type,
     types: om.OrderedMap(string, runic.Type),
@@ -627,6 +594,7 @@ check_for_unknown_types :: proc(
     return
 }
 
+@(private)
 validate_unknown_types :: proc(
     type: ^runic.Type,
     types: om.OrderedMap(string, runic.Type),
@@ -647,6 +615,7 @@ validate_unknown_types :: proc(
     }
 }
 
+@(private)
 temp_file :: proc(
 ) -> (
     file: os.Handle,
@@ -683,6 +652,7 @@ temp_file :: proc(
     return
 }
 
+@(private)
 extend_unknown_types :: #force_inline proc(
     unknown_types: ^[dynamic]string,
     unknowns: [dynamic]string,
@@ -695,6 +665,7 @@ extend_unknown_types :: #force_inline proc(
     delete(unknowns)
 }
 
+@(private)
 handle_anon_type :: #force_inline proc(
     tp: ^runic.Type,
     types: ^om.OrderedMap(string, runic.Type),
@@ -742,6 +713,7 @@ handle_anon_type :: #force_inline proc(
     tp.spec = type_name
 }
 
+@(private)
 handle_builtin_int_cxstring :: proc(
     type_name: clang.String,
     isz: Int_Sizes,
@@ -750,6 +722,7 @@ handle_builtin_int_cxstring :: proc(
     return handle_builtin_int_string(clang_str(type_name), isz, allocator)
 }
 
+@(private)
 handle_builtin_int_string :: proc(
     type_name: string,
     isz: Int_Sizes,
@@ -787,11 +760,13 @@ handle_builtin_int_string :: proc(
     return runic.Builtin.Untyped
 }
 
+@(private)
 handle_builtin_int :: proc {
     handle_builtin_int_cxstring,
     handle_builtin_int_string,
 }
 
+@(private)
 clang_get_cursor_extent :: proc(cursor: clang.Cursor) -> string {
     range := clang.getCursorExtent(cursor)
 
@@ -817,6 +792,7 @@ clang_get_cursor_extent :: proc(cursor: clang.Cursor) -> string {
     return spel
 }
 
+@(private)
 clang_typedef_get_type_hint :: proc(cursor: clang.Cursor) -> Maybe(string) {
     extent := clang_get_cursor_extent(cursor)
     split := strings.split_multi(extent, {" ", "\n", "\r", "\t"})
@@ -830,6 +806,7 @@ clang_typedef_get_type_hint :: proc(cursor: clang.Cursor) -> Maybe(string) {
     return type_hint
 }
 
+@(private)
 clang_var_decl_get_type_hint :: proc(cursor: clang.Cursor) -> Maybe(string) {
     extent := clang_get_cursor_extent(cursor)
     split := strings.split_multi(extent, {" ", "\n", "\r", "\t"})
@@ -843,6 +820,7 @@ clang_var_decl_get_type_hint :: proc(cursor: clang.Cursor) -> Maybe(string) {
     return type_hint
 }
 
+@(private)
 clang_func_return_type_get_type_hint :: proc(
     cursor: clang.Cursor,
 ) -> Maybe(string) {
@@ -863,6 +841,7 @@ clang_func_return_type_get_type_hint :: proc(
     return type_hint
 }
 
+@(private)
 clang_str :: #force_inline proc(clang_str: clang.String) -> string {
     cstr := clang.getCString(clang_str)
     return strings.string_from_ptr(cast(^byte)cstr, len(cstr))

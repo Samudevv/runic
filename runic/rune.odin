@@ -97,11 +97,34 @@ IgnoreSet :: struct {
     types:     []string,
 }
 
+Overwrite :: struct {
+    name:        string,
+    instruction: OverwriteInstruction,
+}
+
 OverwriteSet :: struct {
-    constants: map[string]string,
-    functions: map[string]string,
-    variables: map[string]string,
-    types:     map[string]string,
+    constants: [dynamic]Overwrite,
+    functions: [dynamic]Overwrite,
+    variables: [dynamic]Overwrite,
+    types:     [dynamic]Overwrite,
+}
+
+OverwriteWhole :: distinct string
+OverwriteReturnType :: distinct string
+OverwriteParameterType :: struct {
+    idx:       int,
+    overwrite: string,
+}
+OverwriteParameterName :: struct {
+    idx:       int,
+    overwrite: string,
+}
+
+OverwriteInstruction :: union {
+    OverwriteWhole,
+    OverwriteReturnType,
+    OverwriteParameterType,
+    OverwriteParameterName,
 }
 
 OdinDetect :: struct {
@@ -510,19 +533,19 @@ parse_rune :: proc(
                     o_set: OverwriteSet
 
                     o_set.constants = make(
-                        map[string]string,
+                        [dynamic]Overwrite,
                         allocator = rn_arena_alloc,
                     )
                     o_set.functions = make(
-                        map[string]string,
+                        [dynamic]Overwrite,
                         allocator = rn_arena_alloc,
                     )
                     o_set.variables = make(
-                        map[string]string,
+                        [dynamic]Overwrite,
                         allocator = rn_arena_alloc,
                     )
                     o_set.types = make(
-                        map[string]string,
+                        [dynamic]Overwrite,
                         allocator = rn_arena_alloc,
                     )
 
@@ -539,7 +562,13 @@ parse_rune :: proc(
                                 for con_key, con_value in con {
                                     #partial switch con_v in con_value {
                                     case string:
-                                        o_set.constants[con_key] = con_v
+                                        append(
+                                            &o_set.constants,
+                                            Overwrite {
+                                                con_key,
+                                                OverwriteWhole(con_v),
+                                            },
+                                        )
                                     case:
                                         err = errors.message(
                                             "\"from.{}.constants.{}\" has invalid type %T",
@@ -560,40 +589,19 @@ parse_rune :: proc(
                             }
                         }
 
-                        if "functions" in v {
-                            #partial switch fun in v["functions"] {
-                            case yaml.Mapping:
-                                for fun_key, fun_value in fun {
-                                    #partial switch fun_v in fun_value {
-                                    case string:
-                                        o_set.functions[fun_key] = fun_v
-                                    case:
-                                        err = errors.message(
-                                            "\"from.{}.functions.{}\" has invalid type %T",
-                                            key,
-                                            fun_key,
-                                            fun_v,
-                                        )
-                                        return
-                                    }
-                                }
-                            case:
-                                err = errors.message(
-                                    "\"from.{}.functions\" has invalid type %T",
-                                    key,
-                                    fun,
-                                )
-                                return
-                            }
-                        }
-
                         if "variables" in v {
                             #partial switch var in v["variables"] {
                             case yaml.Mapping:
                                 for var_key, var_value in var {
                                     #partial switch var_v in var_value {
                                     case string:
-                                        o_set.variables[var_key] = var_v
+                                        append(
+                                            &o_set.variables,
+                                            Overwrite {
+                                                var_key,
+                                                OverwriteWhole(var_v),
+                                            },
+                                        )
                                     case:
                                         err = errors.message(
                                             "\"from.{}.variables.{}\" has invalid type %T",
@@ -620,7 +628,13 @@ parse_rune :: proc(
                                 for typ_key, typ_value in typ {
                                     #partial switch typ_v in typ_value {
                                     case string:
-                                        o_set.types[typ_key] = typ_v
+                                        append(
+                                            &o_set.types,
+                                            Overwrite {
+                                                typ_key,
+                                                OverwriteWhole(typ_v),
+                                            },
+                                        )
                                     case:
                                         err = errors.message(
                                             "\"from.{}.types.{}\" has invalid type %T",
@@ -636,6 +650,123 @@ parse_rune :: proc(
                                     "\"from.{}.types\" has invalid type %T",
                                     key,
                                     typ,
+                                )
+                                return
+                            }
+                        }
+
+                        if "functions" in v {
+                            // func_name: "#Untyped" -> OverwriteWhole
+                            // func_name.return: "#Untyped" -> OverwriteReturnType
+                            // func_name.param.2.type: "#Untyped" -> OverwriteParameterType
+                            // func_name.param.2.name: "#Untyped" -> OverwriteParameterName
+                            #partial switch fun in v["functions"] {
+                            case yaml.Mapping:
+                                for fun_key, fun_value in fun {
+                                    overwrite_value: string = ---
+                                    #partial switch fun_v in fun_value {
+                                    case string:
+                                        overwrite_value = fun_v
+                                    case:
+                                        err = errors.message(
+                                            "\"from.{}.functions.{}\" has invalid type %T",
+                                            key,
+                                            fun_key,
+                                            fun_v,
+                                        )
+                                        return
+                                    }
+
+                                    split := strings.split(fun_key, ".")
+                                    defer delete(split)
+
+                                    ow: Overwrite = ---
+                                    ow.name = split[0]
+
+                                    switch len(split) {
+                                    case 1:
+                                        ow.instruction = OverwriteWhole(
+                                            overwrite_value,
+                                        )
+                                    case 2:
+                                        switch split[1] {
+                                        case "return":
+                                            ow.instruction =
+                                                OverwriteReturnType(
+                                                    overwrite_value,
+                                                )
+                                        case:
+                                            err = errors.message(
+                                                "\"from.{}.functions.{}\" is invalid \"{}\"",
+                                                key,
+                                                fun_key,
+                                                split[1],
+                                            )
+                                            return
+                                        }
+                                    case 4:
+                                        switch split[1] {
+                                        case "param":
+                                            idx, idx_ok := strconv.parse_i64(
+                                                split[2],
+                                            )
+                                            if !idx_ok {
+                                                err = errors.message(
+                                                    "\"from.{}.functions.{}\" is invalid \"{}\" is not an integer",
+                                                    key,
+                                                    fun_key,
+                                                    split[2],
+                                                )
+                                                return
+                                            }
+
+                                            switch split[3] {
+                                            case "type":
+                                                ow.instruction =
+                                                    OverwriteParameterType {
+                                                        idx       = int(idx),
+                                                        overwrite = overwrite_value,
+                                                    }
+                                            case "name":
+                                                ow.instruction =
+                                                    OverwriteParameterName {
+                                                        idx       = int(idx),
+                                                        overwrite = overwrite_value,
+                                                    }
+                                            case:
+                                                err = errors.message(
+                                                    "\"from.{}.functions.{}\" is invalid \"{}\"",
+                                                    key,
+                                                    fun_key,
+                                                    split[3],
+                                                )
+                                                return
+                                            }
+                                        case:
+                                            err = errors.message(
+                                                "\"from.{}.functions.{}\" is invalid \"{}\"",
+                                                key,
+                                                fun_key,
+                                                split[1],
+                                            )
+                                            return
+                                        }
+                                    case:
+                                        err = errors.message(
+                                            "\"from.{}.functions.{}\" is invalid: too much \".\"",
+                                            key,
+                                            fun_key,
+                                        )
+                                        return
+                                    }
+
+                                    append(&o_set.functions, ow)
+                                }
+                            case:
+                                err = errors.message(
+                                    "\"from.{}.functions\" has invalid type %T",
+                                    key,
+                                    fun,
                                 )
                                 return
                             }
@@ -1652,47 +1783,6 @@ single_list_glob :: proc(list: []string, value: string) -> bool {
     return false
 }
 
-overwrite_type :: proc(
-    ow: OverwriteSet,
-    name: string,
-) -> (
-    value: Maybe(Type),
-    err: errors.Error,
-) {
-    if value_str, ok := ow.types[name]; ok {
-        return parse_type(value_str)
-    }
-    return
-}
-
-overwrite_func :: proc(
-    ow: OverwriteSet,
-    name: string,
-) -> (
-    value: Maybe(Function),
-    err: errors.Error,
-) {
-    if value_str, ok := ow.functions[name]; ok {
-        return parse_func(value_str)
-    }
-    return
-}
-
-overwrite_constant :: proc(
-    ow: OverwriteSet,
-    name: string,
-) -> (
-    value: Maybe(Constant),
-    err: errors.Error,
-) {
-    if value_str, ok := ow.constants[name]; ok {
-        return parse_constant(value_str)
-    }
-    return
-}
-
-overwrite_var :: overwrite_type
-
 ignore_types :: proc(types: ^om.OrderedMap(string, Type), ignore: IgnoreSet) {
     for idx := 0; idx < len(types.data); idx += 1 {
         entry := types.data[idx]
@@ -1741,4 +1831,77 @@ ignore_symbols :: proc(
             }
         }
     }
+}
+
+overwrite_runestone :: proc(
+    rs: ^Runestone,
+    overwrite: OverwriteSet,
+) -> errors.Error {
+    context.allocator = runtime.arena_allocator(&rs.arena)
+
+    for ow in overwrite.constants {
+        if idx, ok := om.index(rs.constants, ow.name); ok {
+            const := &rs.constants.data[idx].value
+            const^ = parse_constant(
+                strings.clone(string(ow.instruction.(OverwriteWhole))),
+            ) or_return
+        }
+    }
+
+    for ow in overwrite.functions {
+        if idx, ok := om.index(rs.symbols, ow.name); ok {
+            sym := &rs.symbols.data[idx].value
+
+            #partial switch &func in sym.value {
+            case Function:
+                switch o in ow.instruction {
+                case OverwriteWhole:
+                    func = parse_func(strings.clone(string(o))) or_return
+                case OverwriteReturnType:
+                    func.return_type = parse_type(
+                        strings.clone(string(o)),
+                    ) or_return
+                case OverwriteParameterType:
+                    errors.assert(
+                        o.idx >= 0 && o.idx < len(func.parameters),
+                        "overwrite parameter type index is out of bounds",
+                    ) or_return
+
+                    #no_bounds_check func.parameters[o.idx].type = parse_type(
+                        strings.clone(o.overwrite),
+                    ) or_return
+                case OverwriteParameterName:
+                    errors.assert(
+                        o.idx >= 0 && o.idx < len(func.parameters),
+                        "overwrite parameter name index is out of bounds",
+                    ) or_return
+
+                    #no_bounds_check func.parameters[o.idx].name =
+                        strings.clone(o.overwrite)
+                }
+            }
+        }
+    }
+
+    for ow in overwrite.variables {
+        if idx, ok := om.index(rs.symbols, ow.name); ok {
+            sym := &rs.symbols.data[idx].value
+
+            #partial switch &var in sym.value {
+            case Type:
+                var = parse_type(
+                    strings.clone(string(ow.instruction.(OverwriteWhole))),
+                ) or_return
+            }
+        }
+    }
+
+    for ow in overwrite.types {
+        if idx, ok := om.index(rs.types, ow.name); ok {
+            type := &rs.types.data[idx].value
+            type^ = parse_type(strings.clone(string(ow.instruction.(OverwriteWhole)))) or_return
+        }
+    }
+
+    return nil
 }

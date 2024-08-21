@@ -10,6 +10,7 @@ from:
   headers: olive.c
   defines: &any_defines
     uint32_t: 'unsigned'
+    bool: '_Bool'
     OLIVECDEF: "extern"
   defines.linux: &unix_defines
     size_t: 'unsigned long'

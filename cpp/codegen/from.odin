@@ -180,6 +180,77 @@ generate_runestone :: proc(
         append(&clang_flags, d)
     }
 
+    target_flag: cstring = ---
+    switch plat.os {
+    case .Linux:
+        switch plat.arch {
+        case .x86_64:
+            target_flag = "--target=x86_64-linux-gnu"
+        case .arm64:
+            target_flag = "--target=aarch64-linux-gnu"
+        case .x86:
+            target_flag = "--target=i686-linux-gnu"
+        case .arm32:
+            target_flag = "--target=arm-linux-gnu"
+        case .Any:
+            target_flag = "--target=any-linux-gnu"
+        }
+    case .Windows:
+        switch plat.arch {
+        case .x86_64:
+            target_flag = "--target=x86_64-windows-msvc"
+        case .arm64:
+            target_flag = "--target=aarch64-windows-msvc"
+        case .x86:
+            target_flag = "--target=i686-windows-msvc"
+        case .arm32:
+            target_flag = "--target=arm-windows-msvc"
+        case .Any:
+            target_flag = "--target=any-windows-msvc"
+        }
+    case .Macos:
+        switch plat.arch {
+        case .x86_64:
+            target_flag = "--target=x86_64-apple-darwin"
+        case .arm64:
+            target_flag = "--target=aarch64-apple-darwin"
+        case .x86:
+            target_flag = "--target=i686-apple-darwin"
+        case .arm32:
+            target_flag = "--target=arm-apple-darwin"
+        case .Any:
+            target_flag = "--target=any-apple-darwin"
+        }
+    case .BSD:
+        switch plat.arch {
+        case .x86_64:
+            target_flag = "--target=x86_64-unknown-freebsd"
+        case .arm64:
+            target_flag = "--target=aarch64-unknown-freebsd"
+        case .x86:
+            target_flag = "--target=i686-unknown-freebsd"
+        case .arm32:
+            target_flag = "--target=arm-unknown-freebsd"
+        case .Any:
+            target_flag = "--target=any-unknown-freebsd"
+        }
+    case .Any:
+        switch plat.arch {
+        case .x86_64:
+            target_flag = "--target=x86_64-any-none"
+        case .arm64:
+            target_flag = "--target=aarch64-any-none"
+        case .x86:
+            target_flag = "--target=i686-any-none"
+        case .arm32:
+            target_flag = "--target=arm-any-none"
+        case .Any:
+            target_flag = "--target=any-any-none"
+        }
+    }
+
+    append(&clang_flags, target_flag)
+
 
     if rune_defines, ok := runic.platform_value_get(
         map[string]string,
@@ -663,7 +734,9 @@ generate_runestone :: proc(
                         strings.trim_right_space(macro_name),
                         Macro {
                             def = strings.trim_left_space(macro_value),
-                            func = bool(clang.Cursor_isMacroFunctionLike(cursor)),
+                            func = bool(
+                                clang.Cursor_isMacroFunctionLike(cursor),
+                            ),
                         },
                     )
                 case .MacroExpansion, .InclusionDirective:
@@ -1027,3 +1100,4 @@ generate_runestone :: proc(
 
     return
 }
+

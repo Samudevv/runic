@@ -206,7 +206,7 @@ clang_type_to_runic_type :: proc(
 
         if pointee.kind == .Void {
             tp.spec = runic.Builtin.RawPtr
-        } else if pointee.kind == .Char_S || pointee.kind == .SChar {
+        } else if pointee.kind == .Char_S || pointee.kind == .Char_U {
             tp.spec = runic.Builtin.String
         } else {
             if len(tp.array_info) != 0 {
@@ -452,8 +452,9 @@ clang_type_to_runic_type :: proc(
         handle_anon_type(&func.return_type, types, anon_idx, "func", allocator)
 
         func.parameters = make([dynamic]runic.Member, allocator)
-        func.variadic =
-            bool(num_params != 0 && clang.isFunctionTypeVariadic(type))
+        func.variadic = bool(
+            num_params != 0 && clang.isFunctionTypeVariadic(type),
+        )
 
         data := FuncParamsData {
             num_params = num_params,
@@ -846,3 +847,4 @@ clang_str :: #force_inline proc(clang_str: clang.String) -> string {
     cstr := clang.getCString(clang_str)
     return strings.string_from_ptr(cast(^byte)cstr, len(cstr))
 }
+

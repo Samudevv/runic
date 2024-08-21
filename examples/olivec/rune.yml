@@ -8,8 +8,13 @@ from:
   static: libolivec.a
   static.windows: olivec.lib
   headers: olive.c
-  defines:
+  defines: &any_defines
+    uint32_t: 'unsigned'
     OLIVECDEF: "extern"
+  defines.linux: &unix_defines
+    size_t: 'unsigned long'
+    <<: *any_defines
+  defines.macos: *unix_defines
   ignore:
     macros:
       - OLIVE_C_

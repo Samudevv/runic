@@ -15,8 +15,6 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// TODO: check out clang.isAnonymous and clang.isAnonymousRecordDecl
-// clang.Type_visitFields
 package cpp_codegen
 
 import "base:runtime"

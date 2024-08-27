@@ -1,9 +1,5 @@
 # Goals for future versions
 
-## 0.3 (End of August)
-
-+ [x] libclang as backend of C parser
-
 ## 0.4 (?)
 
 + C

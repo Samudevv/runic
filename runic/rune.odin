@@ -119,12 +119,22 @@ OverwriteParameterName :: struct {
     idx:       int,
     overwrite: string,
 }
+OverwriteMemberType :: struct {
+    idx:       int,
+    overwrite: string,
+}
+OverwriteMemberName :: struct {
+    idx:       int,
+    overwrite: string,
+}
 
 OverwriteInstruction :: union {
     OverwriteWhole,
     OverwriteReturnType,
     OverwriteParameterType,
     OverwriteParameterName,
+    OverwriteMemberType,
+    OverwriteMemberName,
 }
 
 OdinDetect :: struct {
@@ -626,15 +636,10 @@ parse_rune :: proc(
                             #partial switch typ in v["types"] {
                             case yaml.Mapping:
                                 for typ_key, typ_value in typ {
+                                    overwrite_value: string = ---
                                     #partial switch typ_v in typ_value {
                                     case string:
-                                        append(
-                                            &o_set.types,
-                                            Overwrite {
-                                                typ_key,
-                                                OverwriteWhole(typ_v),
-                                            },
-                                        )
+                                        overwrite_value = typ_v
                                     case:
                                         err = errors.message(
                                             "\"from.{}.types.{}\" has invalid type %T",
@@ -644,6 +649,111 @@ parse_rune :: proc(
                                         )
                                         return
                                     }
+
+                                    split := strings.split(typ_key, ".")
+                                    defer delete(split)
+
+                                    ow: Overwrite = ---
+                                    ow.name = split[0]
+
+                                    switch len(split) {
+                                    case 1:
+                                        ow.instruction = OverwriteWhole(
+                                            overwrite_value,
+                                        )
+                                    case 4:
+                                        switch split[1] {
+                                        case "member":
+                                            idx, idx_ok := strconv.parse_i64(
+                                                split[2],
+                                            )
+                                            if !idx_ok {
+                                                err = errors.message(
+                                                    "\"from.{}.types.{}\" is invalid \"{}\" is not an integer",
+                                                    key,
+                                                    typ_key,
+                                                    split[2],
+                                                )
+                                                return
+                                            }
+
+                                            switch split[3] {
+                                            case "type":
+                                                ow.instruction =
+                                                    OverwriteMemberType {
+                                                        idx       = int(idx),
+                                                        overwrite = overwrite_value,
+                                                    }
+                                            case "name":
+                                                ow.instruction =
+                                                    OverwriteMemberName {
+                                                        idx       = int(idx),
+                                                        overwrite = overwrite_value,
+                                                    }
+                                            case:
+                                                err = errors.message(
+                                                    "\"from.{}.types.{}\" is invalid \"{}\"",
+                                                    key,
+                                                    typ_key,
+                                                    split[3],
+                                                )
+                                                return
+                                            }
+                                        case "param":
+                                            idx, idx_ok := strconv.parse_i64(
+                                                split[2],
+                                            )
+                                            if !idx_ok {
+                                                err = errors.message(
+                                                    "\"from.{}.types.{}\" is invalid \"{}\" is not an integer",
+                                                    key,
+                                                    typ_key,
+                                                    split[2],
+                                                )
+                                                return
+                                            }
+
+                                            switch split[3] {
+                                            case "type":
+                                                ow.instruction =
+                                                    OverwriteParameterType {
+                                                        idx       = int(idx),
+                                                        overwrite = overwrite_value,
+                                                    }
+                                            case "name":
+                                                ow.instruction =
+                                                    OverwriteParameterName {
+                                                        idx       = int(idx),
+                                                        overwrite = overwrite_value,
+                                                    }
+                                            case:
+                                                err = errors.message(
+                                                    "\"from.{}.types.{}\" is invalid \"{}\"",
+                                                    key,
+                                                    typ_key,
+                                                    split[3],
+                                                )
+                                                return
+                                            }
+                                        case:
+                                            err = errors.message(
+                                                "\"from.{}.types.{}\" is invalid \"{}\"",
+                                                key,
+                                                typ_key,
+                                                split[1],
+                                            )
+                                            return
+                                        }
+                                    case:
+                                        err = errors.message(
+                                            "\"from.{}.types.{}\" is invalid: too much \".\"",
+                                            key,
+                                            typ_key,
+                                        )
+                                        return
+                                    }
+
+                                    append(&o_set.types, ow)
                                 }
                             case:
                                 err = errors.message(
@@ -1878,6 +1988,11 @@ overwrite_runestone :: proc(
 
                     #no_bounds_check func.parameters[o.idx].name =
                         strings.clone(o.overwrite)
+                case OverwriteMemberName, OverwriteMemberType:
+                    return errors.message(
+                        "invalid overwrite instruction for function \"{}\"",
+                        ow.name,
+                    )
                 }
             }
         }
@@ -1899,7 +2014,102 @@ overwrite_runestone :: proc(
     for ow in overwrite.types {
         if idx, ok := om.index(rs.types, ow.name); ok {
             type := &rs.types.data[idx].value
-            type^ = parse_type(strings.clone(string(ow.instruction.(OverwriteWhole)))) or_return
+            switch o in ow.instruction {
+            case OverwriteWhole:
+                type^ = parse_type(strings.clone(string(o))) or_return
+            case OverwriteMemberType:
+                #partial switch &t in type.spec {
+                case Struct:
+                    errors.assert(
+                        o.idx >= 0 && o.idx < len(t.members),
+                        "member index is out of bounds",
+                    ) or_return
+                    #no_bounds_check t.members[o.idx].type = parse_type(
+                        strings.clone(o.overwrite),
+                    ) or_return
+                case Union:
+                    errors.assert(
+                        o.idx >= 0 && o.idx < len(t.members),
+                        "member index is out of bounds",
+                    ) or_return
+                    #no_bounds_check t.members[o.idx].type = parse_type(
+                        strings.clone(o.overwrite),
+                    ) or_return
+                case:
+                    return errors.message(
+                        "member type of \"{}\" can not be changed because it is not a type that has members",
+                        ow.name,
+                    )
+                }
+            case OverwriteMemberName:
+                #partial switch &t in type.spec {
+                case Struct:
+                    errors.assert(
+                        o.idx >= 0 && o.idx < len(t.members),
+                        "member index is out of bounds",
+                    ) or_return
+                    #no_bounds_check t.members[o.idx].name = strings.clone(
+                        o.overwrite,
+                    )
+                case Union:
+                    errors.assert(
+                        o.idx >= 0 && o.idx < len(t.members),
+                        "member index is out of bounds",
+                    ) or_return
+                    #no_bounds_check t.members[o.idx].name = strings.clone(
+                        o.overwrite,
+                    )
+                case:
+                    return errors.message(
+                        "member name of \"{}\" can not be changed because it is not a type that has members",
+                        ow.name,
+                    )
+                }
+            case OverwriteParameterType:
+                #partial switch &t in type.spec {
+                case FunctionPointer:
+                    errors.assert(
+                        o.idx >= 0 && o.idx < len(t.parameters),
+                        "parameter index is out of bounds",
+                    ) or_return
+                    #no_bounds_check t.parameters[o.idx].type = parse_type(
+                        strings.clone(o.overwrite),
+                    ) or_return
+                case:
+                    return errors.message(
+                        "parameter type of \"{}\" can not be changed because it is not a function pointer",
+                        ow.name,
+                    )
+                }
+            case OverwriteParameterName:
+                #partial switch &t in type.spec {
+                case FunctionPointer:
+                    errors.assert(
+                        o.idx >= 0 && o.idx < len(t.parameters),
+                        "parameter index is out of bounds",
+                    ) or_return
+                    #no_bounds_check t.parameters[o.idx].name = strings.clone(
+                        o.overwrite,
+                    )
+                case:
+                    return errors.message(
+                        "parameter name of \"{}\" can not be changed because it is not a function pointer",
+                        ow.name,
+                    )
+                }
+            case OverwriteReturnType:
+                #partial switch &t in type.spec {
+                case FunctionPointer:
+                    t.return_type = parse_type(
+                        strings.clone(string(o)),
+                    ) or_return
+                case:
+                    return errors.message(
+                        "return type of \"{}\" can not be changed because it does not have a return type",
+                        ow.name,
+                    )
+                }
+            }
         }
     }
 

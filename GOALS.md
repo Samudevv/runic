@@ -24,3 +24,5 @@
 + [ ] Better error messages
 + [ ] If requested, run formatter over generated code
 + [ ] complex bindings example (e.g. cairo)
++ [ ] Complex overwrites for struct, union, enum types
++ [ ] Perform overwrite and ignore in main package

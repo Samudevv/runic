@@ -88,18 +88,18 @@ main :: proc() {}`
         version = 0,
         lib = {shared = lib_shared, static = "libfoo.a"},
         symbols = om.OrderedMap(string, runic.Symbol) {
-            data =  {
-                 {
+            data = {
+                {
                     key = "foo_add_int_func",
-                    value =  {
+                    value = {
                         value = runic.Function {
                             return_type = {spec = runic.Builtin.SInt32},
-                            parameters =  {
-                                 {
+                            parameters = {
+                                {
                                     name = "a",
                                     type = {spec = runic.Builtin.SInt32},
                                 },
-                                 {
+                                {
                                     name = "b",
                                     type = {spec = runic.Builtin.SInt32},
                                 },
@@ -108,12 +108,12 @@ main :: proc() {}`
                         aliases = {"not_the_sub"},
                     },
                 },
-                 {
+                {
                     key = "foo_sub_float_func",
-                    value =  {
+                    value = {
                         value = runic.Function {
                             return_type = {spec = runic.Builtin.Float32},
-                            parameters =  {
+                            parameters = {
                                 {name = "a", type = {spec = string("anon_0")}},
                                 {name = "b", type = {spec = string("anon_1")}},
                             },
@@ -121,22 +121,22 @@ main :: proc() {}`
                         remap = "foo_sub_float_funcZZtu73",
                     },
                 },
-                 {
+                {
                     key = "foo_div_func",
-                    value =  {
+                    value = {
                         value = runic.Function {
                             return_type = {spec = runic.Builtin.Float32},
-                            parameters =  {
-                                 {
+                            parameters = {
+                                {
                                     name = "a",
-                                    type =  {
+                                    type = {
                                         spec = string("foo_struct_t"),
                                         array_info = {{}},
                                     },
                                 },
-                                 {
+                                {
                                     name = "b",
-                                    type =  {
+                                    type = {
                                         spec = string("foo_struct_t"),
                                         array_info = {{}},
                                     },
@@ -148,17 +148,17 @@ main :: proc() {}`
             },
         },
         types = om.OrderedMap(string, runic.Type) {
-            data =  {
-                 {
+            data = {
+                {
                     key = "anon_0",
-                    value =  {
+                    value = {
                         spec = runic.Struct {
-                            members =  {
-                                 {
+                            members = {
+                                {
                                     name = "x",
                                     type = {spec = runic.Builtin.Float32},
                                 },
-                                 {
+                                {
                                     name = "y",
                                     type = {spec = runic.Builtin.Float32},
                                 },
@@ -166,21 +166,21 @@ main :: proc() {}`
                         },
                     },
                 },
-                 {
+                {
                     key = "anon_1",
-                    value =  {
+                    value = {
                         spec = runic.Struct {
-                            members =  {
-                                 {
+                            members = {
+                                {
                                     name = "x",
-                                    type =  {
+                                    type = {
                                         spec = runic.Builtin.Float32,
                                         pointer_info = {count = 1},
                                     },
                                 },
-                                 {
+                                {
                                     name = "y",
-                                    type =  {
+                                    type = {
                                         spec = runic.Builtin.Float32,
                                         pointer_info = {count = 1},
                                     },
@@ -189,21 +189,21 @@ main :: proc() {}`
                         },
                     },
                 },
-                 {
+                {
                     key = "foo_struct_t",
-                    value =  {
+                    value = {
                         spec = runic.Struct {
-                            members =  {
-                                 {
+                            members = {
+                                {
                                     name = "context",
-                                    type =  {
+                                    type = {
                                         spec = runic.Builtin.SInt32,
                                         pointer_info = {count = 1},
                                     },
                                 },
-                                 {
+                                {
                                     name = "baz",
-                                    type =  {
+                                    type = {
                                         spec = runic.Builtin.Float64,
                                         pointer_info = {count = 2},
                                         array_info = {{size = 10}},
@@ -213,9 +213,9 @@ main :: proc() {}`
                         },
                     },
                 },
-                 {
+                {
                     key = "complex_ptr_t",
-                    value =  {
+                    value = {
                         spec = runic.Builtin.SInt32,
                         array_info = {{size = 5}, {size = 10}, {size = 13}},
                     },
@@ -243,7 +243,7 @@ main :: proc() {}`
             os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
             0o644,
         )
-        if !expect_value(t, os_err, 0) do return
+        if !expect_value(t, os_err, nil) do return
         defer os.close(file)
 
         rc: runic.Runecross
@@ -272,3 +272,4 @@ main :: proc() {}`
     bindings := string(contents)
     expect_value(t, bindings, ODIN_EXPECTED)
 }
+

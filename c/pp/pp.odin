@@ -41,9 +41,9 @@ main :: proc() {
         in_file_name = "./stdin"
         in_stream = os.stream_from_handle(os.stdin)
     } else {
-        os_err: os.Errno = ---
+        os_err: os.Error = ---
         in_handle, os_err = os.open(in_file_name)
-        if os_err != 0 {
+        if os_err != nil {
             fmt.eprintfln("{}", errors.wrap(os_err))
             os.exit(1)
         }
@@ -60,3 +60,4 @@ main :: proc() {
         os.exit(1)
     }
 }
+

@@ -18,7 +18,6 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 package errors
 
 import "base:runtime"
-import "core:c/libc"
 import "core:encoding/json"
 import "core:fmt"
 import "core:io"
@@ -146,19 +145,13 @@ wrap_allocator :: proc(
 }
 
 wrap_errno :: proc(
-    err: os.Errno,
+    err: os.Error,
     msg := "",
     allocator := error_allocator,
     loc := #caller_location,
 ) -> Error {
     if err == 0 do return nil
-    return message(
-        "{}{}",
-        msg,
-        cstring(libc.strerror(i32(err))),
-        allocator = allocator,
-        loc = loc,
-    )
+    return message("{}{}", msg, err, allocator = allocator, loc = loc)
 }
 
 wrap_union :: proc(
@@ -181,7 +174,7 @@ wrap_union :: proc(
             return wrap_ok(v, msg, allocator, loc)
         case runtime.Allocator_Error:
             return wrap_allocator(v, msg, allocator, loc)
-        case os.Errno:
+        case os.Error:
             return wrap_errno(v, msg, allocator, loc)
         case Error:
             return v

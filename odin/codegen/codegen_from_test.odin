@@ -31,7 +31,7 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
     plat := runic.platform_from_host()
 
     rune_file, os_err := os.open("test_data/foozy/rune.yml")
-    if !expect_value(t, os_err, 0) do return
+    if !expect_value(t, os_err, nil) do return
     defer os.close(rune_file)
 
     rn, rn_err := runic.parse_rune(
@@ -54,7 +54,7 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
         os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
         0o644,
     )
-    if !expect_value(t, os_err, 0) do return
+    if !expect_value(t, os_err, nil) do return
     defer os.close(out_file)
 
     ccdg_err := ccdg.generate_bindings(
@@ -81,3 +81,4 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
     expect_value(t, len(real_string), len(expected_string))
     expect_value(t, real_string, expected_string)
 }
+

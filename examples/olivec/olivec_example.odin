@@ -140,7 +140,7 @@ canvas_to_ppm :: proc(
     using canvas: olivec.Canvas,
     file_name: string,
 ) -> union {
-        os.Errno,
+        os.Error,
         io.Error,
     } {
     file, os_err := os.open(
@@ -148,7 +148,7 @@ canvas_to_ppm :: proc(
         os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
         0o644,
     )
-    if os_err != 0 do return os_err
+    if os_err != nil do return os_err
     defer os.close(file)
 
     fmt.fprintf(file, "P6\n{} {}\n255\n", width, height)
@@ -163,3 +163,4 @@ canvas_to_ppm :: proc(
 
     return nil
 }
+

@@ -182,9 +182,9 @@ prepreprocess_file :: proc(
     if input != nil {
         in_stream = input.?
     } else {
-        os_err: os.Errno = ---
+        os_err: os.Error = ---
         in_hd, os_err = os.open(path)
-        if os_err != 0 {
+        if os_err != nil {
             err = errors.Error(
                 errors.message("\"{}\": {}", path, errors.wrap(os_err)),
             )
@@ -468,3 +468,4 @@ reserve_random_file :: proc(format: string) -> string {
         }
     }
 }
+

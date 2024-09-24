@@ -637,13 +637,13 @@ temp_file :: proc(
     for _ in 0 ..< MAX_TRIES {
         strings.write_rune(&file_name, '_')
 
-        os_err: os.Errno = ---
+        os_err: os.Error = ---
         file, os_err = os.open(
             strings.to_string(file_name),
             os.O_WRONLY | os.O_CREATE | os.O_EXCL,
             0o777,
         )
-        if os_err == 0 {
+        if os_err == nil {
             file_path = strings.to_string(file_name)
             return
         }

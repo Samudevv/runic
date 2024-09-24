@@ -17,10 +17,10 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package runic
 
+import "base:runtime"
 import "core:os"
 import "core:testing"
 import "root:errors"
-import "base:runtime"
 import om "root:ordered_map"
 
 @(test)
@@ -28,7 +28,7 @@ test_rune :: proc(t: ^testing.T) {
     using testing
 
     file, os_err := os.open("test_data/rune.yml")
-    if !expect_value(t, os_err, 0) do return
+    if !expect_value(t, os_err, nil) do return
     defer os.close(file)
 
     rn, err := parse_rune(os.stream_from_handle(file), "test_data/rune.yml")
@@ -57,11 +57,19 @@ test_rune :: proc(t: ^testing.T) {
         switch func.name {
         case "funcy":
             expect_value(t, func.instruction.(OverwriteParameterName).idx, 0)
-            expect_value(t, func.instruction.(OverwriteParameterName).overwrite, "input")
+            expect_value(
+                t,
+                func.instruction.(OverwriteParameterName).overwrite,
+                "input",
+            )
         case "sunky":
             expect_value(t, func.instruction.(OverwriteParameterType).idx, 1)
-            expect_value(t, func.instruction.(OverwriteParameterType).overwrite, "output")
-        case "uinky"    :
+            expect_value(
+                t,
+                func.instruction.(OverwriteParameterType).overwrite,
+                "output",
+            )
+        case "uinky":
             expect_value(t, func.instruction.(OverwriteReturnType), "#SInt32")
         case:
             fail(t)
@@ -147,3 +155,4 @@ test_overwrite :: proc(t: ^testing.T) {
     expect_value(t, const.value.(i64), 27)
     expect_value(t, const.type.spec.(Builtin), Builtin.UInt64)
 }
+

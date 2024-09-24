@@ -166,7 +166,7 @@ test_example_runestone :: proc(t: ^testing.T) {
         os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
         0o644,
     )
-    if !expect_value(t, os_err, 0) do return
+    if !expect_value(t, os_err, nil) do return
     defer os.close(out_file)
 
     io_err := write_runestone(
@@ -186,3 +186,4 @@ test_example_runestone :: proc(t: ^testing.T) {
     )
     expect_value(t, om.get(constants, "LENGTH").value.(f64), 267.345)
 }
+

@@ -133,6 +133,55 @@ cross_the_runes :: proc(
             )
         }
 
+        // TODO: extern should be platform indepedent in some way. I want to access the externs of a certain runestone when an ExternType is encountered
+        // extern
+        for entry1 in stone1.externs.data {
+            name1 := entry1.key
+
+            plats := get_same_platforms(
+                stone1,
+                origin,
+                proc(
+                    stone1, stone2: RunestoneWithFile,
+                    user_data: rawptr,
+                ) -> bool {
+                    name1 := cast(^string)user_data
+                    extern1 := om.get(stone1.externs, name1^)
+
+                    if extern2, ok := om.get(stone2.externs, name1^); ok {
+                        if is_same(extern1, extern2) {
+                            return true
+                        }
+                    }
+
+                    return false
+                },
+                &name1,
+            )
+            defer delete(plats)
+
+            set_for_same_platforms(
+                stone1,
+                plats,
+                om.length(origin),
+                &rc,
+                proc(
+                    stone1: RunestoneWithFile,
+                    stone2: ^RunestoneWithFile,
+                    user_data: rawptr,
+                ) {
+                    name1 := cast(^string)user_data
+                    om.insert(
+                        &stone2.externs,
+                        name1^,
+                        om.get(stone1.externs, name1^),
+                    )
+                },
+                &name1,
+                allocator = rn_arena_alloc,
+            )
+        }
+
         // types
         for entry1 in stone1.types.data {
             name1 := entry1.key
@@ -457,6 +506,10 @@ is_same_symbol :: proc(s1, s2: Symbol) -> bool {
     return false
 }
 
+is_same_extern :: proc(e1, e2: Extern) -> bool {
+    return e1.source == e2.source && is_same(e1.type, e2.type)
+}
+
 is_same :: proc {
     is_same_type,
     is_same_type_specifier,
@@ -467,6 +520,7 @@ is_same :: proc {
     is_same_function,
     is_same_symbol,
     is_same_constant,
+    is_same_extern,
 }
 
 get_same_platforms :: proc(

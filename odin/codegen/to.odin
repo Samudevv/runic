@@ -780,6 +780,10 @@ write_type :: proc(
     case runic.FunctionPointer:
         io.write_string(wd, "#type ") or_return
         write_procedure(wd, spec^, rn) or_return
+    case runic.ExternType:
+        return errors.Error(
+            errors.message("TODO: extern types in to odin codegen"),
+        )
     }
 
     return nil
@@ -1043,3 +1047,4 @@ when_plats :: proc(
 
     return false, .None
 }
+

@@ -218,6 +218,43 @@ parse_runestone :: proc(
     }
 
     when ODIN_DEBUG {
+        fmt.eprintln("section extern")
+    }
+
+    extern_section: {
+        sect, ok := ini_file["extern"]
+        if !ok do break extern_section
+        defer delete_key(&ini_file, "extern")
+
+        rs.externs = om.make(string, Extern)
+
+        for value in sect.data {
+            type_name, extern_value := value.key, value.value
+
+            str_idx := strings.index(extern_value, "\"")
+            EXTERN_SOURCE_MISSING :: "\"extern\" entries require a string specifying the source at the front"
+            errors.assert(str_idx != -1, EXTERN_SOURCE_MISSING) or_return
+
+            source_start := str_idx + 1
+            // TODO: handle strings containg '"' character
+            str_idx = strings.index(extern_value[source_start:], "\"")
+            errors.assert(str_idx != -1, EXTERN_SOURCE_MISSING) or_return
+            str_idx += source_start
+
+            source_end := str_idx
+            source_string := extern_value[source_start:source_end]
+
+            extern_type := parse_type(extern_value[str_idx + 1:]) or_return
+
+            om.insert(
+                &rs.externs,
+                type_name,
+                Extern{type = extern_type, source = source_string},
+            )
+        }
+    }
+
+    when ODIN_DEBUG {
         fmt.eprintln("section types")
     }
 
@@ -448,6 +485,24 @@ write_runestone :: proc(
 
     if some_alias do io.write_rune(wd, '\n') or_return
 
+    if om.length(rs.externs) != 0 {
+        io.write_string(wd, "[extern]\n") or_return
+
+        for entry in rs.externs.data {
+            name, extern := entry.key, entry.value
+
+            io.write_string(wd, name) or_return
+            io.write_string(wd, " = \"") or_return
+            // TODO: parse for line breaks (= \n) and stuff
+            io.write_string(wd, extern.source) or_return
+            io.write_string(wd, "\" ") or_return
+            write_type(wd, extern.type) or_return
+            io.write_rune(wd, '\n') or_return
+        }
+
+        io.write_rune(wd, '\n') or_return
+    }
+
     if om.length(rs.types) != 0 {
         io.write_string(wd, "[types]\n") or_return
 
@@ -642,6 +697,11 @@ parse_type_token :: proc(
             func, token = parse_func_token(token) or_return
             type.spec = cast(FunctionPointer)new_clone(func)
             return
+        case "Extern":
+            token = token.next
+            errors.assert(token.kind == .Ident) or_return
+
+            type.spec = ExternType(token.lit)
         case:
             err = errors.message("invalid type specifier {}", token.lit)
             return
@@ -1056,6 +1116,9 @@ write_type_specifier :: proc(wd: io.Writer, ts: TypeSpecifier) -> io.Error {
         io.write_string(wd, string(t)) or_return
     case string:
         io.write_string(wd, t) or_return
+    case ExternType:
+        io.write_string(wd, "#Extern ") or_return
+        io.write_string(wd, string(t)) or_return
     }
 
     return .None

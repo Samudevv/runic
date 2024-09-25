@@ -30,6 +30,13 @@ to:
   trim_prefix:
     functions: foo_
     variables: bar_
-    types: baz_
+    types: [baz_, SDL_]
   trim_suffix:
     types: _t
+  extern:
+    trim_prefix: true
+    sources:
+      'SDL2/SDL_Event.h': 'vendor:sdl2'
+      'SDL2/SDL_Renderer.h': 'vendor:sdl2'
+    remaps:
+      'SDL_Renderer': 'Renderer'

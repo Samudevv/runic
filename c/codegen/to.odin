@@ -100,21 +100,10 @@ generate_bindings :: proc(
 
         if e, ok := type.spec.(runic.Enum); ok {
             if e.type != .SInt32 {
-                write_type_specifier(
-                    wd,
-                    rn,
-                    e,
-                    rs.types,
-                    name,
-                ) or_return
+                write_type_specifier(wd, rn, e, rs.types, name) or_return
                 io.write_rune(wd, '\n') or_return
                 io.write_string(wd, "typedef ") or_return
-                write_type_specifier(
-                    wd,
-                    rn,
-                    e.type,
-                    rs.types,
-                ) or_return
+                write_type_specifier(wd, rn, e.type, rs.types) or_return
                 io.write_rune(wd, ' ') or_return
                 io.write_string(wd, name) or_return
                 io.write_string(wd, ";\n") or_return
@@ -129,18 +118,10 @@ generate_bindings :: proc(
         }
         if needs_typedef {
             io.write_string(wd, "typedef ") or_return
-            errors.wrap(
-                write_variable(wd, rn, name, type, rs.types),
-            ) or_return
+            errors.wrap(write_variable(wd, rn, name, type, rs.types)) or_return
         } else {
             errors.wrap(
-                write_type_specifier(
-                    wd,
-                    rn,
-                    type.spec,
-                    rs.types,
-                    name,
-                ),
+                write_type_specifier(wd, rn, type.spec, rs.types, name),
             ) or_return
         }
 
@@ -177,13 +158,7 @@ generate_bindings :: proc(
 
             io.write_string(funcs, "extern ") or_return
             errors.wrap(
-                write_variable(
-                    funcs,
-                    rn,
-                    name,
-                    value.return_type,
-                    rs.types,
-                ),
+                write_variable(funcs, rn, name, value.return_type, rs.types),
             ) or_return
             errors.wrap(
                 write_function_parameters(
@@ -255,12 +230,7 @@ write_variable :: proc(
         }
 
         errors.wrap(
-            write_type_specifier(
-                wd,
-                rn,
-                fptr.return_type.spec,
-                types,
-            ),
+            write_type_specifier(wd, rn, fptr.return_type.spec, types),
         ) or_return
 
         if fptr.return_type.pointer_info.count != 0 {
@@ -323,7 +293,10 @@ write_variable :: proc(
     }
 
     if type.pointer_info.count != 0 {
-        append(&var_point_slot, strings.repeat("*", int(type.pointer_info.count)))
+        append(
+            &var_point_slot,
+            strings.repeat("*", int(type.pointer_info.count)),
+        )
         if type.pointer_info.read_only {
             append(&var_point_slot, "const")
         }
@@ -334,7 +307,10 @@ write_variable :: proc(
         if arr.pointer_info.count != 0 {
             append(&array_slot, ")")
             append(&array_prefix_slot, "(")
-            append(&array_prefix_slot, strings.repeat("*", int(arr.pointer_info.count)))
+            append(
+                &array_prefix_slot,
+                strings.repeat("*", int(arr.pointer_info.count)),
+            )
             if arr.pointer_info.read_only {
                 append(&array_prefix_slot, "const ")
             }
@@ -474,12 +450,7 @@ write_type_specifier :: proc(
                 if len(name) != 0 {
                     io.write_string(wd, name) or_return
                 } else {
-                    write_type_specifier(
-                        wd,
-                        rn,
-                        s.type,
-                        types,
-                    ) or_return
+                    write_type_specifier(wd, rn, s.type, types) or_return
                 }
                 io.write_rune(wd, ')') or_return
                 switch ev in e.value {
@@ -535,6 +506,10 @@ write_type_specifier :: proc(
         io.write_string(wd, "void") or_return
     case runic.FunctionPointer:
         return errors.Error(errors.message("unreachable"))
+    case runic.ExternType:
+        return errors.Error(
+            errors.message("TODO: extern types in to c codegen"),
+        )
     }
     return nil
 }
@@ -575,3 +550,4 @@ write_function_parameters :: proc(
 
     return nil
 }
+

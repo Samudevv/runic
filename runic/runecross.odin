@@ -426,6 +426,9 @@ is_same_type_specifier :: proc(s1, s2: TypeSpecifier) -> bool {
     case FunctionPointer:
         t2 := s2.(FunctionPointer) or_return
         return is_same(t1^, t2^)
+    case ExternType:
+        t2 := s2.(ExternType) or_return
+        return t1 == t2
     }
     return false
 }
@@ -619,3 +622,4 @@ set_for_same_platforms :: proc(
         PlatformRunestone{plats = plats_copy, runestone = stone2},
     )
 }
+

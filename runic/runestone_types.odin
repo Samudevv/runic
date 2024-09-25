@@ -25,6 +25,7 @@ Runestone :: struct {
     platform:  Platform,
     lib:       Library,
     symbols:   om.OrderedMap(string, Symbol),
+    externs:   om.OrderedMap(string, Extern),
     types:     om.OrderedMap(string, Type),
     constants: om.OrderedMap(string, Constant),
     arena:     runtime.Arena,
@@ -141,6 +142,13 @@ Library :: struct {
     static: Maybe(string),
 }
 
+Extern :: struct {
+    using type: Type,
+    source:     string,
+}
+
+ExternType :: distinct string
+
 TypeSpecifier :: union {
     Builtin,
     Struct,
@@ -149,6 +157,7 @@ TypeSpecifier :: union {
     string,
     Unknown,
     FunctionPointer,
+    ExternType,
 }
 
 EnumConstant :: union {

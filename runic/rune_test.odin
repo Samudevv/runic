@@ -100,6 +100,17 @@ test_rune :: proc(t: ^testing.T) {
 
     to := rn.to.(To)
     expect_value(t, to.static_switch, "FOO_STATIC")
+
+    extern := to.extern
+    expect_value(t, extern.trim_prefix, true)
+    expect_value(t, extern.trim_suffix, false)
+    expect_value(t, extern.add_prefix, false)
+    expect_value(t, extern.add_suffix, false)
+    expect_value(t, len(extern.sources), 2)
+    expect_value(t, extern.sources["SDL2/SDL_Event.h"], "vendor:sdl2")
+    expect_value(t, extern.sources["SDL2/SDL_Renderer.h"], "vendor:sdl2")
+    expect_value(t, len(extern.remaps), 1)
+    expect_value(t, extern.remaps["SDL_Renderer"], "Renderer")
 }
 
 @(test)

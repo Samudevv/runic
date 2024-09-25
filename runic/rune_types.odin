@@ -60,6 +60,7 @@ To :: struct {
     add_prefix:    AddSet,
     add_suffix:    AddSet,
     ignore_arch:   bool,
+    extern:        ExternRune,
     // Odin
     package_name:  string,
     detect:        OdinDetect,
@@ -135,5 +136,14 @@ OdinDetect :: struct {
 
 PlatformValue :: struct(T: typeid) {
     d: map[Platform]T,
+}
+
+ExternRune :: struct {
+    sources:     map[string]string,
+    remaps:      map[string]string,
+    trim_prefix: bool,
+    trim_suffix: bool,
+    add_prefix:  bool,
+    add_suffix:  bool,
 }
 

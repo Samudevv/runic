@@ -1555,6 +1555,102 @@ parse_rune :: proc(
                 errors.wrap(ok, "\"to.use_when_else\" has invalid type")
             }
 
+            if extern_value, ok := to["extern"]; ok {
+                #partial switch extern in extern_value {
+                case yaml.Mapping:
+                    sources_value, sources_ok := extern["sources"]
+                    errors.assert(
+                        sources_ok,
+                        "\"to.extern.sources\" is missing",
+                    ) or_return
+
+                    #partial switch sources in sources_value {
+                    case yaml.Mapping:
+                        t.extern.sources = make(
+                            map[string]string,
+                            allocator = rn_arena_alloc,
+                        )
+
+                        for source_name, import_name_value in sources {
+                            import_name, import_name_ok := import_name_value.(string)
+                            errors.assert(
+                                import_name_ok,
+                                "\"to.extern.sources\" has invalid entries",
+                            ) or_return
+                            t.extern.sources[source_name] = import_name
+                        }
+                    case:
+                        err = errors.message(
+                            "\"to.extern.sources\" has invalid type",
+                        )
+                        return
+                    }
+
+                    if remaps_value, remaps_ok := extern["remaps"]; remaps_ok {
+                        #partial switch remaps in remaps_value {
+                        case yaml.Mapping:
+                            t.extern.remaps = make(
+                                map[string]string,
+                                allocator = rn_arena_alloc,
+                            )
+
+                            for type_name, remap_name_value in remaps {
+                                remap_name, remap_name_ok := remap_name_value.(string)
+                                errors.assert(
+                                    remap_name_ok,
+                                    "\"to.extern.remaps\" has invalid entries",
+                                ) or_return
+
+                                t.extern.remaps[type_name] = remap_name
+                            }
+                        case:
+                            err = errors.message(
+                                "\"to.extern.remaps\" has invalid type",
+                            )
+                            return
+                        }
+                    }
+
+                    if trim_prefix_value, tp_ok := extern["trim_prefix"];
+                       tp_ok {
+                        t.extern.trim_prefix, tp_ok = trim_prefix_value.(bool)
+                        errors.assert(
+                            tp_ok,
+                            "\"to.extern.trim_prefix\" has invalid type",
+                        ) or_return
+                    }
+
+                    if trim_suffix_value, tp_ok := extern["trim_suffix"];
+                       tp_ok {
+                        t.extern.trim_suffix, tp_ok = trim_suffix_value.(bool)
+                        errors.assert(
+                            tp_ok,
+                            "\"to.extern.trim_suffix\" has invalid type",
+                        ) or_return
+                    }
+
+                    if add_prefix_value, tp_ok := extern["add_prefix"]; tp_ok {
+                        t.extern.add_prefix, tp_ok = add_prefix_value.(bool)
+                        errors.assert(
+                            tp_ok,
+                            "\"to.extern.add_prefix\" has invalid type",
+                        ) or_return
+                    }
+
+                    if add_suffix_value, tp_ok := extern["add_suffix"]; tp_ok {
+                        t.extern.add_suffix, tp_ok = add_suffix_value.(bool)
+                        errors.assert(
+                            tp_ok,
+                            "\"to.extern.add_suffix\" has invalid type",
+                        ) or_return
+                    }
+
+                case:
+                    err = errors.message("\"to.extern\" has invalid type")
+                    return
+                }
+            }
+
             rn.to = t
         case string:
             if to != "stdout" {

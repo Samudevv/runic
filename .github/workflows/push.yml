@@ -20,7 +20,9 @@ jobs:
       - uses: extractions/setup-just@v2
         name: Install just
       - name: Install libclang
-        run: sudo apt -y install libclang-dev
+        run: |
+          sudo apt -y install libclang-14-dev
+          sudo ln -rfs /usr/lib/x86_64-linux-gnu/libclang-14.so /usr/lib/x86_64-linux-gnu/libclang.so
         if: matrix.os == 'ubuntu-latest'
       - name: Copy libclang
         run: |

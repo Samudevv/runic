@@ -33,7 +33,7 @@ jobs:
       - uses: laytan/setup-odin@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          release: dev-2024-08
+          release: dev-2024-09
       - uses: ilammy/msvc-dev-cmd@v1
         if: matrix.os == 'windows-latest'
 

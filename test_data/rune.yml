@@ -16,6 +16,9 @@ from:
   overwrite:
     types:
       size_t: "#UInt64"
+      func_ptr.return: '#RawPtr'
+      func_ptr.param.0.name: 'bar'
+      func_ptr.param.1.type: 'wl_seat #Attr Ptr 1 #AttrEnd'
     functions:
       funcy.param.0.name: 'input'
       sunky.param.1.type: 'output'

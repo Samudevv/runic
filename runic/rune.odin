@@ -661,6 +661,21 @@ parse_rune :: proc(
                                         ow.instruction = OverwriteWhole(
                                             overwrite_value,
                                         )
+                                    case 2:
+                                        switch split[1] {
+                                        case "return":
+                                            ow.instruction =
+                                                OverwriteReturnType(
+                                                    overwrite_value,
+                                                )
+                                        case:
+                                            err = errors.message(
+                                                "\"from.{}.types.{}\" is invalid",
+                                                key,
+                                                typ_key,
+                                            )
+                                            return
+                                        }
                                     case 4:
                                         switch split[1] {
                                         case "member":
@@ -2115,3 +2130,4 @@ overwrite_runestone :: proc(
 
     return nil
 }
+

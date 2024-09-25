@@ -48,7 +48,7 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, f.shared.d[Platform{.Any, .Any}], "libfoo.so")
     expect_value(t, len(f.headers.d[Platform{.Any, .Any}]), 3)
     expect_value(t, len(f.headers.d[Platform{.Macos, .Any}]), 1)
-    expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].types), 1)
+    expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].types), 4)
     expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].functions), 3)
 
     ow := f.overwrite.d[Platform{.Any, .Any}]
@@ -76,6 +76,28 @@ test_rune :: proc(t: ^testing.T) {
         }
     }
 
+    for type in ow.types {
+        switch type.name {
+        case "size_t":
+            expect_value(t, type.instruction.(OverwriteWhole), "#UInt64")
+        case "func_ptr":
+            #partial switch ins in type.instruction {
+            case OverwriteParameterType:
+                expect_value(t, ins.idx, 1)
+                expect_value(t, ins.overwrite, "wl_seat #Attr Ptr 1 #AttrEnd")
+            case OverwriteParameterName:
+                expect_value(t, ins.idx, 0)
+                expect_value(t, ins.overwrite, "bar")
+            case OverwriteReturnType:
+                expect_value(t, ins, "#RawPtr")
+            case:
+                fail(t)
+            }
+        case:
+            fail(t)
+        }
+    }
+
     to := rn.to.(To)
     expect_value(t, to.static_switch, "FOO_STATIC")
 }
@@ -89,15 +111,18 @@ test_overwrite :: proc(t: ^testing.T) {
 
     context.allocator = runtime.arena_allocator(&rs.arena)
 
-    var, type: Type = ---, ---
+    var, type, func_ptr, unon: Type = ---, ---, ---, ---
     func1, func2: Function = ---, ---
     const: Constant = ---
     err: errors.Error = ---
 
     var, err = parse_type("#SInt32")
     if !expect_value(t, err, nil) do return
-
     type, err = parse_type("#String #Attr Arr 5 #AttrEnd")
+    if !expect_value(t, err, nil) do return
+    func_ptr, err = parse_type("#FuncPtr #Void a #SInt32 b #Float32")
+    if !expect_value(t, err, nil) do return
+    unon, err = parse_type("#Union foo #RawPtr bar #RawPtr")
     if !expect_value(t, err, nil) do return
 
     func1, err = parse_func("#Void a #SInt32 b #String")
@@ -123,11 +148,23 @@ test_overwrite :: proc(t: ^testing.T) {
                 },
             },
         },
-        types     = {{"type", OverwriteWhole("#RawPtr")}},
+        types     = {
+            {"type", OverwriteWhole("#RawPtr")},
+            {
+                "func_ptr",
+                OverwriteParameterType{idx = 0, overwrite = "#Float32"},
+            },
+            {"func_ptr", OverwriteParameterName{idx = 1, overwrite = "c"}},
+            {"func_ptr", OverwriteReturnType("#SInt32")},
+            {"unon", OverwriteMemberType{idx = 0, overwrite = "#UInt64"}},
+            {"unon", OverwriteMemberName{idx = 1, overwrite = "baz"}},
+        },
         constants = {{"const", OverwriteWhole("27 #UInt64")}},
     }
 
     om.insert(&rs.types, "type", type)
+    om.insert(&rs.types, "func_ptr", func_ptr)
+    om.insert(&rs.types, "unon", unon)
     om.insert(&rs.symbols, "var", Symbol{value = var})
     om.insert(&rs.symbols, "func1", Symbol{value = func1})
     om.insert(&rs.symbols, "func2", Symbol{value = func2})
@@ -138,6 +175,30 @@ test_overwrite :: proc(t: ^testing.T) {
     type = om.get(rs.types, "type")
     expect_value(t, type.spec.(Builtin), Builtin.RawPtr)
     expect_value(t, len(type.array_info), 0)
+
+    func_ptr = om.get(rs.types, "func_ptr")
+    expect_value(
+        t,
+        func_ptr.spec.(FunctionPointer).return_type.spec.(Builtin),
+        Builtin.SInt32,
+    )
+    expect_value(t, len(func_ptr.spec.(FunctionPointer).parameters), 2)
+    expect_value(
+        t,
+        func_ptr.spec.(FunctionPointer).parameters[0].type.spec.(Builtin),
+        Builtin.Float32,
+    )
+    expect_value(t, func_ptr.spec.(FunctionPointer).parameters[1].name, "c")
+    expect_value(t, func_ptr.spec.(FunctionPointer).parameters[0].name, "a")
+
+    unon = om.get(rs.types, "unon")
+    expect_value(t, len(unon.spec.(Union).members), 2)
+    expect_value(
+        t,
+        unon.spec.(Union).members[0].type.spec.(Builtin),
+        Builtin.UInt64,
+    )
+    expect_value(t, unon.spec.(Union).members[1].name, "baz")
 
     func1 = om.get(rs.symbols, "func1").value.(Function)
     expect_value(t, func1.return_type.spec.(Builtin), Builtin.Bool32)

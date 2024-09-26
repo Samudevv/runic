@@ -5,8 +5,8 @@
 *.pdb
 *.o
 *.obj
-!test_data/*
 !test_data/foozy/foozy.expected.h
+!test_data/the_system/my_system.h
 test_data/*.ppp.*
 test_data/*.pp.*
 test_data/*.ppp-pp.*

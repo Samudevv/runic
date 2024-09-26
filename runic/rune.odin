@@ -21,6 +21,7 @@ import "base:runtime"
 import "core:bytes"
 import "core:io"
 import "core:path/filepath"
+import "core:path/slashpath"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
@@ -1908,7 +1909,7 @@ relative_to_file :: proc(
 
 single_list_glob :: proc(list: []string, value: string) -> bool {
     for p in list {
-        ok, _ := filepath.match(p, value)
+        ok, _ := slashpath.match(p, value)
         if ok do return true
     }
 

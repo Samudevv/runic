@@ -599,20 +599,24 @@ check_for_unknown_types :: proc(
 validate_unknown_types :: proc(
     type: ^runic.Type,
     types: om.OrderedMap(string, runic.Type),
+    externs: om.OrderedMap(string, runic.Extern),
 ) {
     #partial switch &t in type.spec {
     case runic.Unknown:
         if om.contains(types, string(t)) {
             type.spec = string(t)
+        } else if om.contains(externs, string(t)) {
+            type.spec = runic.ExternType(t)
         }
     case runic.Struct:
         for &member in t.members {
-            validate_unknown_types(&member.type, types)
+            validate_unknown_types(&member.type, types, externs)
         }
     case runic.Union:
         for &member in t.members {
-            validate_unknown_types(&member.type, types)
+            validate_unknown_types(&member.type, types, externs)
         }
+    // TODO: for parameters of FunctionPointer
     }
 }
 

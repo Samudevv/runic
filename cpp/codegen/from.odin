@@ -33,6 +33,13 @@ Macro :: struct {
     func: bool,
 }
 
+@(private)
+IncludedType :: struct {
+    using type: clang.Type,
+    file_name:  string,
+    system:     bool,
+}
+
 @(private = "file")
 ClientData :: struct {
     rs:             ^runic.Runestone,
@@ -40,7 +47,7 @@ ClientData :: struct {
     arena_alloc:    runtime.Allocator,
     err:            errors.Error,
     isz:            Int_Sizes,
-    included_types: ^map[string]clang.Type,
+    included_types: ^map[string]IncludedType,
     macros:         ^om.OrderedMap(string, Macro),
     anon_idx:       ^int,
 }
@@ -294,7 +301,7 @@ generate_runestone :: proc(
     )
     ignore := runic.platform_value_get(runic.IgnoreSet, rf.ignore, plat)
 
-    included_types := make(map[string]clang.Type, allocator = arena_alloc)
+    included_types := make(map[string]IncludedType, allocator = arena_alloc)
     macros := om.make(string, Macro, allocator = arena_alloc)
     anon_idx: int
     data := ClientData {
@@ -402,6 +409,17 @@ generate_runestone :: proc(
                 defer clang.disposeString(display_name_clang)
 
                 if !clang.Location_isFromMainFile(cursor_location) {
+                    file: clang.File = ---
+                    clang.getSpellingLocation(
+                        cursor_location,
+                        &file,
+                        nil,
+                        nil,
+                        nil,
+                    )
+                    file_name_clang := clang.getFileName(file)
+                    defer clang.disposeString(file_name_clang)
+
                     #partial switch cursor_kind {
                     case .TypedefDecl:
                         typedef := clang.getTypedefDeclUnderlyingType(cursor)
@@ -413,7 +431,19 @@ generate_runestone :: proc(
                         )
                         clang.disposeString(type_name_clang)
 
-                        data.included_types[type_name] = typedef
+                        file_name := clang_str(file_name_clang)
+                        data.included_types[type_name] = IncludedType {
+                            file_name = strings.clone(
+                                file_name,
+                                data.arena_alloc,
+                            ),
+                            type      = typedef,
+                            system    = bool(
+                                clang.Location_isInSystemHeader(
+                                    cursor_location,
+                                ),
+                            ),
+                        }
                     case .StructDecl:
                         if struct_is_unnamed(display_name) do break
                         display_name = strings.clone(
@@ -421,7 +451,19 @@ generate_runestone :: proc(
                             data.arena_alloc,
                         )
 
-                        data.included_types[display_name] = cursor_type
+                        file_name := clang_str(file_name_clang)
+                        data.included_types[display_name] = IncludedType {
+                            file_name = strings.clone(
+                                file_name,
+                                data.arena_alloc,
+                            ),
+                            type      = cursor_type,
+                            system    = bool(
+                                clang.Location_isInSystemHeader(
+                                    cursor_location,
+                                ),
+                            ),
+                        }
                     case .EnumDecl:
                         if enum_is_unnamed(display_name) do break
                         display_name = strings.clone(
@@ -429,7 +471,19 @@ generate_runestone :: proc(
                             data.arena_alloc,
                         )
 
-                        data.included_types[display_name] = cursor_type
+                        file_name := clang_str(file_name_clang)
+                        data.included_types[display_name] = IncludedType {
+                            file_name = strings.clone(
+                                file_name,
+                                data.arena_alloc,
+                            ),
+                            type      = cursor_type,
+                            system    = bool(
+                                clang.Location_isInSystemHeader(
+                                    cursor_location,
+                                ),
+                            ),
+                        }
                     case .UnionDecl:
                         if union_is_unnamed(display_name) do break
                         display_name = strings.clone(
@@ -437,7 +491,19 @@ generate_runestone :: proc(
                             data.arena_alloc,
                         )
 
-                        data.included_types[display_name] = cursor_type
+                        file_name := clang_str(file_name_clang)
+                        data.included_types[display_name] = IncludedType {
+                            file_name = strings.clone(
+                                file_name,
+                                data.arena_alloc,
+                            ),
+                            type      = cursor_type,
+                            system    = bool(
+                                clang.Location_isInSystemHeader(
+                                    cursor_location,
+                                ),
+                            ),
+                        }
                     }
 
                     return .Continue
@@ -797,11 +863,10 @@ generate_runestone :: proc(
     }
 
     // Try to find the unknown types in the includes
+    unknown_anons := om.make(string, runic.Type)
     for unknown in unknown_types {
         if included_type, ok := included_types[unknown]; ok {
             cursor := clang.getTypeDeclaration(included_type)
-
-            prev_idx := om.length(rs.types)
 
             if included_type.kind == .Elaborated {
                 named_type := clang.Type_getNamedType(included_type)
@@ -811,7 +876,23 @@ generate_runestone :: proc(
                 defer clang.disposeString(named_name_clang)
 
                 if named_name == unknown {
-                    included_type = named_type
+                    file: clang.File = ---
+                    named_location := clang.getCursorLocation(named_cursor)
+                    clang.getSpellingLocation(
+                        named_location,
+                        &file,
+                        nil,
+                        nil,
+                        nil,
+                    )
+                    file_name_clang := clang.getFileName(file)
+                    defer clang.disposeString(file_name_clang)
+                    file_name := clang_str(file_name_clang)
+
+                    included_type = IncludedType {
+                        file_name = strings.clone(file_name, arena_alloc),
+                        type      = named_type,
+                    }
                     cursor = named_cursor
                 }
             }
@@ -822,15 +903,33 @@ generate_runestone :: proc(
                 cursor,
                 data.isz,
                 data.anon_idx,
-                &rs.types,
+                &unknown_anons,
                 rs_arena_alloc,
             )
 
-            for &entry in rs.types.data[prev_idx:] {
-                t := &entry.value
+            included_file_name := strings.clone(
+                included_type.file_name,
+                rs_arena_alloc,
+            )
+
+            for &entry in unknown_anons.data {
+                anon_name, t := entry.key, &entry.value
                 unknowns := check_for_unknown_types(t, data.rs.types)
                 extend_unknown_types(&unknown_types, unknowns)
+
+                // TODO: Add entry to Rune to overwrite this behaviour. The user should be able to decide if a certain include file is considered external
+                if false {
+                    om.insert(
+                        &rs.externs,
+                        anon_name,
+                        runic.Extern{source = included_file_name, type = t^},
+                    )
+                } else {
+                    om.insert(&rs.types, anon_name, t^)
+                }
             }
+            om.delete(unknown_anons)
+            unknown_anons = om.make(string, runic.Type)
 
             if data.err != nil {
                 fmt.eprintln(data.err, "\n")
@@ -841,18 +940,28 @@ generate_runestone :: proc(
             unknowns := check_for_unknown_types(&type, data.rs.types)
             extend_unknown_types(&unknown_types, unknowns)
 
-            om.insert(&data.rs.types, unknown, type)
+            if false {
+                om.insert(
+                    &data.rs.externs,
+                    unknown,
+                    runic.Extern{source = included_file_name, type = type},
+                )
+            } else {
+                om.insert(&data.rs.types, unknown, type)
+            }
         }
     }
+    om.delete(unknown_anons)
 
     runic.ignore_types(&rs.types, ignore)
 
     // Validate unknown types
     // Check if the previously unknown types are now known
-    // If so change the spec to a string
+    // If so change the spec to a ExternType, because a type
+    // can only be unknown if either does not exist or is included
     for &entry in rs.types.data {
         type := &entry.value
-        validate_unknown_types(type, rs.types)
+        validate_unknown_types(type, rs.types, rs.externs)
     }
 
     for &entry in rs.symbols.data {
@@ -860,13 +969,13 @@ generate_runestone :: proc(
 
         switch &value in sym.value {
         case runic.Function:
-            validate_unknown_types(&value.return_type, rs.types)
+            validate_unknown_types(&value.return_type, rs.types, rs.externs)
 
             for &param in value.parameters {
-                validate_unknown_types(&param.type, rs.types)
+                validate_unknown_types(&param.type, rs.types, rs.externs)
             }
         case runic.Type:
-            validate_unknown_types(&value, rs.types)
+            validate_unknown_types(&value, rs.types, rs.externs)
         }
     }
 

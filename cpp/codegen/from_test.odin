@@ -310,6 +310,50 @@ test_cpp_include :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_cpp_system_include :: proc(t: ^testing.T) {
+    using testing
+
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libsystem_include.so"}},
+        headers = {
+            d = {runic.Platform{.Any, .Any} = {"test_data/system_include.h"}},
+        },
+        flags = {
+            d = {runic.Platform{.Any, .Any} = {"-Itest_data/the_system"}},
+        },
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+    defer delete(rf.flags.d)
+
+    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    expect_value(t, om.length(rs.types), 2)
+    expect_value(t, om.length(rs.externs), 1)
+
+    expect_value(
+        t,
+        om.get(rs.types, "from_main").spec.(runic.Builtin),
+        runic.Builtin.SInt32,
+    )
+    expect_value(
+        t,
+        om.get(rs.types, "main_struct").spec.(runic.Struct).members[0].type.spec.(runic.ExternType),
+        "from_system",
+    )
+
+    expect_value(
+        t,
+        om.get(rs.externs, "from_system").spec.(runic.Builtin),
+        runic.Builtin.SInt32,
+    )
+    expect(t, !om.contains(rs.externs, "also_from_system"))
+}
+
+@(test)
 test_cpp_elaborated :: proc(t: ^testing.T) {
     using testing
 
@@ -607,3 +651,4 @@ test_cpp_unknown_int :: proc(t: ^testing.T) {
 
     expect_value(t, fp.return_type.spec.(runic.Builtin), runic.Builtin.SInt8)
 }
+

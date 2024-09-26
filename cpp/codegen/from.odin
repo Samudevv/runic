@@ -435,7 +435,7 @@ generate_runestone :: proc(
                         file_name, _ := strings.replace_all(
                             clang_str(file_name_clang),
                             "\\",
-                            "//",
+                            "/",
                             data.arena_alloc,
                         )
                         data.included_types[type_name] = IncludedType {
@@ -460,7 +460,7 @@ generate_runestone :: proc(
                         file_name, _ := strings.replace_all(
                             clang_str(file_name_clang),
                             "\\",
-                            "//",
+                            "/",
                             data.arena_alloc,
                         )
                         data.included_types[display_name] = IncludedType {
@@ -485,7 +485,7 @@ generate_runestone :: proc(
                         file_name, _ := strings.replace_all(
                             clang_str(file_name_clang),
                             "\\",
-                            "//",
+                            "/",
                             data.arena_alloc,
                         )
                         data.included_types[display_name] = IncludedType {

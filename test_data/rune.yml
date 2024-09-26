@@ -23,6 +23,8 @@ from:
       funcy.param.0.name: 'input'
       sunky.param.1.type: 'output'
       uinky.return: '#SInt32'
+  extern:
+    - 'test_data/the_system/*'
 to:
   language: odin
   static_switch: FOO_STATIC

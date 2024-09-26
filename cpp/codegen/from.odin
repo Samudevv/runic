@@ -323,6 +323,7 @@ generate_runestone :: proc(
     rs.constants = om.make(string, runic.Constant, allocator = rs_arena_alloc)
     rs.symbols = om.make(string, runic.Symbol, allocator = rs_arena_alloc)
     rs.types = om.make(string, runic.Type, allocator = rs_arena_alloc)
+    rs.externs = om.make(string, runic.Extern, allocator = rs_arena_alloc)
 
     for header in headers {
         header_cstr := strings.clone_to_cstring(header, arena_alloc)
@@ -911,14 +912,14 @@ generate_runestone :: proc(
                 included_type.file_name,
                 rs_arena_alloc,
             )
+            is_extern := runic.single_list_glob(rf.extern, included_file_name)
 
             for &entry in unknown_anons.data {
                 anon_name, t := entry.key, &entry.value
                 unknowns := check_for_unknown_types(t, data.rs.types)
                 extend_unknown_types(&unknown_types, unknowns)
 
-                // TODO: Add entry to Rune to overwrite this behaviour. The user should be able to decide if a certain include file is considered external
-                if false {
+                if is_extern {
                     om.insert(
                         &rs.externs,
                         anon_name,
@@ -940,7 +941,7 @@ generate_runestone :: proc(
             unknowns := check_for_unknown_types(&type, data.rs.types)
             extend_unknown_types(&unknown_types, unknowns)
 
-            if false {
+            if is_extern {
                 om.insert(
                     &data.rs.externs,
                     unknown,

@@ -1033,6 +1033,35 @@ parse_rune :: proc(
                 }
             }
 
+            if extern_value, ok := from["extern"]; ok {
+                #partial switch extern in extern_value {
+                case string:
+                    extern_arr := make([dynamic]string, rn_arena_alloc)
+                    append(&extern_arr, extern)
+                    f.extern = extern_arr[:]
+                case yaml.Sequence:
+                    extern_arr := make([dynamic]string, rn_arena_alloc)
+
+                    for ex, idx in extern {
+                        #partial switch extern_element in ex {
+                        case string:
+                            append(&extern_arr, extern_element)
+                        case:
+                            err = errors.message(
+                                "\"from.extern[{}]\" has invalid type",
+                                idx,
+                            )
+                            return
+                        }
+                    }
+
+                    f.extern = extern_arr[:]
+                case:
+                    err = errors.message("\"from.extern\" has invalid type")
+                    return
+                }
+            }
+
             rn.from = f
         case string:
             if from != "stdin" {

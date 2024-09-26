@@ -41,6 +41,7 @@ From :: struct {
     shared:      PlatformValue(string),
     ignore:      PlatformValue(IgnoreSet),
     overwrite:   PlatformValue(OverwriteSet),
+    extern:      []string,
     // C
     headers:     PlatformValue([]string),
     includedirs: PlatformValue([]string),

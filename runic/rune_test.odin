@@ -76,6 +76,9 @@ test_rune :: proc(t: ^testing.T) {
         }
     }
 
+    expect_value(t, len(f.extern), 1)
+    expect_value(t, f.extern[0], "test_data/the_system/*")
+
     for type in ow.types {
         switch type.name {
         case "size_t":

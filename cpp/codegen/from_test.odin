@@ -322,6 +322,7 @@ test_cpp_system_include :: proc(t: ^testing.T) {
         flags = {
             d = {runic.Platform{.Any, .Any} = {"-Itest_data/the_system"}},
         },
+        extern = {"test_data/the_system/my_system.h"},
     }
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)

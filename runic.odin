@@ -19,10 +19,10 @@ package main
 
 import "base:runtime"
 import ccdg "c/codegen"
-import cppcdg "cpp/codegen"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
+import cppcdg "cpp/codegen"
 import "errors"
 import odincdg "odin/codegen"
 import "runic"
@@ -347,3 +347,4 @@ main :: proc() {
         fmt.eprintfln("Successfully generated runestone ({})", to)
     }
 }
+

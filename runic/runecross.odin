@@ -133,55 +133,6 @@ cross_the_runes :: proc(
             )
         }
 
-        // TODO: extern should be platform indepedent in some way. I want to access the externs of a certain runestone when an ExternType is encountered
-        // extern
-        for entry1 in stone1.externs.data {
-            name1 := entry1.key
-
-            plats := get_same_platforms(
-                stone1,
-                origin,
-                proc(
-                    stone1, stone2: RunestoneWithFile,
-                    user_data: rawptr,
-                ) -> bool {
-                    name1 := cast(^string)user_data
-                    extern1 := om.get(stone1.externs, name1^)
-
-                    if extern2, ok := om.get(stone2.externs, name1^); ok {
-                        if is_same(extern1, extern2) {
-                            return true
-                        }
-                    }
-
-                    return false
-                },
-                &name1,
-            )
-            defer delete(plats)
-
-            set_for_same_platforms(
-                stone1,
-                plats,
-                om.length(origin),
-                &rc,
-                proc(
-                    stone1: RunestoneWithFile,
-                    stone2: ^RunestoneWithFile,
-                    user_data: rawptr,
-                ) {
-                    name1 := cast(^string)user_data
-                    om.insert(
-                        &stone2.externs,
-                        name1^,
-                        om.get(stone1.externs, name1^),
-                    )
-                },
-                &name1,
-                allocator = rn_arena_alloc,
-            )
-        }
-
         // types
         for entry1 in stone1.types.data {
             name1 := entry1.key
@@ -329,6 +280,73 @@ cross_the_runes :: proc(
                 &name1,
                 allocator = rn_arena_alloc,
             )
+        }
+    }
+
+    // extern
+    for &stone in rc.cross {
+        externs := &stone.externs
+
+        // Loop over all plaforms of a runestone
+        // if it has any platforms then handle it
+        // as if it has all of them
+        for plat in stone.plats {
+            oses: [dynamic]OS
+            archs: [dynamic]Architecture
+            defer delete(oses)
+            defer delete(archs)
+
+            if plat.os == .Any {
+                for os in OS_MIN ..= OS_MAX {
+                    append(&oses, os)
+                }
+            } else {
+                append(&oses, plat.os)
+            }
+
+            if plat.arch == .Any {
+                for arch in Architecture_MIN ..= Architecture_MAX {
+                    append(&archs, arch)
+                }
+            } else {
+                append(&archs, plat.arch)
+            }
+
+            // Look up every runestone of every platform
+            // and add the externs of it
+            for os in oses {
+                for arch in archs {
+                    look_up_plat := Platform{os, arch}
+                    if origin_stone, ok := om.get(origin, look_up_plat); ok {
+                        for entry in origin_stone.externs.data {
+                            type_name, extern := entry.key, entry.value
+
+                            // if the extern already exists check if it has the same type
+                            // the source does not matter
+                            if already_extern, already := om.get(
+                                externs^,
+                                type_name,
+                            ); already {
+                                // If it already exists and does not have the same type
+                                // set the spec to Untyped since it is invalid
+                                if !is_same(extern.type, already_extern.type) {
+                                    already_extern.type = Type {
+                                        spec = Builtin.Untyped,
+                                    }
+                                    om.insert(
+                                        externs,
+                                        type_name,
+                                        already_extern,
+                                    )
+                                }
+                            } else {
+                                // if it does not yet exist just insert it
+                                om.insert(externs, type_name, extern)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

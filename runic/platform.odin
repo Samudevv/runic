@@ -32,6 +32,10 @@ OS :: enum {
     Macos,
     BSD,
 }
+@(private)
+OS_MIN :: OS.Linux
+@(private)
+OS_MAX :: OS.BSD
 
 Architecture :: enum {
     Any,
@@ -40,6 +44,10 @@ Architecture :: enum {
     x86,
     arm32,
 }
+@(private)
+Architecture_MIN :: Architecture.x86_64
+@(private)
+Architecture_MAX :: Architecture.arm32
 
 MIN_OS :: OS.Linux
 MAX_OS :: OS.BSD
@@ -49,7 +57,7 @@ MAX_ARCH :: Architecture.arm32
 host_os :: proc() -> OS {
     switch OS.Linux {
     case .Linux, .Windows, .Macos, .BSD, .Any:
-        // Just a reminder
+    // Just a reminder
     }
 
     when ODIN_OS == .Linux {
@@ -70,7 +78,7 @@ host_os :: proc() -> OS {
 host_arch :: proc() -> Architecture {
     switch Architecture.Any {
     case .x86_64, .arm64, .x86, .arm32, .Any:
-        // Just a reminder
+    // Just a reminder
     }
 
     when ODIN_ARCH == .amd64 {
@@ -183,3 +191,4 @@ set_library :: proc(plat: Platform, rs: ^Runestone, from: From) {
         rs.lib.shared = strings.clone(shared_name, rs_arena_alloc)
     }
 }
+

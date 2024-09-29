@@ -23,6 +23,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:testing"
 import cppcdg "root:cpp/codegen"
+import "root:errors"
 import om "root:ordered_map"
 import "root:runic"
 
@@ -256,13 +257,15 @@ main :: proc() {}`
             },
         )
 
-        err := generate_bindings(
-            rc,
-            rn,
-            os.stream_from_handle(file),
-            abs_file_name,
+        err := errors.wrap(
+            generate_bindings(
+                rc,
+                rn,
+                os.stream_from_handle(file),
+                abs_file_name,
+            ),
         )
-        if !expect_value(t, err, io.Error.None) do return
+        if !expect_value(t, err, nil) do return
 
         os.write_string(file, "main :: proc() {}")
     }
@@ -357,14 +360,11 @@ test_to_odin_extern :: proc(t: ^testing.T) {
     )
     if !expect_value(t, os_err, nil) do return
 
-    io_err := generate_bindings(
-        rc,
-        rt,
-        os.stream_from_handle(out_file),
-        "/inline",
+    err = errors.wrap(
+        generate_bindings(rc, rt, os.stream_from_handle(out_file), "/inline"),
     )
     os.close(out_file)
-    if !expect_value(t, io_err, io.Error.None) do return
+    if !expect_value(t, err, nil) do return
 
     EXPECT_BINDINGS :: `package extern_test
 

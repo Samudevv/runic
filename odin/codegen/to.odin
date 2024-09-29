@@ -31,7 +31,10 @@ generate_bindings :: proc(
     rn: runic.To,
     wd: io.Writer,
     file_path: string,
-) -> io.Error {
+) -> union {
+        errors.Error,
+        io.Error,
+    } {
     arena: runtime.Arena
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
@@ -187,7 +190,10 @@ generate_bindings_from_runestone :: proc(
     wd: io.Writer,
     file_path: string,
     package_name: string,
-) -> io.Error {
+) -> union {
+        errors.Error,
+        io.Error,
+    } {
     arena: runtime.Arena
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
@@ -226,6 +232,16 @@ generate_bindings_from_runestone :: proc(
         name, extern := entry.key, entry.value
 
         if _, ok := runic.map_glob(rn.extern.sources, extern.source); !ok {
+            if b, b_ok := extern.spec.(runic.Builtin); b_ok && b == .Untyped {
+                return errors.Error(
+                    errors.message(
+                        "extern type \"{}\" differs by platform and does not have a source defined. Please define a source for \"{}\" under to.extern.sources",
+                        name,
+                        extern.source,
+                    ),
+                )
+            }
+
             type_build: strings.Builder
             defer strings.builder_destroy(&type_build)
             ts := strings.to_stream(&type_build)

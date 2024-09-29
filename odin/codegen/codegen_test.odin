@@ -285,9 +285,19 @@ test_to_odin_extern :: proc(t: ^testing.T) {
             d = {runic.Platform{.Any, .Any} = {"test_data/system_include.h"}},
         },
         flags = {
-            d = {runic.Platform{.Any, .Any} = {"-Itest_data/the_system"}},
+            d = {
+                runic.Platform{.Any, .Any} = {
+                    "-Itest_data/the_system",
+                    "-Itest_data/third_party",
+                    "-Itest_data/other_system",
+                },
+            },
         },
-        extern = {"test_data/the_system/my_system.h"},
+        extern = {
+            "test_data/the_system/my_system.h",
+            "test_data/third_party/third_party.h",
+            "test_data/other_system/also_my_system.h",
+        },
     }
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
@@ -296,11 +306,16 @@ test_to_odin_extern :: proc(t: ^testing.T) {
         language = "odin",
         package_name = "extern_test",
         extern = {
-            sources = {"test_data/the_system/my_system.h" = "the_system"},
+            sources = {
+                "test_data/the_system/my_system.h" = "the_system vendor:sys",
+                "test_data/third_party/third_party.h" = "shared:third_party",
+            },
+            remaps = {"ant" = "Ant"},
         },
         no_build_tag = true,
     }
     defer delete(rt.extern.sources)
+    defer delete(rt.extern.remaps)
 
     rs, err := cppcdg.generate_runestone(
         runic.platform_from_host(),
@@ -353,14 +368,27 @@ test_to_odin_extern :: proc(t: ^testing.T) {
 
     EXPECT_BINDINGS :: `package extern_test
 
-import "the_system"
+import "shared:third_party"
+import the_system "vendor:sys"
 
+sysi :: f64
 from_main :: i32
+from_other_system :: sysi
 main_struct :: struct {
     b: the_system.from_system,
 }
 
 foreign import extern_test_runic "system:system_include"
+
+@(default_calling_convention = "c")
+foreign extern_test_runic {
+    @(link_name = "ctx")
+    ctx: main_struct
+
+    @(link_name = "part")
+    part :: proc(a: the_system.from_system, b: ^third_party.Ant) -> the_system.from_system ---
+
+}
 
 `
 

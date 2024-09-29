@@ -320,9 +320,19 @@ test_cpp_system_include :: proc(t: ^testing.T) {
             d = {runic.Platform{.Any, .Any} = {"test_data/system_include.h"}},
         },
         flags = {
-            d = {runic.Platform{.Any, .Any} = {"-Itest_data/the_system"}},
+            d = {
+                runic.Platform{.Any, .Any} = {
+                    "-Itest_data/the_system",
+                    "-Itest_data/third_party",
+                    "-Itest_data/other_system",
+                },
+            },
         },
-        extern = {"test_data/the_system/my_system.h"},
+        extern = {
+            "test_data/the_system/my_system.h",
+            "test_data/third_party/third_party.h",
+            "test_data/other_system/also_my_system.h",
+        },
     }
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
@@ -332,8 +342,9 @@ test_cpp_system_include :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 2)
-    expect_value(t, om.length(rs.externs), 1)
+    expect_value(t, om.length(rs.types), 3)
+    expect_value(t, om.length(rs.externs), 3)
+    expect_value(t, om.length(rs.symbols), 2)
 
     expect_value(
         t,
@@ -345,13 +356,34 @@ test_cpp_system_include :: proc(t: ^testing.T) {
         om.get(rs.types, "main_struct").spec.(runic.Struct).members[0].type.spec.(runic.ExternType),
         "from_system",
     )
+    expect_value(
+        t,
+        om.get(rs.types, "from_other_system").spec.(runic.ExternType),
+        "sysi",
+    )
 
     expect_value(
         t,
         om.get(rs.externs, "from_system").spec.(runic.Builtin),
         runic.Builtin.SInt32,
     )
+    expect_value(
+        t,
+        om.get(rs.externs, "ant").spec.(runic.Builtin),
+        runic.Builtin.Float32,
+    )
+    expect_value(
+        t,
+        om.get(rs.externs, "sysi").spec.(runic.Builtin),
+        runic.Builtin.Float64,
+    )
     expect(t, !om.contains(rs.externs, "also_from_system"))
+
+    expect_value(
+        t,
+        om.get(rs.symbols, "part").value.(runic.Function).parameters[1].type.spec.(runic.ExternType),
+        "ant",
+    )
 }
 
 @(test)

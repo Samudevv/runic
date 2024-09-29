@@ -222,6 +222,34 @@ generate_bindings_from_runestone :: proc(
 
     if om.length(rs.constants) != 0 do io.write_rune(wd, '\n') or_return
 
+    for entry in rs.externs.data {
+        name, extern := entry.key, entry.value
+        // TODO: change rn.extern.sources into a glob pattern
+        if extern.source in rn.extern.sources == false {
+            type_build: strings.Builder
+            defer strings.builder_destroy(&type_build)
+            ts := strings.to_stream(&type_build)
+
+            // TODO: Determine wether this extern type should be processed
+            name = runic.process_type_name(
+                name,
+                rn,
+                reserved = ODIN_RESERVED,
+                allocator = arena_alloc,
+            )
+
+            io.write_string(ts, name) or_return
+            io.write_string(ts, " :: ") or_return
+            type_err := write_type(ts, name, extern, rn, rs.externs)
+            if type_err != nil {
+                fmt.eprintfln("{}: {}", name, type_err)
+                continue
+            }
+            io.write_string(wd, strings.to_string(type_build)) or_return
+            io.write_string(wd, "\n") or_return
+        }
+    }
+
     for entry in rs.types.data {
         type_build: strings.Builder
         defer strings.builder_destroy(&type_build)
@@ -826,6 +854,7 @@ write_type :: proc(
         write_procedure(wd, spec^, rn, externs) or_return
     case runic.ExternType:
         if extern, ok := om.get(externs, string(spec)); ok {
+            // TODO: change rn.extern.sources to a glob pattern
             import_name, import_ok := rn.extern.sources[extern.source]
             remap_name, remap_ok := rn.extern.remaps[string(spec)]
 
@@ -1145,10 +1174,10 @@ import_path :: proc(
     if start_idx = strings.index(import_name, " "); start_idx == -1 {
         start_idx = 0
     } else {
-        start_idx += 1
         import_name_overwrite = strings.trim_left_space(
             import_name[:start_idx],
         )
+        start_idx += 1
     }
 
     import_path_name = strings.trim_space(import_name[start_idx:])

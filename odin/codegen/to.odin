@@ -113,6 +113,25 @@ generate_bindings :: proc(
     io.write_string(wd, package_name) or_return
     io.write_string(wd, "\n\n") or_return
 
+    // Write all imports for the extern types
+    imports := make([dynamic]string, arena_alloc)
+    for _, source in rn.extern.sources {
+        import_name := import_path(source)
+        if !slice.contains(imports[:], import_name) {
+            append(&imports, import_name)
+        }
+    }
+
+    slice.sort(imports[:])
+
+    for import_name in imports {
+        io.write_string(wd, "import ") or_return
+        io.write_rune(wd, '"') or_return
+        io.write_string(wd, import_name) or_return
+        io.write_string(wd, "\"\n") or_return
+    }
+    if len(imports) != 0 do io.write_rune(wd, '\n') or_return
+
     write_when := false
 
     for entry, idx in rc.cross {
@@ -202,7 +221,7 @@ generate_bindings_from_runestone :: proc(
 
         io.write_string(ts, name) or_return
         io.write_string(ts, " :: ") or_return
-        type_err := write_type(ts, name, ty, rn)
+        type_err := write_type(ts, name, ty, rn, rs.externs)
         if type_err != nil {
             fmt.eprintfln("{}: {}", name, type_err)
             continue
@@ -442,7 +461,7 @@ generate_bindings_from_runestone :: proc(
                 )
                 io.write_string(ss, name) or_return
                 io.write_string(ss, ": ") or_return
-                type_err := write_type(ss, name, value, rn)
+                type_err := write_type(ss, name, value, rn, rs.externs)
                 if type_err != nil {
                     fmt.eprintfln("{}: {}", name, type_err)
                     io.write_string(wd, name) or_return
@@ -459,7 +478,7 @@ generate_bindings_from_runestone :: proc(
                 )
                 io.write_string(wd, name) or_return
                 io.write_string(wd, " :: ") or_return
-                proc_err := write_procedure(wd, value, rn, nil)
+                proc_err := write_procedure(wd, value, rn, rs.externs, nil)
                 if proc_err != nil {
                     fmt.eprintfln("{}: {}", name, proc_err)
                     io.write_string(wd, "nil\n\n") or_return
@@ -512,6 +531,7 @@ generate_bindings_from_runestone :: proc(
                             wd,
                             func_ptr^,
                             rn,
+                            rs.externs,
                             "contextless",
                         )
                         if proc_err != nil {
@@ -561,7 +581,13 @@ generate_bindings_from_runestone :: proc(
                             ss,
                             " :: #force_inline proc \"contextless\" () -> ",
                         ) or_return
-                        type_err := write_type(ss, name, sym_value, rn)
+                        type_err := write_type(
+                            ss,
+                            name,
+                            sym_value,
+                            rn,
+                            rs.externs,
+                        )
                         if type_err != nil {
                             fmt.eprintfln("{}: {}", name, type_err)
                             io.write_string(wd, " :: nil\n\n") or_return
@@ -599,6 +625,7 @@ write_procedure :: proc(
     wd: io.Writer,
     fc: runic.Function,
     rn: runic.To,
+    externs: om.OrderedMap(string, runic.Extern),
     calling_convention: Maybe(string) = "c",
 ) -> union {
         io.Error,
@@ -628,7 +655,7 @@ write_procedure :: proc(
         }
         io.write_string(ps, p_name) or_return
         io.write_string(ps, ": ") or_return
-        write_type(ps, p_name, p.type, rn) or_return
+        write_type(ps, p_name, p.type, rn, externs) or_return
         if idx != len(fc.parameters) - 1 {
             io.write_string(ps, ", ") or_return
         }
@@ -642,7 +669,7 @@ write_procedure :: proc(
     }
 
     io.write_string(ps, " -> ") or_return
-    write_type(ps, "", fc.return_type, rn) or_return
+    write_type(ps, "", fc.return_type, rn, externs) or_return
 
     io.write_string(wd, strings.to_string(proc_build)) or_return
 
@@ -654,6 +681,7 @@ write_type :: proc(
     var_name: string,
     ty: runic.Type,
     rn: runic.To,
+    externs: om.OrderedMap(string, runic.Extern),
 ) -> union {
         io.Error,
         errors.Error,
@@ -731,7 +759,7 @@ write_type :: proc(
             io.write_string(wd, "    ") or_return
             io.write_string(wd, m_name) or_return
             io.write_string(wd, ": ") or_return
-            write_type(wd, m_name, m.type, rn) or_return
+            write_type(wd, m_name, m.type, rn, externs) or_return
             io.write_string(wd, ",\n") or_return
         }
         io.write_rune(wd, '}') or_return
@@ -762,7 +790,7 @@ write_type :: proc(
 
             io.write_string(wd, m_name) or_return
             io.write_string(wd, ": ") or_return
-            write_type(wd, m_name, m.type, rn) or_return
+            write_type(wd, m_name, m.type, rn, externs) or_return
             io.write_string(wd, ", ") or_return
         }
         io.write_rune(wd, '}') or_return
@@ -779,11 +807,40 @@ write_type :: proc(
         io.write_string(wd, "rawptr") or_return
     case runic.FunctionPointer:
         io.write_string(wd, "#type ") or_return
-        write_procedure(wd, spec^, rn) or_return
+        write_procedure(wd, spec^, rn, externs) or_return
     case runic.ExternType:
-        return errors.Error(
-            errors.message("TODO: extern types in to odin codegen"),
-        )
+        if extern, ok := om.get(externs, string(spec)); ok {
+            import_name, import_ok := rn.extern.sources[extern.source]
+            remap_name, remap_ok := rn.extern.remaps[string(spec)]
+
+            if !import_ok {
+                // TODO: add extern types that do not have a import name defined to a list so that they can be written out
+                // TODO: correctly check wether to process the type name of extern types
+                processed := runic.process_type_name(
+                    string(spec),
+                    rn,
+                    reserved = ODIN_RESERVED,
+                    allocator = arena_alloc,
+                )
+
+                io.write_string(wd, processed) or_return
+            } else {
+                prefix := import_prefix(import_name)
+                type_name := remap_name if remap_ok else string(spec)
+
+                // TODO: maybe also process this type_name, but since it already has a remap this may not make sense
+                io.write_string(wd, prefix) or_return
+                io.write_rune(wd, '.') or_return
+                io.write_string(wd, type_name) or_return
+            }
+        } else {
+            return errors.Error(
+                errors.message(
+                    "extern type \"{}\" has not been defined in the extern section",
+                    spec,
+                ),
+            )
+        }
     }
 
     return nil
@@ -1046,5 +1103,30 @@ when_plats :: proc(
     }
 
     return false, .None
+}
+
+@(private)
+import_prefix :: proc(import_name: string) -> string {
+    if strings.contains(import_name, " ") {
+        idx := strings.index(import_name, " ")
+        return import_name[:idx]
+    }
+
+    idx := strings.index(import_name, ":")
+    if idx == -1 || len(import_name) == idx + 1 do return "import_name_format_error"
+
+    return import_name[idx + 1:]
+}
+
+@(private)
+import_path :: proc(import_name: string) -> string {
+    start_idx: int = ---
+    if start_idx = strings.index(import_name, " "); start_idx == -1 {
+        start_idx = 0
+    } else {
+        start_idx += 1
+    }
+
+    return strings.trim_space(import_name[start_idx:])
 }
 

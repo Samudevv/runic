@@ -23,7 +23,7 @@ jobs:
         run: |
           sudo apt -y install libclang-14-dev llvm-18
           sudo ln -rfs /usr/lib/x86_64-linux-gnu/libclang-14.so /usr/lib/x86_64-linux-gnu/libclang.so
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-24.04'
       - name: Copy libclang
         run: |
           New-Item -Path build -ItemType Directory

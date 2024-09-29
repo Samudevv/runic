@@ -163,12 +163,14 @@ generate_bindings :: proc(
             }
         }
 
-        generate_bindings_from_runestone(
-            entry,
-            rn,
-            wd,
-            file_path,
-            package_name,
+        errors.wrap(
+            generate_bindings_from_runestone(
+                entry,
+                rn,
+                wd,
+                file_path,
+                package_name,
+            ),
         ) or_return
 
         if !runic.runecross_is_simple(rc) && write_when {

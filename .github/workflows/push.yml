@@ -7,10 +7,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
-    name: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-arm64' || 'windows-x86_64' }}
+        os: [ubuntu-24.04, windows-latest, macos-13, macos-14]
+    name: ${{ matrix.os == 'ubuntu-24.04' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-arm64' || 'windows-x86_64' }}
     env:
-      plat: ${{ matrix.os == 'ubuntu-latest' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-arm64' || 'windows-x86_64' }}
+      plat: ${{ matrix.os == 'ubuntu-24.04' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-arm64' || 'windows-x86_64' }}
 
 
     steps:
@@ -19,9 +19,9 @@ jobs:
           submodules: recursive
       - uses: extractions/setup-just@v2
         name: Install just
-      - name: Install libclang
+      - name: Install libclang, llvm
         run: |
-          sudo apt -y install libclang-14-dev
+          sudo apt -y install libclang-14-dev llvm-18
           sudo ln -rfs /usr/lib/x86_64-linux-gnu/libclang-14.so /usr/lib/x86_64-linux-gnu/libclang.so
         if: matrix.os == 'ubuntu-latest'
       - name: Copy libclang

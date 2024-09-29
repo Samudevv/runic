@@ -230,12 +230,12 @@ generate_bindings_from_runestone :: proc(
             defer strings.builder_destroy(&type_build)
             ts := strings.to_stream(&type_build)
 
-            // TODO: Determine wether this extern type should be processed
             name = runic.process_type_name(
                 name,
                 rn,
                 reserved = ODIN_RESERVED,
                 allocator = arena_alloc,
+                extern = true,
             )
 
             io.write_string(ts, name) or_return
@@ -854,25 +854,37 @@ write_type :: proc(
         write_procedure(wd, spec^, rn, externs) or_return
     case runic.ExternType:
         if extern, ok := om.get(externs, string(spec)); ok {
-            import_name, import_ok := runic.map_glob(rn.extern.sources, extern.source)
+            import_name, import_ok := runic.map_glob(
+                rn.extern.sources,
+                extern.source,
+            )
             remap_name, remap_ok := rn.extern.remaps[string(spec)]
 
             if !import_ok {
-                // TODO: add extern types that do not have a import name defined to a list so that they can be written out
-                // TODO: correctly check wether to process the type name of extern types
                 processed := runic.process_type_name(
                     string(spec),
                     rn,
                     reserved = ODIN_RESERVED,
                     allocator = arena_alloc,
+                    extern = true,
                 )
 
                 io.write_string(wd, processed) or_return
             } else {
                 prefix := import_prefix(import_name)
-                type_name := remap_name if remap_ok else string(spec)
+                type_name: string = ---
+                if remap_ok {
+                    type_name = remap_name
+                } else {
+                    type_name = runic.process_type_name(
+                        string(spec),
+                        rn,
+                        reserved = ODIN_RESERVED,
+                        allocator = arena_alloc,
+                        extern = true,
+                    )
+                }
 
-                // TODO: maybe also process this type_name, but since it already has a remap this may not make sense
                 io.write_string(wd, prefix) or_return
                 io.write_rune(wd, '.') or_return
                 io.write_string(wd, type_name) or_return

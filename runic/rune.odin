@@ -1849,13 +1849,14 @@ process_type_name :: proc(
     reserved: []string = {},
     valid_ident := is_valid_identifier,
     allocator := context.allocator,
+    extern := false,
 ) -> string {
     return process_identifier(
         ident,
-        rn.trim_prefix.types,
-        rn.trim_suffix.types,
-        rn.add_prefix.types,
-        rn.add_suffix.types,
+        {} if (extern && !rn.extern.trim_prefix) else rn.trim_prefix.types,
+        {} if (extern && !rn.extern.trim_suffix) else rn.trim_suffix.types,
+        {} if (extern && !rn.extern.add_prefix) else rn.add_prefix.types,
+        {} if (extern && !rn.extern.add_suffix) else rn.add_suffix.types,
         reserved,
         valid_ident,
         allocator,
@@ -1918,7 +1919,7 @@ single_list_glob :: proc(list: []string, value: string) -> bool {
 
 map_glob :: proc(m: $M/map[$K]$V, v: K) -> (match: V, ok: bool) #optional_ok {
     for pattern, potential_match in m {
-        if matched, _ :=  slashpath.match(pattern, v); matched {
+        if matched, _ := slashpath.match(pattern, v); matched {
             return potential_match, true
         }
     }

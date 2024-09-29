@@ -1916,6 +1916,15 @@ single_list_glob :: proc(list: []string, value: string) -> bool {
     return false
 }
 
+map_glob :: proc(m: $M/map[$K]$V, v: K) -> (match: V, ok: bool) #optional_ok {
+    for pattern, potential_match in m {
+        if matched, _ :=  slashpath.match(pattern, v); matched {
+            return potential_match, true
+        }
+    }
+    return "", false
+}
+
 ignore_types :: proc(types: ^om.OrderedMap(string, Type), ignore: IgnoreSet) {
     for idx := 0; idx < len(types.data); idx += 1 {
         entry := types.data[idx]

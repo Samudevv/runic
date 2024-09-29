@@ -308,7 +308,7 @@ test_to_odin_extern :: proc(t: ^testing.T) {
         extern = {
             sources = {
                 "test_data/the_system/my_system.h" = "the_system vendor:sys",
-                "test_data/third_party/third_party.h" = "shared:third_party",
+                "test_data/third_party/*" = "shared:third_party",
             },
             remaps = {"ant" = "Ant"},
         },

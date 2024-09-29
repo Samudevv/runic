@@ -224,8 +224,8 @@ generate_bindings_from_runestone :: proc(
 
     for entry in rs.externs.data {
         name, extern := entry.key, entry.value
-        // TODO: change rn.extern.sources into a glob pattern
-        if extern.source in rn.extern.sources == false {
+
+        if _, ok := runic.map_glob(rn.extern.sources, extern.source); !ok {
             type_build: strings.Builder
             defer strings.builder_destroy(&type_build)
             ts := strings.to_stream(&type_build)
@@ -854,8 +854,7 @@ write_type :: proc(
         write_procedure(wd, spec^, rn, externs) or_return
     case runic.ExternType:
         if extern, ok := om.get(externs, string(spec)); ok {
-            // TODO: change rn.extern.sources to a glob pattern
-            import_name, import_ok := rn.extern.sources[extern.source]
+            import_name, import_ok := runic.map_glob(rn.extern.sources, extern.source)
             remap_name, remap_ok := rn.extern.remaps[string(spec)]
 
             if !import_ok {

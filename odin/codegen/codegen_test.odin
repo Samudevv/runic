@@ -22,6 +22,7 @@ import "core:io"
 import "core:os"
 import "core:path/filepath"
 import "core:testing"
+import cppcdg "root:cpp/codegen"
 import om "root:ordered_map"
 import "root:runic"
 
@@ -271,5 +272,103 @@ main :: proc() {}`
 
     bindings := string(contents)
     expect_value(t, bindings, ODIN_EXPECTED)
+}
+
+@(test)
+test_to_odin_extern :: proc(t: ^testing.T) {
+    using testing
+
+    rf := runic.From {
+        language = "c",
+        shared = {d = {runic.Platform{.Any, .Any} = "libsystem_include.so"}},
+        headers = {
+            d = {runic.Platform{.Any, .Any} = {"test_data/system_include.h"}},
+        },
+        flags = {
+            d = {runic.Platform{.Any, .Any} = {"-Itest_data/the_system"}},
+        },
+        extern = {"test_data/the_system/my_system.h"},
+    }
+    defer delete(rf.shared.d)
+    defer delete(rf.headers.d)
+    defer delete(rf.flags.d)
+    rt := runic.To {
+        language = "odin",
+        package_name = "extern_test",
+        extern = {
+            sources = {"test_data/the_system/my_system.h" = "the_system"},
+        },
+        no_build_tag = true,
+    }
+    defer delete(rt.extern.sources)
+
+    rs, err := cppcdg.generate_runestone(
+        runic.platform_from_host(),
+        "/inline",
+        rf,
+    )
+    if !expect_value(t, err, nil) do return
+    defer runic.runestone_destroy(&rs)
+
+    rs_out, os_err := os.open(
+        "test_data/extern_test_runestone.ini",
+        os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
+        0o644,
+    )
+    if !expect_value(t, os_err, nil) do return
+    defer os.close(rs_out)
+
+    expect_value(
+        t,
+        runic.write_runestone(
+            rs,
+            os.stream_from_handle(rs_out),
+            "test_data/extern_test_runestone.ini",
+        ),
+        io.Error.None,
+    )
+
+    rc: runic.Runecross = ---
+    rc, err = runic.cross_the_runes({"/inline"}, {rs})
+    if !expect_value(t, err, nil) do return
+    defer delete(rc.cross)
+    defer delete(rc.arenas)
+
+    out_file: os.Handle = ---
+    out_file, os_err = os.open(
+        "test_data/extern_test.odin",
+        os.O_CREATE | os.O_TRUNC | os.O_WRONLY,
+        0o644,
+    )
+    if !expect_value(t, os_err, nil) do return
+
+    io_err := generate_bindings(
+        rc,
+        rt,
+        os.stream_from_handle(out_file),
+        "/inline",
+    )
+    os.close(out_file)
+    if !expect_value(t, io_err, io.Error.None) do return
+
+    EXPECT_BINDINGS :: `package extern_test
+
+import "the_system"
+
+from_main :: i32
+main_struct :: struct {
+    b: the_system.from_system,
+}
+
+foreign import extern_test_runic "system:system_include"
+
+`
+
+    data, ok := os.read_entire_file("test_data/extern_test.odin")
+    if !expect(t, ok) do return
+    defer delete(data)
+
+    expect_value(t, len(string(data)), len(EXPECT_BINDINGS))
+    expect_value(t, string(data), EXPECT_BINDINGS)
 }
 

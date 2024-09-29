@@ -114,20 +114,36 @@ generate_bindings :: proc(
     io.write_string(wd, "\n\n") or_return
 
     // Write all imports for the extern types
-    imports := make([dynamic]string, arena_alloc)
+    imports := make([dynamic][2]string, arena_alloc)
     for _, source in rn.extern.sources {
-        import_name := import_path(source)
-        if !slice.contains(imports[:], import_name) {
-            append(&imports, import_name)
+        import_name_overwrite, import_path_name := import_path(source)
+        if !slice.contains(
+            imports[:],
+            [2]string{import_name_overwrite, import_path_name},
+        ) {
+            append(
+                &imports,
+                [2]string{import_name_overwrite, import_path_name},
+            )
         }
     }
 
-    slice.sort(imports[:])
+    slice.sort_by(imports[:], proc(i, j: [2]string) -> bool {
+        name_i := i[0] if len(i[0]) != 0 else i[1]
+        name_j := j[0] if len(j[0]) != 0 else j[1]
 
-    for import_name in imports {
+        return name_i < name_j
+    })
+
+    for importy in imports {
+        import_name_overwrite, import_path_name := importy[0], importy[1]
         io.write_string(wd, "import ") or_return
+        if len(import_name_overwrite) != 0 {
+            io.write_string(wd, import_name_overwrite) or_return
+            io.write_rune(wd, ' ') or_return
+        }
         io.write_rune(wd, '"') or_return
-        io.write_string(wd, import_name) or_return
+        io.write_string(wd, import_path_name) or_return
         io.write_string(wd, "\"\n") or_return
     }
     if len(imports) != 0 do io.write_rune(wd, '\n') or_return
@@ -1112,21 +1128,30 @@ import_prefix :: proc(import_name: string) -> string {
         return import_name[:idx]
     }
 
-    idx := strings.index(import_name, ":")
-    if idx == -1 || len(import_name) == idx + 1 do return "import_name_format_error"
-
-    return import_name[idx + 1:]
+    if idx := strings.index(import_name, ":"); idx == -1 {
+        return import_name
+    } else {
+        return import_name[idx + 1:]
+    }
 }
 
 @(private)
-import_path :: proc(import_name: string) -> string {
+import_path :: proc(
+    import_name: string,
+) -> (
+    import_name_overwrite, import_path_name: string,
+) {
     start_idx: int = ---
     if start_idx = strings.index(import_name, " "); start_idx == -1 {
         start_idx = 0
     } else {
         start_idx += 1
+        import_name_overwrite = strings.trim_left_space(
+            import_name[:start_idx],
+        )
     }
 
-    return strings.trim_space(import_name[start_idx:])
+    import_path_name = strings.trim_space(import_name[start_idx:])
+    return
 }
 

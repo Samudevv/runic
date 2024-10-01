@@ -62,7 +62,7 @@ generate_runestone :: proc(
     rs: runic.Runestone,
     err: errors.Error,
 ) {
-    if !filepath.is_abs(rune_file_name) do return rs, errors.message("Internal Error: rune_file_name needs to be absoulte for cpp_codegen.generate_runestone")
+    if !filepath.is_abs(rune_file_name) do return rs, errors.message("Internal Error: rune_file_name (\"{}\") needs to be absolute for cpp_codegen.generate_runestone", rune_file_name)
 
     arena: runtime.Arena
     defer runtime.arena_destroy(&arena)

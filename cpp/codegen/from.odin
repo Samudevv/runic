@@ -326,6 +326,24 @@ generate_runestone :: proc(
     rs.externs = om.make(string, runic.Extern, allocator = rs_arena_alloc)
 
     for header in headers {
+        _, os_stat := os.stat(header, arena_alloc)
+        #partial switch stat in os_stat {
+            case os.General_Error:
+            if stat == .Not_Exist {
+                err = errors.message(
+                    "failed to find header file: \"{}\"",
+                    header,
+                )
+                return
+            }
+            err = errors.message("failed to open header file: {}", stat)
+            return
+        case nil:
+        case:
+            err = errors.message("failed to open header file: {}", stat)
+            return
+        }
+
         header_cstr := strings.clone_to_cstring(header, arena_alloc)
 
         unit := clang.parseTranslationUnit(

@@ -322,7 +322,8 @@ clang_type_to_runic_type :: proc(
                     parent_display_name := clang.getCursorDisplayName(parent)
                     defer clang.disposeString(parent_display_name)
 
-                    data.err = errors.message("field \"{}.{}\" has specific bit width of {}", clang.getCString(parent_display_name), display_name, field_size)
+                    fmt.eprintfln("field \"{}.{}\" has specific bit width of {}. This is not supported by runic. Therefore \"{}\" will be added as #Untyped", clang.getCString(parent_display_name), display_name, field_size, clang.getCString(parent_display_name))
+                    data.members^ = make([dynamic]runic.Member, data.allocator)
                     return .Break
                 }
 
@@ -367,10 +368,15 @@ clang_type_to_runic_type :: proc(
             display_name := clang.getCursorDisplayName(cursor)
             defer clang.disposeString(display_name)
 
-            err = errors.message(
-                "{} has no members",
+            fmt.eprintfln(
+                "{} has no members. {} will be added as #Untyped",
+                clang.getCString(display_name),
                 clang.getCString(display_name),
             )
+
+            tp = runic.Type {
+                spec = runic.Builtin.Untyped,
+            }
         }
     case .Enum:
         e: runic.Enum

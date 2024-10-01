@@ -112,7 +112,7 @@ test_cpp_struct :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 6)
+    expect_value(t, om.length(rs.types), 8)
 
     abc_t := om.get(rs.types, "abc_t")
     abc_struct := abc_t.spec.(runic.Struct)
@@ -122,9 +122,6 @@ test_cpp_struct :: proc(t: ^testing.T) {
     expect_value(t, abc_struct.members[1].name, "b")
     expect_value(t, abc_struct.members[2].name, "c")
     expect_value(t, abc_struct.members[3].name, "yzg")
-
-    _, my_struct := om.get(rs.types, "my_struct")
-    expect_value(t, my_struct, false)
 
     ss_t := om.get(rs.types, "_sszu_")
     ss_t_struct := ss_t.spec.(runic.Struct)
@@ -150,6 +147,11 @@ test_cpp_struct :: proc(t: ^testing.T) {
 
     x := window_s.members[2].type.spec.(string)
     expect_value(t, x, "x_struct_anon_0")
+
+    wl_output := om.get(rs.types, "wl_output")
+    expect_value(t, wl_output.spec.(runic.Builtin), runic.Builtin.Untyped)
+    my_struct := om.get(rs.types, "my_struct")
+    expect_value(t, my_struct.spec.(runic.Builtin), runic.Builtin.Untyped)
 }
 
 @(test)

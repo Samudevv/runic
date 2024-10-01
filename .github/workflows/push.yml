@@ -30,7 +30,7 @@ jobs:
           Copy-Item -Path .\shared\libclang\lib\windows\x86_64\libclang.dll -Destination .\build\
         if: matrix.os == 'windows-latest'
       - name: Install llvm
-        run: brew install llvm
+        run: brew install llvm@18
         if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
       - uses: laytan/setup-odin@v2
         with:

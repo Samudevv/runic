@@ -55,6 +55,10 @@ odin_struct_bindings :: struct {
     context_: ^i32,
     baz: ^^[10]^^f64,
 }
+odin_bar_struct_bindings :: struct {
+    odin_struct_bindings_: odin_struct_bindings,
+}
+odin_bar_union_bindings :: struct #raw_union {odin_struct_bindings_: odin_struct_bindings, }
 odin_complex_ptr_bindings :: [13][10][5]i32
 
 when #config(FOO_PKG_STATIC, false) {
@@ -72,7 +76,7 @@ foreign foo_pkg_runic {
     odin_sub_float_bindings :: proc(a: odin_anon_0_bindings, b: odin_anon_1_bindings) -> f32 ---
 
     @(link_name = "foo_div_func")
-    odin_div_bindings :: proc(a: [^]odin_struct_bindings, b: [^]odin_struct_bindings) -> f32 ---
+    odin_div_bindings :: proc(a: [^]odin_struct_bindings, odin_struct_bindings_: [^]odin_struct_bindings) -> f32 ---
 
 }
 
@@ -137,7 +141,7 @@ main :: proc() {}`
                                     },
                                 },
                                 {
-                                    name = "b",
+                                    name = "odin_struct_bindings",
                                     type = {
                                         spec = string("foo_struct_t"),
                                         array_info = {{}},
@@ -216,6 +220,32 @@ main :: proc() {}`
                     },
                 },
                 {
+                    key = "bar_struct_t",
+                    value = {
+                        spec = runic.Struct {
+                            members = {
+                                {
+                                    name = "odin_struct_bindings",
+                                    type = {spec = string("foo_struct_t")},
+                                },
+                            },
+                        },
+                    },
+                },
+                {
+                    key = "bar_union",
+                    value = {
+                        spec = runic.Union {
+                            members = {
+                                {
+                                    name = "odin_struct_bindings",
+                                    type = {spec = string("foo_struct_t")},
+                                },
+                            },
+                        },
+                    },
+                },
+                {
                     key = "complex_ptr_t",
                     value = {
                         spec = runic.Builtin.SInt32,
@@ -274,6 +304,7 @@ main :: proc() {}`
     if !expect(t, os_err) do return
 
     bindings := string(contents)
+    expect_value(t, len(bindings), len(ODIN_EXPECTED))
     expect_value(t, bindings, ODIN_EXPECTED)
 }
 

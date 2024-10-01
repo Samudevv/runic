@@ -4,6 +4,12 @@ import "core:testing"
 import om "root:ordered_map"
 import "root:runic"
 
+when ODIN_OS == .Windows {
+    RUNESTONE_TEST_PATH :: "C:\\inline"
+} else {
+    RUNESTONE_TEST_PATH :: "/inline"
+}
+
 @(test)
 test_cpp_builtin :: proc(t: ^testing.T) {
     using testing
@@ -16,7 +22,11 @@ test_cpp_builtin :: proc(t: ^testing.T) {
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
 
-    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    rs, err := generate_runestone(
+        runic.platform_from_host(),
+        RUNESTONE_TEST_PATH,
+        rf,
+    )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
@@ -47,7 +57,11 @@ test_cpp_pointer :: proc(t: ^testing.T) {
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
 
-    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    rs, err := generate_runestone(
+        runic.platform_from_host(),
+        RUNESTONE_TEST_PATH,
+        rf,
+    )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
@@ -74,7 +88,11 @@ test_cpp_array :: proc(t: ^testing.T) {
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
 
-    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    rs, err := generate_runestone(
+        runic.platform_from_host(),
+        RUNESTONE_TEST_PATH,
+        rf,
+    )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
@@ -108,7 +126,11 @@ test_cpp_struct :: proc(t: ^testing.T) {
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
 
-    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    rs, err := generate_runestone(
+        runic.platform_from_host(),
+        RUNESTONE_TEST_PATH,
+        rf,
+    )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
@@ -168,7 +190,11 @@ test_cpp_enum :: proc(t: ^testing.T) {
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
 
-    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    rs, err := generate_runestone(
+        runic.platform_from_host(),
+        RUNESTONE_TEST_PATH,
+        rf,
+    )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
@@ -244,7 +270,11 @@ test_cpp_union :: proc(t: ^testing.T) {
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
 
-    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    rs, err := generate_runestone(
+        runic.platform_from_host(),
+        RUNESTONE_TEST_PATH,
+        rf,
+    )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
@@ -282,7 +312,11 @@ test_cpp_attribute :: proc(t: ^testing.T) {
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
 
-    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    rs, err := generate_runestone(
+        runic.platform_from_host(),
+        RUNESTONE_TEST_PATH,
+        rf,
+    )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
@@ -302,7 +336,11 @@ test_cpp_include :: proc(t: ^testing.T) {
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
 
-    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    rs, err := generate_runestone(
+        runic.platform_from_host(),
+        RUNESTONE_TEST_PATH,
+        rf,
+    )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
@@ -340,7 +378,11 @@ test_cpp_system_include :: proc(t: ^testing.T) {
     defer delete(rf.headers.d)
     defer delete(rf.flags.d)
 
-    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    rs, err := generate_runestone(
+        runic.platform_from_host(),
+        RUNESTONE_TEST_PATH,
+        rf,
+    )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
@@ -402,7 +444,11 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
 
-    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    rs, err := generate_runestone(
+        runic.platform_from_host(),
+        RUNESTONE_TEST_PATH,
+        rf,
+    )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
@@ -470,7 +516,11 @@ test_cpp_function :: proc(t: ^testing.T) {
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
 
-    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    rs, err := generate_runestone(
+        runic.platform_from_host(),
+        RUNESTONE_TEST_PATH,
+        rf,
+    )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
@@ -525,7 +575,11 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
 
-    rs, err := generate_runestone(runic.platform_from_host(), "/inline", rf)
+    rs, err := generate_runestone(
+        runic.platform_from_host(),
+        RUNESTONE_TEST_PATH,
+        rf,
+    )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
@@ -590,7 +644,7 @@ test_cpp_macros :: proc(t: ^testing.T) {
 
     plat := runic.Platform{.Windows, .x86_64}
 
-    rs, err := generate_runestone(plat, "/inline", rf)
+    rs, err := generate_runestone(plat, RUNESTONE_TEST_PATH, rf)
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
@@ -628,7 +682,7 @@ test_cpp_unknown_int :: proc(t: ^testing.T) {
 
     rs, err := generate_runestone(
         runic.Platform{.Linux, .x86_64},
-        "/inline",
+        RUNESTONE_TEST_PATH,
         rf,
     )
     if !expect_value(t, err, nil) do return

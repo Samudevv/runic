@@ -27,6 +27,12 @@ import "root:errors"
 import om "root:ordered_map"
 import "root:runic"
 
+when ODIN_OS == .Windows {
+    RUNESTONE_TEST_PATH :: "C:\\inline"
+} else {
+    RUNESTONE_TEST_PATH :: "/inline"
+}
+
 @(test)
 test_to_odin_codegen :: proc(t: ^testing.T) {
     using testing
@@ -353,7 +359,7 @@ test_to_odin_extern :: proc(t: ^testing.T) {
 
     rs, err := cppcdg.generate_runestone(
         runic.platform_from_host(),
-        "/inline",
+        RUNESTONE_TEST_PATH,
         rf,
     )
     if !expect_value(t, err, nil) do return
@@ -378,7 +384,7 @@ test_to_odin_extern :: proc(t: ^testing.T) {
     )
 
     rc: runic.Runecross = ---
-    rc, err = runic.cross_the_runes({"/inline"}, {rs})
+    rc, err = runic.cross_the_runes({RUNESTONE_TEST_PATH}, {rs})
     if !expect_value(t, err, nil) do return
     defer delete(rc.cross)
     defer delete(rc.arenas)
@@ -392,7 +398,12 @@ test_to_odin_extern :: proc(t: ^testing.T) {
     if !expect_value(t, os_err, nil) do return
 
     err = errors.wrap(
-        generate_bindings(rc, rt, os.stream_from_handle(out_file), "/inline"),
+        generate_bindings(
+            rc,
+            rt,
+            os.stream_from_handle(out_file),
+            RUNESTONE_TEST_PATH,
+        ),
     )
     os.close(out_file)
     if !expect_value(t, err, nil) do return

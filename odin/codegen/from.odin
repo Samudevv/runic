@@ -59,7 +59,11 @@ generate_runestone :: proc(
     rs.symbols = om.make(string, runic.Symbol, allocator = rs_arena_alloc)
 
     packages := runic.platform_value_get([]string, rf.packages, plat)
-    overwrite := runic.platform_value_get(runic.OverwriteSet, rf.overwrite, plat)
+    overwrite := runic.platform_value_get(
+        runic.OverwriteSet,
+        rf.overwrite,
+        plat,
+    )
 
     anon_counter: int
 
@@ -455,6 +459,7 @@ proc_type_to_function :: proc(
             type.spec,
             anon_counter,
             ow,
+            allocator,
         ); is_anon {
             om.insert(types, anon_name, anon_type)
             type.spec = anon_name
@@ -510,6 +515,7 @@ proc_type_to_function :: proc(
             type.spec,
             anon_counter,
             ow,
+            allocator,
         ); is_anon {
             om.insert(types, anon_name, anon_type)
             type.spec = anon_name
@@ -1080,6 +1086,7 @@ struct_type_to_struct :: proc(
             type.spec,
             anon_counter,
             ow,
+            allocator,
         ); is_anon {
             om.insert(types, anon_name, anon_type)
             type.spec = anon_name
@@ -1413,3 +1420,4 @@ lookup_type_in_package :: proc(
     err = errors.message("type {} not found in {}", type_name, pkg.name)
     return
 }
+

@@ -1224,6 +1224,7 @@ create_anon_type :: proc(
     spec: TypeSpecifier,
     anon_counter: ^int,
     ow: OverwriteSet,
+    allocator := context.allocator,
 ) -> (
     anon_name: string,
     anon_type: Type,
@@ -1253,7 +1254,11 @@ create_anon_type :: proc(
     }
 
     if is_anon {
-        anon_name = fmt.aprintf("anon_{}", anon_counter^)
+        anon_name = fmt.aprintf(
+            "anon_{}",
+            anon_counter^,
+            allocator = allocator,
+        )
         anon_counter^ += 1
     }
 

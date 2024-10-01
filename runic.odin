@@ -48,6 +48,15 @@ main :: proc() {
         rune_file_name = os.args[1]
     }
 
+    if !filepath.is_abs(rune_file_name) {
+        cwd := os.get_current_directory()
+        defer delete(cwd)
+        rune_file_name = filepath.join(
+            {cwd, rune_file_name},
+            context.temp_allocator,
+        )
+    }
+
     rune_file, os_err := os.open(rune_file_name)
     if err := errors.wrap(os_err); err != nil {
         fmt.eprintfln("failed to open rune file: {}", err)

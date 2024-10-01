@@ -1908,6 +1908,24 @@ relative_to_file :: proc(
     return rel_path, true
 }
 
+absolute_to_file :: proc(
+    rune_file_name, file_name: string,
+    allocator := context.allocator,
+) -> (
+    string,
+    bool,
+) #optional_ok {
+    if !filepath.is_abs(file_name) do return file_name, true
+
+    rune_dir := filepath.dir(rune_file_name, allocator)
+    defer delete(rune_dir, allocator)
+
+    rel_path, rel_err := filepath.rel(rune_dir, file_name, allocator)
+    if rel_err != .None do return file_name, false
+
+    return rel_path, true
+}
+
 single_list_glob :: proc(list: []string, value: string) -> bool {
     for p in list {
         ok, _ := slashpath.match(p, value)

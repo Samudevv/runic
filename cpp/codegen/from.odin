@@ -20,6 +20,7 @@ package cpp_codegen
 import "base:runtime"
 import "core:fmt"
 import "core:os"
+import "core:path/filepath"
 import "core:strconv"
 import "core:strings"
 import "root:errors"
@@ -50,6 +51,7 @@ ClientData :: struct {
     included_types: ^map[string]IncludedType,
     macros:         ^om.OrderedMap(string, Macro),
     anon_idx:       ^int,
+    rune_file_name: string,
 }
 
 generate_runestone :: proc(
@@ -60,6 +62,8 @@ generate_runestone :: proc(
     rs: runic.Runestone,
     err: errors.Error,
 ) {
+    if !filepath.is_abs(rune_file_name) do return rs, errors.message("Internal Error: rune_file_name needs to be absoulte for cpp_codegen.generate_runestone")
+
     arena: runtime.Arena
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
@@ -312,6 +316,7 @@ generate_runestone :: proc(
         included_types = &included_types,
         macros         = &macros,
         anon_idx       = &anon_idx,
+        rune_file_name = rune_file_name,
     }
     index := clang.createIndex(0, 0)
     defer clang.disposeIndex(index)
@@ -328,7 +333,7 @@ generate_runestone :: proc(
     for header in headers {
         _, os_stat := os.stat(header, arena_alloc)
         #partial switch stat in os_stat {
-            case os.General_Error:
+        case os.General_Error:
             if stat == .Not_Exist {
                 err = errors.message(
                     "failed to find header file: \"{}\"",
@@ -438,6 +443,18 @@ generate_runestone :: proc(
                     )
                     file_name_clang := clang.getFileName(file)
                     defer clang.disposeString(file_name_clang)
+                    file_name, _ := strings.replace_all(
+                        clang_str(file_name_clang),
+                        "\\",
+                        "/",
+                        data.arena_alloc,
+                    )
+                    rel_file_name, rel_ok := runic.absolute_to_file(
+                        data.rune_file_name,
+                        file_name,
+                        data.arena_alloc,
+                    )
+                    if rel_ok do file_name = rel_file_name
 
                     #partial switch cursor_kind {
                     case .TypedefDecl:
@@ -450,12 +467,6 @@ generate_runestone :: proc(
                         )
                         clang.disposeString(type_name_clang)
 
-                        file_name, _ := strings.replace_all(
-                            clang_str(file_name_clang),
-                            "\\",
-                            "/",
-                            data.arena_alloc,
-                        )
                         data.included_types[type_name] = IncludedType {
                             file_name = strings.clone(
                                 file_name,
@@ -475,12 +486,6 @@ generate_runestone :: proc(
                             data.arena_alloc,
                         )
 
-                        file_name, _ := strings.replace_all(
-                            clang_str(file_name_clang),
-                            "\\",
-                            "/",
-                            data.arena_alloc,
-                        )
                         data.included_types[display_name] = IncludedType {
                             file_name = strings.clone(
                                 file_name,
@@ -500,12 +505,6 @@ generate_runestone :: proc(
                             data.arena_alloc,
                         )
 
-                        file_name, _ := strings.replace_all(
-                            clang_str(file_name_clang),
-                            "\\",
-                            "/",
-                            data.arena_alloc,
-                        )
                         data.included_types[display_name] = IncludedType {
                             file_name = strings.clone(
                                 file_name,
@@ -525,12 +524,6 @@ generate_runestone :: proc(
                             data.arena_alloc,
                         )
 
-                        file_name, _ := strings.replace_all(
-                            clang_str(file_name_clang),
-                            "\\",
-                            "//",
-                            data.arena_alloc,
-                        )
                         data.included_types[display_name] = IncludedType {
                             file_name = strings.clone(
                                 file_name,

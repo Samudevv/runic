@@ -515,11 +515,17 @@ clang_type_to_runic_type :: proc(
         }
 
         if len(func.parameters) != int(num_params) {
-            err = clang_source_error(
-                cursor,
-                "could not find parameters num_params={}",
-                num_params,
+            fmt.eprintln(
+                clang_source_error(
+                    cursor,
+                    "could not find parameters len(func.parameters)={} num_params={}. type will be added as untyped",
+                    len(func.parameters),
+                    num_params,
+                ),
             )
+            tp = runic.Type {
+                spec = runic.Builtin.Untyped,
+            }
             return
         }
 
@@ -622,7 +628,11 @@ validate_unknown_types :: proc(
         for &member in t.members {
             validate_unknown_types(&member.type, types, externs)
         }
-    // TODO: for parameters of FunctionPointer
+    case runic.FunctionPointer:
+        for &param in t.parameters {
+            validate_unknown_types(&param.type, types, externs)
+        }
+        validate_unknown_types(&t.return_type, types, externs)
     }
 }
 

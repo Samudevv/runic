@@ -981,6 +981,11 @@ generate_runestone :: proc(
             } else {
                 om.insert(&data.rs.types, unknown, type)
             }
+        } else {
+            fmt.eprintfln(
+                "Unknown type \"{}\" has not been found in the includes",
+                unknown,
+            )
         }
     }
     om.delete(unknown_anons)

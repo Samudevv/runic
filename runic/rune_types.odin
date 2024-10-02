@@ -122,6 +122,9 @@ OverwriteMemberName :: struct {
     idx:       int,
     overwrite: string,
 }
+OverwriteName :: struct {
+    overwrite: string,
+}
 
 OverwriteInstruction :: union {
     OverwriteWhole,
@@ -130,6 +133,7 @@ OverwriteInstruction :: union {
     OverwriteParameterName,
     OverwriteMemberType,
     OverwriteMemberName,
+    OverwriteName,
 }
 
 OdinDetect :: struct {

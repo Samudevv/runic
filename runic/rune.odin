@@ -455,15 +455,12 @@ parse_rune :: proc(
                             #partial switch con in v["constants"] {
                             case yaml.Mapping:
                                 for con_key, con_value in con {
+                                    ow: Overwrite
+
+                                    overwrite_value: string = ---
                                     #partial switch con_v in con_value {
                                     case string:
-                                        append(
-                                            &o_set.constants,
-                                            Overwrite {
-                                                con_key,
-                                                OverwriteWhole(con_v),
-                                            },
-                                        )
+                                        overwrite_value = con_v
                                     case:
                                         err = errors.message(
                                             "\"from.{}.constants.{}\" has invalid type %T",
@@ -473,6 +470,40 @@ parse_rune :: proc(
                                         )
                                         return
                                     }
+
+                                    split := strings.split(con_key, ".")
+                                    defer delete(split)
+
+                                    ow.name = split[0]
+
+                                    switch len(split) {
+                                    case 1:
+                                        ow.instruction = OverwriteWhole(
+                                            overwrite_value,
+                                        )
+                                    case 2:
+                                        switch split[1] {
+                                        case "name":
+                                            ow.instruction = OverwriteName {
+                                                overwrite_value,
+                                            }
+                                        case:
+                                            err = errors.message(
+                                                "\"from.{}.constants.{}\" is invalid",
+                                                key,
+                                                con_key,
+                                            )
+                                            return
+                                        }
+                                    case:
+                                        err = errors.message(
+                                            "\"from.{}.constants.{}\" is invalid: too much \".\"",
+                                            key,
+                                            con_key,
+                                        )
+                                    }
+
+                                    append(&o_set.constants, ow)
                                 }
                             case:
                                 err = errors.message(
@@ -488,15 +519,12 @@ parse_rune :: proc(
                             #partial switch var in v["variables"] {
                             case yaml.Mapping:
                                 for var_key, var_value in var {
+                                    ow: Overwrite
+                                    overwrite_value: string = ---
+
                                     #partial switch var_v in var_value {
                                     case string:
-                                        append(
-                                            &o_set.variables,
-                                            Overwrite {
-                                                var_key,
-                                                OverwriteWhole(var_v),
-                                            },
-                                        )
+                                        overwrite_value = var_v
                                     case:
                                         err = errors.message(
                                             "\"from.{}.variables.{}\" has invalid type %T",
@@ -506,6 +534,41 @@ parse_rune :: proc(
                                         )
                                         return
                                     }
+
+                                    split := strings.split(var_key, ".")
+                                    defer delete(split)
+
+                                    ow.name = split[0]
+
+                                    switch len(split) {
+                                    case 1:
+                                        ow.instruction = OverwriteWhole(
+                                            overwrite_value,
+                                        )
+                                    case 2:
+                                        switch split[1] {
+                                        case "name":
+                                            ow.instruction = OverwriteName {
+                                                overwrite_value,
+                                            }
+                                        case:
+                                            err = errors.message(
+                                                "\"from.{}.variables.{}\" is invalid",
+                                                key,
+                                                var_key,
+                                            )
+                                            return
+                                        }
+                                    case:
+                                        err = errors.message(
+                                            "\"from.{}.variables.{}\" is invalid",
+                                            key,
+                                            var_key,
+                                        )
+                                        return
+                                    }
+
+                                    append(&o_set.variables, ow)
                                 }
                             case:
                                 err = errors.message(
@@ -548,6 +611,10 @@ parse_rune :: proc(
                                         )
                                     case 2:
                                         switch split[1] {
+                                        case "name":
+                                            ow.instruction = OverwriteName {
+                                                overwrite_value,
+                                            }
                                         case "return":
                                             ow.instruction =
                                                 OverwriteReturnType(
@@ -700,6 +767,10 @@ parse_rune :: proc(
                                         )
                                     case 2:
                                         switch split[1] {
+                                        case "name":
+                                            ow.instruction = OverwriteName {
+                                                overwrite_value,
+                                            }
                                         case "return":
                                             ow.instruction =
                                                 OverwriteReturnType(
@@ -2065,9 +2136,19 @@ overwrite_runestone :: proc(
     for ow in overwrite.constants {
         if idx, ok := om.index(rs.constants, ow.name); ok {
             const := &rs.constants.data[idx].value
-            const^ = parse_constant(
-                strings.clone(string(ow.instruction.(OverwriteWhole))),
-            ) or_return
+            switch o in ow.instruction {
+            case OverwriteName:
+                rs.constants.data[idx].key = strings.clone(o.overwrite)
+                delete_key(&rs.constants.indices, ow.name)
+                rs.constants.indices[rs.constants.data[idx].key] = idx
+            case OverwriteWhole:
+                const^ = parse_constant(strings.clone(string(o))) or_return
+            case OverwriteMemberName,
+                 OverwriteMemberType,
+                 OverwriteReturnType,
+                 OverwriteParameterName,
+                 OverwriteParameterType:
+            }
         }
     }
 
@@ -2078,6 +2159,14 @@ overwrite_runestone :: proc(
             #partial switch &func in sym.value {
             case Function:
                 switch o in ow.instruction {
+                case OverwriteName:
+                    if sym.remap == nil {
+                        sym.remap = rs.symbols.data[idx].key
+                    }
+
+                    rs.symbols.data[idx].key = strings.clone(o.overwrite)
+                    delete_key(&rs.symbols.indices, ow.name)
+                    rs.symbols.indices[rs.symbols.data[idx].key] = idx
                 case OverwriteWhole:
                     func = parse_func(strings.clone(string(o))) or_return
                 case OverwriteReturnType:
@@ -2117,9 +2206,23 @@ overwrite_runestone :: proc(
 
             #partial switch &var in sym.value {
             case Type:
-                var = parse_type(
-                    strings.clone(string(ow.instruction.(OverwriteWhole))),
-                ) or_return
+                switch o in ow.instruction {
+                case OverwriteName:
+                    if sym.remap == nil {
+                        sym.remap = rs.symbols.data[idx].key
+                    }
+
+                    rs.symbols.data[idx].key = strings.clone(o.overwrite)
+                    delete_key(&rs.symbols.indices, ow.name)
+                    rs.symbols.indices[rs.symbols.data[idx].key] = idx
+                case OverwriteWhole:
+                    var = parse_type(strings.clone(string(o))) or_return
+                case OverwriteMemberName,
+                     OverwriteMemberType,
+                     OverwriteReturnType,
+                     OverwriteParameterName,
+                     OverwriteParameterType:
+                }
             }
         }
     }
@@ -2128,6 +2231,10 @@ overwrite_runestone :: proc(
         if idx, ok := om.index(rs.types, ow.name); ok {
             type := &rs.types.data[idx].value
             switch o in ow.instruction {
+            case OverwriteName:
+                rs.types.data[idx].key = strings.clone(o.overwrite)
+                delete_key(&rs.types.indices, ow.name)
+                rs.types.indices[rs.types.data[idx].key] = idx
             case OverwriteWhole:
                 type^ = parse_type(strings.clone(string(o))) or_return
             case OverwriteMemberType:

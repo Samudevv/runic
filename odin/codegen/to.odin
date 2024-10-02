@@ -552,7 +552,10 @@ generate_bindings_from_runestone :: proc(
                 proc_err := write_procedure(wd, value, rn, rs.externs, nil)
                 if proc_err != nil {
                     fmt.eprintfln("{}: {}", name, proc_err)
-                    io.write_string(wd, "nil\n\n") or_return
+                    io.write_string(
+                        wd,
+                        "proc (invalid_procedure: ^^^rawptr, error_while_generating_procedure: ^^^^rawptr) ---\n\n",
+                    ) or_return
                     continue
                 }
                 io.write_string(wd, " ---") or_return

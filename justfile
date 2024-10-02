@@ -57,6 +57,26 @@ debug ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
 test PACKAGE='.' ODIN_TESTS='' ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
   odin test {{ PACKAGE }} {{ ODIN_FLAGS }} {{ if PACKAGE == '.' { '-all-packages' } else { '' } }} -out:"{{ BUILD_DIR / 'runic_test' + EXE_EXT }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }} {{ if ODIN_TESTS == '' {''} else {'-define:ODIN_TEST_NAMES=' + ODIN_TESTS} }} -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false
 
+[linux]
+test_windows_obj PACKAGE='.' ODIN_TESTS='' ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
+  -odin test {{ PACKAGE }} {{ ODIN_FLAGS }} -target:windows_amd64 {{ if PACKAGE == '.' { '-all-packages' } else { '' } }} -out:"{{ BUILD_DIR / 'runic_test.exe' }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }} {{ if ODIN_TESTS == '' {''} else {'-define:ODIN_TEST_NAMES=' + ODIN_TESTS} }} -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false
+
+[linux]
+test_windows_link:
+    printf 'void __chkstk() {}\nvoid __security_cookie() {}\nvoid __security_check_cookie() {}\nvoid __GSHandlerCheck() {}\nvoid _RTC_CheckStackVars() {}\nvoid _RTC_InitBase() {}\nvoid _RTC_UninitUse() {}\nvoid _RTC_Shutdown() {}' > "{{ BUILD_DIR / 'chkstk.c' }}"
+    x86_64-w64-mingw32-gcc -o "{{ BUILD_DIR / 'runic_test.exe' }}" "{{ BUILD_DIR / 'runic_test.obj' }}" -Lshared/libclang/lib/windows/x86_64/ -Lshared/yaml/lib/windows/x86_64/ -llibclang -lyaml -lsynchronization -lntdll "{{ BUILD_DIR / 'chkstk.c' }}" 
+    ln -srf shared/libclang/lib/windows/x86_64/libclang.dll "{{ BUILD_DIR / 'libclang.dll' }}"
+
+[linux]
+test_windows_run:
+    WINEDEBUG=-all wine "{{ BUILD_DIR / 'runic_test.exe' }}"
+
+[linux]
+test_windows COMPILE='n' LINK='y' PACKAGE='.' ODIN_TESTS='""' ODIN_JOBS=num_cpus():
+    @{{ if COMPILE == 'y' { 'just test_windows_obj ' + PACKAGE + ' ' + ODIN_TESTS + ' ' + ODIN_JOBS } else {''} }}
+    @{{ if LINK == 'y' { 'just test_windows_link' } else {''} }}
+    @just test_windows_run
+
 [unix]
 win_cat ODIN_JOBS=num_cpus():
 

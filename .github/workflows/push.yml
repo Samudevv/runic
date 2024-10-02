@@ -21,8 +21,9 @@ jobs:
         name: Install just
       - name: Install libclang, llvm
         run: |
-          sudo apt -y install libclang-18-dev llvm-18
+          sudo apt -y install libclang-18-dev libllvm18
           sudo ln -rfs /usr/lib/x86_64-linux-gnu/libclang-18.so /usr/lib/x86_64-linux-gnu/libclang.so
+          sudo ln -rfs /usr/lib/llvm-18/lib/libLLVM.so.1 /usr/lib/llvm-18/lib/libLLVM-18.so.18.1
         if: matrix.os == 'ubuntu-24.04'
       - name: Copy libclang
         run: |

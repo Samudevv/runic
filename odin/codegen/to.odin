@@ -258,7 +258,7 @@ generate_bindings_from_runestone :: proc(
 
             io.write_string(ts, name) or_return
             io.write_string(ts, " :: ") or_return
-            type_err := write_type(ts, &name, extern, rn, rs.externs)
+            _, type_err := write_type(ts, name, extern, rn, rs.externs)
             if type_err != nil {
                 fmt.eprintfln("{}: {}", name, type_err)
                 continue
@@ -283,7 +283,7 @@ generate_bindings_from_runestone :: proc(
 
         io.write_string(ts, name) or_return
         io.write_string(ts, " :: ") or_return
-        type_err := write_type(ts, &name, ty, rn, rs.externs)
+        _, type_err := write_type(ts, name, ty, rn, rs.externs)
         if type_err != nil {
             fmt.eprintfln("{}: {}", name, type_err)
             continue
@@ -522,9 +522,9 @@ generate_bindings_from_runestone :: proc(
                 strings.builder_init(&type_bd)
                 defer strings.builder_destroy(&type_bd)
 
-                type_err := write_type(
+                name_equals_type, type_err := write_type(
                     strings.to_stream(&type_bd),
-                    &name,
+                    name,
                     value,
                     rn,
                     rs.externs,
@@ -537,6 +537,7 @@ generate_bindings_from_runestone :: proc(
                 }
 
                 io.write_string(wd, name) or_return
+                if name_equals_type do io.write_rune(wd, '_') or_return
                 io.write_string(wd, ": ") or_return
                 io.write_string(wd, strings.to_string(type_bd)) or_return
             case runic.Function:
@@ -651,9 +652,9 @@ generate_bindings_from_runestone :: proc(
                             ss,
                             " :: #force_inline proc \"contextless\" () -> ",
                         ) or_return
-                        type_err := write_type(
+                        name_equals_type, type_err := write_type(
                             ss,
-                            &name,
+                            name,
                             sym_value,
                             rn,
                             rs.externs,
@@ -665,6 +666,7 @@ generate_bindings_from_runestone :: proc(
                         }
                         io.write_string(ss, " {\n    return ") or_return
                         io.write_string(ss, name) or_return
+                        if name_equals_type do io.write_rune(ss, '_') or_return
                         io.write_string(ss, "\n}") or_return
                         io.write_string(
                             wd,
@@ -728,15 +730,16 @@ write_procedure :: proc(
         strings.builder_init(&type_bd)
         defer strings.builder_destroy(&type_bd)
 
-        write_type(
+        param_name_equals_type := write_type(
             strings.to_stream(&type_bd),
-            &p_name,
+            p_name,
             p.type,
             rn,
             externs,
         ) or_return
 
         io.write_string(ps, p_name) or_return
+        if param_name_equals_type do io.write_rune(ps, '_') or_return
         io.write_string(ps, ": ") or_return
         io.write_string(ps, strings.to_string(type_bd)) or_return
 
@@ -753,8 +756,7 @@ write_procedure :: proc(
     }
 
     io.write_string(ps, " -> ") or_return
-    return_type_name: string
-    write_type(ps, &return_type_name, fc.return_type, rn, externs) or_return
+    write_type(ps, "", fc.return_type, rn, externs) or_return
 
     io.write_string(wd, strings.to_string(proc_build)) or_return
 
@@ -763,14 +765,17 @@ write_procedure :: proc(
 
 write_type :: proc(
     wd: io.Writer,
-    var_name: ^string,
+    var_name: string,
     ty: runic.Type,
     rn: runic.To,
     externs: om.OrderedMap(string, runic.Extern),
-) -> union {
+) -> (
+    name_equals_type: bool,
+    err: union {
         io.Error,
         errors.Error,
-    } {
+    },
+) {
     arena: runtime.Arena
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
@@ -781,7 +786,9 @@ write_type :: proc(
         if pointer_count >= 1 {
             pointer_count -= 1
         } else {
-            return errors.Error(errors.message("type \"{}\" is unknown", u))
+            return name_equals_type, errors.Error(
+                errors.message("type \"{}\" is unknown", u),
+            )
         }
     }
 
@@ -790,17 +797,17 @@ write_type :: proc(
     switch rn.detect.multi_pointer {
     case "auto":
         if pointer_count >= 1 &&
-           len(var_name^) > 1 &&
-           strings.has_suffix(var_name^, "s") {
+           len(var_name) > 1 &&
+           strings.has_suffix(var_name, "s") {
             is_multi_pointer = true
             pointer_count -= 1
         }
     }
 
     #reverse for a in ty.array_info {
-        pointer, err := strings.repeat("^", int(ty.pointer_info.count))
-        if err != .None {
-            return errors.Error(
+        pointer, pointer_err := strings.repeat("^", int(ty.pointer_info.count))
+        if pointer_err != .None {
+            return name_equals_type, errors.Error(
                 errors.message("failed to create pointer string for array"),
             )
         }
@@ -818,8 +825,8 @@ write_type :: proc(
         io.write_rune(wd, ']') or_return
     }
 
-    pointer, err := strings.repeat("^", pointer_count)
-    if err != .None do return errors.Error(errors.message("failed to create pointer string"))
+    pointer, pointer_err := strings.repeat("^", pointer_count)
+    if pointer_err != .None do return name_equals_type, errors.Error(errors.message("failed to create pointer string"))
 
     if len(pointer) != 0 {
         io.write_string(wd, pointer) or_return
@@ -847,15 +854,16 @@ write_type :: proc(
             strings.builder_init(&type_bd)
             defer strings.builder_destroy(&type_bd)
 
-            write_type(
+            member_name_equals_type := write_type(
                 strings.to_stream(&type_bd),
-                &m_name,
+                m_name,
                 m.type,
                 rn,
                 externs,
             ) or_return
 
             io.write_string(wd, m_name) or_return
+            if member_name_equals_type do io.write_rune(wd, '_') or_return
             io.write_string(wd, ": ") or_return
             io.write_string(wd, strings.to_string(type_bd)) or_return
             io.write_string(wd, ",\n") or_return
@@ -890,15 +898,16 @@ write_type :: proc(
             strings.builder_init(&type_bd)
             defer strings.builder_destroy(&type_bd)
 
-            write_type(
+            member_name_equals_type := write_type(
                 strings.to_stream(&type_bd),
-                &m_name,
+                m_name,
                 m.type,
                 rn,
                 externs,
             ) or_return
 
             io.write_string(wd, m_name) or_return
+            if member_name_equals_type do io.write_rune(wd, '_') or_return
             io.write_string(wd, ": ") or_return
             io.write_string(wd, strings.to_string(type_bd)) or_return
             io.write_string(wd, ", ") or_return
@@ -912,8 +921,8 @@ write_type :: proc(
             allocator = arena_alloc,
         )
 
-        if processed == var_name^ {
-            var_name^ = strings.concatenate({var_name^, "_"}, arena_alloc)
+        if processed == var_name {
+            name_equals_type = true
         }
 
         io.write_string(wd, processed) or_return
@@ -939,11 +948,8 @@ write_type :: proc(
                     extern = true,
                 )
 
-                if processed == var_name^ {
-                    var_name^ = strings.concatenate(
-                        {var_name^, "_"},
-                        arena_alloc,
-                    )
+                if processed == var_name {
+                    name_equals_type = true
                 }
 
                 io.write_string(wd, processed) or_return
@@ -967,16 +973,17 @@ write_type :: proc(
                 io.write_string(wd, type_name) or_return
             }
         } else {
-            return errors.Error(
+            err = errors.Error(
                 errors.message(
                     "extern type \"{}\" has not been defined in the extern section",
                     spec,
                 ),
             )
+            return
         }
     }
 
-    return nil
+    return
 }
 
 write_builtin_type :: proc(wd: io.Writer, ty: runic.Builtin) -> io.Error {

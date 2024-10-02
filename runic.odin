@@ -143,6 +143,8 @@ main :: proc() {
                 continue
             }
 
+            runic.from_postprocess_runestone(&rs, from)
+
             append(&stones, rs)
             append(&file_paths, "")
 

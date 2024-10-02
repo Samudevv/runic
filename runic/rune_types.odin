@@ -42,6 +42,8 @@ From :: struct {
     ignore:      PlatformValue(IgnoreSet),
     overwrite:   PlatformValue(OverwriteSet),
     extern:      []string,
+    remaps:      map[string]string,
+    aliases:     map[string][]string,
     // C
     headers:     PlatformValue([]string),
     includedirs: PlatformValue([]string),

@@ -1265,3 +1265,26 @@ create_anon_type :: proc(
     return
 }
 
+from_postprocess_runestone :: proc(rs: ^Runestone, from: From) {
+    rs_arena_alloc := runtime.arena_allocator(&rs.arena)
+
+    for remap_name, remap_value in from.remaps {
+        if sym, sym_ok := om.get(rs.symbols, remap_name); sym_ok {
+            sym.remap = strings.clone(remap_value, rs_arena_alloc)
+            om.insert(&rs.symbols, remap_name, sym)
+        }
+    }
+
+    for alias_name, alias_values in from.aliases {
+        if sym, sym_ok := om.get(rs.symbols, alias_name); sym_ok {
+            for alias_value in alias_values {
+                append(
+                    &sym.aliases,
+                    strings.clone(alias_value, rs_arena_alloc),
+                )
+            }
+            om.insert(&rs.symbols, alias_name, sym)
+        }
+    }
+}
+

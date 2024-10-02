@@ -25,6 +25,12 @@ from:
       uinky.return: '#SInt32'
   extern:
     - 'test_data/the_system/*'
+  remaps:
+    wl_surface_interface: wl_surface_interface_v
+    wl_cursor_interface: wl_cursor_interface_v
+  aliases:
+    SDL_Event: SDL_Happening
+    SDL_Renderer: [SDL_Painter, SDL_Drawer]
 to:
   language: odin
   static_switch: FOO_STATIC

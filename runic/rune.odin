@@ -200,6 +200,8 @@ parse_rune :: proc(
                 map[Platform][]string,
                 allocator = rn_arena_alloc,
             )
+            f.remaps = make(map[string]string, allocator = rn_arena_alloc)
+            f.aliases = make(map[string][]string, allocator = rn_arena_alloc)
 
             errors.assert(
                 "language" in from,
@@ -1059,6 +1061,66 @@ parse_rune :: proc(
                     f.extern = extern_arr[:]
                 case:
                     err = errors.message("\"from.extern\" has invalid type")
+                    return
+                }
+            }
+
+            if remaps_value, remaps_ok := from["remaps"]; remaps_ok {
+                #partial switch remaps in remaps_value {
+                case yaml.Mapping:
+                    for remap_name, remap_value_value in remaps {
+                        #partial switch remap_value in remap_value_value {
+                        case string:
+                            f.remaps[remap_name] = remap_value
+                        case:
+                            err = errors.message(
+                                "\"from.remaps.{}\" has invalid type",
+                                remap_name,
+                            )
+                            return
+                        }
+                    }
+                case:
+                    err = errors.message("\"from.remaps\" has invalid type")
+                    return
+                }
+            }
+
+            if aliases_value, aliases_ok := from["aliases"]; aliases_ok {
+                #partial switch aliases in aliases_value {
+                case yaml.Mapping:
+                    for alias_name, alias_value_value in aliases {
+                        #partial switch alias_value in alias_value_value {
+                        case string:
+                            arr := make([dynamic]string, rn_arena_alloc)
+                            append(&arr, alias_value)
+                            f.aliases[alias_name] = arr[:]
+                        case yaml.Sequence:
+                            arr := make([dynamic]string, rn_arena_alloc)
+                            for alias_v, idx in alias_value {
+                                #partial switch alias in alias_v {
+                                case string:
+                                    append(&arr, alias)
+                                case:
+                                    err = errors.message(
+                                        "\"from.aliases.{}\"[{}] has invalid type",
+                                        alias_name,
+                                        idx,
+                                    )
+                                    return
+                                }
+                            }
+                            f.aliases[alias_name] = arr[:]
+                        case:
+                            err = errors.message(
+                                "\"from.aliases.{}\" has invalid type",
+                                alias_name,
+                            )
+                            return
+                        }
+                    }
+                case:
+                    err = errors.message("\"from.remaps\" has invalid type")
                     return
                 }
             }

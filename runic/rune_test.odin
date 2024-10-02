@@ -114,6 +114,19 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, extern.sources["SDL2/SDL_Renderer.h"], "vendor:sdl2")
     expect_value(t, len(extern.remaps), 1)
     expect_value(t, extern.remaps["SDL_Renderer"], "Renderer")
+
+    remaps := f.remaps
+    expect_value(t, len(remaps), 2)
+    expect_value(t, remaps["wl_surface_interface"], "wl_surface_interface_v")
+    expect_value(t, remaps["wl_cursor_interface"], "wl_cursor_interface_v")
+
+    aliases := f.aliases
+    expect_value(t, len(aliases), 2)
+    expect_value(t, len(aliases["SDL_Event"]), 1)
+    expect_value(t, aliases["SDL_Event"][0], "SDL_Happening")
+    expect_value(t, len(aliases["SDL_Renderer"]), 2)
+    expect_value(t, aliases["SDL_Renderer"][0], "SDL_Painter")
+    expect_value(t, aliases["SDL_Renderer"][1], "SDL_Drawer")
 }
 
 @(test)

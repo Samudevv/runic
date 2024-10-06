@@ -48,10 +48,6 @@ parse_runestone :: proc(
 
     using rs
 
-    when ODIN_DEBUG {
-        fmt.eprintln("section global")
-    }
-
     global: {
         sect, ok := ini_file[""]
         errors.wrap(ok) or_return
@@ -112,10 +108,6 @@ parse_runestone :: proc(
         }
     }
 
-    when ODIN_DEBUG {
-        fmt.eprintln("section lib")
-    }
-
     lib_section: {
         sect, ok := ini_file["lib"]
         errors.wrap(ok) or_return
@@ -135,10 +127,6 @@ parse_runestone :: proc(
             lib.shared != nil || lib.static != nil,
             "No libraries have been specified",
         ) or_return
-    }
-
-    when ODIN_DEBUG {
-        fmt.eprintln("section symbols")
     }
 
     symbols_section: {
@@ -177,10 +165,6 @@ parse_runestone :: proc(
         }
     }
 
-    when ODIN_DEBUG {
-        fmt.eprintln("section remap")
-    }
-
     remap: {
         sect, ok := ini_file["remap"]
         if !ok do break remap
@@ -198,10 +182,6 @@ parse_runestone :: proc(
         }
     }
 
-    when ODIN_DEBUG {
-        fmt.eprintln("section alias")
-    }
-
     alias: {
         sect, ok := ini_file["alias"]
         if !ok do break alias
@@ -215,10 +195,6 @@ parse_runestone :: proc(
             append(&symbol.aliases, alias_name)
             om.insert(&symbols, symbol_name, symbol)
         }
-    }
-
-    when ODIN_DEBUG {
-        fmt.eprintln("section extern")
     }
 
     extern_section: {
@@ -254,10 +230,6 @@ parse_runestone :: proc(
         }
     }
 
-    when ODIN_DEBUG {
-        fmt.eprintln("section types")
-    }
-
     types: {
         sect, ok := ini_file["types"]
         if !ok do break types
@@ -270,10 +242,6 @@ parse_runestone :: proc(
             type := parse_type(type_def) or_return
             om.insert(&rs.types, type_name, type)
         }
-    }
-
-    when ODIN_DEBUG {
-        fmt.eprintln("section methods")
     }
 
     methods: {
@@ -308,10 +276,6 @@ parse_runestone :: proc(
             symbol.value = func
             om.insert(&symbols, symbol_name, symbol)
         }
-    }
-
-    when ODIN_DEBUG {
-        fmt.eprintln("section constants")
     }
 
     constants: {

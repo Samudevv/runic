@@ -467,17 +467,19 @@ generate_runestone :: proc(
                         )
                         clang.disposeString(type_name_clang)
 
-                        data.included_types[type_name] = IncludedType {
-                            file_name = strings.clone(
-                                file_name,
-                                data.arena_alloc,
-                            ),
-                            type      = typedef,
-                            system    = bool(
-                                clang.Location_isInSystemHeader(
-                                    cursor_location,
+                        if !(type_name in data.included_types) {
+                            data.included_types[type_name] = IncludedType {
+                                file_name = strings.clone(
+                                    file_name,
+                                    data.arena_alloc,
                                 ),
-                            ),
+                                type      = typedef,
+                                system    = bool(
+                                    clang.Location_isInSystemHeader(
+                                        cursor_location,
+                                    ),
+                                ),
+                            }
                         }
                     case .StructDecl:
                         if struct_is_unnamed(display_name) do break
@@ -486,17 +488,19 @@ generate_runestone :: proc(
                             data.arena_alloc,
                         )
 
-                        data.included_types[display_name] = IncludedType {
-                            file_name = strings.clone(
-                                file_name,
-                                data.arena_alloc,
-                            ),
-                            type      = cursor_type,
-                            system    = bool(
-                                clang.Location_isInSystemHeader(
-                                    cursor_location,
+                        if !(display_name in data.included_types) {
+                            data.included_types[display_name] = IncludedType {
+                                file_name = strings.clone(
+                                    file_name,
+                                    data.arena_alloc,
                                 ),
-                            ),
+                                type      = cursor_type,
+                                system    = bool(
+                                    clang.Location_isInSystemHeader(
+                                        cursor_location,
+                                    ),
+                                ),
+                            }
                         }
                     case .EnumDecl:
                         if enum_is_unnamed(display_name) do break
@@ -505,17 +509,19 @@ generate_runestone :: proc(
                             data.arena_alloc,
                         )
 
-                        data.included_types[display_name] = IncludedType {
-                            file_name = strings.clone(
-                                file_name,
-                                data.arena_alloc,
-                            ),
-                            type      = cursor_type,
-                            system    = bool(
-                                clang.Location_isInSystemHeader(
-                                    cursor_location,
+                        if !(display_name in data.included_types) {
+                            data.included_types[display_name] = IncludedType {
+                                file_name = strings.clone(
+                                    file_name,
+                                    data.arena_alloc,
                                 ),
-                            ),
+                                type      = cursor_type,
+                                system    = bool(
+                                    clang.Location_isInSystemHeader(
+                                        cursor_location,
+                                    ),
+                                ),
+                            }
                         }
                     case .UnionDecl:
                         if union_is_unnamed(display_name) do break
@@ -524,17 +530,19 @@ generate_runestone :: proc(
                             data.arena_alloc,
                         )
 
-                        data.included_types[display_name] = IncludedType {
-                            file_name = strings.clone(
-                                file_name,
-                                data.arena_alloc,
-                            ),
-                            type      = cursor_type,
-                            system    = bool(
-                                clang.Location_isInSystemHeader(
-                                    cursor_location,
+                        if !(display_name in data.included_types) {
+                            data.included_types[display_name] = IncludedType {
+                                file_name = strings.clone(
+                                    file_name,
+                                    data.arena_alloc,
                                 ),
-                            ),
+                                type      = cursor_type,
+                                system    = bool(
+                                    clang.Location_isInSystemHeader(
+                                        cursor_location,
+                                    ),
+                                ),
+                            }
                         }
                     }
 

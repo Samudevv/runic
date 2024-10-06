@@ -19,6 +19,7 @@ package runic
 
 import "base:runtime"
 import "core:os"
+import "core:path/filepath"
 import "core:testing"
 import "root:errors"
 import om "root:ordered_map"
@@ -128,12 +129,22 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, aliases["SDL_Renderer"][0], "SDL_Painter")
     expect_value(t, aliases["SDL_Renderer"][1], "SDL_Drawer")
 
+    cwd := os.get_current_directory()
+    defer delete(cwd)
+
+    in_header := filepath.join({cwd, "test_data/wrapper.h"})
+    out_header := filepath.join({cwd, "test_data/wrapper.gen.h"})
+    out_source := filepath.join({cwd, "test_data/wrapper.gen.c"})
+    defer delete(in_header)
+    defer delete(out_header)
+    defer delete(out_source)
+
     wrapper := rn.wrapper.?
     expect_value(t, wrapper.language, "c")
     expect_value(t, len(wrapper.in_headers), 1)
-    expect_value(t, wrapper.in_headers[0], "test_data/wrapper.h")
-    expect_value(t, wrapper.out_header, "test_data/wrapper.gen.h")
-    expect_value(t, wrapper.out_source, "test_data/wrapper.gen.c")
+    expect_value(t, wrapper.in_headers[0], in_header)
+    expect_value(t, wrapper.out_header, out_header)
+    expect_value(t, wrapper.out_source, out_source)
 }
 
 @(test)

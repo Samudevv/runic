@@ -22,7 +22,9 @@ import ccdg "c/codegen"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
+import "core:strings"
 import cppcdg "cpp/codegen"
+import cppwrap "cpp/wrapper"
 import "errors"
 import odincdg "odin/codegen"
 import "runic"
@@ -90,6 +92,33 @@ main :: proc() {
         plats = platties[:]
     }
 
+    if wrapper, ok := rune.wrapper.?; ok {
+        switch strings.to_lower(wrapper.language, context.temp_allocator) {
+        case "c", "cpp", "c++", "cxx":
+            err = errors.wrap(cppwrap.generate_wrapper(wrapper))
+        case:
+            fmt.eprintfln(
+                "wrapper language \"{}\" is not supported",
+                wrapper.language,
+            )
+            os.exit(1)
+        }
+
+        if err != nil {
+            fmt.eprintfln(
+                "failed to generate wrapper for language \"{}\": {}",
+                wrapper.language,
+                err,
+            )
+            os.exit(1)
+        }
+
+        fmt.printfln(
+            "Successfully generated wrapper for language \"{}\"",
+            wrapper.language,
+        )
+    }
+
     from_rc: runic.Runecross
     from_rc.cross = make(
         [dynamic]runic.PlatformRunestone,
@@ -110,7 +139,7 @@ main :: proc() {
         for plat in plats {
             rs: runic.Runestone = ---
 
-            switch from.language {
+            switch strings.to_lower(from.language, context.temp_allocator) {
             case "c", "cpp", "cxx", "c++":
                 rs, err = cppcdg.generate_runestone(plat, rune_file_name, from)
             case "odin":
@@ -283,7 +312,7 @@ main :: proc() {
         }
         defer os.close(out_file)
 
-        switch to.language {
+        switch strings.to_lower(to.language, context.temp_allocator) {
         case "odin":
             err = errors.wrap(
                 odincdg.generate_bindings(

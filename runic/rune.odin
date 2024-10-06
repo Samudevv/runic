@@ -194,7 +194,14 @@ parse_rune :: proc(
                         for header_value, idx in in_headers {
                             #partial switch header in header_value {
                             case string:
-                                append(&arr, header)
+                                append(
+                                    &arr,
+                                    relative_to_file(
+                                        file_path,
+                                        header,
+                                        rn_arena_alloc,
+                                    ),
+                                )
                             case:
                                 err = errors.message(
                                     "\"wrapper.in_headers\"[{}] has invalid type",
@@ -207,7 +214,14 @@ parse_rune :: proc(
                         wrapper.in_headers = arr[:]
                     case string:
                         arr := make([dynamic]string, rn_arena_alloc)
-                        append(&arr, in_headers)
+                        append(
+                            &arr,
+                            relative_to_file(
+                                file_path,
+                                in_headers,
+                                rn_arena_alloc,
+                            ),
+                        )
                         wrapper.in_headers = arr[:]
                     case:
                         err = errors.message(
@@ -220,7 +234,11 @@ parse_rune :: proc(
                 if out_header_value, ok := wrapper_map["out_header"]; ok {
                     #partial switch header_value in out_header_value {
                     case string:
-                        wrapper.out_header = header_value
+                        wrapper.out_header = relative_to_file(
+                            file_path,
+                            header_value,
+                            rn_arena_alloc,
+                        )
                     case:
                         err = errors.message(
                             "\"wrapper.out_header\" has invalid type",
@@ -232,7 +250,11 @@ parse_rune :: proc(
                 if out_source, ok := wrapper_map["out_source"]; ok {
                     #partial switch source_value in out_source {
                     case string:
-                        wrapper.out_source = source_value
+                        wrapper.out_source = relative_to_file(
+                            file_path,
+                            source_value,
+                            rn_arena_alloc,
+                        )
                     case:
                         err = errors.message(
                             "\"wrapper.out_source\" has invalid type",

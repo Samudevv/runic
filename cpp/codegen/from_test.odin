@@ -387,8 +387,8 @@ test_cpp_system_include :: proc(t: ^testing.T) {
     defer runic.runestone_destroy(&rs)
 
     expect_value(t, om.length(rs.types), 3)
-    expect_value(t, om.length(rs.externs), 3)
-    expect_value(t, om.length(rs.symbols), 2)
+    expect_value(t, om.length(rs.externs), 4)
+    expect_value(t, om.length(rs.symbols), 3)
 
     expect_value(
         t,
@@ -405,6 +405,7 @@ test_cpp_system_include :: proc(t: ^testing.T) {
         om.get(rs.types, "from_other_system").spec.(runic.ExternType),
         "sysi",
     )
+    expect(t, !om.contains(rs.types, "feature_t"))
 
     expect_value(
         t,
@@ -422,11 +423,17 @@ test_cpp_system_include :: proc(t: ^testing.T) {
         runic.Builtin.Float64,
     )
     expect(t, !om.contains(rs.externs, "also_from_system"))
+    expect(t, om.contains(rs.externs, "feature_t"))
 
     expect_value(
         t,
         om.get(rs.symbols, "part").value.(runic.Function).parameters[1].type.spec.(runic.ExternType),
         "ant",
+    )
+    expect_value(
+        t,
+        om.get(rs.symbols, "make_feature").value.(runic.Function).parameters[0].type.spec.(runic.ExternType),
+        "feature_t",
     )
 }
 

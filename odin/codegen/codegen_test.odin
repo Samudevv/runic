@@ -430,6 +430,9 @@ foreign extern_test_runic {
     @(link_name = "part")
     part :: proc(a: the_system.from_system, b: ^third_party.Ant) -> the_system.from_system ---
 
+    @(link_name = "make_feature")
+    make_feature :: proc(feature: ^third_party.feature_t) -> cstring ---
+
 }
 
 `

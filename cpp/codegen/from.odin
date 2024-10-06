@@ -871,7 +871,10 @@ generate_runestone :: proc(
     // Look for unknown types
     unknown_types := make([dynamic]string, arena_alloc)
     for &entry in rs.types.data {
-        type := &entry.value
+        name, type := entry.key, &entry.value
+        if b, b_ok := type.spec.(runic.Builtin); b_ok && b == .Untyped {
+            append_unknown_types(&unknown_types, name)
+        }
         unknowns := check_for_unknown_types(type, rs.types)
         extend_unknown_types(&unknown_types, unknowns)
     }
@@ -991,6 +994,16 @@ generate_runestone :: proc(
     om.delete(unknown_anons)
 
     runic.ignore_types(&rs.types, ignore)
+
+    // Remove all types that are they same inside of the externs
+    // If a type is Untyped then the same type of the externs takes
+    // precedence
+    for entry in rs.externs.data {
+        name := entry.key
+        if om.contains(rs.types, name) {
+            om.delete_key(&rs.types, name)
+        }
+    }
 
     // Validate unknown types
     // Check if the previously unknown types are now known

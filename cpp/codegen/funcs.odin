@@ -581,7 +581,12 @@ check_for_unknown_types :: proc(
 ) {
     #partial switch &t in type.spec {
     case string:
-        if !om.contains(types, t) {
+        if found_type, ok := om.get(types, t); ok {
+            if b, b_ok := found_type.spec.(runic.Builtin);
+               b_ok && b == .Untyped {
+                type.spec = runic.Unknown(t)
+            }
+        } else {
             append(&unknowns, t)
             type.spec = runic.Unknown(t)
         }
@@ -684,6 +689,16 @@ extend_unknown_types :: #force_inline proc(
         }
     }
     delete(unknowns)
+}
+
+@(private)
+append_unknown_types :: #force_inline proc(
+    unknown_types: ^[dynamic]string,
+    unknown: string,
+) {
+    if !slice.contains(unknown_types[:], unknown) {
+        append(unknown_types, unknown)
+    }
 }
 
 @(private)

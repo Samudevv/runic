@@ -22,6 +22,7 @@ import "base:runtime"
 Rune :: struct {
     version:   uint,
     platforms: []Platform,
+    wrapper:   Maybe(Wrapper),
     from:      union {
         From,
         string,

@@ -2,6 +2,11 @@ version: 0
 platforms:
   - Linux x86_64
   - Windows x86_64
+wrapper:
+  language: c
+  in_headers: test_data/wrapper.h
+  out_header: test_data/wrapper.gen.h
+  out_source: test_data/wrapper.gen.c
 from:
   language: c
   shared: libfoo.so

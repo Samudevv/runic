@@ -169,6 +169,85 @@ parse_rune :: proc(
             rn.platforms = plats[:]
         }
 
+        if wrapper_value, wrapper_ok := y["wrapper"]; wrapper_ok {
+            wrapper: Wrapper
+
+            #partial switch wrapper_map in wrapper_value {
+            case yaml.Mapping:
+                if language, ok := wrapper_map["language"]; ok {
+                    wrapper.language, ok = language.(string)
+                    if !ok {
+                        err = errors.message(
+                            "\"wrapper.language\" has invalid type",
+                        )
+                        return
+                    }
+                } else {
+                    err = errors.message("\"wrapper.language\" is required")
+                    return
+                }
+
+                if in_headers_value, ok := wrapper_map["in_headers"]; ok {
+                    #partial switch in_headers in in_headers_value {
+                    case yaml.Sequence:
+                        arr := make([dynamic]string, rn_arena_alloc)
+                        for header_value, idx in in_headers {
+                            #partial switch header in header_value {
+                            case string:
+                                append(&arr, header)
+                            case:
+                                err = errors.message(
+                                    "\"wrapper.in_headers\"[{}] has invalid type",
+                                    idx,
+                                )
+                                return
+                            }
+                        }
+
+                        wrapper.in_headers = arr[:]
+                    case string:
+                        arr := make([dynamic]string, rn_arena_alloc)
+                        append(&arr, in_headers)
+                        wrapper.in_headers = arr[:]
+                    case:
+                        err = errors.message(
+                            "\"wrapper.in_headers\" has invalid type",
+                        )
+                        return
+                    }
+                }
+
+                if out_header_value, ok := wrapper_map["out_header"]; ok {
+                    #partial switch header_value in out_header_value {
+                    case string:
+                        wrapper.out_header = header_value
+                    case:
+                        err = errors.message(
+                            "\"wrapper.out_header\" has invalid type",
+                        )
+                        return
+                    }
+                }
+
+                if out_source, ok := wrapper_map["out_source"]; ok {
+                    #partial switch source_value in out_source {
+                    case string:
+                        wrapper.out_source = source_value
+                    case:
+                        err = errors.message(
+                            "\"wrapper.out_source\" has invalid type",
+                        )
+                        return
+                    }
+                }
+            case:
+                err = errors.message("\"wrapper\" has invalid type")
+                return
+            }
+
+            rn.wrapper = wrapper
+        }
+
 
         #partial switch from in y["from"] {
         case yaml.Mapping:

@@ -127,6 +127,13 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, len(aliases["SDL_Renderer"]), 2)
     expect_value(t, aliases["SDL_Renderer"][0], "SDL_Painter")
     expect_value(t, aliases["SDL_Renderer"][1], "SDL_Drawer")
+
+    wrapper := rn.wrapper.?
+    expect_value(t, wrapper.language, "c")
+    expect_value(t, len(wrapper.in_headers), 1)
+    expect_value(t, wrapper.in_headers[0], "test_data/wrapper.h")
+    expect_value(t, wrapper.out_header, "test_data/wrapper.gen.h")
+    expect_value(t, wrapper.out_source, "test_data/wrapper.gen.c")
 }
 
 @(test)

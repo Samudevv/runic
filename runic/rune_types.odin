@@ -71,6 +71,14 @@ To :: struct {
     use_when_else: bool,
 }
 
+Wrapper :: struct {
+    language:   string,
+    // C/C++
+    in_headers: []string,
+    out_header: string,
+    out_source: string,
+}
+
 TrimSet :: struct {
     functions: []string,
     variables: []string,

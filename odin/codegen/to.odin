@@ -20,6 +20,7 @@ import "base:runtime"
 import "core:fmt"
 import "core:io"
 import "core:path/filepath"
+import "core:path/slashpath"
 import "core:slice"
 import "core:strings"
 import "root:errors"
@@ -1250,16 +1251,20 @@ when_plats :: proc(
 
 @(private)
 import_prefix :: proc(import_name: string) -> string {
-    if strings.contains(import_name, " ") {
-        idx := strings.index(import_name, " ")
-        return import_name[:idx]
+    work_name := strings.trim_space(import_name)
+    if idx := strings.index(work_name, " "); idx != -1 {
+        return work_name[:idx]
     }
 
-    if idx := strings.index(import_name, ":"); idx == -1 {
-        return import_name
+    path: string = ---
+    if idx := strings.index(work_name, ":"); idx == -1 {
+        path = work_name
     } else {
-        return import_name[idx + 1:]
+        path = work_name[idx + 1:]
     }
+
+    path = strings.trim_right(path, "/")
+    return slashpath.base(path)
 }
 
 @(private)

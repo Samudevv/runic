@@ -442,3 +442,26 @@ foreign extern_test_runic {
     expect_value(t, string(data), EXPECT_BINDINGS)
 }
 
+@(test)
+test_odin_import_path :: proc(t: ^testing.T) {
+    using testing
+
+    ow, path := import_path("util")
+    expect_value(t, ow, "")
+    expect_value(t, path, "util")
+
+    ow, path = import_path("u util")
+    expect_value(t, ow, "u")
+    expect_value(t, path, "util")
+
+    ow, path = import_path("u ../util")
+    expect_value(t, ow, "u")
+    expect_value(t, path, "../util")
+
+    expect_value(t, import_prefix("util"), "util")
+    expect_value(t, import_prefix("u util"), "u")
+    expect_value(t, import_prefix("core:util"), "util")
+    expect_value(t, import_prefix("u core:util"), "u")
+    expect_value(t, import_prefix("../../../util"), "util")
+}
+

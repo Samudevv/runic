@@ -368,12 +368,6 @@ clang_type_to_runic_type :: proc(
             display_name := clang.getCursorDisplayName(cursor)
             defer clang.disposeString(display_name)
 
-            fmt.eprintfln(
-                "{} has no members. {} will be added as #Untyped",
-                clang.getCString(display_name),
-                clang.getCString(display_name),
-            )
-
             tp = runic.Type {
                 spec = runic.Builtin.Untyped,
             }

@@ -291,6 +291,9 @@ generate_runestone :: proc(
         }
     }
 
+    // TODO: ignore system includes, but this requires a lot of additionial work like declaring all kinds of types as defines. Let's not go down this rabbit hole right now
+    // append(&clang_flags, "-nostdinc")
+
     if flags, ok := runic.platform_value_get([]cstring, rf.flags, plat); ok {
         for f in flags {
             append(&clang_flags, f)

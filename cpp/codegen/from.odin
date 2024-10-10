@@ -1002,10 +1002,14 @@ generate_runestone :: proc(
                 om.insert(&data.rs.types, unknown, type)
             }
         } else {
-            fmt.eprintfln(
-                "Unknown type \"{}\" has not been found in the includes",
-                unknown,
-            )
+            // If the type is #Untyped then it technically exists and we don't need to notify the user about it
+            if !(om.contains(data.rs.types, unknown) ||
+                   om.contains(data.rs.externs, unknown)) {
+                fmt.eprintfln(
+                    "Unknown type \"{}\" has not been found in the includes",
+                    unknown,
+                )
+            }
         }
     }
     om.delete(unknown_anons)

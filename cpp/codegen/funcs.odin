@@ -104,6 +104,7 @@ clang_type_to_runic_type :: proc(
     types: ^om.OrderedMap(string, runic.Type),
     allocator := context.allocator,
     type_hint: Maybe(string) = nil,
+    name_hint: string = "TYPE_NAME_UNKNOWN",
 ) -> (
     tp: runic.Type,
     err: errors.Error,
@@ -176,6 +177,7 @@ clang_type_to_runic_type :: proc(
                 anon_idx,
                 types,
                 allocator,
+                name_hint = name_hint,
             ) or_return
         } else {
             tp.spec = handle_builtin_int(named_name, isz, allocator)
@@ -198,6 +200,7 @@ clang_type_to_runic_type :: proc(
             types,
             allocator,
             pointee_hint,
+            name_hint,
         ) or_return
 
         if _, ok := tp.spec.(runic.FunctionPointer); !ok {
@@ -235,6 +238,7 @@ clang_type_to_runic_type :: proc(
             types,
             allocator,
             type_hint,
+            name_hint,
         ) or_return
 
         handle_anon_type(&tp, types, anon_idx, "array", allocator)
@@ -263,6 +267,7 @@ clang_type_to_runic_type :: proc(
             types,
             allocator,
             type_hint,
+            name_hint,
         ) or_return
 
         handle_anon_type(&tp, types, anon_idx, "array", allocator)
@@ -332,16 +337,16 @@ clang_type_to_runic_type :: proc(
                     type_hint = clang_var_decl_get_type_hint(cursor)
                 }
 
-                type: runic.Type = ---
-                type, data.err = clang_type_to_runic_type(cursor_type, cursor, data.isz, data.anon_idx, data.types, data.allocator, type_hint)
-                if data.err != nil do return .Break
-
                 member_name: string = ---
                 if len(display_name) == 0 {
                     member_name = fmt.aprintf("member{}", len(data.members), allocator = data.allocator)
                 } else {
                     member_name = strings.clone(display_name, data.allocator)
                 }
+
+                type: runic.Type = ---
+                type, data.err = clang_type_to_runic_type(cursor_type, cursor, data.isz, data.anon_idx, data.types, data.allocator, type_hint, member_name)
+                if data.err != nil do return .Break
 
                 #partial switch cursor_kind {
                 case .FieldDecl:
@@ -383,6 +388,7 @@ clang_type_to_runic_type :: proc(
             anon_idx,
             types,
             allocator,
+            name_hint = name_hint,
         ) or_return
 
         // TODO: handle elaborated enum types
@@ -447,6 +453,7 @@ clang_type_to_runic_type :: proc(
             anon_idx,
             types,
             allocator,
+            name_hint = name_hint,
         ) or_return
 
         handle_anon_type(&func.return_type, types, anon_idx, "func", allocator)
@@ -493,7 +500,7 @@ clang_type_to_runic_type :: proc(
                 }
 
                 type: runic.Type = ---
-                type, data.err = clang_type_to_runic_type(param_type, cursor, data.isz, data.anon_idx, data.types, data.allocator, param_hint)
+                type, data.err = clang_type_to_runic_type(param_type, cursor, data.isz, data.anon_idx, data.types, data.allocator, param_hint, param_name)
                 if data.err != nil do return .Break
 
                 handle_anon_type(&type, data.types, data.anon_idx, param_name, data.allocator)
@@ -512,7 +519,8 @@ clang_type_to_runic_type :: proc(
             fmt.eprintln(
                 clang_source_error(
                     cursor,
-                    "could not find parameters len(func.parameters)={} num_params={}. type will be added as untyped",
+                    "{}: could not find parameters len(func.parameters)={} num_params={}. type will be added as untyped",
+                    name_hint,
                     len(func.parameters),
                     num_params,
                 ),

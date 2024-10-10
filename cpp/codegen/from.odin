@@ -586,6 +586,7 @@ generate_runestone :: proc(
                         &data.rs.types,
                         rs_arena_alloc,
                         type_hint,
+                        type_name,
                     )
                     if data.err != nil do break
 
@@ -618,6 +619,7 @@ generate_runestone :: proc(
                         &data.rs.types,
                         rs_arena_alloc,
                         type_hint,
+                        display_name,
                     )
                     if data.err != nil do break
 
@@ -651,6 +653,7 @@ generate_runestone :: proc(
                         data.anon_idx,
                         &data.rs.types,
                         rs_arena_alloc,
+                        name_hint = display_name,
                     )
                     if data.err != nil do break
 
@@ -693,6 +696,11 @@ generate_runestone :: proc(
 
                     type_hint := clang_func_return_type_get_type_hint(cursor)
 
+                    return_type_name_hint := strings.concatenate(
+                        {func_name, "_return_type"},
+                    )
+                    defer delete(return_type_name_hint)
+
                     func.return_type, data.err = clang_type_to_runic_type(
                         cursor_return_type,
                         cursor,
@@ -701,6 +709,7 @@ generate_runestone :: proc(
                         &data.rs.types,
                         rs_arena_alloc,
                         type_hint,
+                        return_type_name_hint,
                     )
                     if data.err != nil do break
 
@@ -764,6 +773,7 @@ generate_runestone :: proc(
                             &data.rs.types,
                             rs_arena_alloc,
                             type_hint,
+                            param_name,
                         )
                         if data.err != nil do break cursor_kind_switch
 
@@ -948,6 +958,7 @@ generate_runestone :: proc(
                 data.anon_idx,
                 &unknown_anons,
                 rs_arena_alloc,
+                name_hint = unknown,
             )
 
             included_file_name := strings.clone(

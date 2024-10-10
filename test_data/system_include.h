@@ -16,3 +16,5 @@ main_struct ctx;
 from_system part(from_system a, ant *b);
 
 char *make_feature(struct feature_t *feature);
+
+struct donkey_t new_donkey();

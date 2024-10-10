@@ -567,7 +567,7 @@ clang_source_error :: proc(
 }
 
 @(private)
-check_for_unknown_types :: proc(
+check_for_unknown_types_in_types :: proc(
     type: ^runic.Type,
     types: om.OrderedMap(string, runic.Type),
 ) -> (
@@ -586,24 +586,72 @@ check_for_unknown_types :: proc(
         }
     case runic.Struct:
         for &member in t.members {
-            u := check_for_unknown_types(&member.type, types)
+            u := check_for_unknown_types_in_types(&member.type, types)
             extend_unknown_types(&unknowns, u)
         }
     case runic.Union:
         for &member in t.members {
-            u := check_for_unknown_types(&member.type, types)
+            u := check_for_unknown_types_in_types(&member.type, types)
             extend_unknown_types(&unknowns, u)
         }
     case runic.FunctionPointer:
-        u := check_for_unknown_types(&t.return_type, types)
+        u := check_for_unknown_types_in_types(&t.return_type, types)
         extend_unknown_types(&unknowns, u)
         for &param in t.parameters {
-            u = check_for_unknown_types(&param.type, types)
+            u = check_for_unknown_types_in_types(&param.type, types)
             extend_unknown_types(&unknowns, u)
         }
     }
 
     return
+}
+
+@(private)
+check_for_unknown_types_in_externs :: proc(
+    type: ^runic.Type,
+    externs: om.OrderedMap(string, runic.Extern),
+) -> (
+    unknowns: [dynamic]string,
+) {
+    #partial switch &t in type.spec {
+    case string:
+        if found_type, ok := om.get(externs, t); ok {
+            if b, b_ok := found_type.spec.(runic.Builtin);
+               b_ok && b == .Untyped {
+                type.spec = runic.Unknown(t)
+            } else {
+                type.spec = runic.ExternType(t)
+            }
+        } else {
+            append(&unknowns, t)
+            type.spec = runic.Unknown(t)
+        }
+    case runic.Struct:
+        for &member in t.members {
+            u := check_for_unknown_types_in_externs(&member.type, externs)
+            extend_unknown_types(&unknowns, u)
+        }
+    case runic.Union:
+        for &member in t.members {
+            u := check_for_unknown_types_in_externs(&member.type, externs)
+            extend_unknown_types(&unknowns, u)
+        }
+    case runic.FunctionPointer:
+        u := check_for_unknown_types_in_externs(&t.return_type, externs)
+        extend_unknown_types(&unknowns, u)
+        for &param in t.parameters {
+            u = check_for_unknown_types_in_externs(&param.type, externs)
+            extend_unknown_types(&unknowns, u)
+        }
+    }
+
+    return
+}
+
+@(private)
+check_for_unknown_types :: proc {
+    check_for_unknown_types_in_types,
+    check_for_unknown_types_in_externs,
 }
 
 @(private)

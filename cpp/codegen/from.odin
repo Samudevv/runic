@@ -958,16 +958,21 @@ generate_runestone :: proc(
 
             for &entry in unknown_anons.data {
                 anon_name, t := entry.key, &entry.value
-                unknowns := check_for_unknown_types(t, data.rs.types)
-                extend_unknown_types(&unknown_types, unknowns)
+
 
                 if is_extern {
+                    unknowns := check_for_unknown_types(t, data.rs.externs)
+                    extend_unknown_types(&unknown_types, unknowns)
+
                     om.insert(
                         &rs.externs,
                         anon_name,
                         runic.Extern{source = included_file_name, type = t^},
                     )
                 } else {
+                    unknowns := check_for_unknown_types(t, data.rs.types)
+                    extend_unknown_types(&unknown_types, unknowns)
+
                     om.insert(&rs.types, anon_name, t^)
                 }
             }
@@ -980,16 +985,20 @@ generate_runestone :: proc(
                 continue
             }
 
-            unknowns := check_for_unknown_types(&type, data.rs.types)
-            extend_unknown_types(&unknown_types, unknowns)
 
             if is_extern {
+                unknowns := check_for_unknown_types(&type, data.rs.externs)
+                extend_unknown_types(&unknown_types, unknowns)
+
                 om.insert(
                     &data.rs.externs,
                     unknown,
                     runic.Extern{source = included_file_name, type = type},
                 )
             } else {
+                unknowns := check_for_unknown_types(&type, data.rs.types)
+                extend_unknown_types(&unknown_types, unknowns)
+
                 om.insert(&data.rs.types, unknown, type)
             }
         } else {
@@ -1035,6 +1044,11 @@ generate_runestone :: proc(
         case runic.Type:
             validate_unknown_types(&value, rs.types, rs.externs)
         }
+    }
+
+    for &entry in rs.externs.data {
+        extern := &entry.value
+        validate_unknown_types(&extern.type, rs.types, rs.externs)
     }
 
     // Handle Macros

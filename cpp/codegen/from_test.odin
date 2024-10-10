@@ -387,8 +387,8 @@ test_cpp_system_include :: proc(t: ^testing.T) {
     defer runic.runestone_destroy(&rs)
 
     expect_value(t, om.length(rs.types), 3)
-    expect_value(t, om.length(rs.externs), 4)
-    expect_value(t, om.length(rs.symbols), 3)
+    expect_value(t, om.length(rs.externs), 6)
+    expect_value(t, om.length(rs.symbols), 4)
 
     expect_value(
         t,
@@ -424,6 +424,20 @@ test_cpp_system_include :: proc(t: ^testing.T) {
     )
     expect(t, !om.contains(rs.externs, "also_from_system"))
     expect(t, om.contains(rs.externs, "feature_t"))
+    expect_value(
+        t,
+        om.get(rs.externs, "donkey_t").spec.(runic.Struct).members[1].name,
+        "oink",
+    )
+    expect_value(
+        t,
+        om.get(rs.externs, "donkey_t").spec.(runic.Struct).members[1].type.spec.(runic.ExternType),
+        "oink_func_ptr_anon_0",
+    )
+    oink := om.get(rs.externs, "oink_func_ptr_anon_0").spec.(runic.FunctionPointer)
+    expect_value(t, len(oink.parameters), 2)
+    expect_value(t, oink.parameters[0].name, "volume")
+    expect_value(t, oink.parameters[1].name, "speed")
 
     expect_value(
         t,
@@ -434,6 +448,11 @@ test_cpp_system_include :: proc(t: ^testing.T) {
         t,
         om.get(rs.symbols, "make_feature").value.(runic.Function).parameters[0].type.spec.(runic.ExternType),
         "feature_t",
+    )
+    expect_value(
+        t,
+        om.get(rs.symbols, "new_donkey").value.(runic.Function).return_type.spec.(runic.ExternType),
+        "donkey_t",
     )
 }
 

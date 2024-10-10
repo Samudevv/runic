@@ -433,6 +433,9 @@ foreign extern_test_runic {
     @(link_name = "make_feature")
     make_feature :: proc(feature: ^third_party.feature_t) -> cstring ---
 
+    @(link_name = "new_donkey")
+    new_donkey :: proc() -> third_party.donkey_t ---
+
 }
 
 `

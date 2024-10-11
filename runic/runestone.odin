@@ -1254,6 +1254,19 @@ create_anon_type :: proc(
 from_postprocess_runestone :: proc(rs: ^Runestone, from: From) {
     rs_arena_alloc := runtime.arena_allocator(&rs.arena)
 
+    // Ignore stuff
+    ignore := platform_value_get(IgnoreSet, from.ignore, rs.platform)
+    ignore_types(&rs.types, ignore)
+    ignore_constants(&rs.constants, ignore)
+    ignore_symbols(&rs.symbols, ignore)
+
+    overwrite := platform_value_get(OverwriteSet, from.overwrite, rs.platform)
+    overwrite_runestone(rs, overwrite)
+
+    // Validate unknown types
+    validate_unknown_types(rs)
+
+    // Inject remaps of the rune into the runestone
     for remap_name, remap_value in from.remaps {
         if sym, sym_ok := om.get(rs.symbols, remap_name); sym_ok {
             sym.remap = strings.clone(remap_value, rs_arena_alloc)
@@ -1261,6 +1274,7 @@ from_postprocess_runestone :: proc(rs: ^Runestone, from: From) {
         }
     }
 
+    // Inject aliases of the rune into the runestone
     for alias_name, alias_values in from.aliases {
         if sym, sym_ok := om.get(rs.symbols, alias_name); sym_ok {
             for alias_value in alias_values {

@@ -364,6 +364,7 @@ test_to_odin_extern :: proc(t: ^testing.T) {
     )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
+    runic.from_postprocess_runestone(&rs, rf)
 
     rs_out, os_err := os.open(
         "test_data/extern_test_runestone.ini",

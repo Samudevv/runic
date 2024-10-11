@@ -385,6 +385,7 @@ test_cpp_system_include :: proc(t: ^testing.T) {
     )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
+    runic.from_postprocess_runestone(&rs, rf)
 
     expect_value(t, om.length(rs.types), 3)
     expect_value(t, om.length(rs.externs), 6)
@@ -477,6 +478,7 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     )
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
+    runic.from_postprocess_runestone(&rs, rf)
 
     expect_value(t, om.length(rs.types), 9)
     expect_value(t, om.length(rs.symbols), 4)

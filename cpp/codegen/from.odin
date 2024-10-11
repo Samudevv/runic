@@ -301,11 +301,6 @@ generate_runestone :: proc(
     }
 
     headers := runic.platform_value_get([]string, rf.headers, plat)
-    overwrite := runic.platform_value_get(
-        runic.OverwriteSet,
-        rf.overwrite,
-        plat,
-    )
     ignore := runic.platform_value_get(runic.IgnoreSet, rf.ignore, plat)
 
     included_types := make(map[string]IncludedType, allocator = arena_alloc)
@@ -944,10 +939,7 @@ generate_runestone :: proc(
 
 
                 if is_extern {
-                    unknowns := runic.check_for_unknown_types(
-                        t,
-                        rs.externs,
-                    )
+                    unknowns := runic.check_for_unknown_types(t, rs.externs)
                     runic.extend_unknown_types(&unknown_types, unknowns)
 
                     om.insert(
@@ -1014,9 +1006,6 @@ generate_runestone :: proc(
             om.delete_key(&rs.types, name)
         }
     }
-
-    // Validate unknown types
-    runic.validate_unknown_types(&rs)
 
     // Handle Macros
     if om.length(macros) != 0 {
@@ -1237,12 +1226,6 @@ generate_runestone :: proc(
             &data,
         )
     }
-
-    // Ignore stuff
-    runic.ignore_constants(&rs.constants, ignore)
-    runic.ignore_symbols(&rs.symbols, ignore)
-
-    runic.overwrite_runestone(&rs, overwrite)
 
     return
 }

@@ -2437,3 +2437,217 @@ overwrite_runestone :: proc(
     return nil
 }
 
+check_for_unknown_types_in_runestone :: proc(
+    rs: ^Runestone,
+    allocator := context.allocator,
+) -> (
+    unknown_types: [dynamic]string,
+) {
+    unknown_types = make([dynamic]string, allocator)
+    for &entry in rs.types.data {
+        name, type := entry.key, &entry.value
+        if b, b_ok := type.spec.(Builtin); b_ok && b == .Untyped {
+            append_unknown_types(&unknown_types, name)
+        }
+        unknowns := check_for_unknown_types(type, rs.types)
+        extend_unknown_types(&unknown_types, unknowns)
+    }
+
+    for &entry in rs.symbols.data {
+        sym := &entry.value
+
+        switch &value in sym.value {
+        case Function:
+            unknowns := check_for_unknown_types(&value.return_type, rs.types)
+            extend_unknown_types(&unknown_types, unknowns)
+
+            for &param in value.parameters {
+                unknowns = check_for_unknown_types(&param.type, rs.types)
+                extend_unknown_types(&unknown_types, unknowns)
+            }
+        case Type:
+            unknowns := check_for_unknown_types(&value, rs.types)
+            extend_unknown_types(&unknown_types, unknowns)
+        }
+    }
+
+    for &entry in rs.externs.data {
+        type := &entry.value
+
+        unknowns := check_for_unknown_types(type, rs.externs)
+        extend_unknown_types(&unknown_types, unknowns)
+    }
+
+    return
+}
+
+check_for_unknown_types_in_types :: proc(
+    type: ^Type,
+    types: om.OrderedMap(string, Type),
+) -> (
+    unknowns: [dynamic]string,
+) {
+    #partial switch &t in type.spec {
+    case string:
+        if found_type, ok := om.get(types, t); ok {
+            if b, b_ok := found_type.spec.(Builtin);
+               b_ok && b == .Untyped {
+                type.spec = Unknown(t)
+            }
+        } else {
+            append(&unknowns, t)
+            type.spec = Unknown(t)
+        }
+    case Struct:
+        for &member in t.members {
+            u := check_for_unknown_types_in_types(&member.type, types)
+            extend_unknown_types(&unknowns, u)
+        }
+    case Union:
+        for &member in t.members {
+            u := check_for_unknown_types_in_types(&member.type, types)
+            extend_unknown_types(&unknowns, u)
+        }
+    case FunctionPointer:
+        u := check_for_unknown_types_in_types(&t.return_type, types)
+        extend_unknown_types(&unknowns, u)
+        for &param in t.parameters {
+            u = check_for_unknown_types_in_types(&param.type, types)
+            extend_unknown_types(&unknowns, u)
+        }
+    }
+
+    return
+}
+
+check_for_unknown_types_in_externs :: proc(
+    type: ^Type,
+    externs: om.OrderedMap(string, Extern),
+) -> (
+    unknowns: [dynamic]string,
+) {
+    #partial switch &t in type.spec {
+    case string:
+        if found_type, ok := om.get(externs, t); ok {
+            if b, b_ok := found_type.spec.(Builtin);
+               b_ok && b == .Untyped {
+                type.spec = Unknown(t)
+            } else {
+                type.spec = ExternType(t)
+            }
+        } else {
+            append(&unknowns, t)
+            type.spec = Unknown(t)
+        }
+    case Struct:
+        for &member in t.members {
+            u := check_for_unknown_types_in_externs(&member.type, externs)
+            extend_unknown_types(&unknowns, u)
+        }
+    case Union:
+        for &member in t.members {
+            u := check_for_unknown_types_in_externs(&member.type, externs)
+            extend_unknown_types(&unknowns, u)
+        }
+    case FunctionPointer:
+        u := check_for_unknown_types_in_externs(&t.return_type, externs)
+        extend_unknown_types(&unknowns, u)
+        for &param in t.parameters {
+            u = check_for_unknown_types_in_externs(&param.type, externs)
+            extend_unknown_types(&unknowns, u)
+        }
+    }
+
+    return
+}
+
+check_for_unknown_types :: proc {
+    check_for_unknown_types_in_runestone,
+    check_for_unknown_types_in_types,
+    check_for_unknown_types_in_externs,
+}
+
+extend_unknown_types :: #force_inline proc(
+    unknown_types: ^[dynamic]string,
+    unknowns: [dynamic]string,
+) {
+    for u in unknowns {
+        if !slice.contains(unknown_types[:], u) {
+            append(unknown_types, u)
+        }
+    }
+    delete(unknowns)
+}
+
+append_unknown_types :: #force_inline proc(
+    unknown_types: ^[dynamic]string,
+    unknown: string,
+) {
+    if !slice.contains(unknown_types[:], unknown) {
+        append(unknown_types, unknown)
+    }
+}
+
+validate_unknown_types_of_runestone :: proc(rs: ^Runestone) {
+    // Check if the previously unknown types are now known
+    // If so change the spec to a ExternType, because a type
+    // can only be unknown if either does not exist or is included
+    for &entry in rs.types.data {
+        type := &entry.value
+        validate_unknown_types(type, rs.types, rs.externs)
+    }
+
+    for &entry in rs.symbols.data {
+        sym := &entry.value
+
+        switch &value in sym.value {
+        case Function:
+            validate_unknown_types(&value.return_type, rs.types, rs.externs)
+
+            for &param in value.parameters {
+                validate_unknown_types(&param.type, rs.types, rs.externs)
+            }
+        case Type:
+            validate_unknown_types(&value, rs.types, rs.externs)
+        }
+    }
+
+    for &entry in rs.externs.data {
+        extern := &entry.value
+        validate_unknown_types(&extern.type, rs.types, rs.externs)
+    }
+}
+
+validate_unknown_types_of_type :: proc(
+    type: ^Type,
+    types: om.OrderedMap(string, Type),
+    externs: om.OrderedMap(string, Extern),
+) {
+    #partial switch &t in type.spec {
+    case Unknown:
+        if om.contains(types, string(t)) {
+            type.spec = string(t)
+        } else if om.contains(externs, string(t)) {
+            type.spec = ExternType(t)
+        }
+    case Struct:
+        for &member in t.members {
+            validate_unknown_types(&member.type, types, externs)
+        }
+    case Union:
+        for &member in t.members {
+            validate_unknown_types(&member.type, types, externs)
+        }
+    case FunctionPointer:
+        for &param in t.parameters {
+            validate_unknown_types(&param.type, types, externs)
+        }
+        validate_unknown_types(&t.return_type, types, externs)
+    }
+}
+
+validate_unknown_types :: proc {
+    validate_unknown_types_of_runestone,
+    validate_unknown_types_of_type,
+}
+

@@ -68,7 +68,7 @@ generate_runestone :: proc(
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
 
-    rs_arena_alloc := runtime.arena_allocator(&rs.arena)
+    rs_arena_alloc := runic.init_runestone(&rs)
 
     rs.platform = plat
     runic.set_library(plat, &rs, rf)
@@ -327,11 +327,6 @@ generate_runestone :: proc(
     defer for unit in units {
         clang.disposeTranslationUnit(unit)
     }
-
-    rs.constants = om.make(string, runic.Constant, allocator = rs_arena_alloc)
-    rs.symbols = om.make(string, runic.Symbol, allocator = rs_arena_alloc)
-    rs.types = om.make(string, runic.Type, allocator = rs_arena_alloc)
-    rs.externs = om.make(string, runic.Extern, allocator = rs_arena_alloc)
 
     for header in headers {
         _, os_stat := os.stat(header, arena_alloc)
@@ -890,33 +885,7 @@ generate_runestone :: proc(
     runic.ignore_types(&rs.types, ignore)
 
     // Look for unknown types
-    unknown_types := make([dynamic]string, arena_alloc)
-    for &entry in rs.types.data {
-        name, type := entry.key, &entry.value
-        if b, b_ok := type.spec.(runic.Builtin); b_ok && b == .Untyped {
-            append_unknown_types(&unknown_types, name)
-        }
-        unknowns := check_for_unknown_types(type, rs.types)
-        extend_unknown_types(&unknown_types, unknowns)
-    }
-
-    for &entry in rs.symbols.data {
-        sym := &entry.value
-
-        switch &value in sym.value {
-        case runic.Function:
-            unknowns := check_for_unknown_types(&value.return_type, rs.types)
-            extend_unknown_types(&unknown_types, unknowns)
-
-            for &param in value.parameters {
-                unknowns = check_for_unknown_types(&param.type, rs.types)
-                extend_unknown_types(&unknown_types, unknowns)
-            }
-        case runic.Type:
-            unknowns := check_for_unknown_types(&value, rs.types)
-            extend_unknown_types(&unknown_types, unknowns)
-        }
-    }
+    unknown_types := runic.check_for_unknown_types(&rs, arena_alloc)
 
     // Try to find the unknown types in the includes
     unknown_anons := om.make(string, runic.Type)
@@ -975,8 +944,11 @@ generate_runestone :: proc(
 
 
                 if is_extern {
-                    unknowns := check_for_unknown_types(t, data.rs.externs)
-                    extend_unknown_types(&unknown_types, unknowns)
+                    unknowns := runic.check_for_unknown_types(
+                        t,
+                        rs.externs,
+                    )
+                    runic.extend_unknown_types(&unknown_types, unknowns)
 
                     om.insert(
                         &rs.externs,
@@ -984,8 +956,8 @@ generate_runestone :: proc(
                         runic.Extern{source = included_file_name, type = t^},
                     )
                 } else {
-                    unknowns := check_for_unknown_types(t, data.rs.types)
-                    extend_unknown_types(&unknown_types, unknowns)
+                    unknowns := runic.check_for_unknown_types(t, data.rs.types)
+                    runic.extend_unknown_types(&unknown_types, unknowns)
 
                     om.insert(&rs.types, anon_name, t^)
                 }
@@ -1001,8 +973,11 @@ generate_runestone :: proc(
 
 
             if is_extern {
-                unknowns := check_for_unknown_types(&type, data.rs.externs)
-                extend_unknown_types(&unknown_types, unknowns)
+                unknowns := runic.check_for_unknown_types(
+                    &type,
+                    data.rs.externs,
+                )
+                runic.extend_unknown_types(&unknown_types, unknowns)
 
                 om.insert(
                     &data.rs.externs,
@@ -1010,8 +985,8 @@ generate_runestone :: proc(
                     runic.Extern{source = included_file_name, type = type},
                 )
             } else {
-                unknowns := check_for_unknown_types(&type, data.rs.types)
-                extend_unknown_types(&unknown_types, unknowns)
+                unknowns := runic.check_for_unknown_types(&type, data.rs.types)
+                runic.extend_unknown_types(&unknown_types, unknowns)
 
                 om.insert(&data.rs.types, unknown, type)
             }
@@ -1041,33 +1016,7 @@ generate_runestone :: proc(
     }
 
     // Validate unknown types
-    // Check if the previously unknown types are now known
-    // If so change the spec to a ExternType, because a type
-    // can only be unknown if either does not exist or is included
-    for &entry in rs.types.data {
-        type := &entry.value
-        validate_unknown_types(type, rs.types, rs.externs)
-    }
-
-    for &entry in rs.symbols.data {
-        sym := &entry.value
-
-        switch &value in sym.value {
-        case runic.Function:
-            validate_unknown_types(&value.return_type, rs.types, rs.externs)
-
-            for &param in value.parameters {
-                validate_unknown_types(&param.type, rs.types, rs.externs)
-            }
-        case runic.Type:
-            validate_unknown_types(&value, rs.types, rs.externs)
-        }
-    }
-
-    for &entry in rs.externs.data {
-        extern := &entry.value
-        validate_unknown_types(&extern.type, rs.types, rs.externs)
-    }
+    runic.validate_unknown_types(&rs)
 
     // Handle Macros
     if om.length(macros) != 0 {

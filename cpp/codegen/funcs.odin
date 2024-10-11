@@ -3,7 +3,6 @@ package cpp_codegen
 import "base:runtime"
 import "core:fmt"
 import "core:os"
-import "core:slice"
 import "core:strings"
 import "root:errors"
 import om "root:ordered_map"
@@ -575,123 +574,6 @@ clang_source_error :: proc(
 }
 
 @(private)
-check_for_unknown_types_in_types :: proc(
-    type: ^runic.Type,
-    types: om.OrderedMap(string, runic.Type),
-) -> (
-    unknowns: [dynamic]string,
-) {
-    #partial switch &t in type.spec {
-    case string:
-        if found_type, ok := om.get(types, t); ok {
-            if b, b_ok := found_type.spec.(runic.Builtin);
-               b_ok && b == .Untyped {
-                type.spec = runic.Unknown(t)
-            }
-        } else {
-            append(&unknowns, t)
-            type.spec = runic.Unknown(t)
-        }
-    case runic.Struct:
-        for &member in t.members {
-            u := check_for_unknown_types_in_types(&member.type, types)
-            extend_unknown_types(&unknowns, u)
-        }
-    case runic.Union:
-        for &member in t.members {
-            u := check_for_unknown_types_in_types(&member.type, types)
-            extend_unknown_types(&unknowns, u)
-        }
-    case runic.FunctionPointer:
-        u := check_for_unknown_types_in_types(&t.return_type, types)
-        extend_unknown_types(&unknowns, u)
-        for &param in t.parameters {
-            u = check_for_unknown_types_in_types(&param.type, types)
-            extend_unknown_types(&unknowns, u)
-        }
-    }
-
-    return
-}
-
-@(private)
-check_for_unknown_types_in_externs :: proc(
-    type: ^runic.Type,
-    externs: om.OrderedMap(string, runic.Extern),
-) -> (
-    unknowns: [dynamic]string,
-) {
-    #partial switch &t in type.spec {
-    case string:
-        if found_type, ok := om.get(externs, t); ok {
-            if b, b_ok := found_type.spec.(runic.Builtin);
-               b_ok && b == .Untyped {
-                type.spec = runic.Unknown(t)
-            } else {
-                type.spec = runic.ExternType(t)
-            }
-        } else {
-            append(&unknowns, t)
-            type.spec = runic.Unknown(t)
-        }
-    case runic.Struct:
-        for &member in t.members {
-            u := check_for_unknown_types_in_externs(&member.type, externs)
-            extend_unknown_types(&unknowns, u)
-        }
-    case runic.Union:
-        for &member in t.members {
-            u := check_for_unknown_types_in_externs(&member.type, externs)
-            extend_unknown_types(&unknowns, u)
-        }
-    case runic.FunctionPointer:
-        u := check_for_unknown_types_in_externs(&t.return_type, externs)
-        extend_unknown_types(&unknowns, u)
-        for &param in t.parameters {
-            u = check_for_unknown_types_in_externs(&param.type, externs)
-            extend_unknown_types(&unknowns, u)
-        }
-    }
-
-    return
-}
-
-@(private)
-check_for_unknown_types :: proc {
-    check_for_unknown_types_in_types,
-    check_for_unknown_types_in_externs,
-}
-
-@(private)
-validate_unknown_types :: proc(
-    type: ^runic.Type,
-    types: om.OrderedMap(string, runic.Type),
-    externs: om.OrderedMap(string, runic.Extern),
-) {
-    #partial switch &t in type.spec {
-    case runic.Unknown:
-        if om.contains(types, string(t)) {
-            type.spec = string(t)
-        } else if om.contains(externs, string(t)) {
-            type.spec = runic.ExternType(t)
-        }
-    case runic.Struct:
-        for &member in t.members {
-            validate_unknown_types(&member.type, types, externs)
-        }
-    case runic.Union:
-        for &member in t.members {
-            validate_unknown_types(&member.type, types, externs)
-        }
-    case runic.FunctionPointer:
-        for &param in t.parameters {
-            validate_unknown_types(&param.type, types, externs)
-        }
-        validate_unknown_types(&t.return_type, types, externs)
-    }
-}
-
-@(private)
 temp_file :: proc(
 ) -> (
     file: os.Handle,
@@ -726,29 +608,6 @@ temp_file :: proc(
 
     err = errors.message("MAX_TRIES reached")
     return
-}
-
-@(private)
-extend_unknown_types :: #force_inline proc(
-    unknown_types: ^[dynamic]string,
-    unknowns: [dynamic]string,
-) {
-    for u in unknowns {
-        if !slice.contains(unknown_types[:], u) {
-            append(unknown_types, u)
-        }
-    }
-    delete(unknowns)
-}
-
-@(private)
-append_unknown_types :: #force_inline proc(
-    unknown_types: ^[dynamic]string,
-    unknown: string,
-) {
-    if !slice.contains(unknown_types[:], unknown) {
-        append(unknown_types, unknown)
-    }
 }
 
 @(private)

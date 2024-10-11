@@ -312,6 +312,28 @@ runestone_destroy :: proc(rs: ^Runestone) {
     runtime.arena_destroy(&rs.arena)
 }
 
+init_runestone :: proc(
+    rs: ^Runestone,
+    backing_allocator := context.allocator,
+) -> (
+    rs_arena_alloc: runtime.Allocator,
+) {
+    alloc_err := runtime.arena_init(&rs.arena, 0, backing_allocator)
+    if alloc_err != .None {
+        rs_arena_alloc = backing_allocator
+        return
+    }
+
+    rs_arena_alloc = runtime.arena_allocator(&rs.arena)
+
+    rs.symbols = om.make(string, Symbol, allocator = rs_arena_alloc)
+    rs.externs = om.make(string, Extern, allocator = rs_arena_alloc)
+    rs.types = om.make(string, Type, allocator = rs_arena_alloc)
+    rs.constants = om.make(string, Constant, allocator = rs_arena_alloc)
+
+    return
+}
+
 write_runestone :: proc(
     rs: Runestone,
     wd: io.Writer,

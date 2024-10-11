@@ -60,10 +60,7 @@ cross_the_runes :: proc(
         "file_paths and stones should have the same length",
     ) or_return
     if len(stones) == 1 {
-        plats := make(
-            [dynamic]Platform,
-            runtime.arena_allocator(&stones[0].arena),
-        )
+        plats := make([dynamic]Platform, rn_arena_alloc)
         append(&plats, Platform{.Any, .Any})
 
         append(

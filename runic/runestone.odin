@@ -22,6 +22,7 @@ import ctz "core:c/frontend/tokenizer"
 import "core:fmt"
 import "core:io"
 import "core:path/filepath"
+import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "root:errors"
@@ -1286,5 +1287,327 @@ from_postprocess_runestone :: proc(rs: ^Runestone, from: From) {
             om.insert(&rs.symbols, alias_name, sym)
         }
     }
+}
+
+to_preprocess_runestone :: proc(
+    rs: ^Runestone,
+    to: To,
+    reserved_keywords: []string,
+) {
+    rs_arena_alloc := runtime.arena_allocator(&rs.arena)
+
+    new_type_names, new_extern_names: map[string]string
+    defer delete(new_type_names)
+    defer delete(new_extern_names)
+
+    if to_needs_to_process_type_names(to) {
+        type_entries, te_alloc_err := slice.map_entries(rs.types.indices)
+        if te_alloc_err == .None {
+            defer delete(type_entries)
+
+            for entry in type_entries {
+                name, idx := entry.key, entry.value
+
+                processed := process_type_name(
+                    name,
+                    to,
+                    reserved = reserved_keywords,
+                    allocator = rs_arena_alloc,
+                )
+
+                delete_key(&rs.types.indices, name)
+                rs.types.indices[processed] = idx
+                rs.types.data[idx].key = processed
+
+                new_type_names[name] = processed
+            }
+        }
+
+        if to_needs_to_process_extern_names(to) {
+            extern_entries, ee_alloc_err := slice.map_entries(
+                rs.externs.indices,
+            )
+            if ee_alloc_err == .None {
+                defer delete(extern_entries)
+
+                for entry in extern_entries {
+                    name, idx := entry.key, entry.value
+
+                    processed := process_type_name(
+                        name,
+                        to,
+                        reserved = reserved_keywords,
+                        extern = true,
+                        allocator = rs_arena_alloc,
+                    )
+
+                    delete_key(&rs.externs.indices, name)
+                    rs.externs.indices[processed] = idx
+                    rs.externs.data[idx].key = processed
+
+                    new_extern_names[name] = processed
+                }
+            }
+        }
+    }
+
+    if to_needs_to_process_symbol_names(to) {
+        symbol_entries, se_alloc_err := slice.map_entries(rs.symbols.indices)
+        if se_alloc_err == .None {
+            defer delete(symbol_entries)
+
+            for entry in symbol_entries {
+                name, idx := entry.key, entry.value
+                sym := &rs.symbols.data[idx].value
+
+                processed: string = ---
+                switch _ in sym.value {
+                case Function:
+                    if to_needs_to_process_function_names(to) {
+                        processed = process_function_name(
+                            name,
+                            to,
+                            reserved = reserved_keywords,
+                            allocator = rs_arena_alloc,
+                        )
+                    } else {
+                        continue
+                    }
+                case Type:
+                    if to_needs_to_process_variable_names(to) {
+                        processed = process_variable_name(
+                            name,
+                            to,
+                            reserved = reserved_keywords,
+                            allocator = rs_arena_alloc,
+                        )
+                    } else {
+                        continue
+                    }
+                }
+
+                delete_key(&rs.symbols.indices, name)
+                rs.symbols.indices[processed] = idx
+                rs.symbols.data[idx].key = processed
+
+                if sym.remap == nil {
+                    sym.remap = name
+                }
+            }
+        }
+    }
+
+    if to_needs_to_process_constant_names(to) {
+        constant_entries, ce_alloc_err := slice.map_entries(
+            rs.constants.indices,
+        )
+        if ce_alloc_err == .None {
+            defer delete(constant_entries)
+
+            for entry in constant_entries {
+                name, idx := entry.key, entry.value
+
+                processed := process_constant_name(
+                    name,
+                    to,
+                    reserved = reserved_keywords,
+                    allocator = rs_arena_alloc,
+                )
+
+                delete_key(&rs.constants.indices, name)
+                rs.constants.indices[processed] = idx
+                rs.constants.data[idx].key = processed
+            }
+        }
+    }
+
+    if len(new_type_names) != 0 || len(new_extern_names) != 0 {
+        for &entry in rs.types.data {
+            type := &entry.value
+            update_type_names(type, new_type_names, new_extern_names)
+        }
+
+        for &entry in rs.externs.data {
+            type := &entry.value.type
+            update_type_names(type, new_extern_names, new_extern_names)
+        }
+
+        for &entry in rs.symbols.data {
+            sym := &entry.value
+            switch &val in sym.value {
+            case Function:
+                update_type_names(
+                    &val.return_type,
+                    new_type_names,
+                    new_extern_names,
+                )
+                for &param in val.parameters {
+                    update_type_names(
+                        &param.type,
+                        new_type_names,
+                        new_extern_names,
+                    )
+                }
+            case Type:
+                update_type_names(&val, new_type_names, new_extern_names)
+            }
+        }
+    }
+
+    // Check for parameter and member names that are named the same as types
+    for &entry in rs.types.data {
+        type := &entry.value
+        check_for_invalid_parameters_and_members(
+            type,
+            to,
+            rs.types,
+            rs.externs,
+            reserved_keywords,
+            rs_arena_alloc,
+        )
+    }
+
+    for &entry in rs.externs.data {
+        type := &entry.value
+        check_for_invalid_parameters_and_members(
+            type,
+            to,
+            rs.types,
+            rs.externs,
+            reserved_keywords,
+            rs_arena_alloc,
+        )
+    }
+
+    for &entry in rs.symbols.data {
+        sym := &entry.value
+        switch &val in sym.value {
+        case Function:
+            check_for_invalid_parameters_and_members(
+                &val.return_type,
+                to,
+                rs.types,
+                rs.externs,
+                reserved_keywords,
+                rs_arena_alloc,
+            )
+
+            for &param in val.parameters {
+                check_for_invalid_parameters_and_members(
+                    &param.type,
+                    to,
+                    rs.types,
+                    rs.externs,
+                    reserved_keywords,
+                    rs_arena_alloc,
+                )
+
+                for om.contains(rs.types, param.name) ||
+                    identifier_overlaps_extern(param.name, to, rs.externs) ||
+                    slice.contains(reserved_keywords, param.name) {
+                    param.name = strings.concatenate(
+                        {param.name, "_p"},
+                        rs_arena_alloc,
+                    )
+                }
+            }
+        case Type:
+            check_for_invalid_parameters_and_members(
+                &val,
+                to,
+                rs.types,
+                rs.externs,
+                reserved_keywords,
+                rs_arena_alloc,
+            )
+        }
+    }
+}
+
+@(private = "file")
+update_type_names :: proc(
+    type: ^Type,
+    new_type_names, new_extern_names: map[string]string,
+) {
+    #partial switch &spec in type.spec {
+    case string:
+        if processed, ok := new_type_names[spec]; ok {
+            spec = processed
+        } else {
+            // NOTE: This is a fatal implementation error if this does not get found
+        }
+    case ExternType:
+        if processed, ok := new_extern_names[string(spec)]; ok {
+            spec = ExternType(processed)
+        } else {
+            // NOTE: This is a fatal implementation error if this does not get found
+        }
+    case Struct:
+        for &member in spec.members {
+            update_type_names(&member.type, new_type_names, new_extern_names)
+        }
+    case Union:
+        for &member in spec.members {
+            update_type_names(&member.type, new_type_names, new_extern_names)
+        }
+    case FunctionPointer:
+        update_type_names(&spec.return_type, new_type_names, new_extern_names)
+        for &param in spec.parameters {
+            update_type_names(&param.type, new_type_names, new_extern_names)
+        }
+    }
+}
+
+@(private = "file")
+check_for_invalid_parameters_and_members :: proc(
+    type: ^Type,
+    to: To,
+    types: om.OrderedMap(string, Type),
+    externs: om.OrderedMap(string, Extern),
+    reserved: []string,
+    allocator: runtime.Allocator,
+) {
+    #partial switch &spec in type.spec {
+    case Struct:
+        for &member in spec.members {
+            for om.contains(types, member.name) ||
+                identifier_overlaps_extern(member.name, to, externs) ||
+                slice.contains(reserved, member.name) {
+                member.name = strings.concatenate(
+                    {member.name, "_m"},
+                    allocator,
+                )
+            }
+        }
+    case Union:
+        for &member in spec.members {
+            for om.contains(types, member.name) ||
+                identifier_overlaps_extern(member.name, to, externs) ||
+                slice.contains(reserved, member.name) {
+                member.name = strings.concatenate(
+                    {member.name, "_m"},
+                    allocator,
+                )
+            }
+        }
+    case FunctionPointer:
+        for &param in spec.parameters {
+            for om.contains(types, param.name) ||
+                identifier_overlaps_extern(param.name, to, externs) ||
+                slice.contains(reserved, param.name) {
+                param.name = strings.concatenate({param.name, "_p"}, allocator)
+            }
+        }
+    }
+}
+
+@(private = "file")
+identifier_overlaps_extern :: #force_inline proc(
+    ident: string,
+    to: To,
+    externs: om.OrderedMap(string, Extern),
+) -> bool {
+    extern, ok := om.get(externs, ident)
+    return ok && !(extern.source in to.extern.sources)
 }
 

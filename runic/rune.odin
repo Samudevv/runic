@@ -2490,8 +2490,7 @@ check_for_unknown_types_in_types :: proc(
     #partial switch &t in type.spec {
     case string:
         if found_type, ok := om.get(types, t); ok {
-            if b, b_ok := found_type.spec.(Builtin);
-               b_ok && b == .Untyped {
+            if b, b_ok := found_type.spec.(Builtin); b_ok && b == .Untyped {
                 type.spec = Unknown(t)
             }
         } else {
@@ -2529,8 +2528,7 @@ check_for_unknown_types_in_externs :: proc(
     #partial switch &t in type.spec {
     case string:
         if found_type, ok := om.get(externs, t); ok {
-            if b, b_ok := found_type.spec.(Builtin);
-               b_ok && b == .Untyped {
+            if b, b_ok := found_type.spec.(Builtin); b_ok && b == .Untyped {
                 type.spec = Unknown(t)
             } else {
                 type.spec = ExternType(t)
@@ -2649,5 +2647,63 @@ validate_unknown_types_of_type :: proc(
 validate_unknown_types :: proc {
     validate_unknown_types_of_runestone,
     validate_unknown_types_of_type,
+}
+
+@(private)
+to_needs_to_process_type_names :: #force_inline proc(to: To) -> bool {
+    return(
+        len(to.trim_prefix.types) != 0 ||
+        len(to.trim_suffix.types) != 0 ||
+        len(to.add_prefix.types) != 0 ||
+        len(to.add_suffix.types) != 0 \
+    )
+}
+
+@(private)
+to_needs_to_process_extern_names :: #force_inline proc(to: To) -> bool {
+    return(
+        (to.extern.trim_prefix && len(to.trim_prefix.types) != 0) ||
+        (to.extern.trim_suffix && len(to.trim_suffix.types) != 0) ||
+        (to.extern.add_prefix && len(to.add_prefix.types) != 0) ||
+        (to.extern.add_suffix && len(to.add_suffix.types) != 0) \
+    )
+}
+
+@(private)
+to_needs_to_process_variable_names :: #force_inline proc(to: To) -> bool {
+    return(
+        len(to.trim_prefix.variables) != 0 ||
+        len(to.trim_suffix.variables) != 0 ||
+        len(to.add_prefix.variables) != 0 ||
+        len(to.add_suffix.variables) != 0 \
+    )
+}
+
+@(private)
+to_needs_to_process_function_names :: #force_inline proc(to: To) -> bool {
+    return(
+        len(to.trim_prefix.functions) != 0 ||
+        len(to.trim_suffix.functions) != 0 ||
+        len(to.add_prefix.functions) != 0 ||
+        len(to.add_suffix.functions) != 0 \
+    )
+}
+
+@(private)
+to_needs_to_process_symbol_names :: #force_inline proc(to: To) -> bool {
+    return(
+        to_needs_to_process_variable_names(to) ||
+        to_needs_to_process_function_names(to) \
+    )
+}
+
+@(private)
+to_needs_to_process_constant_names :: #force_inline proc(to: To) -> bool {
+    return(
+        len(to.trim_prefix.constants) != 0 ||
+        len(to.trim_suffix.constants) != 0 ||
+        len(to.add_prefix.constants) != 0 ||
+        len(to.add_suffix.constants) != 0 \
+    )
 }
 

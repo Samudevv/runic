@@ -198,6 +198,15 @@ generate_bindings :: proc(
     return nil
 }
 
+C_RESERVED :: []string{
+    "int",
+    "switch",
+    "static",
+    "volatile",
+    "extern",
+    // TODO: Add more C reserved keywords
+}
+
 write_variable :: proc(
     wd: io.Writer,
     rn: runic.To,

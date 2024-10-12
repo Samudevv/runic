@@ -242,9 +242,19 @@ main :: proc() {
 
     switch to in rune.to {
     case runic.To:
-        // TODO: get reserved kewords for different languages
+        reserved_keywords: []string = ---
+        switch strings.to_lower(to.language, context.temp_allocator) {
+        case "c":
+            reserved_keywords = ccdg.C_RESERVED
+        case "odin":
+            reserved_keywords = odincdg.ODIN_RESERVED
+        case:
+            fmt.eprintfln("To Language \"{}\" is not supported", to.language)
+            os.exit(1)
+        }
+
         for &rs in runestones {
-            runic.to_preprocess_runestone(&rs, to, odincdg.ODIN_RESERVED)
+            runic.to_preprocess_runestone(&rs, to, reserved_keywords)
         }
 
         fmt.eprintln("Crossing the runes ...")

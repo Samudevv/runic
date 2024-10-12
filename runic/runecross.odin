@@ -359,6 +359,14 @@ cross_the_runes :: proc(
     return
 }
 
+runecross_destroy :: proc(rc: ^Runecross) {
+    delete(rc.cross)
+    for &arena in rc.arenas {
+        runtime.arena_destroy(&arena)
+    }
+    delete(rc.arenas)
+}
+
 runecross_is_simple :: proc(rc: Runecross) -> bool {
     return len(rc.cross) == 1
 }

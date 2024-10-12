@@ -17,7 +17,6 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package main
 
-import "base:runtime"
 import ccdg "c/codegen"
 import "core:fmt"
 import "core:os"
@@ -119,23 +118,11 @@ main :: proc() {
         )
     }
 
-    from_rc: runic.Runecross
-    from_rc.cross = make(
-        [dynamic]runic.PlatformRunestone,
-        context.temp_allocator,
-    )
-    defer delete(from_rc.arenas)
-    defer for &arena in from_rc.arenas {
-        runtime.arena_destroy(&arena)
-    }
+    runestones := make([dynamic]runic.Runestone, context.temp_allocator)
+    file_paths := make([dynamic]string, context.temp_allocator)
 
     switch from in rune.from {
     case runic.From:
-        stones: [dynamic]runic.Runestone
-        defer delete(stones)
-        file_paths: [dynamic]string
-        defer delete(file_paths)
-
         for plat in plats {
             rs: runic.Runestone = ---
 
@@ -174,7 +161,7 @@ main :: proc() {
 
             runic.from_postprocess_runestone(&rs, from)
 
-            append(&stones, rs)
+            append(&runestones, rs)
             append(&file_paths, "")
 
             fmt.eprintfln(
@@ -183,14 +170,6 @@ main :: proc() {
                 plat.os,
                 plat.arch,
             )
-        }
-
-        fmt.eprintln("Crossing the Runes ...")
-
-        from_rc, err = runic.cross_the_runes(file_paths[:], stones[:])
-        if err != nil {
-            fmt.eprintfln("failed to cross the runes: {}", err)
-            os.exit(1)
         }
     case string:
         rs_file: os.Handle = ---
@@ -225,18 +204,9 @@ main :: proc() {
 
         fmt.eprintfln("Successfully parsed runestone ({})", from)
 
-        append(
-            &from_rc.cross,
-            runic.PlatformRunestone {
-                plats = {rs.platform},
-                runestone = {file_path = rs_file_name, stone = rs},
-            },
-        )
-        append(&from_rc.arenas, rs.arena)
+        append(&runestones, rs)
+        append(&file_paths, rs_file_name)
     case [dynamic]string:
-        stones: [dynamic]runic.Runestone
-        defer delete(stones)
-
         for file_path in from {
             rs: runic.Runestone = ---
             rs_file: os.Handle = ---
@@ -264,20 +234,30 @@ main :: proc() {
 
             fmt.eprintfln("Successfully parsed runestone ({})", file_path)
 
-            append(&stones, rs)
+            append(&runestones, rs)
         }
 
-        fmt.eprintln("Crossing the Runes ...")
-
-        from_rc, err = runic.cross_the_runes(from[:], stones[:])
-        if err != nil {
-            fmt.eprintfln("failed to cross the runes: {}", err)
-            os.exit(1)
-        }
+        file_paths = from
     }
 
     switch to in rune.to {
     case runic.To:
+        // TODO: get reserved kewords for different languages
+        for &rs in runestones {
+            runic.to_preprocess_runestone(&rs, to, odincdg.ODIN_RESERVED)
+        }
+
+        fmt.eprintln("Crossing the runes ...")
+        runecross, rc_err := runic.cross_the_runes(
+            file_paths[:],
+            runestones[:],
+        )
+        if rc_err != nil {
+            fmt.eprintfln("failed to cross the runes: {}", rc_err)
+            os.exit(1)
+        }
+        defer runic.runecross_destroy(&runecross)
+
         out_file_name: string
         make_out_name: if len(to.out) != 0 {
             abs_out := runic.relative_to_file(
@@ -316,7 +296,7 @@ main :: proc() {
         case "odin":
             err = errors.wrap(
                 odincdg.generate_bindings(
-                    from_rc,
+                    runecross,
                     to,
                     os.stream_from_handle(out_file),
                     out_file_name,
@@ -326,8 +306,8 @@ main :: proc() {
             // TODO: update for Runecross
             err = errors.wrap(
                 ccdg.generate_bindings(
-                    from_rc.cross[0].platform,
-                    from_rc.cross[0].stone,
+                    runecross.cross[0].platform,
+                    runecross.cross[0].stone,
                     to,
                     os.stream_from_handle(out_file),
                 ),
@@ -353,6 +333,10 @@ main :: proc() {
             out_file_name,
         )
     case string:
+        defer for &rs in runestones {
+            runic.runestone_destroy(&rs)
+        }
+
         rs_file: os.Handle = ---
         if to == "stdout" {
             rs_file = os.stdout
@@ -375,7 +359,7 @@ main :: proc() {
 
         if err = errors.wrap(
             runic.write_runestone(
-                from_rc.cross[0].stone,
+                runestones[0],
                 os.stream_from_handle(rs_file),
                 to,
             ),

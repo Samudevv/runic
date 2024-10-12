@@ -1253,6 +1253,12 @@ create_anon_type :: proc(
 }
 
 from_postprocess_runestone :: proc(rs: ^Runestone, from: From) {
+    fmt.eprintfln(
+        "Postprocessing Runestone {}.{} ...",
+        rs.platform.os,
+        rs.platform.arch,
+    )
+
     rs_arena_alloc := runtime.arena_allocator(&rs.arena)
 
     // Ignore stuff
@@ -1294,6 +1300,8 @@ to_preprocess_runestone :: proc(
     to: To,
     reserved_keywords: []string,
 ) {
+    fmt.eprintfln("Preprocessing Runestone {}.{} ...", rs.platform.os, rs.platform.arch)
+
     rs_arena_alloc := runtime.arena_allocator(&rs.arena)
 
     new_type_names, new_extern_names: map[string]string

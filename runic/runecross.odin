@@ -47,12 +47,12 @@ cross_the_runes :: proc(
 ) {
     errors.assert(len(stones) != 0, "no runestones specified") or_return
 
-    rn_arena_alloc := runtime.arena_allocator(&stones[0].arena)
 
     rc.arenas = make([dynamic]runtime.Arena, len(stones))
     for stone, idx in stones {
         rc.arenas[idx] = stone.arena
     }
+    rn_arena_alloc := runtime.arena_allocator(&rc.arenas[0])
     rc.cross = make([dynamic]PlatformRunestone, rn_arena_alloc)
 
     errors.assert(

@@ -58,13 +58,13 @@ odin_anon_1_bindings :: struct {
     y: ^f32,
 }
 odin_struct_bindings :: struct {
-    context_: ^i32,
+    context_m: ^i32,
     baz: ^^[10]^^f64,
 }
 odin_bar_struct_bindings :: struct {
-    odin_struct_bindings_: odin_struct_bindings,
+    odin_struct_bindings_m: odin_struct_bindings,
 }
-odin_bar_union_bindings :: struct #raw_union {odin_struct_bindings_: odin_struct_bindings, }
+odin_bar_union_bindings :: struct #raw_union {odin_struct_bindings_m: odin_struct_bindings, }
 odin_complex_ptr_bindings :: [13][10][5]i32
 
 when #config(FOO_PKG_STATIC, false) {
@@ -82,7 +82,7 @@ foreign foo_pkg_runic {
     odin_sub_float_bindings :: proc(a: odin_anon_0_bindings, b: odin_anon_1_bindings) -> f32 ---
 
     @(link_name = "foo_div_func")
-    odin_div_bindings :: proc(a: [^]odin_struct_bindings, odin_struct_bindings_: [^]odin_struct_bindings) -> f32 ---
+    odin_div_bindings :: proc(a: [^]odin_struct_bindings, odin_struct_bindings_p: [^]odin_struct_bindings) -> f32 ---
 
 }
 
@@ -100,6 +100,11 @@ main :: proc() {}`
         version = 0,
         lib = {shared = lib_shared, static = "libfoo.a"},
         symbols = om.OrderedMap(string, runic.Symbol) {
+            indices = {
+                "foo_add_int_func" = 0,
+                "foo_sub_float_func" = 1,
+                "foo_div_func" = 2,
+            },
             data = {
                 {
                     key = "foo_add_int_func",
@@ -160,6 +165,14 @@ main :: proc() {}`
             },
         },
         types = om.OrderedMap(string, runic.Type) {
+            indices = {
+                "anon_0" = 0,
+                "anon_1" = 1,
+                "foo_struct_t" = 2,
+                "bar_struct_t" = 3,
+                "bar_union" = 4,
+                "complex_ptr_t" = 5,
+            },
             data = {
                 {
                     key = "anon_0",
@@ -271,6 +284,8 @@ main :: proc() {}`
         add_suffix = runic.AddSet{"_bindings", "_bindings", "_bindings", ""},
     }
 
+    runic.to_preprocess_runestone(&rs, rn, ODIN_RESERVED)
+
     abs_file_name: string = ---
     defer delete(abs_file_name)
     {
@@ -363,7 +378,6 @@ test_to_odin_extern :: proc(t: ^testing.T) {
         rf,
     )
     if !expect_value(t, err, nil) do return
-    defer runic.runestone_destroy(&rs)
     runic.from_postprocess_runestone(&rs, rf)
 
     rs_out, os_err := os.open(
@@ -384,11 +398,12 @@ test_to_odin_extern :: proc(t: ^testing.T) {
         io.Error.None,
     )
 
+    runic.to_preprocess_runestone(&rs, rt, ODIN_RESERVED)
+
     rc: runic.Runecross = ---
     rc, err = runic.cross_the_runes({RUNESTONE_TEST_PATH}, {rs})
     if !expect_value(t, err, nil) do return
-    defer delete(rc.cross)
-    defer delete(rc.arenas)
+    defer runic.runecross_destroy(&rc)
 
     out_file: os.Handle = ---
     out_file, os_err = os.open(

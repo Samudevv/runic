@@ -337,38 +337,91 @@ main :: proc() {
             runic.runestone_destroy(&rs)
         }
 
-        rs_file: os.Handle = ---
+        rs_files := make([dynamic]os.Handle, context.temp_allocator)
+        rs_file_paths := make([dynamic]string, context.temp_allocator)
+
         if to == "stdout" {
-            rs_file = os.stdout
+            if len(runestones) != 1 {
+                fmt.eprintln(
+                    "Unable to write multiple runestones to stdout. If you want to output the runestone to stdout you are only able to provide one platform",
+                )
+                os.exit(1)
+            }
+            append(&rs_files, os.stdout)
         } else {
-            rs_file, os_err = os.open(
-                runic.relative_to_file(
+            for rs in runestones {
+                runestone_file_name := to
+                if len(runestones) > 1 {
+                    stem := filepath.stem(runestone_file_name)
+                    ext := filepath.ext(runestone_file_name)
+                    dir := filepath.dir(runestone_file_name)
+                    file_name := fmt.aprintf(
+                        "{}-{}.{}{}",
+                        stem,
+                        rs.platform.os,
+                        rs.platform.arch,
+                        ext,
+                        allocator = context.temp_allocator,
+                    )
+                    runestone_file_name = filepath.join(
+                        {dir, file_name},
+                        context.temp_allocator,
+                    )
+                }
+
+                rs_file_path := runic.relative_to_file(
                     rune_file_name,
-                    to,
+                    runestone_file_name,
                     context.temp_allocator,
-                ),
-                os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
-                0o644,
-            )
-            if err = errors.wrap(os_err); err != nil {
-                fmt.eprintfln("failed to open to runestone file: {}", err)
-                return
+                )
+
+                rs_file: os.Handle = ---
+                rs_file, os_err = os.open(
+                    rs_file_path,
+                    os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
+                    0o644,
+                )
+                if err = errors.wrap(os_err); err != nil {
+                    fmt.eprintfln(
+                        "failed to open to runestone file \"{}\": {}",
+                        rs_file_path,
+                        err,
+                    )
+                    return
+                }
+
+                append(&rs_files, rs_file)
+                append(&rs_file_paths, rs_file_path)
             }
         }
-        defer if to != "stdout" do os.close(rs_file)
-
-        if err = errors.wrap(
-            runic.write_runestone(
-                runestones[0],
-                os.stream_from_handle(rs_file),
-                to,
-            ),
-        ); err != nil {
-            fmt.eprintfln("failed to write runestone: {}", err)
-            os.exit(1)
+        defer if to != "stdout" do for rs_file in rs_files {
+            os.close(rs_file)
         }
 
-        fmt.eprintfln("Successfully generated runestone ({})", to)
+        for rs, idx in runestones {
+            if err = errors.wrap(
+                runic.write_runestone(
+                    rs,
+                    os.stream_from_handle(rs_files[idx]),
+                    to,
+                ),
+            ); err != nil {
+                fmt.eprintfln(
+                    "failed to write runestone {}.{}: {}",
+                    rs.platform.os,
+                    rs.platform.arch,
+                    err,
+                )
+                os.exit(1)
+            }
+
+            fmt.eprintfln(
+                "Successfully generated runestone {}.{} \"{}\"",
+                rs.platform.os,
+                rs.platform.arch,
+                rs_file_paths[idx],
+            )
+        }
     }
 }
 

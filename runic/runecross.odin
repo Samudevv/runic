@@ -22,7 +22,6 @@ import "core:slice"
 import "root:errors"
 import om "root:ordered_map"
 
-// TODO: memory management
 Runecross :: struct {
     arenas: [dynamic]runtime.Arena,
     cross:  [dynamic]PlatformRunestone,

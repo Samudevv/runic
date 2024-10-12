@@ -826,7 +826,6 @@ write_type :: proc(
                 io.write_string(wd, string(spec)) or_return
             } else {
                 prefix := import_prefix(import_name)
-                // TODO: check if this works
                 type_name :=
                     rn.extern.remaps[string(spec)] or_else string(spec)
 

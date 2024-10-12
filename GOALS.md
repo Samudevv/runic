@@ -6,7 +6,7 @@
   + To
     + [ ] Automatic forward declarations
   + From
-    + [ ] Generate wrappers for static and inline functions and variables
+    + [x] Generate wrappers for static and inline functions and variables
 + Odin
   + From
     + [ ] Implement Odin-specific types
@@ -18,11 +18,11 @@
     + [ ] other calling conventions
       + [ ] odin
       + [ ] contextless
-+ [ ] Add custom remaps and aliases in rune
++ [x] Add custom remaps and aliases in rune
 + [ ] Overwrite types (#Untyped means don't use the type at all)
 + [ ] Prettier and more useful logs
 + [ ] Better error messages
 + [ ] If requested, run formatter over generated code
-+ [ ] complex bindings example (e.g. cairo)
++ [x] complex bindings example (e.g. cairo) -> odin-wayland
 + [x] Complex overwrites for struct, union, function pointers
-+ [ ] Perform overwrite and ignore in main package
++ [x] Perform overwrite and ignore in main package

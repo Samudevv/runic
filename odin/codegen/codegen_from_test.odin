@@ -58,8 +58,7 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
     if !expect_value(t, os_err, nil) do return
     defer os.close(out_file)
 
-    // TODO: Add C Reserved
-    runic.to_preprocess_runestone(&rs, rn.to.(runic.To), {})
+    runic.to_preprocess_runestone(&rs, rn.to.(runic.To), ccdg.C_RESERVED)
 
     ccdg_err := ccdg.generate_bindings(
         plat,

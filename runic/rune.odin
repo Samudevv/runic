@@ -2670,6 +2670,16 @@ to_needs_to_process_extern_names :: #force_inline proc(to: To) -> bool {
 }
 
 @(private)
+to_needs_to_process_extern_enum_entry_names :: #force_inline proc(to: To) -> bool {
+    return(
+        (to.extern.trim_prefix && len(to.trim_prefix.constants) != 0) ||
+        (to.extern.trim_suffix && len(to.trim_suffix.constants) != 0) ||
+        (to.extern.add_prefix && len(to.add_prefix.constants) != 0) ||
+        (to.extern.add_suffix && len(to.add_suffix.constants) != 0) \
+    )
+}
+
+@(private)
 to_needs_to_process_variable_names :: #force_inline proc(to: To) -> bool {
     return(
         len(to.trim_prefix.variables) != 0 ||

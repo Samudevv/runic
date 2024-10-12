@@ -1300,7 +1300,11 @@ to_preprocess_runestone :: proc(
     to: To,
     reserved_keywords: []string,
 ) {
-    fmt.eprintfln("Preprocessing Runestone {}.{} ...", rs.platform.os, rs.platform.arch)
+    fmt.eprintfln(
+        "Preprocessing Runestone {}.{} ...",
+        rs.platform.os,
+        rs.platform.arch,
+    )
 
     rs_arena_alloc := runtime.arena_allocator(&rs.arena)
 
@@ -1378,6 +1382,15 @@ to_preprocess_runestone :: proc(
                             reserved = reserved_keywords,
                             allocator = rs_arena_alloc,
                         )
+
+                        for &alias in sym.aliases {
+                            alias = process_function_name(
+                                alias,
+                                to,
+                                reserved = reserved_keywords,
+                                allocator = rs_arena_alloc,
+                            )
+                        }
                     } else {
                         continue
                     }
@@ -1389,6 +1402,15 @@ to_preprocess_runestone :: proc(
                             reserved = reserved_keywords,
                             allocator = rs_arena_alloc,
                         )
+
+                        for &alias in sym.aliases {
+                            alias = process_variable_name(
+                                alias,
+                                to,
+                                reserved = reserved_keywords,
+                                allocator = rs_arena_alloc,
+                            )
+                        }
                     } else {
                         continue
                     }
@@ -1425,6 +1447,41 @@ to_preprocess_runestone :: proc(
                 delete_key(&rs.constants.indices, name)
                 rs.constants.indices[processed] = idx
                 rs.constants.data[idx].key = processed
+            }
+        }
+
+
+        for &entry in rs.types.data {
+            type := &entry.value
+
+            #partial switch &emum in type.spec {
+            case Enum:
+                for &enum_entry in emum.entries {
+                    enum_entry.name = process_constant_name(
+                        enum_entry.name,
+                        to,
+                        reserved = reserved_keywords,
+                        allocator = rs_arena_alloc,
+                    )
+                }
+            }
+        }
+
+        if to_needs_to_process_extern_enum_entry_names(to) {
+            for &entry in rs.externs.data {
+                type := &entry.value
+
+                #partial switch &emum in type.spec {
+                case Enum:
+                    for &enum_entry in emum.entries {
+                        enum_entry.name = process_constant_name(
+                            enum_entry.name,
+                            to,
+                            reserved = reserved_keywords,
+                            allocator = rs_arena_alloc,
+                        )
+                    }
+                }
             }
         }
     }

@@ -203,12 +203,6 @@ generate_bindings_from_runestone :: proc(
 
     for entry in rs.constants.data {
         name, const := entry.key, entry.value
-        name = runic.process_constant_name(
-            name,
-            rn,
-            reserved = ODIN_RESERVED,
-            allocator = arena_alloc,
-        )
 
         io.write_string(wd, name) or_return
         io.write_string(wd, " :: ") or_return
@@ -249,17 +243,9 @@ generate_bindings_from_runestone :: proc(
             defer strings.builder_destroy(&type_build)
             ts := strings.to_stream(&type_build)
 
-            name = runic.process_type_name(
-                name,
-                rn,
-                reserved = ODIN_RESERVED,
-                allocator = arena_alloc,
-                extern = true,
-            )
-
             io.write_string(ts, name) or_return
             io.write_string(ts, " :: ") or_return
-            _, type_err := write_type(ts, name, extern, rn, rs.externs)
+            type_err := write_type(ts, name, extern, rn, rs.externs)
             if type_err != nil {
                 fmt.eprintfln("{}: {}", name, type_err)
                 continue
@@ -270,21 +256,15 @@ generate_bindings_from_runestone :: proc(
     }
 
     for entry in rs.types.data {
+        name, ty := entry.key, entry.value
+
         type_build: strings.Builder
         defer strings.builder_destroy(&type_build)
         ts := strings.to_stream(&type_build)
 
-        name, ty := entry.key, entry.value
-        name = runic.process_type_name(
-            name,
-            rn,
-            reserved = ODIN_RESERVED,
-            allocator = arena_alloc,
-        )
-
         io.write_string(ts, name) or_return
         io.write_string(ts, " :: ") or_return
-        _, type_err := write_type(ts, name, ty, rn, rs.externs)
+        type_err := write_type(ts, name, ty, rn, rs.externs)
         if type_err != nil {
             fmt.eprintfln("{}: {}", name, type_err)
             continue
@@ -512,18 +492,11 @@ generate_bindings_from_runestone :: proc(
 
             switch value in sym.value {
             case runic.Type:
-                name = runic.process_variable_name(
-                    name,
-                    rn,
-                    reserved = ODIN_RESERVED,
-                    allocator = arena_alloc,
-                )
-
                 type_bd: strings.Builder
                 strings.builder_init(&type_bd)
                 defer strings.builder_destroy(&type_bd)
 
-                name_equals_type, type_err := write_type(
+                type_err := write_type(
                     strings.to_stream(&type_bd),
                     name,
                     value,
@@ -538,16 +511,9 @@ generate_bindings_from_runestone :: proc(
                 }
 
                 io.write_string(wd, name) or_return
-                if name_equals_type do io.write_rune(wd, '_') or_return
                 io.write_string(wd, ": ") or_return
                 io.write_string(wd, strings.to_string(type_bd)) or_return
             case runic.Function:
-                name = runic.process_function_name(
-                    name,
-                    rn,
-                    reserved = ODIN_RESERVED,
-                    allocator = arena_alloc,
-                )
                 io.write_string(wd, name) or_return
                 io.write_string(wd, " :: ") or_return
                 proc_err := write_procedure(wd, value, rn, rs.externs, nil)
@@ -569,34 +535,10 @@ generate_bindings_from_runestone :: proc(
         for entry in rs.symbols.data {
             name, sym := entry.key, entry.value
 
-            switch _ in sym.value {
-            case runic.Type:
-                name = runic.process_variable_name(
-                    name,
-                    rn,
-                    reserved = ODIN_RESERVED,
-                    allocator = arena_alloc,
-                )
-            case runic.Function:
-                name = runic.process_function_name(
-                    name,
-                    rn,
-                    reserved = ODIN_RESERVED,
-                    allocator = arena_alloc,
-                )
-            }
-
             for alias in sym.aliases {
                 switch sym_value in sym.value {
                 case runic.Type:
-                    alias_p := runic.process_variable_name(
-                        alias,
-                        rn,
-                        reserved = ODIN_RESERVED,
-                        allocator = arena_alloc,
-                    )
-
-                    io.write_string(wd, alias_p) or_return
+                    io.write_string(wd, alias) or_return
                     if func_ptr, ok := recursive_get_pure_func_ptr(
                         sym_value,
                         rs.types,
@@ -610,12 +552,7 @@ generate_bindings_from_runestone :: proc(
                             "contextless",
                         )
                         if proc_err != nil {
-                            fmt.eprintfln(
-                                "{} ({}): {}",
-                                alias_p,
-                                name,
-                                proc_err,
-                            )
+                            fmt.eprintfln("{} ({}): {}", alias, name, proc_err)
                             io.write_string(
                                 wd,
                                 "proc \"contextless\" () {}\n\n",
@@ -634,14 +571,7 @@ generate_bindings_from_runestone :: proc(
                         io.write_string(wd, name) or_return
                         io.write_rune(wd, '(') or_return
                         for p, p_idx in func_ptr.parameters {
-                            p_name := p.name
-                            if slice.contains(ODIN_RESERVED, p_name) {
-                                p_name = strings.concatenate(
-                                    {p_name, "_"},
-                                    arena_alloc,
-                                )
-                            }
-                            io.write_string(wd, p_name) or_return
+                            io.write_string(wd, p.name) or_return
                             if p_idx != len(func_ptr.parameters) - 1 {
                                 io.write_string(wd, ", ") or_return
                             }
@@ -656,7 +586,7 @@ generate_bindings_from_runestone :: proc(
                             ss,
                             " :: #force_inline proc \"contextless\" () -> ",
                         ) or_return
-                        name_equals_type, type_err := write_type(
+                        type_err := write_type(
                             ss,
                             name,
                             sym_value,
@@ -665,12 +595,14 @@ generate_bindings_from_runestone :: proc(
                         )
                         if type_err != nil {
                             fmt.eprintfln("{}: {}", name, type_err)
-                            io.write_string(wd, ": rawptr\n\n") or_return
+                            io.write_string(
+                                wd,
+                                "string { return \"failed to write return type\" }\n\n",
+                            ) or_return
                             continue
                         }
                         io.write_string(ss, " {\n    return ") or_return
                         io.write_string(ss, name) or_return
-                        if name_equals_type do io.write_rune(ss, '_') or_return
                         io.write_string(ss, "\n}") or_return
                         io.write_string(
                             wd,
@@ -678,14 +610,7 @@ generate_bindings_from_runestone :: proc(
                         ) or_return
                     }
                 case runic.Function:
-                    alias_p := runic.process_function_name(
-                        alias,
-                        rn,
-                        reserved = ODIN_RESERVED,
-                        allocator = arena_alloc,
-                    )
-
-                    io.write_string(wd, alias_p) or_return
+                    io.write_string(wd, alias) or_return
                     io.write_string(wd, " :: ") or_return
                     io.write_string(wd, name) or_return
                 }
@@ -707,11 +632,6 @@ write_procedure :: proc(
         io.Error,
         errors.Error,
     } {
-
-    arena: runtime.Arena
-    defer runtime.arena_destroy(&arena)
-    arena_alloc := runtime.arena_allocator(&arena)
-
     proc_build: strings.Builder
     defer strings.builder_destroy(&proc_build)
     ps := strings.to_stream(&proc_build)
@@ -725,25 +645,19 @@ write_procedure :: proc(
     io.write_string(ps, "(") or_return
 
     for p, idx in fc.parameters {
-        p_name := p.name
-        if slice.contains(ODIN_RESERVED, p_name) {
-            p_name = strings.concatenate({p_name, "_"}, arena_alloc)
-        }
-
         type_bd: strings.Builder
         strings.builder_init(&type_bd)
         defer strings.builder_destroy(&type_bd)
 
-        param_name_equals_type := write_type(
+        write_type(
             strings.to_stream(&type_bd),
-            p_name,
+            p.name,
             p.type,
             rn,
             externs,
         ) or_return
 
-        io.write_string(ps, p_name) or_return
-        if param_name_equals_type do io.write_rune(ps, '_') or_return
+        io.write_string(ps, p.name) or_return
         io.write_string(ps, ": ") or_return
         io.write_string(ps, strings.to_string(type_bd)) or_return
 
@@ -774,23 +688,18 @@ write_type :: proc(
     rn: runic.To,
     externs: om.OrderedMap(string, runic.Extern),
 ) -> (
-    name_equals_type: bool,
     err: union {
         io.Error,
         errors.Error,
     },
 ) {
-    arena: runtime.Arena
-    defer runtime.arena_destroy(&arena)
-    arena_alloc := runtime.arena_allocator(&arena)
-
     pointer_count := int(ty.pointer_info.count)
 
     if u, ok := ty.spec.(runic.Unknown); ok {
         if pointer_count >= 1 {
             pointer_count -= 1
         } else {
-            return name_equals_type, errors.Error(
+            return errors.Error(
                 errors.message("type \"{}\" is unknown", u),
             )
         }
@@ -811,7 +720,7 @@ write_type :: proc(
     #reverse for a in ty.array_info {
         pointer, pointer_err := strings.repeat("^", int(ty.pointer_info.count))
         if pointer_err != .None {
-            return name_equals_type, errors.Error(
+            return errors.Error(
                 errors.message("failed to create pointer string for array"),
             )
         }
@@ -830,7 +739,7 @@ write_type :: proc(
     }
 
     pointer, pointer_err := strings.repeat("^", pointer_count)
-    if pointer_err != .None do return name_equals_type, errors.Error(errors.message("failed to create pointer string"))
+    if pointer_err != .None do return errors.Error(errors.message("failed to create pointer string"))
 
     if len(pointer) != 0 {
         io.write_string(wd, pointer) or_return
@@ -847,27 +756,21 @@ write_type :: proc(
     case runic.Struct:
         io.write_string(wd, "struct {\n") or_return
         for m in spec.members {
-            m_name := m.name
-            if slice.contains(ODIN_RESERVED, m_name) {
-                m_name = strings.concatenate({m_name, "_"}, arena_alloc)
-            }
-
             io.write_string(wd, "    ") or_return
 
             type_bd: strings.Builder
             strings.builder_init(&type_bd)
             defer strings.builder_destroy(&type_bd)
 
-            member_name_equals_type := write_type(
+            write_type(
                 strings.to_stream(&type_bd),
-                m_name,
+                m.name,
                 m.type,
                 rn,
                 externs,
             ) or_return
 
-            io.write_string(wd, m_name) or_return
-            if member_name_equals_type do io.write_rune(wd, '_') or_return
+            io.write_string(wd, m.name) or_return
             io.write_string(wd, ": ") or_return
             io.write_string(wd, strings.to_string(type_bd)) or_return
             io.write_string(wd, ",\n") or_return
@@ -878,14 +781,8 @@ write_type :: proc(
         write_builtin_type(wd, spec.type) or_return
         io.write_string(wd, " {") or_return
         for e in spec.entries {
-            e_name := runic.process_constant_name(
-                e.name,
-                rn,
-                reserved = ODIN_RESERVED,
-                allocator = arena_alloc,
-            )
-
-            io.write_string(wd, e_name) or_return
+            // TODO: add new lines between enum values
+            io.write_string(wd, e.name) or_return
             io.write_string(wd, " = ") or_return
             fmt.wprintf(wd, "{}, ", e.value)
         }
@@ -893,43 +790,26 @@ write_type :: proc(
     case runic.Union:
         io.write_string(wd, "struct #raw_union {") or_return
         for m in spec.members {
-            m_name := m.name
-            if slice.contains(ODIN_RESERVED, m_name) {
-                m_name = strings.concatenate({m_name, "_"}, arena_alloc)
-            }
-
             type_bd: strings.Builder
             strings.builder_init(&type_bd)
             defer strings.builder_destroy(&type_bd)
 
-            member_name_equals_type := write_type(
+            write_type(
                 strings.to_stream(&type_bd),
-                m_name,
+                m.name,
                 m.type,
                 rn,
                 externs,
             ) or_return
 
-            io.write_string(wd, m_name) or_return
-            if member_name_equals_type do io.write_rune(wd, '_') or_return
+            io.write_string(wd, m.name) or_return
             io.write_string(wd, ": ") or_return
             io.write_string(wd, strings.to_string(type_bd)) or_return
             io.write_string(wd, ", ") or_return
         }
         io.write_rune(wd, '}') or_return
     case string:
-        processed := runic.process_type_name(
-            spec,
-            rn,
-            reserved = ODIN_RESERVED,
-            allocator = arena_alloc,
-        )
-
-        if processed == var_name {
-            name_equals_type = true
-        }
-
-        io.write_string(wd, processed) or_return
+        io.write_string(wd, spec) or_return
     case runic.Unknown:
         io.write_string(wd, "rawptr") or_return
     case runic.FunctionPointer:
@@ -941,36 +821,14 @@ write_type :: proc(
                 rn.extern.sources,
                 extern.source,
             )
-            remap_name, remap_ok := rn.extern.remaps[string(spec)]
 
             if !import_ok {
-                processed := runic.process_type_name(
-                    string(spec),
-                    rn,
-                    reserved = ODIN_RESERVED,
-                    allocator = arena_alloc,
-                    extern = true,
-                )
-
-                if processed == var_name {
-                    name_equals_type = true
-                }
-
-                io.write_string(wd, processed) or_return
+                io.write_string(wd, string(spec)) or_return
             } else {
                 prefix := import_prefix(import_name)
-                type_name: string = ---
-                if remap_ok {
-                    type_name = remap_name
-                } else {
-                    type_name = runic.process_type_name(
-                        string(spec),
-                        rn,
-                        reserved = ODIN_RESERVED,
-                        allocator = arena_alloc,
-                        extern = true,
-                    )
-                }
+                // TODO: check if this works
+                type_name :=
+                    rn.extern.remaps[string(spec)] or_else string(spec)
 
                 io.write_string(wd, prefix) or_return
                 io.write_rune(wd, '.') or_return
@@ -993,6 +851,7 @@ write_type :: proc(
 write_builtin_type :: proc(wd: io.Writer, ty: runic.Builtin) -> io.Error {
     switch ty {
     case .Untyped, .Void:
+        // TODO: Add Untyped as type and then change this to Untyped
         io.write_string(wd, "^^^rawptr") or_return
     case .RawPtr:
         io.write_string(wd, "rawptr") or_return

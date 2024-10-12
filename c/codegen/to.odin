@@ -43,7 +43,6 @@ generate_bindings :: proc(
 
     for entry in rs.constants.data {
         name, const := entry.key, entry.value
-        name = runic.process_constant_name(name, rn)
 
         if b, ok := const.type.spec.(runic.Builtin); ok && b == .Untyped {
             io.write_string(wd, "#define ") or_return
@@ -96,7 +95,6 @@ generate_bindings :: proc(
 
     for entry in rs.types.data {
         name, type := entry.key, entry.value
-        name = runic.process_type_name(name, rn)
 
         if e, ok := type.spec.(runic.Enum); ok {
             if e.type != .SInt32 {
@@ -144,8 +142,6 @@ generate_bindings :: proc(
             name = sym.remap.?
         }
 
-        alias_process := runic.process_variable_name
-
         switch value in sym.value {
         case runic.Type:
             io.write_string(wd, "extern ") or_return
@@ -154,8 +150,6 @@ generate_bindings :: proc(
             ) or_return
             io.write_string(wd, ";\n") or_return
         case runic.Function:
-            alias_process = runic.process_function_name
-
             io.write_string(funcs, "extern ") or_return
             errors.wrap(
                 write_variable(funcs, rn, name, value.return_type, rs.types),
@@ -174,7 +168,7 @@ generate_bindings :: proc(
 
         if sym.remap != nil {
             io.write_string(als, "#define ") or_return
-            io.write_string(als, alias_process(entry.key, rn)) or_return
+            io.write_string(als, entry.key) or_return
             io.write_rune(als, ' ') or_return
             io.write_string(als, name) or_return
             io.write_rune(als, '\n') or_return
@@ -182,16 +176,7 @@ generate_bindings :: proc(
 
         for alias in sym.aliases {
             io.write_string(als, "#define ") or_return
-            io.write_string(als, alias_process(alias, rn)) or_return
-            io.write_rune(als, ' ') or_return
-            io.write_string(als, name) or_return
-            io.write_rune(als, '\n') or_return
-        }
-
-        processed_name := alias_process(name, rn)
-        if processed_name != name {
-            io.write_string(als, "#define ") or_return
-            io.write_string(als, processed_name) or_return
+            io.write_string(als, alias) or_return
             io.write_rune(als, ' ') or_return
             io.write_string(als, name) or_return
             io.write_rune(als, '\n') or_return
@@ -353,6 +338,7 @@ write_type_specifier :: proc(
     case runic.Builtin:
         switch s {
         case .Untyped:
+            // TODO: Add Untyped as type
             return errors.Error(errors.message("Untyped"))
         case .Void:
             io.write_string(wd, "void") or_return
@@ -401,13 +387,7 @@ write_type_specifier :: proc(
         io.write_string(wd, " {\n") or_return
         for m in s.members {
             errors.wrap(
-                write_variable(
-                    wd,
-                    rn,
-                    runic.process_variable_name(m.name, rn),
-                    m.type,
-                    types,
-                ),
+                write_variable(wd, rn, m.name, m.type, types),
             ) or_return
             io.write_string(wd, ";\n") or_return
         }
@@ -418,10 +398,7 @@ write_type_specifier :: proc(
             if len(name) != 0 do io.write_string(wd, name) or_return
             io.write_string(wd, " {\n") or_return
             for e in s.entries {
-                io.write_string(
-                    wd,
-                    runic.process_constant_name(e.name, rn),
-                ) or_return
+                io.write_string(wd, e.name) or_return
                 if e.value != nil {
                     io.write_string(wd, " = ") or_return
                     switch ev in e.value {
@@ -430,10 +407,8 @@ write_type_specifier :: proc(
                     case string:
                         io.write_string(wd, ev) or_return
                     case runic.ConstantRef:
-                        io.write_string(
-                            wd,
-                            runic.process_constant_name(ev.name, rn),
-                        ) or_return
+                        // TODO: Remove ConstantRef, it makes things just complicated for no reason
+                        io.write_string(wd, ev.name) or_return
                     }
                 }
                 io.write_string(wd, ",\n") or_return
@@ -442,10 +417,7 @@ write_type_specifier :: proc(
         } else {
             for e, idx in s.entries {
                 io.write_string(wd, "#define ") or_return
-                io.write_string(
-                    wd,
-                    runic.process_constant_name(e.name, rn),
-                ) or_return
+                io.write_string(wd, e.name) or_return
                 io.write_string(wd, " ((") or_return
                 if len(name) != 0 {
                     io.write_string(wd, name) or_return
@@ -461,10 +433,7 @@ write_type_specifier :: proc(
                     io.write_string(wd, ev) or_return
                     io.write_rune(wd, ')') or_return
                 case runic.ConstantRef:
-                    io.write_string(
-                        wd,
-                        runic.process_constant_name(ev.name, rn),
-                    ) or_return
+                    io.write_string(wd, ev.name) or_return
                 }
                 io.write_rune(wd, ')') or_return
                 if idx != len(s.entries) - 1 {
@@ -478,13 +447,7 @@ write_type_specifier :: proc(
         io.write_string(wd, " {\n") or_return
         for m in s.members {
             errors.wrap(
-                write_variable(
-                    wd,
-                    rn,
-                    runic.process_variable_name(m.name, rn),
-                    m.type,
-                    types,
-                ),
+                write_variable(wd, rn, m.name, m.type, types),
             ) or_return
             io.write_string(wd, ";\n") or_return
         }
@@ -501,7 +464,7 @@ write_type_specifier :: proc(
             }
         }
 
-        io.write_string(wd, runic.process_variable_name(s, rn)) or_return
+        io.write_string(wd, s) or_return
     case runic.Unknown:
         io.write_string(wd, "void") or_return
     case runic.FunctionPointer:
@@ -528,13 +491,7 @@ write_function_parameters :: proc(
 
     for param, idx in params {
         errors.wrap(
-            write_variable(
-                wd,
-                rn,
-                runic.process_variable_name(param.name, rn),
-                param.type,
-                types,
-            ),
+            write_variable(wd, rn, param.name, param.type, types),
         ) or_return
 
         if idx != len(params) - 1 || variadic {

@@ -124,10 +124,6 @@ Constant :: struct {
     type:  Type,
 }
 
-ConstantRef :: struct {
-    name: string,
-}
-
 Symbol :: struct {
     value:   union {
         Type,
@@ -163,12 +159,10 @@ TypeSpecifier :: union {
 EnumConstant :: union {
     i64,
     string,
-    ConstantRef,
 }
 
 ArraySize :: union {
     u64,
     string,
-    ConstantRef,
 }
 

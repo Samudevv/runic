@@ -745,13 +745,9 @@ parse_type_token :: proc(
                             strings.trim_prefix(token.lit, "\""),
                             "\"",
                         )
-                    case .Ident:
-                        current_array.size = ConstantRef {
-                            name = token.lit,
-                        }
                     case:
                         err = errors.message(
-                            "Number, String or Identifier expected after Arr but got {} (\"{}\")",
+                            "Number or String expected after Arr but got {} (\"{}\")",
                             token.kind,
                             token.lit,
                         )
@@ -943,10 +939,6 @@ parse_enum_token :: proc(
                 strings.trim_prefix(token.lit, `"`),
                 `"`,
             )
-        case .Ident:
-            value = ConstantRef {
-                name = token.lit,
-            }
         case:
             err = errors.empty()
             return
@@ -1091,8 +1083,6 @@ write_type_specifier :: proc(wd: io.Writer, ts: TypeSpecifier) -> io.Error {
                 io.write_rune(wd, '"') or_return
                 io.write_string(wd, v) or_return
                 io.write_rune(wd, '"') or_return
-            case ConstantRef:
-                io.write_string(wd, v.name) or_return
             }
         }
     case FunctionPointer:
@@ -1156,8 +1146,6 @@ write_type :: proc(wd: io.Writer, ty: Type) -> io.Error {
                 io.write_rune(wd, '"') or_return
                 io.write_string(wd, s) or_return
                 io.write_rune(wd, '"') or_return
-            case ConstantRef:
-                io.write_string(wd, s.name) or_return
             }
         }
 

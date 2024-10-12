@@ -399,9 +399,6 @@ is_same_array_size :: proc(as1, as2: ArraySize) -> bool {
     case string:
         s2 := as2.(string) or_return
         return s1 == s2
-    case ConstantRef:
-        s2 := as2.(ConstantRef) or_return
-        return s1.name == s2.name
     }
     return false
 }
@@ -474,9 +471,6 @@ is_same_type_specifier :: proc(s1, s2: TypeSpecifier) -> bool {
             case string:
                 c2 := e2.value.(string) or_return
                 return c1 == c2
-            case ConstantRef:
-                c2 := e2.value.(ConstantRef) or_return
-                return c1.name == c2.name
             }
         }
     case Union:

@@ -406,9 +406,6 @@ write_type_specifier :: proc(
                         io.write_i64(wd, ev) or_return
                     case string:
                         io.write_string(wd, ev) or_return
-                    case runic.ConstantRef:
-                        // TODO: Remove ConstantRef, it makes things just complicated for no reason
-                        io.write_string(wd, ev.name) or_return
                     }
                 }
                 io.write_string(wd, ",\n") or_return
@@ -432,8 +429,6 @@ write_type_specifier :: proc(
                     io.write_rune(wd, '(') or_return
                     io.write_string(wd, ev) or_return
                     io.write_rune(wd, ')') or_return
-                case runic.ConstantRef:
-                    io.write_string(wd, ev.name) or_return
                 }
                 io.write_rune(wd, ')') or_return
                 if idx != len(s.entries) - 1 {

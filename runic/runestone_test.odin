@@ -57,8 +57,8 @@ i32 = #SInt32
 str = #UInt8 #Attr Ptr 1 #AttrEnd
 anon_0 = #Struct desc str apple #UInt8
 output = #Struct x #SInt32 y #SInt32 name str pear anon_0
-output_flags = #Enum #SInt32 SHOWN 0 HIDDEN 1 OFF ARR_CAP ON "1+2"
-numbers = #Float32 #Attr Arr ARR_SIZE #AttrEnd
+output_flags = #Enum #SInt32 SHOWN 0 HIDDEN 1 OFF 20 ON "1+2"
+numbers = #Float32 #Attr Arr 5 #AttrEnd
 transform = #Float64 #Attr ReadOnly Arr 4 ReadOnly Arr 4 WriteOnly #AttrEnd
 outer = #Float32 #Attr Ptr 1 Arr 2 #AttrEnd
 times = #SInt32 #Attr Arr "5*6/3*(8%9)" #AttrEnd
@@ -152,11 +152,7 @@ test_example_runestone :: proc(t: ^testing.T) {
     expect_value(t, om.length(types), 12)
     expect_value(t, om.get(types, "super_ptr").pointer_info.count, 1)
     expect_value(t, len(om.get(types, "numbers").array_info), 1)
-    expect_value(
-        t,
-        om.get(types, "numbers").array_info[0].size.(ConstantRef).name,
-        "ARR_SIZE",
-    )
+    expect_value(t, om.get(types, "numbers").array_info[0].size.(u64), 5)
     expect_value(
         t,
         om.get(types, "times").array_info[0].size.(string),

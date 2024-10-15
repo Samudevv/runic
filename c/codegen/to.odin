@@ -25,8 +25,7 @@ import "root:errors"
 import om "root:ordered_map"
 import "root:runic"
 
-generate_bindings :: proc(
-    plat: runic.Platform,
+generate_bindings_from_runestone :: proc(
     rs: runic.Runestone,
     rn: runic.To,
     wd: io.Writer,
@@ -38,8 +37,6 @@ generate_bindings :: proc(
     if err := runtime.arena_init(&arena, 0, runtime.default_allocator()); err != .None do return errors.Error(errors.empty())
     defer runtime.arena_destroy(&arena)
     context.allocator = runtime.arena_allocator(&arena)
-
-    io.write_string(wd, "#pragma once\n#include <stdint.h>\n\n") or_return
 
     for entry in rs.constants.data {
         name, const := entry.key, entry.value
@@ -198,7 +195,111 @@ generate_bindings :: proc(
     return nil
 }
 
-C_RESERVED :: []string{
+generate_bindings_from_runecross :: proc(
+    rc: runic.Runecross,
+    rn: runic.To,
+    wd: io.Writer,
+) -> (
+    err: union {
+        io.Error,
+        errors.Error,
+    },
+) {
+    io.write_string(wd, "#pragma once\n\n") or_return
+    io.write_string(wd, "#include <stddef.h>\n") or_return
+    io.write_string(wd, "#include <stdint.h>\n") or_return
+    io.write_rune(wd, '\n') or_return
+
+    for entry, idx in rc.cross {
+        if idx == 0 do io.write_string(wd, "#if ") or_return
+        plats_defined(wd, entry.plats) or_return
+
+        generate_bindings_from_runestone(entry, rn, wd) or_return
+
+        if idx != len(rc.cross) - 1 {
+            io.write_string(wd, "#endif\n#if ") or_return
+        } else {
+            io.write_string(wd, "#endif\n") or_return
+        }
+    }
+
+    return
+}
+
+generate_bindings :: proc {
+    generate_bindings_from_runestone,
+    generate_bindings_from_runecross,
+}
+
+os_macro :: #force_inline proc(os: runic.OS) -> string {
+    switch os {
+    case .Linux:
+        return "__linux__"
+    case .Windows:
+        return "_WIN32"
+    case .Macos:
+        return "__APPLE__"
+    case .BSD:
+        return "__FreeBSD__"
+    case .Any:
+        panic("Any os does not have a macro")
+    }
+
+    panic("unreachable")
+}
+
+arch_macro :: #force_inline proc(arch: runic.Architecture) -> string {
+    switch arch {
+    case .x86_64:
+        return "__x86_64__"
+    case .arm64:
+        return "__aarch64__"
+    case .x86:
+        return "__i386__"
+    case .arm32:
+        return "__arm__"
+    case .Any:
+        panic("Any arch does not have a macro")
+    }
+
+    panic("unreachable")
+}
+
+plats_defined :: proc(wd: io.Writer, plats: []runic.Platform) -> io.Error {
+    for plat, idx in plats {
+        if plat.os == .Any && plat.arch == .Any {
+            io.write_rune(wd, '1') or_return
+            continue
+        }
+
+        if plat.os != .Any && plat.arch != .Any do io.write_rune(wd, '(') or_return
+
+        if plat.os != .Any {
+            io.write_string(wd, "defined(") or_return
+            io.write_string(wd, os_macro(plat.os)) or_return
+            io.write_rune(wd, ')') or_return
+        }
+
+        if plat.os != .Any && plat.arch != .Any do io.write_string(wd, " && ") or_return
+
+        if plat.arch != .Any {
+            io.write_string(wd, "defined(") or_return
+            io.write_string(wd, arch_macro(plat.arch)) or_return
+            io.write_rune(wd, ')') or_return
+        }
+
+        if plat.os != .Any && plat.arch != .Any do io.write_rune(wd, ')') or_return
+        if idx != len(plats) - 1 {
+            io.write_string(wd, " || ") or_return
+        }
+    }
+
+    io.write_rune(wd, '\n') or_return
+
+    return .None
+}
+
+C_RESERVED :: []string {
     "int",
     "switch",
     "static",

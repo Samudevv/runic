@@ -316,8 +316,7 @@ main :: proc() {
             // TODO: update for Runecross
             err = errors.wrap(
                 ccdg.generate_bindings(
-                    runecross.cross[0].platform,
-                    runecross.cross[0].stone,
+                    runecross,
                     to,
                     os.stream_from_handle(out_file),
                 ),

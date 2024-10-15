@@ -60,8 +60,12 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
 
     runic.to_preprocess_runestone(&rs, rn.to.(runic.To), ccdg.C_RESERVED)
 
+    os.write_string(
+        out_file,
+        "#pragma once\n#include <stdint.h>\n\n",
+    )
+
     ccdg_err := ccdg.generate_bindings(
-        plat,
         rs,
         rn.to.(runic.To),
         os.stream_from_handle(out_file),

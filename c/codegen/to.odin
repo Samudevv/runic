@@ -281,19 +281,8 @@ generate_bindings_for_types :: proc(
             }
         }
 
-        needs_typedef: bool = true
-        #partial switch _ in type.spec {
-        case runic.Struct, runic.Union, runic.Enum:
-            needs_typedef = false
-        }
-        if needs_typedef {
-            io.write_string(wd, "typedef ") or_return
-            errors.wrap(write_variable(wd, rn, name, type, rs.types)) or_return
-        } else {
-            errors.wrap(
-                write_type_specifier(wd, rn, type.spec, rs.types, name),
-            ) or_return
-        }
+        io.write_string(wd, "typedef ") or_return
+        errors.wrap(write_variable(wd, rn, name, type, rs.types)) or_return
 
         io.write_string(wd, ";\n") or_return
     }

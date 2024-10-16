@@ -48,15 +48,11 @@ generate_runestone :: proc(
     arena: runtime.Arena
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
-    rs_arena_alloc := runtime.arena_allocator(&rs.arena)
 
-    rs.types = om.make(string, runic.Type, allocator = rs_arena_alloc)
-    rs.constants = om.make(string, runic.Constant, allocator = rs_arena_alloc)
+    rs_arena_alloc := runic.init_runestone(&rs)
 
     rs.platform = plat
     runic.set_library(plat, &rs, rf)
-
-    rs.symbols = om.make(string, runic.Symbol, allocator = rs_arena_alloc)
 
     packages := runic.platform_value_get([]string, rf.packages, plat)
     overwrite := runic.platform_value_get(

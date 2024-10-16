@@ -681,6 +681,7 @@ set_for_same_platforms :: proc(
     stone2.symbols = om.make(string, Symbol, allocator = allocator)
     stone2.types = om.make(string, Type, allocator = allocator)
     stone2.constants = om.make(string, Constant, allocator = allocator)
+    stone2.externs = om.make(string, Extern, allocator = allocator)
 
     if len(plats) == 1 {
         stone2.platform = plats[0]

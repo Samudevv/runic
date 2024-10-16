@@ -63,8 +63,10 @@ test_is_same :: proc(t: ^testing.T) {
 
     rs1, rs1_err := parse_runestone(strings.reader_to_stream(&rd1), "/rd1")
     if !expect_value(t, rs1_err, nil) do return
+    defer runestone_destroy(&rs1)
     rs2, rs2_err := parse_runestone(strings.reader_to_stream(&rd2), "/rd2")
     if !expect_value(t, rs2_err, nil) do return
+    defer runestone_destroy(&rs2)
 
     expect(t, rs1.lib.static != rs2.lib.static)
 

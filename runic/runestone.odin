@@ -36,7 +36,7 @@ parse_runestone :: proc(
     rs: Runestone,
     err: errors.Error,
 ) {
-    context.allocator = runtime.arena_allocator(&rs.arena)
+    context.allocator = init_runestone(&rs)
 
     def_alloc := runtime.default_allocator()
     temp_arena: runtime.Arena
@@ -135,8 +135,6 @@ parse_runestone :: proc(
         errors.wrap(ok, "no symbols") or_return
         defer delete_key(&ini_file, "symbols")
 
-        symbols = om.make(string, Symbol)
-
         for value in sect.data {
             name, def := value.key, value.value
             symbol_type: string = ---
@@ -203,8 +201,6 @@ parse_runestone :: proc(
         if !ok do break extern_section
         defer delete_key(&ini_file, "extern")
 
-        rs.externs = om.make(string, Extern)
-
         for value in sect.data {
             type_name, extern_value := value.key, value.value
 
@@ -235,8 +231,6 @@ parse_runestone :: proc(
         sect, ok := ini_file["types"]
         if !ok do break types
         defer delete_key(&ini_file, "types")
-
-        rs.types = om.make(string, Type)
 
         for value in sect.data {
             type_name, type_def := value.key, value.value
@@ -283,8 +277,6 @@ parse_runestone :: proc(
         sect, ok := ini_file["constants"]
         if !ok do break constants
         defer delete_key(&ini_file, "constants")
-
-        rs.constants = om.make(string, Constant)
 
         for value in sect.data {
             name, value_type := value.key, value.value

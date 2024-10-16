@@ -40,6 +40,10 @@ static = libfoo.a
 MAX_ARRAY_SIZE = 4096 #Untyped
 MAX_ARRAY_CAP = 4096 #Untyped
 
+[extern]
+wl_output = "shared/wayland/src/wayland-client.h" #Untyped
+SDL_Event = "shared/sdl2/SDL/SDL_Event.h" #Struct event_type #SInt32
+
 [types]
 my_size_type = #UInt64
 Window = #Struct name #String width #UInt32 height #UInt32
@@ -66,6 +70,10 @@ static = foo.lib
 MAX_ARRAY_SIZE = 2048 #Untyped
 MAX_ARRAY_CAP = 4096 #Untyped
 
+[extern]
+wl_output = "shared/wayland/src/wayland-client.h" #Untyped
+SDL_Event = "shared/sdl2/SDL/SDL_Event.h" #Struct event_type #SInt32
+
 [types]
 my_size_type = #UInt32
 Window = #Struct name #String width #UInt32 height #UInt32
@@ -90,6 +98,10 @@ static = libfoo.a
 MAX_ARRAY_SIZE = 4096 #Untyped
 MAX_ARRAY_CAP = 4096 #Untyped
 
+[extern]
+wl_output = "shared/wayland/src/wayland-client.h" #Untyped
+SDL_Event = "shared/sdl2/SDL/SDL_Event.h" #Struct event_type #SInt32
+
 [types]
 my_size_type = #SInt64
 Window = #Struct name #String width #UInt32 height #UInt32
@@ -104,10 +116,16 @@ var.macos_globals = Array
 
     rn := runic.To {
         language = "c",
+        extern = {
+            sources = {"shared/wayland/src/*" = "<wayland/wayland-client.h>"},
+        },
     }
 
+    defer delete(rn.extern.sources)
+
     linux_rd, windows_rd, macos_rd: strings.Reader
-    linux_rs, linux_arm_rs, windows_rs, macos_rs: runic.Runestone = ---, ---, ---, ---
+    linux_rs, linux_arm_rs, windows_rs, macos_rs: runic.Runestone =
+        ---, ---, ---, ---
     rs_err: errors.Error = ---
 
     strings.reader_init(&linux_rd, string(LINUX_RUNESTONE))
@@ -133,7 +151,10 @@ var.macos_globals = Array
     if !expect_value(t, rs_err, nil) do return
 
     strings.reader_init(&linux_rd, string(LINUX_RUNESTONE))
-    linux_arm_rs, rs_err = runic.parse_runestone(strings.reader_to_stream(&linux_rd), "/linux_arm")
+    linux_arm_rs, rs_err = runic.parse_runestone(
+        strings.reader_to_stream(&linux_rd),
+        "/linux_arm",
+    )
     if !expect_value(t, rs_err, nil) do return
     linux_arm_rs.platform.arch = .arm64
 
@@ -142,7 +163,12 @@ var.macos_globals = Array
     runic.to_preprocess_runestone(&macos_rs, rn, C_RESERVED)
     runic.to_preprocess_runestone(&linux_arm_rs, rn, C_RESERVED)
 
-    runestones := []runic.Runestone{linux_rs, windows_rs, macos_rs, linux_arm_rs}
+    runestones := []runic.Runestone {
+        linux_rs,
+        windows_rs,
+        macos_rs,
+        linux_arm_rs,
+    }
     file_paths := []string{"/linux", "/windows", "/macos", "/linux_arm"}
 
     rc, rc_err := runic.cross_the_runes(file_paths, runestones)
@@ -166,8 +192,9 @@ var.macos_globals = Array
 
     EXPECTED_HEADER :: `#pragma once
 
-#include <stddef.h>
 #include <stdint.h>
+
+#include <wayland/wayland-client.h>
 
 #define OS_LINUX (defined(__linux__) || defined(__linux) || defined(linux))
 #define OS_WINDOWS (defined(_WIN32) || defined(_WIN16) || defined(_WIN64))
@@ -184,6 +211,10 @@ var.macos_globals = Array
 
 #endif
 #define MAX_ARRAY_CAP 4096
+
+typedef struct SDL_Event {
+int32_t event_type;
+} SDL_Event;
 
 #if (OS_MACOS && ARCH_ARM64)
 typedef int64_t my_size_type;

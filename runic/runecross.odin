@@ -286,6 +286,10 @@ cross_the_runes :: proc(
         // Loop over all plaforms of a runestone
         // if it has any platforms then handle it
         // as if it has all of them
+        // TODO: if a runestone has any in either os or arch then only add the extern type, if it is actually part of all of the runestones.
+        //  Any Any -> it needs to be part of all runestones
+        //  Linux Any -> it needs to be part of all Linux runestones
+        //  Any x86_64 -> it needs to be part of all x86_64 runestones
         for plat in stone.plats {
             oses: [dynamic]OS
             archs: [dynamic]Architecture

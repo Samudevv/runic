@@ -34,9 +34,10 @@ generate_bindings_from_runestone :: proc(
         io.Error,
         errors.Error,
     } {
+    generate_includes(wd, rn) or_return
 
-    // TODO: externs
     generate_bindings_for_constants(wd, rs, rn) or_return
+    generate_bindings_for_externs(wd, rs, rn) or_return
     generate_bindings_for_types(wd, rs, rn) or_return
     generate_bindings_for_symbols(wd, rs, rn) or_return
 
@@ -53,10 +54,7 @@ generate_bindings_from_runecross :: proc(
         errors.Error,
     },
 ) {
-    io.write_string(wd, "#pragma once\n\n") or_return
-    io.write_string(wd, "#include <stddef.h>\n") or_return
-    io.write_string(wd, "#include <stdint.h>\n") or_return
-    io.write_rune(wd, '\n') or_return
+    generate_includes(wd, rn) or_return
 
     // Generate macros for platforms
     oses: [dynamic]runic.OS
@@ -152,7 +150,34 @@ generate_bindings_from_runecross :: proc(
         endif(wd, entry.plats) or_return
     }
 
-    // TODO: externs
+    // Runestone with Any Any Platform
+    general_runestone: Maybe(runic.Runestone)
+    if rc.cross[0].platform.os == .Any && rc.cross[0].platform.arch == .Any {
+        general_runestone = rc.cross[0]
+    }
+
+    // Externs
+    #reverse for entry, idx in rc.cross {
+        externs_builder: strings.Builder
+        strings.builder_init(&externs_builder)
+        defer strings.builder_destroy(&externs_builder)
+
+        generate_bindings_for_externs(
+            strings.to_stream(&externs_builder),
+            entry,
+            rn,
+            general_runestone if idx != 0 else nil,
+        ) or_return
+        externs_string := strings.to_string(externs_builder)
+
+        if len(externs_string) != 0 {
+            plats_defined(wd, entry.plats) or_return
+
+            io.write_string(wd, externs_string) or_return
+
+            endif(wd, entry.plats) or_return
+        }
+    }
 
     // Types
     #reverse for entry in rc.cross {
@@ -182,6 +207,32 @@ generate_bindings_from_runecross :: proc(
 generate_bindings :: proc {
     generate_bindings_from_runestone,
     generate_bindings_from_runecross,
+}
+
+generate_includes :: proc(wd: io.Writer, rn: runic.To) -> io.Error {
+    io.write_string(wd, "#pragma once\n\n") or_return
+    io.write_string(wd, "#include <stdint.h>\n\n") or_return
+
+    include_paths: [dynamic]string
+    defer delete(include_paths)
+
+    externs_written: bool
+    for _, path in rn.extern.sources {
+        if !slice.contains(include_paths[:], path) {
+            append(&include_paths, path)
+            externs_written = true
+
+            io.write_string(wd, "#include ") or_return
+            io.write_string(wd, path) or_return
+            io.write_rune(wd, '\n') or_return
+        }
+    }
+
+    if externs_written {
+        io.write_rune(wd, '\n') or_return
+    }
+
+    return .None
 }
 
 generate_bindings_for_constants :: proc(
@@ -252,6 +303,60 @@ generate_bindings_for_constants :: proc(
     return nil
 }
 
+generate_bindings_for_externs :: proc(
+    wd: io.Writer,
+    rs: runic.Runestone,
+    rn: runic.To,
+    general_rs: Maybe(runic.Runestone) = nil,
+) -> union {
+        io.Error,
+        errors.Error,
+    } {
+    arena: runtime.Arena
+    errors.wrap(runtime.arena_init(&arena, 0, context.allocator)) or_return
+    defer runtime.arena_destroy(&arena)
+    context.allocator = runtime.arena_allocator(&arena)
+
+    externs_written: bool
+
+    for entry in rs.externs.data {
+        name, extern := entry.key, entry.value
+
+        if _, ok := runic.map_glob(rn.extern.sources, extern.source); !ok {
+            if b, b_ok := extern.spec.(runic.Builtin); b_ok && b == .Untyped {
+                return errors.Error(
+                    errors.message(
+                        "extern type \"{}\" differs by platform and does not have a source defined. Please define a source for \"{}\" under to.extern.sources",
+                        name,
+                        extern.source,
+                    ),
+                )
+            }
+
+            // If the extern does exist in the general runestone don't output it here
+            if gen_rs, gen_ok := general_rs.?; gen_ok {
+                if gen_extern, gen_extern_ok := om.get(gen_rs.externs, name);
+                   gen_extern_ok {
+                    if runic.is_same(extern, gen_extern) {
+                        continue
+                    }
+                }
+            }
+
+            write_typedef(wd, rn, name, extern, rs.types) or_return
+            io.write_rune(wd, '\n') or_return
+
+            externs_written = true
+        }
+    }
+
+    if externs_written {
+        io.write_rune(wd, '\n') or_return
+    }
+
+    return nil
+}
+
 generate_bindings_for_types :: proc(
     wd: io.Writer,
     rs: runic.Runestone,
@@ -267,24 +372,8 @@ generate_bindings_for_types :: proc(
 
     for entry in rs.types.data {
         name, type := entry.key, entry.value
-
-        if e, ok := type.spec.(runic.Enum); ok {
-            if e.type != .SInt32 {
-                write_type_specifier(wd, rn, e, rs.types, name) or_return
-                io.write_rune(wd, '\n') or_return
-                io.write_string(wd, "typedef ") or_return
-                write_type_specifier(wd, rn, e.type, rs.types) or_return
-                io.write_rune(wd, ' ') or_return
-                io.write_string(wd, name) or_return
-                io.write_string(wd, ";\n") or_return
-                continue
-            }
-        }
-
-        io.write_string(wd, "typedef ") or_return
-        errors.wrap(write_variable(wd, rn, name, type, rs.types)) or_return
-
-        io.write_string(wd, ";\n") or_return
+        write_typedef(wd, rn, name, type, rs.types) or_return
+        io.write_rune(wd, '\n') or_return
     }
 
     if om.length(rs.types) != 0 {
@@ -460,6 +549,37 @@ C_RESERVED :: []string {
     "volatile",
     "extern",
     // TODO: Add more C reserved keywords
+}
+
+write_typedef :: proc(
+    wd: io.Writer,
+    rn: runic.To,
+    name: string,
+    type: runic.Type,
+    types: om.OrderedMap(string, runic.Type),
+) -> union {
+        io.Error,
+        errors.Error,
+    } {
+
+    if e, ok := type.spec.(runic.Enum); ok {
+        if e.type != .SInt32 {
+            write_type_specifier(wd, rn, e, types, name) or_return
+            io.write_rune(wd, '\n') or_return
+            io.write_string(wd, "typedef ") or_return
+            write_type_specifier(wd, rn, e.type, types) or_return
+            io.write_rune(wd, ' ') or_return
+            io.write_string(wd, name) or_return
+            io.write_rune(wd, ';') or_return
+            return nil
+        }
+    }
+
+    io.write_string(wd, "typedef ") or_return
+    errors.wrap(write_variable(wd, rn, name, type, types)) or_return
+
+    io.write_rune(wd, ';') or_return
+    return nil
 }
 
 write_variable :: proc(
@@ -729,9 +849,7 @@ write_type_specifier :: proc(
     case runic.FunctionPointer:
         return errors.Error(errors.message("unreachable"))
     case runic.ExternType:
-        return errors.Error(
-            errors.message("TODO: extern types in to c codegen"),
-        )
+        io.write_string(wd, string(s)) or_return
     }
     return nil
 }

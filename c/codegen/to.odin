@@ -57,12 +57,39 @@ generate_bindings_from_runecross :: proc(
     io.write_string(wd, "#include <stdint.h>\n") or_return
     io.write_rune(wd, '\n') or_return
 
+    // Constants
     for entry in rc.cross {
+        if om.length(entry.constants) == 0 do continue
+
         plats_defined(wd, entry.plats) or_return
 
-        generate_bindings_from_runestone(entry, rn, wd) or_return
+        generate_bindings_for_constants(wd, entry, rn) or_return
 
-        endif(wd) or_return
+        endif(wd, entry.plats) or_return
+    }
+
+    // TODO: externs
+
+    // Types
+    for entry in rc.cross {
+        if om.length(entry.types) == 0 do continue
+
+        plats_defined(wd, entry.plats) or_return
+
+        generate_bindings_for_types(wd, entry, rn) or_return
+
+        endif(wd, entry.plats) or_return
+    }
+
+    // Symbols
+    for entry in rc.cross {
+        if om.length(entry.symbols) == 0 do continue
+
+        plats_defined(wd, entry.plats) or_return
+
+        generate_bindings_for_symbols(wd, entry, rn) or_return
+
+        endif(wd, entry.plats) or_return
     }
 
     return
@@ -276,6 +303,8 @@ generate_bindings_for_symbols :: proc(
 }
 
 plats_defined :: proc(wd: io.Writer, plats: []runic.Platform) -> io.Error {
+    if len(plats) == 1 && plats[0].os == .Any && plats[0].arch == .Any do return .None
+
     io.write_string(wd, "#if ") or_return
 
     for plat, idx in plats {
@@ -353,7 +382,12 @@ plats_defined :: proc(wd: io.Writer, plats: []runic.Platform) -> io.Error {
     return .None
 }
 
-endif :: #force_inline proc(wd: io.Writer) -> io.Error {
+endif :: #force_inline proc(
+    wd: io.Writer,
+    plats: []runic.Platform,
+) -> io.Error {
+    if len(plats) == 1 && plats[0].os == .Any && plats[0].arch == .Any do return .None
+
     _, err := io.write_string(wd, "#endif\n")
     return err
 }

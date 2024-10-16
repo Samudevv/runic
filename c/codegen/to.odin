@@ -33,8 +33,56 @@ generate_bindings_from_runestone :: proc(
         io.Error,
         errors.Error,
     } {
+
+    // TODO: externs
+    generate_bindings_for_constants(wd, rs, rn) or_return
+    generate_bindings_for_types(wd, rs, rn) or_return
+    generate_bindings_for_symbols(wd, rs, rn) or_return
+
+    return nil
+}
+
+generate_bindings_from_runecross :: proc(
+    rc: runic.Runecross,
+    rn: runic.To,
+    wd: io.Writer,
+) -> (
+    err: union {
+        io.Error,
+        errors.Error,
+    },
+) {
+    io.write_string(wd, "#pragma once\n\n") or_return
+    io.write_string(wd, "#include <stddef.h>\n") or_return
+    io.write_string(wd, "#include <stdint.h>\n") or_return
+    io.write_rune(wd, '\n') or_return
+
+    for entry in rc.cross {
+        plats_defined(wd, entry.plats) or_return
+
+        generate_bindings_from_runestone(entry, rn, wd) or_return
+
+        endif(wd) or_return
+    }
+
+    return
+}
+
+generate_bindings :: proc {
+    generate_bindings_from_runestone,
+    generate_bindings_from_runecross,
+}
+
+generate_bindings_for_constants :: proc(
+    wd: io.Writer,
+    rs: runic.Runestone,
+    rn: runic.To,
+) -> union {
+        io.Error,
+        errors.Error,
+    } {
     arena: runtime.Arena
-    if err := runtime.arena_init(&arena, 0, runtime.default_allocator()); err != .None do return errors.Error(errors.empty())
+    errors.wrap(runtime.arena_init(&arena, 0, context.allocator)) or_return
     defer runtime.arena_destroy(&arena)
     context.allocator = runtime.arena_allocator(&arena)
 
@@ -90,6 +138,22 @@ generate_bindings_from_runestone :: proc(
         io.write_rune(wd, '\n') or_return
     }
 
+    return nil
+}
+
+generate_bindings_for_types :: proc(
+    wd: io.Writer,
+    rs: runic.Runestone,
+    rn: runic.To,
+) -> union {
+        io.Error,
+        errors.Error,
+    } {
+    arena: runtime.Arena
+    errors.wrap(runtime.arena_init(&arena, 0, context.allocator)) or_return
+    defer runtime.arena_destroy(&arena)
+    context.allocator = runtime.arena_allocator(&arena)
+
     for entry in rs.types.data {
         name, type := entry.key, entry.value
 
@@ -127,9 +191,25 @@ generate_bindings_from_runestone :: proc(
         io.write_rune(wd, '\n') or_return
     }
 
+    return nil
+}
+
+generate_bindings_for_symbols :: proc(
+    wd: io.Writer,
+    rs: runic.Runestone,
+    rn: runic.To,
+) -> union {
+        io.Error,
+        errors.Error,
+    } {
+    arena: runtime.Arena
+    errors.wrap(runtime.arena_init(&arena, 0, context.allocator)) or_return
+    defer runtime.arena_destroy(&arena)
+    context.allocator = runtime.arena_allocator(&arena)
+
     aliases, functions: strings.Builder
-    defer strings.builder_destroy(&aliases)
-    defer strings.builder_destroy(&functions)
+    strings.builder_init(&aliases)
+    strings.builder_init(&functions)
     als := strings.to_stream(&aliases)
     funcs := strings.to_stream(&functions)
 
@@ -193,37 +273,6 @@ generate_bindings_from_runestone :: proc(
     }
 
     return nil
-}
-
-generate_bindings_from_runecross :: proc(
-    rc: runic.Runecross,
-    rn: runic.To,
-    wd: io.Writer,
-) -> (
-    err: union {
-        io.Error,
-        errors.Error,
-    },
-) {
-    io.write_string(wd, "#pragma once\n\n") or_return
-    io.write_string(wd, "#include <stddef.h>\n") or_return
-    io.write_string(wd, "#include <stdint.h>\n") or_return
-    io.write_rune(wd, '\n') or_return
-
-    for entry in rc.cross {
-        plats_defined(wd, entry.plats) or_return
-
-        generate_bindings_from_runestone(entry, rn, wd) or_return
-
-        endif(wd) or_return
-    }
-
-    return
-}
-
-generate_bindings :: proc {
-    generate_bindings_from_runestone,
-    generate_bindings_from_runecross,
 }
 
 plats_defined :: proc(wd: io.Writer, plats: []runic.Platform) -> io.Error {

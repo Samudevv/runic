@@ -134,10 +134,10 @@ func.create_window = Window #Attr Ptr 1 #AttrEnd name #String width #UInt32 heig
 extern Window* create_window(char* name, uint32_t width, uint32_t height);
 
 #endif
-#if (defined(_WIN32) && defined(__x86_64__))
+#if ((defined(_WIN32) || defined(_WIN16) || defined(_WIN64)) && (defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64)))
 
 #endif
-#if (defined(__linux__) && defined(__x86_64__)) || (defined(__APPLE__) && defined(__aarch64__))
+#if ((defined(__linux__) || defined(__linux) || defined(linux)) && (defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64))) || (defined(__APPLE__) && (defined(macintosh) || defined(Macintosh) || defined(__MACH__)) && defined(__arm__) && defined(__aarch64__))
 
 #endif
 `

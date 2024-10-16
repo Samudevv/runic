@@ -210,17 +210,12 @@ generate_bindings_from_runecross :: proc(
     io.write_string(wd, "#include <stdint.h>\n") or_return
     io.write_rune(wd, '\n') or_return
 
-    for entry, idx in rc.cross {
-        if idx == 0 do io.write_string(wd, "#if ") or_return
+    for entry in rc.cross {
         plats_defined(wd, entry.plats) or_return
 
         generate_bindings_from_runestone(entry, rn, wd) or_return
 
-        if idx != len(rc.cross) - 1 {
-            io.write_string(wd, "#endif\n#if ") or_return
-        } else {
-            io.write_string(wd, "#endif\n") or_return
-        }
+        endif(wd) or_return
     }
 
     return
@@ -231,41 +226,9 @@ generate_bindings :: proc {
     generate_bindings_from_runecross,
 }
 
-os_macro :: #force_inline proc(os: runic.OS) -> string {
-    switch os {
-    case .Linux:
-        return "__linux__"
-    case .Windows:
-        return "_WIN32"
-    case .Macos:
-        return "__APPLE__"
-    case .BSD:
-        return "__FreeBSD__"
-    case .Any:
-        panic("Any os does not have a macro")
-    }
-
-    panic("unreachable")
-}
-
-arch_macro :: #force_inline proc(arch: runic.Architecture) -> string {
-    switch arch {
-    case .x86_64:
-        return "__x86_64__"
-    case .arm64:
-        return "__aarch64__"
-    case .x86:
-        return "__i386__"
-    case .arm32:
-        return "__arm__"
-    case .Any:
-        panic("Any arch does not have a macro")
-    }
-
-    panic("unreachable")
-}
-
 plats_defined :: proc(wd: io.Writer, plats: []runic.Platform) -> io.Error {
+    io.write_string(wd, "#if ") or_return
+
     for plat, idx in plats {
         if plat.os == .Any && plat.arch == .Any {
             io.write_rune(wd, '1') or_return
@@ -275,17 +238,59 @@ plats_defined :: proc(wd: io.Writer, plats: []runic.Platform) -> io.Error {
         if plat.os != .Any && plat.arch != .Any do io.write_rune(wd, '(') or_return
 
         if plat.os != .Any {
-            io.write_string(wd, "defined(") or_return
-            io.write_string(wd, os_macro(plat.os)) or_return
-            io.write_rune(wd, ')') or_return
+            switch plat.os {
+            case .Linux:
+                io.write_string(
+                    wd,
+                    "(defined(__linux__) || defined(__linux) || defined(linux))",
+                ) or_return
+            case .Windows:
+                io.write_string(
+                    wd,
+                    "(defined(_WIN32) || defined(_WIN16) || defined(_WIN64))",
+                ) or_return
+            case .Macos:
+                io.write_string(
+                    wd,
+                    "defined(__APPLE__) && (defined(macintosh) || defined(Macintosh) || defined(__MACH__))",
+                ) or_return
+            case .BSD:
+                io.write_string(
+                    wd,
+                    "(defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__bsdi__) || defined(__DragonFly__) || defined(_SYSTYPE_BSD) || defined(BSD))",
+                ) or_return
+            case .Any:
+                panic("unreachable")
+            }
         }
 
         if plat.os != .Any && plat.arch != .Any do io.write_string(wd, " && ") or_return
 
         if plat.arch != .Any {
-            io.write_string(wd, "defined(") or_return
-            io.write_string(wd, arch_macro(plat.arch)) or_return
-            io.write_rune(wd, ')') or_return
+            switch plat.arch {
+            case .x86_64:
+                io.write_string(
+                    wd,
+                    "(defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64))",
+                ) or_return
+            case .arm64:
+                io.write_string(
+                    wd,
+                    "defined(__arm__) && defined(__aarch64__)",
+                ) or_return
+            case .x86:
+                io.write_string(
+                    wd,
+                    "(defined(i386) || defined(__i386__) || defined(__i386) || defined(__i486__) || defined(__i586) || defined(__i686__))",
+                ) or_return
+            case .arm32:
+                io.write_string(
+                    wd,
+                    "defined(__arm__) && !defined(__aarch64)",
+                ) or_return
+            case .Any:
+                panic("unreachable")
+            }
         }
 
         if plat.os != .Any && plat.arch != .Any do io.write_rune(wd, ')') or_return
@@ -297,6 +302,11 @@ plats_defined :: proc(wd: io.Writer, plats: []runic.Platform) -> io.Error {
     io.write_rune(wd, '\n') or_return
 
     return .None
+}
+
+endif :: #force_inline proc(wd: io.Writer) -> io.Error {
+    _, err := io.write_string(wd, "#endif\n")
+    return err
 }
 
 C_RESERVED :: []string {

@@ -14,37 +14,37 @@ typedef double** super_multi[10][20][30][40][50];
 typedef int64_t (*arr_ptr)[14];
 typedef int64_t*** (***(*(*(***complex_ptr)[13][14])[15])[18])[17];
 typedef int64_t c_int64_t;
-struct hooty_tooty {
+typedef struct hooty_tooty {
 struct hooty_tooty* child;
-};
-struct hooty_shmooty {
+} hooty_tooty;
+typedef struct hooty_shmooty {
 char* b;
 struct hooty_tooty c;
-};
-struct booty_treasure {
+} hooty_shmooty;
+typedef struct booty_treasure {
 float a;
 double b;
 struct hooty_shmooty sh;
-};
-struct my_foo {
+} booty_treasure;
+typedef struct my_foo {
 int8_t x;
 uint64_t y;
-};
-union your_foo {
+} my_foo;
+typedef union your_foo {
 uint32_t x;
 int32_t y;
-};
-struct anon_0 {
+} your_foo;
+typedef struct anon_0 {
 int64_t z;
-};
-struct anon_1 {
+} anon_0;
+typedef struct anon_1 {
 int64_t y;
 struct anon_0 cba;
-};
-struct nested {
+} anon_1;
+typedef struct nested {
 int64_t x;
 struct anon_1 abc;
-};
+} nested;
 typedef int32_t sausage;
 #define Weißwurst ((sausages)0)
 #define Bratwurst ((sausages)1)
@@ -52,23 +52,23 @@ typedef int32_t sausage;
 #define Frankfurter ((sausages)5)
 #define Räucherwurst ((sausages)6)
 typedef int64_t sausages;
-enum pants {
+typedef enum pants {
 trousers = 0,
 skirt = 1,
 pantalones = 2,
-};
-struct multi_foo_result {
+} pants;
+typedef struct multi_foo_result {
 int64_t c;
 int64_t d;
-};
-struct anon_2 {
+} multi_foo_result;
+typedef struct anon_2 {
 int64_t a;
 int64_t b;
-};
-union anon_3 {
+} anon_2;
+typedef union anon_3 {
 uint32_t x;
 int32_t y;
-};
+} anon_3;
 
 extern super_multi your_var;
 extern float* mumu;

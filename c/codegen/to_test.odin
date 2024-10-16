@@ -169,48 +169,54 @@ var.macos_globals = Array
 #include <stddef.h>
 #include <stdint.h>
 
-#if (defined(__linux__) || defined(__linux) || defined(linux)) || (defined(__APPLE__) && (defined(macintosh) || defined(Macintosh) || defined(__MACH__)) && defined(__arm__) && defined(__aarch64__))
+#define OS_LINUX (defined(__linux__) || defined(__linux) || defined(linux))
+#define OS_WINDOWS (defined(_WIN32) || defined(_WIN16) || defined(_WIN64))
+#define OS_MACOS (defined(__APPLE__) && (defined(macintosh) || defined(Macintosh) || defined(__MACH__)))
+#define ARCH_X86_64 (defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64))
+#define ARCH_ARM64 (defined(__arm__) && defined(__aarch64__))
+
+#if OS_LINUX || (OS_MACOS && ARCH_ARM64)
 #define MAX_ARRAY_SIZE 4096
 
 #endif
-#if ((defined(_WIN32) || defined(_WIN16) || defined(_WIN64)) && (defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64)))
+#if (OS_WINDOWS && ARCH_X86_64)
 #define MAX_ARRAY_SIZE 2048
 
 #endif
 #define MAX_ARRAY_CAP 4096
 
-#if (defined(__APPLE__) && (defined(macintosh) || defined(Macintosh) || defined(__MACH__)) && defined(__arm__) && defined(__aarch64__))
+#if (OS_MACOS && ARCH_ARM64)
 typedef int64_t my_size_type;
 
 #endif
-#if ((defined(_WIN32) || defined(_WIN16) || defined(_WIN64)) && (defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64)))
+#if (OS_WINDOWS && ARCH_X86_64)
 typedef uint32_t my_size_type;
 
 #endif
-#if (defined(__linux__) || defined(__linux) || defined(linux))
+#if OS_LINUX
 typedef uint64_t my_size_type;
 
 #endif
-struct Window {
+typedef struct Window {
 char* name;
 uint32_t width;
 uint32_t height;
-};
-struct Array {
+} Window;
+typedef struct Array {
 my_size_type len;
 my_size_type cap;
 uint32_t* els;
-};
+} Array;
 
-#if (defined(__APPLE__) && (defined(macintosh) || defined(Macintosh) || defined(__MACH__)) && defined(__arm__) && defined(__aarch64__))
+#if (OS_MACOS && ARCH_ARM64)
 extern Array macos_globals;
 
 #endif
-#if ((defined(_WIN32) || defined(_WIN16) || defined(_WIN64)) && (defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64)))
+#if (OS_WINDOWS && ARCH_X86_64)
 extern Array windows_globals;
 
 #endif
-#if (defined(__linux__) || defined(__linux) || defined(linux))
+#if OS_LINUX
 extern Array linux_globals;
 
 #endif

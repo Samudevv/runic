@@ -58,7 +58,7 @@ generate_bindings_from_runecross :: proc(
     io.write_rune(wd, '\n') or_return
 
     // Constants
-    for entry in rc.cross {
+    #reverse for entry in rc.cross {
         if om.length(entry.constants) == 0 do continue
 
         plats_defined(wd, entry.plats) or_return
@@ -71,7 +71,7 @@ generate_bindings_from_runecross :: proc(
     // TODO: externs
 
     // Types
-    for entry in rc.cross {
+    #reverse for entry in rc.cross {
         if om.length(entry.types) == 0 do continue
 
         plats_defined(wd, entry.plats) or_return
@@ -82,7 +82,7 @@ generate_bindings_from_runecross :: proc(
     }
 
     // Symbols
-    for entry in rc.cross {
+    #reverse for entry in rc.cross {
         if om.length(entry.symbols) == 0 do continue
 
         plats_defined(wd, entry.plats) or_return

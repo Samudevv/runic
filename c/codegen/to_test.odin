@@ -36,11 +36,23 @@ arch = x86_64
 [lib]
 static = libfoo.a
 
+[constants]
+MAX_ARRAY_SIZE = 4096 #Untyped
+MAX_ARRAY_CAP = 4096 #Untyped
+
+[types]
+my_size_type = #UInt64
+Window = #Struct name #String width #UInt32 height #UInt32
+Array = #Struct len my_size_type cap my_size_type els #UInt32 #Attr Ptr 1 #AttrEnd
+
 [symbols]
 func.create_window = Window #Attr Ptr 1 #AttrEnd name #String width #UInt32 height #UInt32
+func.create_array = Array size my_size_type
+var.linux_globals = Array
 
 
 `
+
     WINDOWS_RUNESTONE :: `
 version = 0
 
@@ -50,8 +62,19 @@ arch = x86_64
 [lib]
 static = foo.lib
 
+[constants]
+MAX_ARRAY_SIZE = 2048 #Untyped
+MAX_ARRAY_CAP = 4096 #Untyped
+
+[types]
+my_size_type = #UInt32
+Window = #Struct name #String width #UInt32 height #UInt32
+Array = #Struct len my_size_type cap my_size_type els #UInt32 #Attr Ptr 1 #AttrEnd
+
 [symbols]
 func.create_window = Window #Attr Ptr 1 #AttrEnd name #String width #UInt32 height #UInt32
+func.create_array = Array size my_size_type
+var.windows_globals = Array
 
 `
     MACOS_RUNESTONE :: `
@@ -63,8 +86,19 @@ arch = arm64
 [lib]
 static = libfoo.a
 
+[constants]
+MAX_ARRAY_SIZE = 4096 #Untyped
+MAX_ARRAY_CAP = 4096 #Untyped
+
+[types]
+my_size_type = #SInt64
+Window = #Struct name #String width #UInt32 height #UInt32
+Array = #Struct len my_size_type cap my_size_type els #UInt32 #Attr Ptr 1 #AttrEnd
+
 [symbols]
 func.create_window = Window #Attr Ptr 1 #AttrEnd name #String width #UInt32 height #UInt32
+func.create_array = Array size my_size_type
+var.macos_globals = Array
 
 `
 
@@ -73,7 +107,7 @@ func.create_window = Window #Attr Ptr 1 #AttrEnd name #String width #UInt32 heig
     }
 
     linux_rd, windows_rd, macos_rd: strings.Reader
-    linux_rs, windows_rs, macos_rs: runic.Runestone = ---, ---, ---
+    linux_rs, linux_arm_rs, windows_rs, macos_rs: runic.Runestone = ---, ---, ---, ---
     rs_err: errors.Error = ---
 
     strings.reader_init(&linux_rd, string(LINUX_RUNESTONE))
@@ -98,12 +132,18 @@ func.create_window = Window #Attr Ptr 1 #AttrEnd name #String width #UInt32 heig
     )
     if !expect_value(t, rs_err, nil) do return
 
+    strings.reader_init(&linux_rd, string(LINUX_RUNESTONE))
+    linux_arm_rs, rs_err = runic.parse_runestone(strings.reader_to_stream(&linux_rd), "/linux_arm")
+    if !expect_value(t, rs_err, nil) do return
+    linux_arm_rs.platform.arch = .arm64
+
     runic.to_preprocess_runestone(&linux_rs, rn, C_RESERVED)
     runic.to_preprocess_runestone(&windows_rs, rn, C_RESERVED)
     runic.to_preprocess_runestone(&macos_rs, rn, C_RESERVED)
+    runic.to_preprocess_runestone(&linux_arm_rs, rn, C_RESERVED)
 
-    runestones := []runic.Runestone{linux_rs, windows_rs, macos_rs}
-    file_paths := []string{"/linux", "/windows", "/macos"}
+    runestones := []runic.Runestone{linux_rs, windows_rs, macos_rs, linux_arm_rs}
+    file_paths := []string{"/linux", "/windows", "/macos", "/linux_arm"}
 
     rc, rc_err := runic.cross_the_runes(file_paths, runestones)
     if !expect_value(t, rc_err, nil) do return
@@ -129,8 +169,54 @@ func.create_window = Window #Attr Ptr 1 #AttrEnd name #String width #UInt32 heig
 #include <stddef.h>
 #include <stdint.h>
 
+#if (defined(__linux__) || defined(__linux) || defined(linux)) || (defined(__APPLE__) && (defined(macintosh) || defined(Macintosh) || defined(__MACH__)) && defined(__arm__) && defined(__aarch64__))
+#define MAX_ARRAY_SIZE 4096
 
-extern Window* create_window(char* name, uint32_t width, uint32_t height);
+#endif
+#if ((defined(_WIN32) || defined(_WIN16) || defined(_WIN64)) && (defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64)))
+#define MAX_ARRAY_SIZE 2048
+
+#endif
+#define MAX_ARRAY_CAP 4096
+
+#if (defined(__APPLE__) && (defined(macintosh) || defined(Macintosh) || defined(__MACH__)) && defined(__arm__) && defined(__aarch64__))
+typedef int64_t my_size_type;
+
+#endif
+#if ((defined(_WIN32) || defined(_WIN16) || defined(_WIN64)) && (defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64)))
+typedef uint32_t my_size_type;
+
+#endif
+#if (defined(__linux__) || defined(__linux) || defined(linux))
+typedef uint64_t my_size_type;
+
+#endif
+struct Window {
+char* name;
+uint32_t width;
+uint32_t height;
+};
+struct Array {
+my_size_type len;
+my_size_type cap;
+uint32_t* els;
+};
+
+#if (defined(__APPLE__) && (defined(macintosh) || defined(Macintosh) || defined(__MACH__)) && defined(__arm__) && defined(__aarch64__))
+extern Array macos_globals;
+
+#endif
+#if ((defined(_WIN32) || defined(_WIN16) || defined(_WIN64)) && (defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64)))
+extern Array windows_globals;
+
+#endif
+#if (defined(__linux__) || defined(__linux) || defined(linux))
+extern Array linux_globals;
+
+#endif
+
+extern struct Window* create_window(char* name, uint32_t width, uint32_t height);
+extern struct Array create_array(my_size_type size);
 
 `
 

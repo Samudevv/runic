@@ -26,6 +26,13 @@ FOO_VALUE_STR :: "5"
 FOO_VALUE_LONG_STR :: `five`
 FOO_FLOAT :: 5.6
 
+foo_sausage :: sausage_foo
+
+sausage_foo :: struct {
+    s:    sausage,
+    type: sausages,
+}
+
 my_foo :: struct {
     x: i8,
     y: u64,
@@ -114,3 +121,4 @@ mumu: [^]f32
 
 @(export)
 error_callback: #type proc "c" (err: int) -> bool
+

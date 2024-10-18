@@ -27,6 +27,18 @@ float a;
 double b;
 struct hooty_shmooty sh;
 } booty_treasure;
+typedef int32_t sausage;
+#define Weißwurst ((sausages)0)
+#define Bratwurst ((sausages)1)
+#define Käsekrainer ((sausages)69)
+#define Frankfurter ((sausages)5)
+#define Räucherwurst ((sausages)6)
+typedef int64_t sausages;
+typedef struct sausage_foo {
+sausage s;
+sausages type;
+} sausage_foo;
+typedef struct sausage_foo foo_sausage;
 typedef struct my_foo {
 int8_t x;
 uint64_t y;
@@ -46,13 +58,6 @@ typedef struct nested {
 int64_t x;
 struct anon_1 abc;
 } nested;
-typedef int32_t sausage;
-#define Weißwurst ((sausages)0)
-#define Bratwurst ((sausages)1)
-#define Käsekrainer ((sausages)69)
-#define Frankfurter ((sausages)5)
-#define Räucherwurst ((sausages)6)
-typedef int64_t sausages;
 typedef enum pants {
 trousers = 0,
 skirt = 1,

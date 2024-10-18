@@ -1273,6 +1273,54 @@ from_postprocess_runestone :: proc(rs: ^Runestone, from: From) {
             om.insert(&rs.symbols, alias_name, sym)
         }
     }
+
+    // Make sure that the types and externs are sorted according to their dependencies (types they refer to)
+    // TODO: handle cyclic dependencies
+    sorted: bool
+    for !sorted {
+        sorted = true
+
+        for i := 0; i < om.length(rs.types); i += 1 {
+            type := rs.types.data[i].value
+
+            deps := compute_dependencies(type)
+            defer delete(deps)
+
+            for dep in deps {
+                dep_idx, dep_ok := om.index(rs.types, dep)
+                if !dep_ok do continue // Should not happen, but just in case
+
+                if dep_idx > i {
+                    om.move(&rs.types, dep, i)
+                    sorted = false
+                    i += 1
+                }
+            }
+        }
+    }
+
+    sorted = false
+    for !sorted {
+        sorted = true
+
+        for i := 0; i < om.length(rs.externs); i += 1 {
+            type := rs.externs.data[i].value.type
+
+            deps := compute_dependencies(type)
+            defer delete(deps)
+
+            for dep in deps {
+                dep_idx, dep_ok := om.index(rs.externs, dep)
+                if !dep_ok do continue // Should not happen, but just in case
+
+                if dep_idx > i {
+                    om.move(&rs.externs, dep, i)
+                    sorted = false
+                    i += 1
+                }
+            }
+        }
+    }
 }
 
 to_preprocess_runestone :: proc(
@@ -1567,6 +1615,41 @@ to_preprocess_runestone :: proc(
             )
         }
     }
+}
+
+@(private = "file")
+compute_dependencies :: proc(type: Type) -> (deps: [dynamic]string) {
+    #partial switch spec in type.spec {
+    case string:
+        append(&deps, spec)
+    case Struct:
+        for member in spec.members {
+            #partial switch member_spec in member.type.spec {
+            case string:
+                append(&deps, member_spec)
+            }
+        }
+    case Union:
+        for member in spec.members {
+            #partial switch member_spec in member.type.spec {
+            case string:
+                append(&deps, member_spec)
+            }
+        }
+    case FunctionPointer:
+        #partial switch return_spec in spec.return_type.spec {
+        case string:
+            append(&deps, return_spec)
+        }
+
+        for param in spec.parameters {
+            #partial switch param_spec in param.type.spec {
+            case string:
+                append(&deps, param_spec)
+            }
+        }
+    }
+    return
 }
 
 @(private = "file")

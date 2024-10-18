@@ -151,3 +151,37 @@ index :: #force_inline proc(
 ) #optional_ok {
     return indices[key]
 }
+
+move :: #force_inline proc(
+    using m: ^OrderedMap($Key, $Value),
+    key: Key,
+    dst: int,
+) {
+    assert(dst >= 0 && dst < len(data))
+
+    src, ok := indices[key]
+    if !ok do return
+
+    tmp := data[src].value
+
+    if dst < src {
+        for i := src - 1; i >= dst; i -= 1 {
+            i_key := data[i].key
+            data[i + 1] = data[i]
+            indices[i_key] = i + 1
+        }
+    } else if dst > src {
+        for i := src + 1; i <= dst; i += 1 {
+            i_key := data[i].key
+            data[i - 1] = data[i]
+            indices[i_key] = i - 1
+        }
+    } else {
+        return
+    }
+
+    data[dst].key = key
+    data[dst].value = tmp
+    indices[key] = dst
+}
+

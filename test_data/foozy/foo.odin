@@ -26,6 +26,11 @@ FOO_VALUE_STR :: "5"
 FOO_VALUE_LONG_STR :: `five`
 FOO_FLOAT :: 5.6
 
+cycle_pointer :: ^pointed_cycle
+pointed_cycle :: struct {
+    data: ^cycle_pointer,
+}
+
 foo_sausage :: sausage_foo
 
 sausage_foo :: struct {

@@ -27,6 +27,10 @@ float a;
 double b;
 struct hooty_shmooty sh;
 } booty_treasure;
+typedef struct pointed_cycle* cycle_pointer;
+typedef struct pointed_cycle {
+cycle_pointer* data;
+} pointed_cycle;
 typedef int32_t sausage;
 #define Weißwurst ((sausages)0)
 #define Bratwurst ((sausages)1)

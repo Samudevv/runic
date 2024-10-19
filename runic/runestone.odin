@@ -1668,7 +1668,6 @@ to_preprocess_runestone :: proc(
     }
 }
 
-@(private = "file")
 compute_dependencies :: proc(type: Type) -> (deps: [dynamic]string) {
     #partial switch spec in type.spec {
     case string:

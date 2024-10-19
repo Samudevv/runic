@@ -7,6 +7,8 @@ static const char* FOO_VALUE_STR = "5";
 static const char* FOO_VALUE_LONG_STR = "five";
 #define FOO_FLOAT 5.5999999999999996
 
+struct pointed_cycle;
+
 typedef int64_t* int_ptr;
 typedef int64_t multi_int[10];
 typedef int64_t (*multi_int_ptr)[10];

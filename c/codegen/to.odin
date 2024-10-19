@@ -37,7 +37,9 @@ generate_bindings_from_runestone :: proc(
     generate_includes(wd, rn) or_return
 
     generate_bindings_for_constants(wd, rs, rn) or_return
+    generate_forward_declarations_for_externs(wd, rs, rn) or_return
     generate_bindings_for_externs(wd, rs, rn) or_return
+    generate_forward_declarations_for_types(wd, rs) or_return
     generate_bindings_for_types(wd, rs, rn) or_return
     generate_bindings_for_symbols(wd, rs, rn) or_return
 
@@ -162,6 +164,13 @@ generate_bindings_from_runecross :: proc(
         strings.builder_init(&externs_builder)
         defer strings.builder_destroy(&externs_builder)
 
+        generate_forward_declarations_for_externs(
+            strings.to_stream(&externs_builder),
+            entry,
+            rn,
+            general_runestone if idx != 0 else nil,
+        ) or_return
+
         generate_bindings_for_externs(
             strings.to_stream(&externs_builder),
             entry,
@@ -184,6 +193,8 @@ generate_bindings_from_runecross :: proc(
         if om.length(entry.types) == 0 do continue
 
         plats_defined(wd, entry.plats) or_return
+
+        generate_forward_declarations_for_types(wd, entry) or_return
 
         generate_bindings_for_types(wd, entry, rn) or_return
 
@@ -303,6 +314,69 @@ generate_bindings_for_constants :: proc(
     return nil
 }
 
+generate_forward_declarations_for_externs :: proc(
+    wd: io.Writer,
+    rs: runic.Runestone,
+    rn: runic.To,
+    general_rs: Maybe(runic.Runestone) = nil,
+) -> io.Error {
+    forward_decl_written: bool
+    for entry, idx in rs.externs.data {
+        name := entry.key
+        extern := entry.value
+
+        if _, ok := runic.map_glob(rn.extern.sources, extern.source); !ok {
+            if b, b_ok := extern.spec.(runic.Builtin); b_ok && b == .Untyped {
+                continue
+            }
+
+            // If the extern does exist in the general runestone don't output it here
+            if gen_rs, gen_ok := general_rs.?; gen_ok {
+                if gen_extern, gen_extern_ok := om.get(gen_rs.externs, name);
+                   gen_extern_ok {
+                    if runic.is_same(extern, gen_extern) {
+                        continue
+                    }
+                }
+            }
+
+            deps := runic.compute_dependencies(extern)
+            defer delete(deps)
+
+            for dep in deps {
+                dep_idx, dep_ok := om.index(rs.externs, dep)
+                if !dep_ok do continue
+
+                if dep_idx > idx &&
+                   runic.references_type_as_pointer_or_array(extern, dep) {
+                    dep_type := om.get(rs.externs, dep)
+                    #partial switch _ in dep_type.spec {
+                    case runic.Struct:
+                        io.write_string(wd, "struct ") or_return
+                    case runic.Union:
+                        io.write_string(wd, "union ") or_return
+                    case runic.Enum:
+                        io.write_string(wd, "enum ") or_return
+                    case:
+                        continue
+                    }
+
+                    io.write_string(wd, dep) or_return
+                    io.write_string(wd, ";\n") or_return
+
+                    forward_decl_written = true
+                }
+            }
+        }
+    }
+
+    if forward_decl_written {
+        io.write_rune(wd, '\n') or_return
+    }
+
+    return .None
+}
+
 generate_bindings_for_externs :: proc(
     wd: io.Writer,
     rs: runic.Runestone,
@@ -355,6 +429,50 @@ generate_bindings_for_externs :: proc(
     }
 
     return nil
+}
+
+generate_forward_declarations_for_types :: proc(
+    wd: io.Writer,
+    rs: runic.Runestone,
+) -> io.Error {
+    forward_decl_written: bool
+    for entry, idx in rs.types.data {
+        type := entry.value
+
+        deps := runic.compute_dependencies(type)
+        defer delete(deps)
+
+        for dep in deps {
+            dep_idx, dep_ok := om.index(rs.types, dep)
+            if !dep_ok do continue
+
+            if dep_idx > idx &&
+               runic.references_type_as_pointer_or_array(type, dep) {
+                dep_type := om.get(rs.types, dep)
+                #partial switch _ in dep_type.spec {
+                case runic.Struct:
+                    io.write_string(wd, "struct ") or_return
+                case runic.Union:
+                    io.write_string(wd, "union ") or_return
+                case runic.Enum:
+                    io.write_string(wd, "enum ") or_return
+                case:
+                    continue
+                }
+
+                io.write_string(wd, dep) or_return
+                io.write_string(wd, ";\n") or_return
+
+                forward_decl_written = true
+            }
+        }
+    }
+
+    if forward_decl_written {
+        io.write_rune(wd, '\n') or_return
+    }
+
+    return .None
 }
 
 generate_bindings_for_types :: proc(

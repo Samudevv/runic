@@ -3,10 +3,12 @@
 ## 0.4 (?)
 
 + C
-  + To
-    + [ ] Automatic forward declarations
   + From
-    + [x] Generate wrappers for static and inline functions and variables
+    + [ ] Overwrite types like `uint32_t` and `size_t` with their underlying types using macros
+    + [ ] Use the clang flag `-nostdinc`
+    + [ ] Generate directory which contains all of the std headers as empty files
+  + To
+    + [ ] Add build tag-like line to the top of the generated header. Maybe use `#error` if the platform differs.
 + Odin
   + From
     + [ ] Implement Odin-specific types
@@ -18,11 +20,8 @@
     + [ ] other calling conventions
       + [ ] odin
       + [ ] contextless
-+ [x] Add custom remaps and aliases in rune
 + [ ] Overwrite types (#Untyped means don't use the type at all)
 + [ ] Prettier and more useful logs
 + [ ] Better error messages
 + [ ] If requested, run formatter over generated code
-+ [x] complex bindings example (e.g. cairo) -> odin-wayland
-+ [x] Complex overwrites for struct, union, function pointers
-+ [x] Perform overwrite and ignore in main package
++ [ ] Fix arena allocations of runestone. Make sure that the arena is always the same even if moved out of the scope

@@ -17,6 +17,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package runic
 
+import "core:fmt"
 import "core:io"
 import "core:os"
 import "core:strings"
@@ -194,5 +195,142 @@ test_example_runestone :: proc(t: ^testing.T) {
         "Hello World",
     )
     expect_value(t, om.get(constants, "LENGTH").value.(f64), 267.345)
+}
+
+@(test)
+test_cyclic_dependency :: proc(t: ^testing.T) {
+    using testing
+
+    types := om.OrderedMap(string, Type) {
+        indices = {
+            "little_foo" = 0,
+            "big_foo" = 1,
+            "cycle_0" = 2,
+            "cycle_1" = 3,
+            "cycle_2" = 4,
+            "cycle_3" = 5,
+            "struct_cycle_0" = 6,
+            "random_thing" = 7,
+            "random_int" = 8,
+            "struct_cycle_1" = 9,
+            "struct_cycle_2" = 10,
+        },
+        data = {
+            {key = "little_foo", value = {spec = string("big_foo")}},
+            {key = "big_foo", value = {spec = string("little_foo")}},
+            {key = "cycle_0", value = {spec = string("cycle_1")}},
+            {key = "cycle_1", value = {spec = string("cycle_2")}},
+            {key = "cycle_2", value = {spec = string("cycle_3")}},
+            {key = "cycle_3", value = {spec = string("cycle_0")}},
+            {
+                key = "struct_cycle_0",
+                value = {
+                    spec = Struct {
+                        members = {
+                            {type = {spec = string("random_thing")}},
+                            {type = {spec = string("struct_cycle_1")}},
+                        },
+                    },
+                },
+            },
+            {
+                key = "random_thing",
+                value = {
+                    spec = Struct {
+                        members = {{type = {spec = string("random_int")}}},
+                    },
+                },
+            },
+            {key = "random_int", value = {spec = Builtin.SInt32}},
+            {
+                key = "struct_cycle_1",
+                value = {spec = string("struct_cycle_2")},
+            },
+            {
+                key = "struct_cycle_2",
+                value = {
+                    spec = Struct {
+                        members = {
+                            {type = {spec = string("struct_cycle_1")}},
+                            {type = {spec = string("struct_cycle_0")}},
+                        },
+                    },
+                },
+            },
+        },
+    }
+    defer delete(types.indices)
+    defer delete(types.data)
+    defer for &entry in types.data {
+        #partial switch &spec in entry.value.spec {
+        case Struct:
+            delete(spec.members)
+        }
+    }
+
+    connected, visited_path := start_compute_cyclic_dependency(
+        "little_foo",
+        "big_foo",
+        om.get(types, "big_foo"),
+        types,
+    )
+
+    expect(t, connected)
+    if expect_value(t, len(visited_path), 2) {
+        expect_value(t, visited_path[0], "little_foo")
+        expect_value(t, visited_path[1], "big_foo")
+    }
+
+    delete(visited_path)
+
+    connected, visited_path = start_compute_cyclic_dependency(
+        "cycle_0",
+        "cycle_1",
+        om.get(types, "cycle_1"),
+        types,
+    )
+
+    expect(t, connected)
+    if expect_value(t, len(visited_path), 4) {
+        expect_value(t, visited_path[0], "cycle_0")
+        expect_value(t, visited_path[1], "cycle_1")
+        expect_value(t, visited_path[2], "cycle_2")
+        expect_value(t, visited_path[3], "cycle_3")
+    } else {
+        fmt.printfln("visited_path: {}", visited_path)
+    }
+
+    delete(visited_path)
+
+    connected, visited_path = start_compute_cyclic_dependency(
+        "struct_cycle_0",
+        "struct_cycle_1",
+        om.get(types, "struct_cycle_1"),
+        types,
+    )
+
+    expect(t, connected)
+    if expect_value(t, len(visited_path), 3) {
+        expect_value(t, visited_path[0], "struct_cycle_0")
+        expect_value(t, visited_path[1], "struct_cycle_1")
+        expect_value(t, visited_path[2], "struct_cycle_2")
+    }
+
+    delete(visited_path)
+
+    pointer_type := Type {
+        spec = string("pointed"),
+        pointer_info = {count = 1},
+    }
+
+    expect(t, references_type_as_pointer_or_array(pointer_type, "pointed"))
+
+    array_type := Type {
+        spec       = string("arrayed"),
+        array_info = {{size = 5}},
+    }
+    defer delete(array_type.array_info)
+
+    expect(t, references_type_as_pointer_or_array(array_type, "arrayed"))
 }
 

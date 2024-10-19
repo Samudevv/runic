@@ -1275,12 +1275,12 @@ from_postprocess_runestone :: proc(rs: ^Runestone, from: From) {
     }
 
     // Make sure that the types and externs are sorted according to their dependencies (types they refer to)
-    // TODO: handle cyclic dependencies
     sorted: bool
     for !sorted {
         sorted = true
 
         for i := 0; i < om.length(rs.types); i += 1 {
+            name := rs.types.data[i].key
             type := rs.types.data[i].value
 
             deps := compute_dependencies(type)
@@ -1291,9 +1291,33 @@ from_postprocess_runestone :: proc(rs: ^Runestone, from: From) {
                 if !dep_ok do continue // Should not happen, but just in case
 
                 if dep_idx > i {
-                    om.move(&rs.types, dep, i)
-                    sorted = false
-                    i += 1
+                    cyclic_dependency_detected, dependency_path :=
+                        start_compute_cyclic_dependency(
+                            name,
+                            dep,
+                            rs.types.data[dep_idx].value,
+                            rs.types,
+                        )
+                    defer delete(dependency_path)
+
+                    if cyclic_dependency_detected {
+                        if !references_type_as_pointer_or_array(type, dep) {
+                            fmt.eprintln("warning: dependency cycle detected ")
+                            for dp in dependency_path {
+                                fmt.eprintf("{}->", dp)
+                            }
+                            fmt.eprintfln("{}", name)
+                            fmt.eprintfln(
+                                "warning: {} will not be moved above {} which depends on it",
+                                dep,
+                                name,
+                            )
+                        }
+                    } else {
+                        om.move(&rs.types, dep, i)
+                        sorted = false
+                        i += 1
+                    }
                 }
             }
         }
@@ -1304,6 +1328,7 @@ from_postprocess_runestone :: proc(rs: ^Runestone, from: From) {
         sorted = true
 
         for i := 0; i < om.length(rs.externs); i += 1 {
+            name := rs.externs.data[i].key
             type := rs.externs.data[i].value.type
 
             deps := compute_dependencies(type)
@@ -1314,9 +1339,35 @@ from_postprocess_runestone :: proc(rs: ^Runestone, from: From) {
                 if !dep_ok do continue // Should not happen, but just in case
 
                 if dep_idx > i {
-                    om.move(&rs.externs, dep, i)
-                    sorted = false
-                    i += 1
+                    cyclic_dependency_detected, dependency_path :=
+                        start_compute_cyclic_dependency(
+                            name,
+                            dep,
+                            rs.externs.data[dep_idx].value,
+                            rs.externs,
+                        )
+                    defer delete(dependency_path)
+
+                    if cyclic_dependency_detected {
+                        if !references_type_as_pointer_or_array(type, dep) {
+                            fmt.eprintln(
+                                "warning: dependency cycle in externs detected ",
+                            )
+                            for dp in dependency_path {
+                                fmt.eprintf("{}->", dp)
+                            }
+                            fmt.eprintfln("{}", name)
+                            fmt.eprintfln(
+                                "warning: {} will not be moved above {} which depends on it",
+                                dep,
+                                name,
+                            )
+                        }
+                    } else {
+                        om.move(&rs.externs, dep, i)
+                        sorted = false
+                        i += 1
+                    }
                 }
             }
         }
@@ -1650,6 +1701,122 @@ compute_dependencies :: proc(type: Type) -> (deps: [dynamic]string) {
         }
     }
     return
+}
+
+start_compute_cyclic_dependency :: #force_inline proc(
+    start: string,
+    dep: string,
+    type: Type,
+    types: om.OrderedMap(string, $TypeOrExtern),
+) -> (
+    connected: bool,
+    visited_path: [dynamic]string,
+) {
+    append(&visited_path, start)
+    append(&visited_path, dep)
+    connected = compute_cyclic_dependency(start, &visited_path, type, types)
+    return
+}
+
+compute_cyclic_dependency :: proc(
+    start: string,
+    visited_path: ^[dynamic]string,
+    type: Type,
+    types: om.OrderedMap(string, $TypeOrExtern),
+) -> (
+    connected_to_start: bool,
+) {
+    deps := compute_dependencies(type)
+    defer delete(deps)
+
+    for dep in deps {
+        if dep == start {
+            connected_to_start = true
+            return
+        } else if !slice.contains(visited_path^[:], dep) {
+            dep_visited: [dynamic]string
+            defer delete(dep_visited)
+
+            append(&dep_visited, ..visited_path^[:])
+            append(&dep_visited, dep)
+
+            dep_type, ok := om.get(types, dep)
+            assert(ok)
+
+            dep_con_start := compute_cyclic_dependency(
+                start,
+                &dep_visited,
+                Type(dep_type),
+                types,
+            )
+
+            if dep_con_start {
+                append(visited_path, ..dep_visited[len(visited_path):])
+                connected_to_start = true
+                return
+            }
+        }
+    }
+
+    return
+}
+
+references_type_as_pointer_or_array :: proc(type: Type, dep: string) -> bool {
+    #partial switch spec in type.spec {
+    case string:
+        return(
+            (type.pointer_info.count != 0 || len(type.array_info) != 0) &&
+            spec == dep \
+        )
+    case Struct:
+        for member in spec.members {
+            #partial switch member_spec in member.type.spec {
+            case string:
+                if member_spec == dep {
+                    return(
+                        member.type.pointer_info.count != 0 ||
+                        len(member.type.array_info) != 0 \
+                    )
+                }
+            }
+        }
+    case Union:
+        for member in spec.members {
+            #partial switch member_spec in member.type.spec {
+            case string:
+                if member_spec == dep {
+                    return(
+                        member.type.pointer_info.count != 0 ||
+                        len(member.type.array_info) != 0 \
+                    )
+                }
+            }
+        }
+    case FunctionPointer:
+        #partial switch return_type_spec in spec.return_type.spec {
+        case string:
+            if return_type_spec == dep {
+                return(
+                    spec.return_type.pointer_info.count != 0 ||
+                    len(spec.return_type.array_info) != 0 \
+                )
+            }
+        }
+
+        for param in spec.parameters {
+            #partial switch param_spec in param.type.spec {
+            case string:
+                if param_spec == dep {
+                    return(
+                        param.type.pointer_info.count != 0 ||
+                        len(param.type.array_info) != 0 \
+                    )
+                }
+            }
+        }
+    }
+
+    return false
 }
 
 @(private = "file")

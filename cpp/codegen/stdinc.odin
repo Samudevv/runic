@@ -19,6 +19,7 @@ package cpp_codegen
 
 import "base:runtime"
 import "core:fmt"
+import "core:math/rand"
 import "core:os"
 import "core:path/filepath"
 import "root:runic"
@@ -216,30 +217,72 @@ when ODIN_OS == .Windows {
     SYSTEM_INCLUDE_GEN_DIR :: "/tmp/runic_system_includes/"
 }
 
-// TODO: Somehow reserve this directory and make sure that nothing else writes into it
 system_includes_gen_dir :: proc(
     plat: runic.Platform,
     allocator := context.allocator,
-) -> string {
-    folder_name := fmt.aprintf(
+) -> (
+    gen_dir: string,
+    ok: bool,
+) #optional_ok {
+    os_arch_name := fmt.aprintf(
         "{}_{}",
         plat.os,
         plat.arch,
         allocator = allocator,
     )
-    defer delete(folder_name, allocator = allocator)
-    return filepath.join({SYSTEM_INCLUDE_GEN_DIR, folder_name}, allocator)
+    defer delete(os_arch_name, allocator = allocator)
+
+    // Max 100 attempts
+    for _ in 0 ..< 100 {
+        // At max six digits
+        id := rand.uint32() % 1000000
+        folder_name := fmt.aprintf(
+            "{}-{:06d}",
+            os_arch_name,
+            id,
+            allocator = allocator,
+        )
+        gen_dir = filepath.join(
+            {SYSTEM_INCLUDE_GEN_DIR, folder_name},
+            allocator,
+        )
+        delete(folder_name, allocator = allocator)
+
+        err := os.make_directory(gen_dir, 0o755)
+        #partial switch errno in err {
+        case nil:
+            ok = true
+            return
+        case:
+            if plat_err, plat_err_ok := os.is_platform_error(errno);
+               plat_err_ok {
+                when ODIN_OS == .Windows {
+                    is_already_exists :=
+                        plat_err == i32(os.ERROR_ALREADY_EXISTS)
+                } else {
+                    is_already_exists := plat_err == i32(os.EEXIST)
+                }
+                if is_already_exists {
+                    delete(gen_dir, allocator = allocator)
+                    continue
+                }
+            }
+            ok = false
+            return
+        }
+    }
+
+    ok = false
+    return
 }
 
-generate_system_includes :: proc(plat: runic.Platform) -> bool {
+generate_system_includes :: proc(gen_dir: string) -> bool {
     arena: runtime.Arena
     alloc_err := runtime.arena_init(&arena, 0, context.allocator)
     if alloc_err != .None do return false
     defer runtime.arena_destroy(&arena)
 
     context.allocator = runtime.arena_allocator(&arena)
-
-    gen_dir := system_includes_gen_dir(plat)
 
     for file_name in SYSTEM_INCLUDE_FILES {
         file_path := filepath.join({gen_dir, file_name})
@@ -291,7 +334,7 @@ make_directory_parents :: proc(path: string) -> bool {
         if !make_directory_parents(dir) do return false
     }
     if !os.is_dir(path) {
-        if err := os.make_directory(path, 0o777); err != nil {
+        if err := os.make_directory(path, 0o755); err != nil {
             return false
         }
     }

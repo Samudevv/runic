@@ -28,10 +28,11 @@ test_cpp_stdinc :: proc(t: ^testing.T) {
 
     plat := runic.Platform{.Linux, .x86_64}
 
-    gen_dir := system_includes_gen_dir(plat)
+    gen_dir, gen_dir_ok := system_includes_gen_dir(plat)
+    if !expect(t, gen_dir_ok) do return
     defer delete(gen_dir)
 
-    ok := generate_system_includes(plat)
+    ok := generate_system_includes(gen_dir)
     if !expect(t, ok) do return
 
     for file_name in SYSTEM_INCLUDE_FILES {

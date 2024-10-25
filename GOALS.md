@@ -5,7 +5,7 @@
 + C
   + From
     + [ ] Overwrite types like `uint32_t` and `size_t` with their underlying types using macros
-    + [ ] Use the clang flag `-nostdinc`
+    + [x] Use the clang flag `-nostdinc`
     + [ ] Generate directory which contains all of the std headers as empty files
   + To
     + [ ] Add build tag-like line to the top of the generated header. Maybe use `#error` if the platform differs.

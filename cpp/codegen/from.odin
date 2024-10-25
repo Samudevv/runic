@@ -260,6 +260,13 @@ generate_runestone :: proc(
 
     append(&clang_flags, target_flag)
 
+    if enable_host_includes, ok := runic.platform_value_get(
+        bool,
+        rf.enable_host_includes,
+        plat,
+    ); !(ok && enable_host_includes) {
+        append(&clang_flags, "-nostdinc")
+    }
 
     if rune_defines, ok := runic.platform_value_get(
         map[string]string,
@@ -290,9 +297,6 @@ generate_runestone :: proc(
             append(&clang_flags, arg)
         }
     }
-
-    // TODO: ignore system includes, but this requires a lot of additionial work like declaring all kinds of types as defines. Let's not go down this rabbit hole right now
-    // append(&clang_flags, "-nostdinc")
 
     if flags, ok := runic.platform_value_get([]cstring, rf.flags, plat); ok {
         for f in flags {

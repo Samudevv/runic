@@ -254,6 +254,7 @@ system_includes_gen_dir :: proc(
             ok = true
             return
         case:
+            delete(gen_dir, allocator = allocator)
             if plat_err, plat_err_ok := os.is_platform_error(errno);
                plat_err_ok {
                 when ODIN_OS == .Windows {
@@ -262,11 +263,14 @@ system_includes_gen_dir :: proc(
                 } else {
                     is_already_exists := plat_err == i32(os.EEXIST)
                 }
-                if is_already_exists {
-                    delete(gen_dir, allocator = allocator)
-                    continue
-                }
+
+                if is_already_exists do continue
             }
+            fmt.printfln(
+                "system_includes_gen_dir os.make_directory(\"{}\") err: {}",
+                gen_dir,
+                errno,
+            )
             ok = false
             return
         }

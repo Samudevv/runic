@@ -266,11 +266,6 @@ system_includes_gen_dir :: proc(
 
                 if is_already_exists do continue
             }
-            fmt.printfln(
-                "system_includes_gen_dir os.make_directory(\"{}\") err: {}",
-                gen_dir,
-                errno,
-            )
             ok = false
             return
         }

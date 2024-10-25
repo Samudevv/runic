@@ -37,21 +37,23 @@ Rune :: struct {
 
 From :: struct {
     // General
-    language:    string,
-    static:      PlatformValue(string),
-    shared:      PlatformValue(string),
-    ignore:      PlatformValue(IgnoreSet),
-    overwrite:   PlatformValue(OverwriteSet),
-    extern:      []string,
-    remaps:      map[string]string,
-    aliases:     map[string][]string,
+    language:                   string,
+    static:                     PlatformValue(string),
+    shared:                     PlatformValue(string),
+    ignore:                     PlatformValue(IgnoreSet),
+    overwrite:                  PlatformValue(OverwriteSet),
+    extern:                     []string,
+    remaps:                     map[string]string,
+    aliases:                    map[string][]string,
     // C
-    headers:     PlatformValue([]string),
-    includedirs: PlatformValue([]string),
-    defines:     PlatformValue(map[string]string),
-    flags:       PlatformValue([]cstring),
+    headers:                    PlatformValue([]string),
+    includedirs:                PlatformValue([]string),
+    defines:                    PlatformValue(map[string]string),
+    enable_host_includes:       PlatformValue(bool),
+    disable_system_include_gen: PlatformValue(bool),
+    flags:                      PlatformValue([]cstring),
     // Odin
-    packages:    PlatformValue([]string),
+    packages:                   PlatformValue([]string),
 }
 
 To :: struct {

@@ -16,6 +16,10 @@ from:
     - 'bar.h'
   headers.macos: plat_macos.h
   includedirs: include
+  enable_host_includes: true
+  enable_host_includes.linux.arm64: false
+  disable_system_include_gen: true
+  disable_system_include_gen.windows: false
   defines:
     MYFOO: !!int 2
   overwrite:

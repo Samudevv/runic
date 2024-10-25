@@ -297,6 +297,14 @@ parse_rune :: proc(
                 map[Platform]map[string]string,
                 allocator = rn_arena_alloc,
             )
+            f.enable_host_includes.d = make(
+                map[Platform]bool,
+                allocator = rn_arena_alloc,
+            )
+            f.disable_system_include_gen.d = make(
+                map[Platform]bool,
+                allocator = rn_arena_alloc,
+            )
             f.packages.d = make(
                 map[Platform][]string,
                 allocator = rn_arena_alloc,
@@ -1121,6 +1129,30 @@ parse_rune :: proc(
                     }
 
                     f.defines.d[plat] = d_map
+                case "enable_host_includes":
+                    #partial switch v in value {
+                    case bool:
+                        f.enable_host_includes.d[plat] = v
+                    case:
+                        err = errors.message(
+                            "\"from.{}\" has invalid type %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
+                case "disable_system_include_gen":
+                    #partial switch v in value {
+                    case bool:
+                        f.disable_system_include_gen.d[plat] = v
+                    case:
+                        err = errors.message(
+                            "\"from.{}\" has invalid type %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
                 case "flags":
                     flags := make([dynamic]cstring, rn_arena_alloc)
 
@@ -2670,7 +2702,9 @@ to_needs_to_process_extern_names :: #force_inline proc(to: To) -> bool {
 }
 
 @(private)
-to_needs_to_process_extern_enum_entry_names :: #force_inline proc(to: To) -> bool {
+to_needs_to_process_extern_enum_entry_names :: #force_inline proc(
+    to: To,
+) -> bool {
     return(
         (to.extern.trim_prefix && len(to.trim_prefix.constants) != 0) ||
         (to.extern.trim_suffix && len(to.trim_suffix.constants) != 0) ||

@@ -248,7 +248,7 @@ system_includes_gen_dir :: proc(
         )
         delete(folder_name, allocator = allocator)
 
-        err := os.make_directory(gen_dir, 0o755)
+        err := make_directory_parents(gen_dir)
         #partial switch errno in err {
         case nil:
             ok = true
@@ -291,7 +291,7 @@ generate_system_includes :: proc(gen_dir: string) -> bool {
     for file_name in SYSTEM_INCLUDE_FILES {
         file_path := filepath.join({gen_dir, file_name})
         dir := filepath.dir(file_path)
-        if !make_directory_parents(dir) do return false
+        if err := make_directory_parents(dir); err != nil do return false
 
         fd, err := os.open(file_path, os.O_CREATE | os.O_TRUNC, 0o644)
         if err != nil do return false
@@ -332,17 +332,21 @@ delete_system_includes :: proc(gen_dir: string) {
 }
 
 @(private = "file")
-make_directory_parents :: proc(path: string) -> bool {
+make_directory_parents :: proc(path: string) -> os.Error {
+    // An arena is necessary because filepath.dir can allocate memory
+    arena: runtime.Arena
+    defer runtime.arena_destroy(&arena)
+    runtime.arena_init(&arena, 0, context.allocator) or_return
+    context.allocator = runtime.arena_allocator(&arena)
+
     dir := filepath.dir(path)
     if dir != "." && dir != "/" {
-        if !make_directory_parents(dir) do return false
+        if err := make_directory_parents(dir); err != nil do return err
     }
     if !os.is_dir(path) {
-        if err := os.make_directory(path, 0o755); err != nil {
-            return false
-        }
+        return os.make_directory(path, 0o755)
     }
 
-    return true
+    return nil
 }
 

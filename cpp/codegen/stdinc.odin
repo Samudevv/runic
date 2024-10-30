@@ -335,7 +335,7 @@ make_directory_parents :: proc(path: string) -> os.Error {
     context.allocator = runtime.arena_allocator(&arena)
 
     dir := filepath.dir(path)
-    if dir != "." && dir != "/" {
+    if dir != "." && dir != "/" && dir != path {
         if err := make_directory_parents(dir); err != nil do return err
     }
     if !os.is_dir(path) {

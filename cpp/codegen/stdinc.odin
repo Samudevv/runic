@@ -315,7 +315,7 @@ delete_system_includes :: proc(gen_dir: string) {
         if !info.is_dir {
             os.remove(info.fullpath)
         } else {
-            os.remove_directory(info.fullpath)
+            remove_directory(info.fullpath)
         }
 
         return

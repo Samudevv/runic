@@ -22,6 +22,7 @@ import "core:fmt"
 import "core:math/rand"
 import "core:os"
 import "core:path/filepath"
+import "core:strings"
 import "root:runic"
 
 @(private)
@@ -284,7 +285,13 @@ generate_system_includes :: proc(gen_dir: string) -> bool {
     context.allocator = runtime.arena_allocator(&arena)
 
     for file_name in SYSTEM_INCLUDE_FILES {
-        file_path := filepath.join({gen_dir, file_name})
+        when ODIN_OS == .Windows {
+            slashed_file_name, _ := strings.replace_all(file_name, "/", "\\")
+        } else {
+            slashed_file_name := file_name
+        }
+
+        file_path := filepath.join({gen_dir, slashed_file_name})
         dir := filepath.dir(file_path)
         if err := make_directory_parents(dir); err != nil do return false
 

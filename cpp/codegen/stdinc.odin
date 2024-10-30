@@ -288,7 +288,7 @@ generate_system_includes :: proc(gen_dir: string) -> bool {
         when ODIN_OS == .Windows {
             slashed_file_name, _ := strings.replace_all(file_name, "/", "\\")
         } else {
-            slashed_file_name := file_name
+            slashed_file_name := strings.trim_null(file_name) if false else file_name
         }
 
         file_path := filepath.join({gen_dir, slashed_file_name})

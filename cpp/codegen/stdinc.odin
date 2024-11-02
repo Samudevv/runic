@@ -212,6 +212,10 @@ SYSTEM_INCLUDE_FILES :: [?]string {
     "wordexp.h",
 }
 
+SYSTEM_INCLUDE_FILE_CONTENTS := map[string]string {
+    "stdarg.h" = "typedef long double va_list;",
+}
+
 when ODIN_OS == .Windows {
     SYSTEM_INCLUDE_GEN_DIR :: "C:\\temp\\runic_system_includes\\"
 } else {
@@ -288,15 +292,26 @@ generate_system_includes :: proc(gen_dir: string) -> bool {
         when ODIN_OS == .Windows {
             slashed_file_name, _ := strings.replace_all(file_name, "/", "\\")
         } else {
-            slashed_file_name := strings.trim_null(file_name) if false else file_name
+            slashed_file_name :=
+                strings.trim_null(file_name) if false else file_name
         }
 
         file_path := filepath.join({gen_dir, slashed_file_name})
         dir := filepath.dir(file_path)
         if err := make_directory_parents(dir); err != nil do return false
 
-        fd, err := os.open(file_path, os.O_CREATE | os.O_TRUNC, 0o644)
+        fd, err := os.open(
+            file_path,
+            os.O_CREATE | os.O_TRUNC | os.O_WRONLY,
+            0o644,
+        )
         if err != nil do return false
+
+        if contents, contents_ok := SYSTEM_INCLUDE_FILE_CONTENTS[file_name];
+           contents_ok {
+            os.write_string(fd, contents)
+        }
+
         os.close(fd)
     }
 

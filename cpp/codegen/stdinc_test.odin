@@ -17,6 +17,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package cpp_codegen
 
+import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:testing"
@@ -40,8 +41,17 @@ test_cpp_stdinc :: proc(t: ^testing.T) {
         defer delete(file_path)
 
         fd, err := os.open(file_path, os.O_RDONLY)
-        expect_value(t, err, nil)
-        os.close(fd)
+        if expect_value(t, err, nil) {
+            if expected_contents, expected_ok :=
+                   SYSTEM_INCLUDE_FILE_CONTENTS[file_name]; expected_ok {
+                contents, contents_ok := os.read_entire_file(fd)
+                if expect(t, contents_ok) {
+                    if !expect_value(t, string(contents), expected_contents) do fmt.eprintfln("contents of {} differ from expected", file_name)
+                    delete(contents)
+                }
+            }
+            os.close(fd)
+        }
     }
 
     delete_system_includes(gen_dir)

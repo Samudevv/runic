@@ -40,12 +40,16 @@ STBIMAGE_MAKE := if os_family() == 'unix' {
 if os() != 'macos' {
   MAKE + ' -C ' + '"' + `dirname $(which odin)` / 'vendor' / 'stb' / 'src' + '"'
 } else {
-  ''
+  'echo Nothing do to for MacOS'
 }
-} else { '' }
+} else { 'echo Nothing to do for Windows' }
 [unix]
 stb_image:
-  {{ STBIMAGE_MAKE }}
+  #! /bin/sh
+  set -ex
+  if [ ! -e "$(dirname $(which odin))/vendor/stb/lib/stb_image.a" ]; then
+    {{ STBIMAGE_MAKE }}
+  fi
 
 [windows]
 stb_image:

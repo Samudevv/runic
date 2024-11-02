@@ -464,13 +464,23 @@ generate_runestone :: proc(
                 )
                 return
             }
-            err = errors.message("failed to open header file: {}", stat)
+            err = errors.message(
+                "failed to open header file \"{}\": {}",
+                header,
+                stat,
+            )
             return
         case nil:
         case:
-            err = errors.message("failed to open header file: {}", stat)
+            err = errors.message(
+                "failed to open header file \"{}\": {}",
+                header,
+                stat,
+            )
             return
         }
+
+        fmt.eprintfln("Parsing \"{}\" ...", header)
 
         header_cstr := strings.clone_to_cstring(header, arena_alloc)
 

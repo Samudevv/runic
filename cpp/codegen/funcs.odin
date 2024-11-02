@@ -138,7 +138,8 @@ clang_type_to_runic_type :: proc(
     case .Short:
         tp.spec = int_type(isz.short, true)
     case .Int:
-        if th, ok := type_hint.?; ok && th != "int" {
+        if th, ok := type_hint.?;
+           ok && th != "int" && th != "signed" && th != "signed int" {
             tp.spec = handle_builtin_int(th, isz, allocator)
         } else {
             tp.spec = int_type(isz.Int, true)

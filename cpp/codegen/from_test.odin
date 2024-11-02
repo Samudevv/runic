@@ -47,6 +47,11 @@ test_cpp_builtin :: proc(t: ^testing.T) {
     is_a_string := om.get(rs.types, "is_a_string")
     expect_value(t, is_a_string.spec.(runic.Builtin), runic.Builtin.String)
     expect_value(t, is_a_string.pointer_info.count, 0)
+
+    l := om.get(rs.types, "l")
+    expect_value(t, l.spec.(runic.Builtin), runic.Builtin.SInt32)
+    m := om.get(rs.types, "m")
+    expect_value(t, m.spec.(runic.Builtin), runic.Builtin.SInt32)
 }
 
 @(test)

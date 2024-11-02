@@ -51,6 +51,7 @@ From :: struct {
     defines:                    PlatformValue(map[string]string),
     enable_host_includes:       PlatformValue(bool),
     disable_system_include_gen: PlatformValue(bool),
+    disable_stdint_macros:      PlatformValue(bool),
     flags:                      PlatformValue([]cstring),
     // Odin
     packages:                   PlatformValue([]string),

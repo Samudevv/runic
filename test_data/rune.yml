@@ -20,6 +20,8 @@ from:
   enable_host_includes.linux.arm64: false
   disable_system_include_gen: true
   disable_system_include_gen.windows: false
+  disable_stdint_macros: true
+  disable_stdint_macros.windows: false
   defines:
     MYFOO: !!int 2
   overwrite:

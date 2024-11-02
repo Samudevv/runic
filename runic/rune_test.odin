@@ -54,7 +54,13 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, f.enable_host_includes.d[Platform{.Any, .Any}], true)
     expect_value(t, f.enable_host_includes.d[Platform{.Linux, .arm64}], false)
     expect_value(t, f.disable_system_include_gen.d[Platform{.Any, .Any}], true)
-    expect_value(t, f.disable_system_include_gen.d[Platform{.Windows, .Any}], false)
+    expect_value(
+        t,
+        f.disable_system_include_gen.d[Platform{.Windows, .Any}],
+        false,
+    )
+    expect_value(t, f.disable_stdint_macros.d[Platform{.Any, .Any}], true)
+    expect_value(t, f.disable_stdint_macros.d[Platform{.Windows, .Any}], false)
 
     ow := f.overwrite.d[Platform{.Any, .Any}]
     expect_value(t, len(ow.functions), 3)

@@ -305,6 +305,10 @@ parse_rune :: proc(
                 map[Platform]bool,
                 allocator = rn_arena_alloc,
             )
+            f.disable_stdint_macros.d = make(
+                map[Platform]bool,
+                allocator = rn_arena_alloc,
+            )
             f.packages.d = make(
                 map[Platform][]string,
                 allocator = rn_arena_alloc,
@@ -1145,6 +1149,18 @@ parse_rune :: proc(
                     #partial switch v in value {
                     case bool:
                         f.disable_system_include_gen.d[plat] = v
+                    case:
+                        err = errors.message(
+                            "\"from.{}\" has invalid type %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
+                case "disable_stdint_macros":
+                    #partial switch v in value {
+                    case bool:
+                        f.disable_stdint_macros.d[plat] = v
                     case:
                         err = errors.message(
                             "\"from.{}\" has invalid type %T",

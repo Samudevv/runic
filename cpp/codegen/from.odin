@@ -326,6 +326,9 @@ generate_runestone :: proc(
     }
 
     append(&clang_flags, target_flag)
+    if plat.arch == .arm32 {
+        append(&clang_flags, "-mfloat-abi=soft")
+    }
 
     // Generate system includes as empty files just for placeholders
     stdinc_gen_dir: Maybe(string)

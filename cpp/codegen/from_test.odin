@@ -22,15 +22,11 @@ test_cpp_builtin :: proc(t: ^testing.T) {
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
 
-    rs, err := generate_runestone(
-        runic.platform_from_host(),
-        RUNESTONE_TEST_PATH,
-        rf,
-    )
+    rs, err := generate_runestone({.Linux, .arm64}, RUNESTONE_TEST_PATH, rf)
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 32)
+    expect_value(t, om.length(rs.types), 34)
     expect_value(t, om.length(rs.symbols), 9)
 
     rab := om.get(rs.symbols, "rab")
@@ -43,6 +39,14 @@ test_cpp_builtin :: proc(t: ^testing.T) {
     expect_value(t, zab_type.spec.(runic.Builtin), runic.Builtin.SInt32)
     expect_value(t, zab.value.(runic.Type).pointer_info.count, 1)
     expect_value(t, zab.value.(runic.Type).array_info[0].size.(u64), 2)
+
+    not_string := om.get(rs.types, "not_string")
+    expect_value(t, not_string.spec.(runic.Builtin), runic.Builtin.SInt8)
+    expect_value(t, not_string.pointer_info.count, 1)
+
+    is_a_string := om.get(rs.types, "is_a_string")
+    expect_value(t, is_a_string.spec.(runic.Builtin), runic.Builtin.String)
+    expect_value(t, is_a_string.pointer_info.count, 0)
 }
 
 @(test)

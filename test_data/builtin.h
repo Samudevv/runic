@@ -33,6 +33,8 @@ typedef float _Complex af;
 typedef double _Complex ag;
 typedef long double _Complex ah;
 typedef ad ai;
+typedef int8_t *not_string;
+typedef char* is_a_string;
 
 int foo, bar, baz;
 

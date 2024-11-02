@@ -1,3 +1,5 @@
+#include <stdarg.h>
+
 typedef void GLFWwindow;
 
 void (*hello)();
@@ -22,3 +24,5 @@ void(*signal(int, void (*)(int)))(int);
 typedef void (*const consty)(int a, int b);
 
 typedef GLFWwindow* (*create_window)(const char* name, int width, int height);
+
+typedef void (*variadic_func)(int a, va_list args);

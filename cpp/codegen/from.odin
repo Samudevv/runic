@@ -903,6 +903,23 @@ generate_runestone :: proc(
                         )
                     }
 
+                    if len(func.parameters) != 0 {
+                        has_va_list: bool
+
+                        #partial switch spec in
+                            func.parameters[len(func.parameters) - 1].type.spec {
+                        case string:
+                            if spec == "va_list" do has_va_list = true
+                        case runic.Unknown:
+                            if spec == "va_list" do has_va_list = true
+                        }
+
+                        if has_va_list {
+                            pop(&func.parameters)
+                            func.variadic = true
+                        }
+                    }
+
                     om.insert(
                         &data.rs.symbols,
                         strings.clone(func_name, rs_arena_alloc),

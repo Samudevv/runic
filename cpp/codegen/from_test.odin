@@ -562,7 +562,7 @@ test_cpp_function :: proc(t: ^testing.T) {
     defer runic.runestone_destroy(&rs)
 
     expect_value(t, om.length(rs.types), 1)
-    expect_value(t, om.length(rs.symbols), 8)
+    expect_value(t, om.length(rs.symbols), 9)
 
     hello_world := om.get(rs.symbols, "hello_world")
     hw := hello_world.value.(runic.Function)
@@ -594,6 +594,10 @@ test_cpp_function :: proc(t: ^testing.T) {
     bz := baz.value.(runic.Function)
 
     expect_value(t, bz.parameters[0].type.spec.(string), "x_struct_anon_0")
+
+    variadic := om.get(rs.symbols, "variadic_func").value.(runic.Function)
+    expect_value(t, len(variadic.parameters), 1)
+    expect_value(t, variadic.variadic, true)
 }
 
 @(test)
@@ -620,7 +624,7 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 7)
+    expect_value(t, om.length(rs.types), 8)
     expect_value(t, om.length(rs.symbols), 6)
 
     hello := om.get(rs.symbols, "hello")
@@ -665,6 +669,10 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     expect_value(t, create_window.parameters[0].name, "name")
     expect_value(t, create_window.parameters[1].name, "width")
     expect_value(t, create_window.parameters[2].name, "height")
+
+    variadic := om.get(rs.types, "variadic_func").spec.(runic.FunctionPointer)
+    expect_value(t, len(variadic.parameters), 1)
+    expect_value(t, variadic.variadic, true)
 }
 
 @(test)

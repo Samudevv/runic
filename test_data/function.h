@@ -1,3 +1,5 @@
+#include <stdarg.h>
+
 #define printf(x, y) return
 
 void hello_world();
@@ -20,3 +22,5 @@ void asm_func() __asm__("movl $5, %eax") __attribute__((null));
 int a;
 
 void eof() {}
+
+void variadic_func(int a, va_list args);

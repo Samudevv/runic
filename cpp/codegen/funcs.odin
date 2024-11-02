@@ -531,6 +531,23 @@ clang_type_to_runic_type :: proc(
             return
         }
 
+        if len(func.parameters) != 0 {
+            has_va_list: bool
+
+            #partial switch spec in
+                func.parameters[len(func.parameters) - 1].type.spec {
+            case string:
+                if spec == "va_list" do has_va_list = true
+            case runic.Unknown:
+                if spec == "va_list" do has_va_list = true
+            }
+
+            if has_va_list {
+                pop(&func.parameters)
+                func.variadic = true
+            }
+        }
+
         tp.spec = new_clone(func, allocator)
     case:
         err = clang_source_error(cursor, "unsupported type \"{}\"", type.kind)

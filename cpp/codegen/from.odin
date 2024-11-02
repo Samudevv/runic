@@ -260,12 +260,60 @@ generate_runestone :: proc(
 
     append(&clang_flags, target_flag)
 
+    // Generate system includes as empty files just for placeholders
+    stdinc_gen_dir: Maybe(string)
+    defer if gen_dir, ok := stdinc_gen_dir.?; ok {
+        delete_system_includes(gen_dir)
+    }
+
     if enable_host_includes, ok := runic.platform_value_get(
         bool,
         rf.enable_host_includes,
         plat,
     ); !(ok && enable_host_includes) {
         append(&clang_flags, "-nostdinc")
+
+        if disable_system_include_gen, gen_ok := runic.platform_value_get(
+            bool,
+            rf.disable_system_include_gen,
+            plat,
+        ); !(gen_ok && disable_system_include_gen) {
+            stdinc_gen_dir_ok: bool = ---
+            stdinc_gen_dir, stdinc_gen_dir_ok = system_includes_gen_dir(
+                plat,
+                arena_alloc,
+            )
+
+            if stdinc_gen_dir_ok {
+                ok = generate_system_includes(stdinc_gen_dir.?)
+
+                if ok {
+                    include_dir := strings.concatenate(
+                        {"-I", stdinc_gen_dir.?},
+                        arena_alloc,
+                    )
+                    include_dir_cstr := strings.clone_to_cstring(
+                        include_dir,
+                        arena_alloc,
+                    )
+                    append(&clang_flags, include_dir_cstr)
+                } else {
+                    fmt.eprintfln(
+                        "FATAL: failed to generate system includes for platform {}.{} into \"{}\"",
+                        plat.os,
+                        plat.arch,
+                        stdinc_gen_dir,
+                    )
+                }
+            } else {
+                stdinc_gen_dir = nil
+                fmt.eprintfln(
+                    "FATAL: failed to create temporary directory for system includes for platform {}.{}",
+                    plat.os,
+                    plat.arch,
+                )
+            }
+        }
     }
 
     if rune_defines, ok := runic.platform_value_get(

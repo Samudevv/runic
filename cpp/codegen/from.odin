@@ -330,6 +330,36 @@ generate_runestone :: proc(
         append(&clang_flags, "-mfloat-abi=soft")
     }
 
+    if rune_defines, ok := runic.platform_value_get(
+        map[string]string,
+        rf.defines,
+        plat,
+    ); ok {
+        for name, value in rune_defines {
+            arg := strings.clone_to_cstring(
+                fmt.aprintf("-D{}={}", name, value, allocator = arena_alloc),
+                arena_alloc,
+            )
+
+            append(&clang_flags, arg)
+        }
+    }
+
+    if include_dirs, ok := runic.platform_value_get(
+        []string,
+        rf.includedirs,
+        plat,
+    ); ok {
+        for inc in include_dirs {
+            arg := strings.clone_to_cstring(
+                fmt.aprintf("-I{}", inc, allocator = arena_alloc),
+                arena_alloc,
+            )
+
+            append(&clang_flags, arg)
+        }
+    }
+
     // Generate system includes as empty files just for placeholders
     stdinc_gen_dir: Maybe(string)
     defer if gen_dir, ok := stdinc_gen_dir.?; ok {
@@ -386,36 +416,6 @@ generate_runestone :: proc(
         }
     }
 
-    if rune_defines, ok := runic.platform_value_get(
-        map[string]string,
-        rf.defines,
-        plat,
-    ); ok {
-        for name, value in rune_defines {
-            arg := strings.clone_to_cstring(
-                fmt.aprintf("-D{}={}", name, value, allocator = arena_alloc),
-                arena_alloc,
-            )
-
-            append(&clang_flags, arg)
-        }
-    }
-
-    if include_dirs, ok := runic.platform_value_get(
-        []string,
-        rf.includedirs,
-        plat,
-    ); ok {
-        for inc in include_dirs {
-            arg := strings.clone_to_cstring(
-                fmt.aprintf("-I{}", inc, allocator = arena_alloc),
-                arena_alloc,
-            )
-
-            append(&clang_flags, arg)
-        }
-    }
-
     if flags, ok := runic.platform_value_get([]cstring, rf.flags, plat); ok {
         for f in flags {
             append(&clang_flags, f)
@@ -443,6 +443,14 @@ generate_runestone :: proc(
     units := make([dynamic]clang.TranslationUnit, arena_alloc)
     defer for unit in units {
         clang.disposeTranslationUnit(unit)
+    }
+
+    when ODIN_DEBUG {
+        fmt.eprint("clang flags: ")
+        for flag in clang_flags {
+            fmt.eprintf("\"{}\" ", flag)
+        }
+        fmt.eprintln()
     }
 
     for header in headers {

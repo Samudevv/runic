@@ -661,9 +661,13 @@ write_procedure :: proc(
         io.write_string(ps, ": ") or_return
         io.write_string(ps, strings.to_string(type_bd)) or_return
 
-        if idx != len(fc.parameters) - 1 {
+        if idx != len(fc.parameters) - 1 || fc.variadic {
             io.write_string(ps, ", ") or_return
         }
+    }
+
+    if fc.variadic {
+        io.write_string(ps, "#c_vararg var_args: ..any") or_return
     }
 
     io.write_rune(ps, ')') or_return
@@ -699,9 +703,7 @@ write_type :: proc(
         if pointer_count >= 1 {
             pointer_count -= 1
         } else {
-            return errors.Error(
-                errors.message("type \"{}\" is unknown", u),
-            )
+            return errors.Error(errors.message("type \"{}\" is unknown", u))
         }
     }
 

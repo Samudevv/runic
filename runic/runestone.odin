@@ -302,6 +302,10 @@ parse_runestone :: proc(
 }
 
 runestone_destroy :: proc(rs: ^Runestone) {
+    om.delete(rs.symbols)
+    om.delete(rs.types)
+    om.delete(rs.constants)
+    om.delete(rs.externs)
     runtime.arena_destroy(&rs.arena)
 }
 
@@ -319,10 +323,10 @@ init_runestone :: proc(
 
     rs_arena_alloc = runtime.arena_allocator(&rs.arena)
 
-    rs.symbols = om.make(string, Symbol, allocator = rs_arena_alloc)
-    rs.externs = om.make(string, Extern, allocator = rs_arena_alloc)
-    rs.types = om.make(string, Type, allocator = rs_arena_alloc)
-    rs.constants = om.make(string, Constant, allocator = rs_arena_alloc)
+    rs.symbols = om.make(string, Symbol, allocator = backing_allocator)
+    rs.externs = om.make(string, Extern, allocator = backing_allocator)
+    rs.types = om.make(string, Type, allocator = backing_allocator)
+    rs.constants = om.make(string, Constant, allocator = backing_allocator)
 
     return
 }

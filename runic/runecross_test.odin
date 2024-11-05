@@ -20,7 +20,6 @@ package runic
 import "core:slice"
 import "core:strings"
 import "core:testing"
-import "base:runtime"
 import om "root:ordered_map"
 
 SAME_RUNESTONE1 :: `
@@ -64,6 +63,7 @@ test_is_same :: proc(t: ^testing.T) {
     rs1, rs1_err := parse_runestone(strings.reader_to_stream(&rd1), "/rd1")
     if !expect_value(t, rs1_err, nil) do return
     defer runestone_destroy(&rs1)
+
     rs2, rs2_err := parse_runestone(strings.reader_to_stream(&rd2), "/rd2")
     if !expect_value(t, rs2_err, nil) do return
     defer runestone_destroy(&rs2)
@@ -138,21 +138,21 @@ test_runecross :: proc(t: ^testing.T) {
         "/linux",
     )
     if !expect_value(t, linux_err, nil) do return
+    defer runestone_destroy(&linux_stone)
+
     windows_stone, windows_err := parse_runestone(
         strings.reader_to_stream(&windows_rd),
         "/windows",
     )
     if !expect_value(t, windows_err, nil) do return
+    defer runestone_destroy(&windows_stone)
 
     cross, cross_err := cross_the_runes(
         {"/linux", "/windows"},
         {linux_stone, windows_stone},
     )
     if !expect_value(t, cross_err, nil) do return
-    defer delete(cross.arenas)
-    defer for &a in cross.arenas {
-        runtime.arena_destroy(&a)
-    }
+    defer runecross_destroy(&cross)
 
     general := &cross.cross[0]
 
@@ -187,3 +187,4 @@ test_runecross :: proc(t: ^testing.T) {
     expect_value(t, om.length(windows_cross.types), 1)
     expect_value(t, om.length(windows_cross.symbols), 1)
 }
+

@@ -121,6 +121,10 @@ main :: proc() {
     runestones := make([dynamic]runic.Runestone, context.temp_allocator)
     file_paths := make([dynamic]string, context.temp_allocator)
 
+    defer for &stone in runestones {
+        runic.runestone_destroy(&stone)
+    }
+
     switch from in rune.from {
     case runic.From:
         for plat in plats {
@@ -313,7 +317,6 @@ main :: proc() {
                 ),
             )
         case "c":
-            // TODO: update for Runecross
             err = errors.wrap(
                 ccdg.generate_bindings(
                     runecross,
@@ -342,10 +345,6 @@ main :: proc() {
             out_file_name,
         )
     case string:
-        defer for &rs in runestones {
-            runic.runestone_destroy(&rs)
-        }
-
         rs_files := make([dynamic]os.Handle, context.temp_allocator)
         rs_file_paths := make([dynamic]string, context.temp_allocator)
 

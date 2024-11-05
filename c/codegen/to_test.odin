@@ -137,18 +137,21 @@ var.macos_globals = Array
         "/linux",
     )
     if !expect_value(t, rs_err, nil) do return
+    defer runic.runestone_destroy(&linux_rs)
 
     windows_rs, rs_err = runic.parse_runestone(
         strings.reader_to_stream(&windows_rd),
         "/windows",
     )
     if !expect_value(t, rs_err, nil) do return
+    defer runic.runestone_destroy(&windows_rs)
 
     macos_rs, rs_err = runic.parse_runestone(
         strings.reader_to_stream(&macos_rd),
         "/macos",
     )
     if !expect_value(t, rs_err, nil) do return
+    defer runic.runestone_destroy(&macos_rs)
 
     strings.reader_init(&linux_rd, string(LINUX_RUNESTONE))
     linux_arm_rs, rs_err = runic.parse_runestone(
@@ -157,6 +160,7 @@ var.macos_globals = Array
     )
     if !expect_value(t, rs_err, nil) do return
     linux_arm_rs.platform.arch = .arm64
+    defer runic.runestone_destroy(&linux_arm_rs)
 
     runic.to_preprocess_runestone(&linux_rs, rn, C_RESERVED)
     runic.to_preprocess_runestone(&windows_rs, rn, C_RESERVED)

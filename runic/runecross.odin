@@ -23,8 +23,8 @@ import "root:errors"
 import om "root:ordered_map"
 
 Runecross :: struct {
-    arenas: [dynamic]runtime.Arena,
-    cross:  [dynamic]PlatformRunestone,
+    arena: runtime.Arena,
+    cross: [dynamic]PlatformRunestone,
 }
 
 PlatformRunestone :: struct {
@@ -46,12 +46,9 @@ cross_the_runes :: proc(
 ) {
     errors.assert(len(stones) != 0, "no runestones specified") or_return
 
+    errors.wrap(runtime.arena_init(&rc.arena, 0, context.allocator)) or_return
 
-    rc.arenas = make([dynamic]runtime.Arena, len(stones))
-    for stone, idx in stones {
-        rc.arenas[idx] = stone.arena
-    }
-    rn_arena_alloc := runtime.arena_allocator(&rc.arenas[0])
+    rn_arena_alloc := runtime.arena_allocator(&rc.arena)
     rc.cross = make([dynamic]PlatformRunestone, rn_arena_alloc)
 
     errors.assert(
@@ -363,11 +360,10 @@ cross_the_runes :: proc(
 }
 
 runecross_destroy :: proc(rc: ^Runecross) {
-    delete(rc.cross)
-    for &arena in rc.arenas {
-        runtime.arena_destroy(&arena)
+    for &stone in rc.cross {
+        runestone_destroy(&stone)
     }
-    delete(rc.arenas)
+    runtime.arena_destroy(&rc.arena)
 }
 
 runecross_is_simple :: proc(rc: Runecross) -> bool {
@@ -677,11 +673,7 @@ set_for_same_platforms :: proc(
     }
 
     stone2: RunestoneWithFile
-
-    stone2.symbols = om.make(string, Symbol, allocator = allocator)
-    stone2.types = om.make(string, Type, allocator = allocator)
-    stone2.constants = om.make(string, Constant, allocator = allocator)
-    stone2.externs = om.make(string, Extern, allocator = allocator)
+    init_runestone(&stone2.stone)
 
     if len(plats) == 1 {
         stone2.platform = plats[0]

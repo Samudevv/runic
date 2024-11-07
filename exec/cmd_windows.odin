@@ -15,7 +15,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// +build windows
+#+build windows
 package exec
 
 import "core:os"

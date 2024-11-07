@@ -38,7 +38,7 @@ make :: #force_inline proc(
     m: OrderedMap(Key, Value),
     err: runtime.Allocator_Error,
 ) #optional_allocator_error {
-    m.indices = make_map(map[Key]int, capacity, allocator, loc) or_return
+    m.indices = make_map_cap(map[Key]int, capacity, allocator, loc) or_return
     m.data = make_dynamic_array(
         [dynamic]Entry(Key, Value),
         allocator,

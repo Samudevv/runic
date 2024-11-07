@@ -43,7 +43,7 @@ generate_bindings :: proc(
     if !rn.no_build_tag {
         for entry, cross_idx in rc.cross {
             if cross_idx == 0 {
-                io.write_string(wd, "//+build ") or_return
+                io.write_string(wd, "#+build ") or_return
             }
 
             plats := entry.plats

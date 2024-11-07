@@ -46,7 +46,7 @@ test_to_odin_codegen :: proc(t: ^testing.T) {
         arch = .x86_64,
     }
 
-    ODIN_EXPECTED :: `//+build linux amd64
+    ODIN_EXPECTED :: `#+build linux amd64
 package foo_pkg
 
 odin_anon_0_bindings :: struct {

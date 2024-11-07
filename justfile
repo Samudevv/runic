@@ -46,7 +46,7 @@ EXE_EXT := if os_family() == 'unix' {''} else {'.exe'}
 
 default: release
 tools: showc cpp cppp
-all: debug release tools test (example 'olivec') (example 'glew')
+all: debug release tools test (example 'olivec')
 
 release ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
   odin build . {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'runic' + EXE_EXT  }}" {{ ODIN_RELEASE_FLAGS }} -thread-count:{{ ODIN_JOBS }}
@@ -117,7 +117,6 @@ clean:
   test_data/*_runestone.ini \
   test_data/foozy/foozy.h
   @just --justfile examples/olivec/justfile clean
-  @just --justfile examples/glew/justfile clean
 
 [windows]
 clean:

@@ -15,7 +15,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// +build linux, darwin
+#+build linux, darwin
 package odin_codegen
 
 import "core:os"

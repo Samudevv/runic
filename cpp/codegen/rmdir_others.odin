@@ -15,7 +15,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-//+build !darwin
+#+build !darwin
 package cpp_codegen
 
 import "core:os"

@@ -15,7 +15,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// +build freebsd, openbsd, netbsd
+#+build freebsd, openbsd, netbsd
 package exec
 
 import "core:os"

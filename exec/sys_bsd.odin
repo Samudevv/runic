@@ -15,8 +15,8 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// +build freebsd, openbsd, netbsd
-// +private
+#+build freebsd, openbsd, netbsd
+#+private
 package exec
 
 import "base:intrinsics"

@@ -86,7 +86,12 @@ main :: proc() {
     if len(rune.platforms) != 0 {
         plats = rune.platforms
     } else {
-        platties := make([dynamic]runic.Platform, context.temp_allocator)
+        platties := make(
+            [dynamic]runic.Platform,
+            allocator = context.temp_allocator,
+            len = 0,
+            cap = len(rune.platforms),
+        )
         append(&platties, host_plat)
         plats = platties[:]
     }
@@ -118,8 +123,18 @@ main :: proc() {
         )
     }
 
-    runestones := make([dynamic]runic.Runestone, context.temp_allocator)
-    file_paths := make([dynamic]string, context.temp_allocator)
+    runestones := make(
+        [dynamic]runic.Runestone,
+        allocator = context.temp_allocator,
+        len = 0,
+        cap = len(rune.platforms),
+    )
+    file_paths := make(
+        [dynamic]string,
+        allocator = context.temp_allocator,
+        len = 0,
+        cap = len(rune.platforms),
+    )
 
     defer for &stone in runestones {
         runic.runestone_destroy(&stone)
@@ -345,8 +360,18 @@ main :: proc() {
             out_file_name,
         )
     case string:
-        rs_files := make([dynamic]os.Handle, context.temp_allocator)
-        rs_file_paths := make([dynamic]string, context.temp_allocator)
+        rs_files := make(
+            [dynamic]os.Handle,
+            allocator = context.temp_allocator,
+            len = 0,
+            cap = len(runestones),
+        )
+        rs_file_paths := make(
+            [dynamic]string,
+            allocator = context.temp_allocator,
+            len = 0,
+            cap = len(runestones),
+        )
 
         if to == "stdout" {
             if len(runestones) != 1 {

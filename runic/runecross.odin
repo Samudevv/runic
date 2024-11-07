@@ -49,15 +49,25 @@ cross_the_runes :: proc(
     errors.wrap(runtime.arena_init(&rc.arena, 0, context.allocator)) or_return
 
     rn_arena_alloc := runtime.arena_allocator(&rc.arena)
-    rc.cross = make([dynamic]PlatformRunestone, rn_arena_alloc)
+    rc.cross = make(
+        [dynamic]PlatformRunestone,
+        allocator = rn_arena_alloc,
+        len = 0,
+        cap = len(stones),
+    )
 
     errors.assert(
         len(file_paths) == len(stones),
         "file_paths and stones should have the same length",
     ) or_return
     if len(stones) == 1 {
-        plats := make([dynamic]Platform, rn_arena_alloc)
-        append(&plats, Platform{.Any, .Any})
+        plats := make(
+            [dynamic]Platform,
+            allocator = rn_arena_alloc,
+            len = 1,
+            cap = 1,
+        )
+        plats[0] = {.Any, .Any}
 
         append(
             &rc.cross,

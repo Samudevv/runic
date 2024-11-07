@@ -425,8 +425,12 @@ generate_runestone :: proc(
     headers := runic.platform_value_get([]string, rf.headers, plat)
     ignore := runic.platform_value_get(runic.IgnoreSet, rf.ignore, plat)
 
-    included_types := make(map[string]IncludedType, allocator = arena_alloc)
-    macros := om.make(string, Macro, allocator = arena_alloc)
+    included_types := make(map[string]IncludedType)
+    defer delete(included_types)
+
+    macros := om.make(string, Macro)
+    defer om.delete(macros)
+
     anon_idx: int
     data := ClientData {
         rs             = &rs,
@@ -440,7 +444,12 @@ generate_runestone :: proc(
     }
     index := clang.createIndex(0, 0)
     defer clang.disposeIndex(index)
-    units := make([dynamic]clang.TranslationUnit, arena_alloc)
+    units := make(
+        [dynamic]clang.TranslationUnit,
+        allocator = arena_alloc,
+        len = len(headers),
+        cap = len(headers),
+    )
     defer for unit in units {
         clang.disposeTranslationUnit(unit)
     }
@@ -856,7 +865,9 @@ generate_runestone :: proc(
 
                     func.parameters = make(
                         [dynamic]runic.Member,
-                        rs_arena_alloc,
+                        allocator = rs_arena_alloc,
+                        len = 0,
+                        cap = num_params,
                     )
                     func.variadic = bool(
                         num_params != 0 &&

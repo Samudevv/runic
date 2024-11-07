@@ -64,10 +64,17 @@ parse_rune :: proc(
         }
 
         if platforms, ok := y["platforms"]; ok {
-            plats := make([dynamic]Platform, rn_arena_alloc)
+            plats: [dynamic]Platform = ---
 
             #partial switch p in platforms {
             case string:
+                plats = make(
+                    [dynamic]Platform,
+                    allocator = rn_arena_alloc,
+                    len = 0,
+                    cap = 1,
+                )
+
                 name_arch := strings.split(p, " ")
                 defer delete(name_arch)
 
@@ -107,6 +114,13 @@ parse_rune :: proc(
                     append(&plats, plat)
                 }
             case yaml.Sequence:
+                plats = make(
+                    [dynamic]Platform,
+                    allocator = rn_arena_alloc,
+                    len = 0,
+                    cap = len(p),
+                )
+
                 for value, idx in p {
                     #partial switch v in value {
                     case string:
@@ -190,7 +204,13 @@ parse_rune :: proc(
                 if in_headers_value, ok := wrapper_map["in_headers"]; ok {
                     #partial switch in_headers in in_headers_value {
                     case yaml.Sequence:
-                        arr := make([dynamic]string, rn_arena_alloc)
+                        arr := make(
+                            [dynamic]string,
+                            allocator = rn_arena_alloc,
+                            len = 0,
+                            cap = len(in_headers),
+                        )
+
                         for header_value, idx in in_headers {
                             #partial switch header in header_value {
                             case string:
@@ -213,14 +233,16 @@ parse_rune :: proc(
 
                         wrapper.in_headers = arr[:]
                     case string:
-                        arr := make([dynamic]string, rn_arena_alloc)
-                        append(
-                            &arr,
-                            relative_to_file(
-                                file_path,
-                                in_headers,
-                                rn_arena_alloc,
-                            ),
+                        arr := make(
+                            [dynamic]string,
+                            allocator = rn_arena_alloc,
+                            len = 1,
+                            cap = 1,
+                        )
+                        arr[0] = relative_to_file(
+                            file_path,
+                            in_headers,
+                            rn_arena_alloc,
                         )
                         wrapper.in_headers = arr[:]
                     case:
@@ -275,46 +297,23 @@ parse_rune :: proc(
         case yaml.Mapping:
             f: From
 
-            f.static.d = make(map[Platform]string, allocator = rn_arena_alloc)
-            f.shared.d = make(map[Platform]string, allocator = rn_arena_alloc)
-            f.ignore.d = make(
-                map[Platform]IgnoreSet,
-                allocator = rn_arena_alloc,
-            )
-            f.overwrite.d = make(
-                map[Platform]OverwriteSet,
-                allocator = rn_arena_alloc,
-            )
-            f.headers.d = make(
-                map[Platform][]string,
-                allocator = rn_arena_alloc,
-            )
-            f.includedirs.d = make(
-                map[Platform][]string,
-                allocator = rn_arena_alloc,
-            )
-            f.defines.d = make(
-                map[Platform]map[string]string,
-                allocator = rn_arena_alloc,
-            )
-            f.enable_host_includes.d = make(
-                map[Platform]bool,
-                allocator = rn_arena_alloc,
-            )
-            f.disable_system_include_gen.d = make(
-                map[Platform]bool,
-                allocator = rn_arena_alloc,
-            )
-            f.disable_stdint_macros.d = make(
-                map[Platform]bool,
-                allocator = rn_arena_alloc,
-            )
-            f.packages.d = make(
-                map[Platform][]string,
-                allocator = rn_arena_alloc,
-            )
-            f.remaps = make(map[string]string, allocator = rn_arena_alloc)
-            f.aliases = make(map[string][]string, allocator = rn_arena_alloc)
+            {
+                context.allocator = rn_arena_alloc
+
+                f.static = make_platform_value(string)
+                f.shared = make_platform_value(string)
+                f.ignore = make_platform_value(IgnoreSet)
+                f.overwrite = make_platform_value(OverwriteSet)
+                f.headers = make_platform_value([]string)
+                f.includedirs = make_platform_value([]string)
+                f.defines = make_platform_value(map[string]string)
+                f.enable_host_includes = make_platform_value(bool)
+                f.disable_system_include_gen = make_platform_value(bool)
+                f.disable_stdint_macros = make_platform_value(bool)
+                f.packages = make_platform_value([]string)
+                f.remaps = make(map[string]string)
+                f.aliases = make(map[string][]string)
+            }
 
             errors.assert(
                 "language" in from,
@@ -401,15 +400,25 @@ parse_rune :: proc(
 
                     #partial switch v in value {
                     case string:
-                        arr := make([dynamic]string, rn_arena_alloc)
-                        append(&arr, v)
+                        arr := make(
+                            [dynamic]string,
+                            allocator = rn_arena_alloc,
+                            len = 1,
+                            cap = 1,
+                        )
+                        arr[0] = v
 
                         i_set.macros = arr[:]
                         i_set.functions = arr[:]
                         i_set.variables = arr[:]
                         i_set.types = arr[:]
                     case yaml.Sequence:
-                        arr := make([dynamic]string, rn_arena_alloc)
+                        arr := make(
+                            [dynamic]string,
+                            allocator = rn_arena_alloc,
+                            len = 0,
+                            cap = len(v),
+                        )
 
                         for seq_v, idx in v {
                             #partial switch v_seq in seq_v {
@@ -431,16 +440,28 @@ parse_rune :: proc(
                         i_set.variables = arr[:]
                         i_set.types = arr[:]
                     case yaml.Mapping:
-                        macros_arr := make([dynamic]string, rn_arena_alloc)
-                        functions_arr := make([dynamic]string, rn_arena_alloc)
-                        variables_arr := make([dynamic]string, rn_arena_alloc)
-                        types_arr := make([dynamic]string, rn_arena_alloc)
+                        macros_arr: [dynamic]string
+                        functions_arr: [dynamic]string
+                        variables_arr: [dynamic]string
+                        types_arr: [dynamic]string
 
                         if macros, ok := v["macros"]; ok {
                             #partial switch m in macros {
                             case string:
-                                append(&macros_arr, m)
+                                macros_arr = make(
+                                    [dynamic]string,
+                                    allocator = rn_arena_alloc,
+                                    len = 1,
+                                    cap = 1,
+                                )
+                                macros_arr[0] = m
                             case yaml.Sequence:
+                                macros_arr = make(
+                                    [dynamic]string,
+                                    allocator = rn_arena_alloc,
+                                    len = 0,
+                                    cap = len(m),
+                                )
                                 for seq_m, idx in m {
                                     #partial switch m_seq in seq_m {
                                     case string:
@@ -461,8 +482,20 @@ parse_rune :: proc(
                         if functions, ok := v["functions"]; ok {
                             #partial switch f in functions {
                             case string:
-                                append(&functions_arr, f)
+                                functions_arr = make(
+                                    [dynamic]string,
+                                    allocator = rn_arena_alloc,
+                                    len = 1,
+                                    cap = 1,
+                                )
+                                functions_arr[0] = f
                             case yaml.Sequence:
+                                functions_arr = make(
+                                    [dynamic]string,
+                                    allocator = rn_arena_alloc,
+                                    len = 0,
+                                    cap = len(f),
+                                )
                                 for seq_f, idx in f {
                                     #partial switch f_seq in seq_f {
                                     case string:
@@ -483,8 +516,20 @@ parse_rune :: proc(
                         if variables, ok := v["variables"]; ok {
                             #partial switch var in variables {
                             case string:
-                                append(&variables_arr, var)
+                                variables_arr = make(
+                                    [dynamic]string,
+                                    allocator = rn_arena_alloc,
+                                    len = 1,
+                                    cap = 1,
+                                )
+                                variables_arr[0] = var
                             case yaml.Sequence:
+                                variables_arr = make(
+                                    [dynamic]string,
+                                    allocator = rn_arena_alloc,
+                                    len = 0,
+                                    cap = len(var),
+                                )
                                 for seq_var, idx in var {
                                     #partial switch var_seq in seq_var {
                                     case string:
@@ -505,8 +550,20 @@ parse_rune :: proc(
                         if types, ok := v["types"]; ok {
                             #partial switch t in types {
                             case string:
-                                append(&types_arr, t)
+                                types_arr = make(
+                                    [dynamic]string,
+                                    allocator = rn_arena_alloc,
+                                    len = 1,
+                                    cap = 1,
+                                )
+                                types_arr[0] = t
                             case yaml.Sequence:
+                                types_arr = make(
+                                    [dynamic]string,
+                                    allocator = rn_arena_alloc,
+                                    len = 0,
+                                    cap = len(t),
+                                )
                                 for seq_t, idx in t {
                                     #partial switch t_seq in seq_t {
                                     case string:
@@ -1063,18 +1120,22 @@ parse_rune :: proc(
 
                     f.includedirs.d[plat] = i_seq[:]
                 case "defines":
-                    d_map := make(
-                        map[string]string,
-                        allocator = rn_arena_alloc,
-                    )
-
                     if value == nil {
-                        f.defines.d[plat] = d_map
+                        f.defines.d[plat] = make(
+                            map[string]string,
+                            allocator = rn_arena_alloc,
+                        )
                         break
                     }
 
                     #partial switch v in value {
                     case yaml.Mapping:
+                        d_map := make(
+                            map[string]string,
+                            allocator = rn_arena_alloc,
+                            capacity = len(v),
+                        )
+
                         for d_key, d_value in v {
                             #partial switch d_v in d_value {
                             case string:
@@ -1123,6 +1184,8 @@ parse_rune :: proc(
                                 return
                             }
                         }
+
+                        f.defines.d[plat] = d_map
                     case:
                         err = errors.message(
                             "\"from.{}\" has invalid type %T",
@@ -1132,7 +1195,6 @@ parse_rune :: proc(
                         return
                     }
 
-                    f.defines.d[plat] = d_map
                 case "enable_host_includes":
                     #partial switch v in value {
                     case bool:
@@ -1259,11 +1321,21 @@ parse_rune :: proc(
             if extern_value, ok := from["extern"]; ok {
                 #partial switch extern in extern_value {
                 case string:
-                    extern_arr := make([dynamic]string, rn_arena_alloc)
-                    append(&extern_arr, extern)
+                    extern_arr := make(
+                        [dynamic]string,
+                        allocator = rn_arena_alloc,
+                        len = 1,
+                        cap = 1,
+                    )
+                    extern_arr[0] = extern
                     f.extern = extern_arr[:]
                 case yaml.Sequence:
-                    extern_arr := make([dynamic]string, rn_arena_alloc)
+                    extern_arr := make(
+                        [dynamic]string,
+                        allocator = rn_arena_alloc,
+                        len = 0,
+                        cap = len(extern),
+                    )
 
                     for ex, idx in extern {
                         #partial switch extern_element in ex {
@@ -1312,11 +1384,22 @@ parse_rune :: proc(
                     for alias_name, alias_value_value in aliases {
                         #partial switch alias_value in alias_value_value {
                         case string:
-                            arr := make([dynamic]string, rn_arena_alloc)
-                            append(&arr, alias_value)
+                            arr := make(
+                                [dynamic]string,
+                                allocator = rn_arena_alloc,
+                                len = 1,
+                                cap = 1,
+                            )
+                            arr[0] = alias_value
                             f.aliases[alias_name] = arr[:]
                         case yaml.Sequence:
-                            arr := make([dynamic]string, rn_arena_alloc)
+                            arr := make(
+                                [dynamic]string,
+                                allocator = rn_arena_alloc,
+                                len = 0,
+                                cap = len(alias_value),
+                            )
+
                             for alias_v, idx in alias_value {
                                 #partial switch alias in alias_v {
                                 case string:
@@ -1353,7 +1436,12 @@ parse_rune :: proc(
                 rn.from = from
             }
         case yaml.Sequence:
-            f := make([dynamic]string, rn_arena_alloc)
+            f := make(
+                [dynamic]string,
+                allocator = rn_arena_alloc,
+                len = 0,
+                cap = len(from),
+            )
 
             for value, idx in from {
                 #partial switch v in value {
@@ -1404,15 +1492,25 @@ parse_rune :: proc(
             if "trim_prefix" in to {
                 #partial switch trim_prefix in to["trim_prefix"] {
                 case string:
-                    arr := make([dynamic]string, rn_arena_alloc)
-                    append(&arr, trim_prefix)
+                    arr := make(
+                        [dynamic]string,
+                        allocator = rn_arena_alloc,
+                        len = 1,
+                        cap = 1,
+                    )
+                    arr[0] = trim_prefix
 
                     t.trim_prefix.functions = arr[:]
                     t.trim_prefix.variables = arr[:]
                     t.trim_prefix.types = arr[:]
                     t.trim_prefix.constants = arr[:]
                 case yaml.Sequence:
-                    arr := make([dynamic]string, rn_arena_alloc)
+                    arr := make(
+                        [dynamic]string,
+                        allocator = rn_arena_alloc,
+                        len = 0,
+                        cap = len(trim_prefix),
+                    )
 
                     for seq_v, idx in trim_prefix {
                         #partial switch v_seq in seq_v {
@@ -1562,15 +1660,25 @@ parse_rune :: proc(
             if "trim_suffix" in to {
                 #partial switch trim_suffix in to["trim_suffix"] {
                 case string:
-                    arr := make([dynamic]string, rn_arena_alloc)
-                    append(&arr, trim_suffix)
+                    arr := make(
+                        [dynamic]string,
+                        allocator = rn_arena_alloc,
+                        len = 1,
+                        cap = 1,
+                    )
+                    arr[0] = trim_suffix
 
                     t.trim_suffix.functions = arr[:]
                     t.trim_suffix.variables = arr[:]
                     t.trim_suffix.types = arr[:]
                     t.trim_suffix.constants = arr[:]
                 case yaml.Sequence:
-                    arr := make([dynamic]string, rn_arena_alloc)
+                    arr := make(
+                        [dynamic]string,
+                        allocator = rn_arena_alloc,
+                        len = 0,
+                        cap = len(trim_suffix),
+                    )
 
                     for v_seq, idx in trim_suffix {
                         #partial switch seq_v in v_seq {
@@ -1881,6 +1989,7 @@ parse_rune :: proc(
                         t.extern.sources = make(
                             map[string]string,
                             allocator = rn_arena_alloc,
+                            capacity = len(sources),
                         )
 
                         for source_name, import_name_value in sources {
@@ -1904,6 +2013,7 @@ parse_rune :: proc(
                             t.extern.remaps = make(
                                 map[string]string,
                                 allocator = rn_arena_alloc,
+                                capacity = len(remaps),
                             )
 
                             for type_name, remap_name_value in remaps {

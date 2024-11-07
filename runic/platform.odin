@@ -192,3 +192,15 @@ set_library :: proc(plat: Platform, rs: ^Runestone, from: From) {
     }
 }
 
+make_platform_value :: #force_inline proc(
+    $T: typeid,
+    allocator := context.allocator,
+    #any_int cap: int = 1 << runtime.MAP_MIN_LOG2_CAPACITY,
+) -> (
+    pv: PlatformValue(T),
+    err: runtime.Allocator_Error,
+) #optional_allocator_error {
+    pv.d, err = make(map[Platform]T, allocator = allocator, capacity = cap)
+    return
+}
+

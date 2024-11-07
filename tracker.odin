@@ -51,7 +51,6 @@ print_track_results :: proc(tracker: ^mem.Tracking_Allocator) {
             size: int,
             row:  string,
         }
-        leaks := make([dynamic]Leak, 0, context.temp_allocator)
         memories := make(
             map[runtime.Source_Code_Location]int,
             allocator = context.temp_allocator,
@@ -64,6 +63,13 @@ print_track_results :: proc(tracker: ^mem.Tracking_Allocator) {
             }
             memories[entry.location] = sz
         }
+
+        leaks := make(
+            [dynamic]Leak,
+            allocator = context.temp_allocator,
+            len = 0,
+            cap = len(memories),
+        )
 
         leak_sum: int
         for location, size in memories {
@@ -155,7 +161,7 @@ short_path :: proc(file_path: string) -> string {
     src_loc := proc(
         loc := #caller_location,
     ) -> runtime.Source_Code_Location {return loc}(
-        
+
     )
     src_dir := filepath.dir(src_loc.file_path, context.temp_allocator)
 

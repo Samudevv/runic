@@ -122,7 +122,12 @@ generate_wrapper :: proc(rn: runic.Wrapper) -> (err: union {
 
     index := clang.createIndex(0, 0)
     defer clang.disposeIndex(index)
-    units := make([dynamic]clang.TranslationUnit, arena_alloc)
+    units := make(
+        [dynamic]clang.TranslationUnit,
+        allocator = arena_alloc,
+        len = len(rn.in_headers),
+        cap = len(rn.in_headers),
+    )
     defer for unit in units {
         clang.disposeTranslationUnit(unit)
     }

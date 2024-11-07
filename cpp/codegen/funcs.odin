@@ -243,7 +243,6 @@ clang_type_to_runic_type :: proc(
 
         handle_anon_type(&tp, types, anon_idx, "array", allocator)
 
-        // NOTE: Probably dangerous, because it uses the values and sizes from the host platform
         arr_size := clang.getArraySize(type)
 
         if len(tp.array_info) == 0 {
@@ -458,7 +457,12 @@ clang_type_to_runic_type :: proc(
 
         handle_anon_type(&func.return_type, types, anon_idx, "func", allocator)
 
-        func.parameters = make([dynamic]runic.Member, allocator)
+        func.parameters = make(
+            [dynamic]runic.Member,
+            allocator = allocator,
+            len = 0,
+            cap = num_params,
+        )
         func.variadic = bool(
             num_params != 0 && clang.isFunctionTypeVariadic(type),
         )

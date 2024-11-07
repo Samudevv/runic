@@ -118,7 +118,12 @@ generate_bindings :: proc(
     io.write_string(wd, "\n\n") or_return
 
     // Write all imports for the extern types
-    imports := make([dynamic][2]string, arena_alloc)
+    imports := make(
+        [dynamic][2]string,
+        allocator = arena_alloc,
+        len = 0,
+        cap = len(rn.extern.sources),
+    )
     for _, source in rn.extern.sources {
         import_name_overwrite, import_path_name := import_path(source)
         if !slice.contains(

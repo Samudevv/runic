@@ -88,7 +88,8 @@ generate_runestone :: proc(
         for file_name in file_names {
             file := pkg.files[file_name]
 
-            imports := make(map[string]Import, allocator = arena_alloc)
+            imports := make(map[string]Import)
+            defer delete(imports)
 
             for decl in file.decls {
                 #partial switch stm in decl.derived_stmt {
@@ -431,7 +432,12 @@ proc_type_to_function :: proc(
         if cc != "\"c\"" do return fn, error_tok(fmt.aprintf("function needs to have c calling convention ({})", cc, allocator = errors.error_allocator), p.tok)
     }
 
-    fn.parameters = make([dynamic]runic.Member, allocator)
+    fn.parameters = make(
+        [dynamic]runic.Member,
+        allocator = allocator,
+        len = 0,
+        cap = len(p.params.list),
+    )
 
     for param_field in p.params.list {
         first_name: Maybe(string)
@@ -486,7 +492,12 @@ proc_type_to_function :: proc(
     }
 
     result_struct: runic.Struct
-    result_struct.members = make([dynamic]runic.Member, allocator)
+    result_struct.members = make(
+        [dynamic]runic.Member,
+        allocator = allocator,
+        len = 0,
+        cap = len(p.results.list),
+    )
     result_idx: int
 
     for result_field in p.results.list {
@@ -736,7 +747,12 @@ type_to_type :: proc(
             errors.wrap(ok) or_return
         }
 
-        e.entries = make([dynamic]runic.EnumEntry, allocator)
+        e.entries = make(
+            [dynamic]runic.EnumEntry,
+            allocator = allocator,
+            len = 0,
+            cap = len(type_expr.fields),
+        )
 
         counter: i64
         for field in type_expr.fields {
@@ -1058,7 +1074,12 @@ struct_type_to_struct :: proc(
     if st.align != nil do return s, error_tok("struct alignment is not supported", st.align.pos)
     if st.is_packed do return s, error_tok("packed structs are not supported", st.pos)
 
-    s.members = make([dynamic]runic.Member, allocator)
+    s.members = make(
+        [dynamic]runic.Member,
+        allocator = allocator,
+        len = 0,
+        cap = len(st.fields.list),
+    )
 
     for field in st.fields.list {
         first_name: Maybe(string)
@@ -1377,7 +1398,8 @@ lookup_type_in_package :: proc(
     err: errors.Error,
 ) {
     for file_name, file in pkg.files {
-        local_imports := make(map[string]Import, allocator = allocator)
+        local_imports := make(map[string]Import)
+        defer delete(local_imports)
 
         for decl in file.decls {
             #partial switch stm in decl.derived_stmt {

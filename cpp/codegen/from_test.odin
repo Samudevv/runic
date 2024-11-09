@@ -353,9 +353,31 @@ test_cpp_include :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 0)
+    runic.from_postprocess_runestone(&rs, rf)
+
+    expect_value(t, om.length(rs.types), 2)
     expect_value(t, om.length(rs.symbols), 0)
     expect_value(t, om.length(rs.constants), 0)
+
+    if callbacker_type, ok := om.get(rs.types, "callbacker"); expect(t, ok) {
+        if callbacker, spec_ok := callbacker_type.spec.(runic.Struct);
+           expect(t, spec_ok) {
+            if expect_value(t, len(callbacker.members), 1) {
+                if cb, cb_ok := callbacker.members[0].type.spec.(string);
+                   expect(t, cb_ok) {
+                    expect_value(t, cb, "callback_proc")
+                }
+            }
+        }
+    }
+
+    if callback_proc_type, ok := om.get(rs.types, "callback_proc");
+       expect(t, ok) {
+        if callback_proc, spec_ok := callback_proc_type.spec.(runic.FunctionPointer);
+           expect(t, spec_ok) {
+            expect_value(t, len(callback_proc.parameters), 2)
+        }
+    }
 }
 
 @(test)

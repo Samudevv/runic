@@ -1105,6 +1105,11 @@ generate_runestone :: proc(
             for &entry in unknown_anons.data {
                 anon_name, t := entry.key, &entry.value
 
+                if b, b_ok := t.spec.(runic.Builtin); b_ok && b == .Untyped {
+                    // This means that there was a forward declaration used inside a Struct etc. therefore we can ignore this
+                    continue
+                }
+
 
                 if is_extern {
                     unknowns := runic.check_for_unknown_types(t, rs.externs)

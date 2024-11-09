@@ -523,14 +523,14 @@ clang_type_to_runic_type :: proc(
             fmt.eprintln(
                 clang_source_error(
                     cursor,
-                    "{}: could not find parameters len(func.parameters)={} num_params={}. type will be added as untyped",
+                    "{}: could not find parameters len(func.parameters)={} num_params={}. type will be added as RawPtr",
                     name_hint,
                     len(func.parameters),
                     num_params,
                 ),
             )
             tp = runic.Type {
-                spec = runic.Builtin.Untyped,
+                spec = runic.Builtin.RawPtr,
             }
             return
         }

@@ -36,9 +36,12 @@ Macro :: struct {
 
 @(private)
 IncludedType :: struct {
-    using type: clang.Type,
-    file_name:  string,
-    system:     bool,
+    type:      union {
+        clang.Type,
+        runic.Type,
+    },
+    file_name: string,
+    system:    bool,
 }
 
 @(private = "file")
@@ -49,6 +52,7 @@ ClientData :: struct {
     err:            errors.Error,
     isz:            Int_Sizes,
     included_types: ^map[string]IncludedType,
+    included_anons: ^om.OrderedMap(string, runic.Type),
     macros:         ^om.OrderedMap(string, Macro),
     anon_idx:       ^int,
     rune_file_name: string,
@@ -428,6 +432,9 @@ generate_runestone :: proc(
     included_types := make(map[string]IncludedType)
     defer delete(included_types)
 
+    included_anons := om.make(string, runic.Type)
+    defer om.delete(included_anons)
+
     macros := om.make(string, Macro)
     defer om.delete(macros)
 
@@ -438,6 +445,7 @@ generate_runestone :: proc(
         arena_alloc    = arena_alloc,
         isz            = int_sizes_from_platform(plat),
         included_types = &included_types,
+        included_anons = &included_anons,
         macros         = &macros,
         anon_idx       = &anon_idx,
         rune_file_name = rune_file_name,
@@ -610,18 +618,62 @@ generate_runestone :: proc(
                         clang.disposeString(type_name_clang)
 
                         if !(type_name in data.included_types) {
-                            data.included_types[type_name] = IncludedType {
-                                file_name = strings.clone(
-                                    file_name,
-                                    data.arena_alloc,
-                                ),
-                                type      = typedef,
-                                system    = bool(
-                                    clang.Location_isInSystemHeader(
-                                        cursor_location,
-                                    ),
-                                ),
+                            // TODO: handle pointers to function pointers
+                            if typedef.kind == .Pointer {
+                                pointee := clang.getPointeeType(typedef)
+                                if pointee.kind == .FunctionProto ||
+                                   pointee.kind == .FunctionNoProto {
+                                    type: runic.Type = ---
+                                    type, data.err = clang_type_to_runic_type(
+                                        typedef,
+                                        cursor,
+                                        data.isz,
+                                        data.anon_idx,
+                                        data.included_anons,
+                                        rs_arena_alloc,
+                                        nil,
+                                        type_name,
+                                    )
+                                    if data.err != nil {
+                                        // TODO: add file name and line, column to the error output
+                                        fmt.eprintfln(
+                                            "{}: failed to parse function pointer: {}",
+                                            type_name,
+                                            data.err,
+                                        )
+                                        data.err = nil
+                                        break
+                                    }
+
+                                    data.included_types[type_name] =
+                                        IncludedType {
+                                            file_name = strings.clone(
+                                                file_name,
+                                                data.arena_alloc,
+                                            ),
+                                            type      = type,
+                                            system    = bool(
+                                                clang.Location_isInSystemHeader(
+                                                    cursor_location,
+                                                ),
+                                            ),
+                                        }
+                                    break
+                                }
                             }
+
+                            data.included_types[type_name] = IncludedType {
+                                    file_name = strings.clone(
+                                        file_name,
+                                        data.arena_alloc,
+                                    ),
+                                    type      = typedef,
+                                    system    = bool(
+                                        clang.Location_isInSystemHeader(
+                                            cursor_location,
+                                        ),
+                                    ),
+                                }
                         }
                     case .StructDecl:
                         if struct_is_unnamed(display_name) do break
@@ -1053,51 +1105,99 @@ generate_runestone :: proc(
     // Try to find the unknown types in the includes
     unknown_anons := om.make(string, runic.Type)
     for unknown in unknown_types {
-        if included_type, ok := included_types[unknown]; ok {
-            cursor := clang.getTypeDeclaration(included_type)
+        if included_type_value, ok := included_types[unknown]; ok {
+            type: runic.Type = ---
+            switch &included_type in included_type_value.type {
+            case clang.Type:
+                cursor := clang.getTypeDeclaration(included_type)
 
-            if included_type.kind == .Elaborated {
-                named_type := clang.Type_getNamedType(included_type)
-                named_cursor := clang.getTypeDeclaration(named_type)
-                named_name_clang := clang.getCursorDisplayName(named_cursor)
-                named_name := clang_str(named_name_clang)
-                defer clang.disposeString(named_name_clang)
-
-                if named_name == unknown {
-                    file: clang.File = ---
-                    named_location := clang.getCursorLocation(named_cursor)
-                    clang.getSpellingLocation(
-                        named_location,
-                        &file,
-                        nil,
-                        nil,
-                        nil,
+                if included_type.kind == .Elaborated {
+                    named_type := clang.Type_getNamedType(included_type)
+                    named_cursor := clang.getTypeDeclaration(named_type)
+                    named_name_clang := clang.getCursorDisplayName(
+                        named_cursor,
                     )
-                    file_name_clang := clang.getFileName(file)
-                    defer clang.disposeString(file_name_clang)
-                    file_name := clang_str(file_name_clang)
+                    named_name := clang_str(named_name_clang)
+                    defer clang.disposeString(named_name_clang)
 
-                    included_type = IncludedType {
-                        file_name = strings.clone(file_name, arena_alloc),
-                        type      = named_type,
+                    if named_name == unknown {
+                        file: clang.File = ---
+                        named_location := clang.getCursorLocation(named_cursor)
+                        clang.getSpellingLocation(
+                            named_location,
+                            &file,
+                            nil,
+                            nil,
+                            nil,
+                        )
+                        file_name_clang := clang.getFileName(file)
+                        defer clang.disposeString(file_name_clang)
+                        file_name := clang_str(file_name_clang)
+
+                        included_type = named_type
+                        included_type_value.file_name = strings.clone(
+                            file_name,
+                            arena_alloc,
+                        )
+                        cursor = named_cursor
                     }
-                    cursor = named_cursor
+                }
+
+                type, data.err = clang_type_to_runic_type(
+                    included_type,
+                    cursor,
+                    data.isz,
+                    data.anon_idx,
+                    &unknown_anons,
+                    rs_arena_alloc,
+                    name_hint = unknown,
+                )
+            case runic.Type:
+                type = included_type
+
+                #partial switch spec in type.spec {
+                case runic.Struct:
+                    for member in spec.members {
+                        #partial switch m in member.type.spec {
+                        case string:
+                            if anon, a_ok := om.get(included_anons, m); a_ok {
+                                om.insert(&unknown_anons, m, anon)
+                            }
+                        }
+                    }
+                case runic.Union:
+                    for member in spec.members {
+                        #partial switch m in member.type.spec {
+                        case string:
+                            if anon, a_ok := om.get(included_anons, m); a_ok {
+                                om.insert(&unknown_anons, m, anon)
+                            }
+                        }
+                    }
+                case runic.FunctionPointer:
+                    for param in spec.parameters {
+                        #partial switch p in param.type.spec {
+                        case string:
+                            if anon, a_ok := om.get(included_anons, p); a_ok {
+                                om.insert(&unknown_anons, p, anon)
+                            }
+                        }
+                    }
+                    #partial switch rv in spec.return_type.spec {
+                    case string:
+                        if anon, a_ok := om.get(included_anons, rv); a_ok {
+                            om.insert(&unknown_anons, rv, anon)
+                        }
+                    }
+                case string:
+                    if anon, a_ok := om.get(included_anons, spec); a_ok {
+                        om.insert(&unknown_anons, spec, anon)
+                    }
                 }
             }
 
-            type: runic.Type = ---
-            type, data.err = clang_type_to_runic_type(
-                included_type,
-                cursor,
-                data.isz,
-                data.anon_idx,
-                &unknown_anons,
-                rs_arena_alloc,
-                name_hint = unknown,
-            )
-
             included_file_name := strings.clone(
-                included_type.file_name,
+                included_type_value.file_name,
                 rs_arena_alloc,
             )
             is_extern := runic.single_list_glob(rf.extern, included_file_name)
@@ -1109,7 +1209,6 @@ generate_runestone :: proc(
                     // This means that there was a forward declaration used inside a Struct etc. therefore we can ignore this
                     continue
                 }
-
 
                 if is_extern {
                     unknowns := runic.check_for_unknown_types(t, rs.externs)

@@ -369,9 +369,11 @@ cross_the_runes :: proc(
     return
 }
 
-runecross_destroy :: proc(rc: ^Runecross) {
-    for &stone in rc.cross {
-        runestone_destroy(&stone)
+runecross_destroy :: proc(rc: ^Runecross, destroy_cross := true) {
+    if destroy_cross {
+        for &stone in rc.cross {
+            runestone_destroy(&stone)
+        }
     }
     runtime.arena_destroy(&rc.arena)
 }

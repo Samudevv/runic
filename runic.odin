@@ -285,7 +285,7 @@ main :: proc() {
             fmt.eprintfln("failed to cross the runes: {}", rc_err)
             os.exit(1)
         }
-        defer runic.runecross_destroy(&runecross)
+        defer runic.runecross_destroy(&runecross, len(runestones) > 1)
 
         out_file_name: string
         make_out_name: if len(to.out) != 0 {
@@ -320,6 +320,8 @@ main :: proc() {
             os.exit(1)
         }
         defer os.close(out_file)
+
+        fmt.eprintfln("Writing bindings for \"{}\" ...", to.language)
 
         switch strings.to_lower(to.language, context.temp_allocator) {
         case "odin":

@@ -31,7 +31,7 @@ Entry :: struct($Key, $Value: typeid) {
 
 make :: #force_inline proc(
     $Key, $Value: typeid,
-    #any_int capacity: int = runtime.MAP_MIN_LOG2_CAPACITY,
+    #any_int capacity: int = 1 << runtime.MAP_MIN_LOG2_CAPACITY,
     allocator := context.allocator,
     loc := #caller_location,
 ) -> (
@@ -39,10 +39,12 @@ make :: #force_inline proc(
     err: runtime.Allocator_Error,
 ) #optional_allocator_error {
     m.indices = make_map_cap(map[Key]int, capacity, allocator, loc) or_return
-    m.data = make_dynamic_array(
+    m.data = make_dynamic_array_len_cap(
         [dynamic]Entry(Key, Value),
-        allocator,
-        loc,
+        allocator = allocator,
+        cap = capacity,
+        len = 0,
+        loc = loc,
     ) or_return
     return
 }

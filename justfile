@@ -106,7 +106,7 @@ package: release (make-directory BUILD_DIR / 'package')
   Copy-Item -Path "{{ justfile_directory() / 'shared/libclang/lib/windows' / ARCH / 'libclang.dll' }}" -Destination "{{ BUILD_DIR / 'package' }}" -Force
   Copy-Item -Path "{{ justfile_directory() / 'shared/libclang/README.md' }}" -Destination "{{ BUILD_DIR / 'package/libclang-LICENSE.md' }}" -Force
   Copy-Item -Path "{{ justfile_directory() / 'shared/yaml/README.md' }}" -Destination "{{ BUILD_DIR / 'package/libyaml-LICENSE.md' }}" -Force
-  Compress-Archive -Path "{{ BUILD_DIR / 'package/*' }}" -DestinationPath "{{ BUILD_DIR / 'runic.zip' }}"
+  Compress-Archive -Path "{{ BUILD_DIR / 'package/*' }}" -DestinationPath "{{ BUILD_DIR / 'runic.windows-' + ARCH + '.zip' }}"
 
 [unix]
 clean:

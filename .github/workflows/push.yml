@@ -73,7 +73,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         with:
           name: runic-${{ env.plat }}
-          path: ${{ github.workspace }}/build/runic.zip
+          path: ${{ github.workspace }}/build/runic.*.zip
           if-no-files-found: warn
           overwrite: true
           compression-level: 0

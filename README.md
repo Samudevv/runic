@@ -2,6 +2,8 @@
 
 Bindings Generator and Intermediate Format for programming languages using the C-ABI.
 
+**This project is heavily under development, therefore if you would like to use it, make sure to build directly from the master branch**
+
 The goal of this project is to allow the developer to freely choose which ever language they desire as long as that language can interact with the C-ABI.
 
 For example if you would like to use odin in your project but also use a C library you would have a problem. You could either implement the whole library in odin, create bindings manually or look for an entirely different approach which lets you use another library. Therefore you are often bound to the language which you decide to use, which only gets intensified if the language is not that popular. Runic tries to fix this problem by creating an intermediate format from which every language can generate bindings from. Every language can also generate this intermediate format from itself to even allow bindings between languages that are not C.
@@ -31,7 +33,7 @@ First make sure that all submodules are checked out. Then following dependencies
 
 + [odin](https://odin-lang.org)
 + [just](https://just.systems/)
-+ [libclang](https://clang.llvm.org/docs/LibClang.html) *Preferred is version 18, but 14 hs also been successfully tested*
++ [libclang](https://clang.llvm.org/docs/LibClang.html) *Preferred is version 18*
 + [libyaml](https://github.com/yaml/libyaml)
 
 Arch Linux: `sudo pacman -S --needed --noconfirm base-devel just clang libyaml` <br>
@@ -39,7 +41,9 @@ Ubuntu 24.04: `sudo apt install -y build-essential just libclang-18-dev libyaml-
 Ubuntu 22.04: `sudo apt install -y build-essential libclang-dev libyaml-dev` <br> *On older Ubuntu systems `libclang-18-dev` does not exist, so the newest version should be installed. The package `just` also does not exist, but a statically linked executable can be downloaded directly from the releases page of the repository*
 
 MacOS: `brew install llvm@18` *libyaml is already packaged into the odin library* <br>
-Windows: All dependencies are already provided for the `x86_64` architecture
+Windows: All dependencies are already provided for the `x86_64` architecture <br>
+
+You may need to create a symlink manually called `libclang.so` that points to the correct library file.
 
 ### Linux
 
@@ -70,15 +74,6 @@ This repository contains some examples which show how the tool can be used.
   ```console
   just example olivec
   ```
-
-+ [glew](examples/glew) <br> This example creates odin bindings to the [glew](https://glew.sourceforge.net/) library which is an OpenGL extension loading library. The example uses it to create a game of life implementation. Build it using:
-  ```console
-  just example glew
-  ```
-
-  **Dependencies**:
-  + Arch Linux: `sudo pacman -S --needed glew glfw`
-  + Ubuntu: `sudo apt install libglew-dev libglfw3-dev`
 
 ## Runestone
 

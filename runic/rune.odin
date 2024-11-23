@@ -310,6 +310,8 @@ parse_rune :: proc(
                 f.enable_host_includes = make_platform_value(bool)
                 f.disable_system_include_gen = make_platform_value(bool)
                 f.disable_stdint_macros = make_platform_value(bool)
+                f.flags = make_platform_value([]cstring)
+                f.load_all_includes = make_platform_value(bool)
                 f.packages = make_platform_value([]string)
                 f.remaps = make(map[string]string)
                 f.aliases = make(map[string][]string)
@@ -1274,6 +1276,18 @@ parse_rune :: proc(
                     }
 
                     f.flags.d[plat] = flags[:]
+                case "load_all_includes":
+                    #partial switch v in value {
+                    case bool:
+                        f.load_all_includes.d[plat] = v
+                    case:
+                        err = errors.message(
+                            "\"from.{}\" has invalid type %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
                 case "packages":
                     p_seq := make([dynamic]string, rn_arena_alloc)
 

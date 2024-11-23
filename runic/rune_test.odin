@@ -62,6 +62,11 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, f.disable_stdint_macros.d[Platform{.Any, .Any}], true)
     expect_value(t, f.disable_stdint_macros.d[Platform{.Windows, .Any}], false)
 
+    load_all_includes_any := f.load_all_includes.d[Platform{.Any, .Any}]
+    load_all_includes_macos := f.load_all_includes.d[Platform{.Macos, .Any}]
+    expect_value(t, load_all_includes_any, true)
+    expect_value(t, load_all_includes_macos, false)
+
     ow := f.overwrite.d[Platform{.Any, .Any}]
     expect_value(t, len(ow.functions), 3)
     for func in ow.functions {

@@ -53,6 +53,7 @@ From :: struct {
     disable_system_include_gen: PlatformValue(bool),
     disable_stdint_macros:      PlatformValue(bool),
     flags:                      PlatformValue([]cstring),
+    load_all_includes:          PlatformValue(bool),
     // Odin
     packages:                   PlatformValue([]string),
 }

@@ -22,6 +22,8 @@ from:
   disable_system_include_gen.windows: false
   disable_stdint_macros: true
   disable_stdint_macros.windows: false
+  load_all_includes: true
+  load_all_includes.macos: false
   defines:
     MYFOO: !!int 2
   overwrite:

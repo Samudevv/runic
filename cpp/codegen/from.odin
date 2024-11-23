@@ -46,16 +46,18 @@ IncludedType :: struct {
 
 @(private = "file")
 ClientData :: struct {
-    rs:             ^runic.Runestone,
-    allocator:      runtime.Allocator,
-    arena_alloc:    runtime.Allocator,
-    err:            errors.Error,
-    isz:            Int_Sizes,
-    included_types: ^map[string]IncludedType,
-    included_anons: ^om.OrderedMap(string, runic.Type),
-    macros:         ^om.OrderedMap(string, Macro),
-    anon_idx:       ^int,
-    rune_file_name: string,
+    rs:                ^runic.Runestone,
+    allocator:         runtime.Allocator,
+    arena_alloc:       runtime.Allocator,
+    err:               errors.Error,
+    isz:               Int_Sizes,
+    included_types:    ^map[string]IncludedType,
+    included_anons:    ^om.OrderedMap(string, runic.Type),
+    macros:            ^om.OrderedMap(string, Macro),
+    anon_idx:          ^int,
+    rune_file_name:    string,
+    load_all_includes: bool,
+    extern:            []string,
 }
 
 generate_runestone :: proc(
@@ -438,17 +440,25 @@ generate_runestone :: proc(
     macros := om.make(string, Macro)
     defer om.delete(macros)
 
+    load_all_includes := runic.platform_value_get(
+        bool,
+        rf.load_all_includes,
+        plat,
+    )
+
     anon_idx: int
     data := ClientData {
-        rs             = &rs,
-        allocator      = rs_arena_alloc,
-        arena_alloc    = arena_alloc,
-        isz            = int_sizes_from_platform(plat),
-        included_types = &included_types,
-        included_anons = &included_anons,
-        macros         = &macros,
-        anon_idx       = &anon_idx,
-        rune_file_name = rune_file_name,
+        rs                = &rs,
+        allocator         = rs_arena_alloc,
+        arena_alloc       = arena_alloc,
+        isz               = int_sizes_from_platform(plat),
+        included_types    = &included_types,
+        included_anons    = &included_anons,
+        macros            = &macros,
+        anon_idx          = &anon_idx,
+        rune_file_name    = rune_file_name,
+        load_all_includes = load_all_includes,
+        extern            = rf.extern,
     }
     index := clang.createIndex(0, 0)
     defer clang.disposeIndex(index)
@@ -582,7 +592,9 @@ generate_runestone :: proc(
 
                 defer clang.disposeString(display_name_clang)
 
-                if !clang.Location_isFromMainFile(cursor_location) {
+                not_from_main_file: if !clang.Location_isFromMainFile(
+                    cursor_location,
+                ) {
                     file: clang.File = ---
                     clang.getSpellingLocation(
                         cursor_location,
@@ -593,8 +605,12 @@ generate_runestone :: proc(
                     )
                     file_name_clang := clang.getFileName(file)
                     defer clang.disposeString(file_name_clang)
+                    file_name_str := clang_str(file_name_clang)
+                    // NOTE: flags that define macros (e.g. "-DFOO_STATIC") are also parsed. To make sure that they are ignored this is added
+                    if len(file_name_str) == 0 do return .Continue
+
                     file_name, _ := strings.replace_all(
-                        clang_str(file_name_clang),
+                        file_name_str,
                         "\\",
                         "/",
                         data.arena_alloc,
@@ -605,6 +621,11 @@ generate_runestone :: proc(
                         data.arena_alloc,
                     )
                     if rel_ok do file_name = rel_file_name
+
+                    load_as_main :=
+                        data.load_all_includes &&
+                        !runic.single_list_glob(data.extern, file_name)
+                    if load_as_main do break not_from_main_file
 
                     #partial switch cursor_kind {
                     case .TypedefDecl:

@@ -355,6 +355,20 @@ test_cpp_include :: proc(t: ^testing.T) {
 
     runic.from_postprocess_runestone(&rs, rf)
 
+    rf.load_all_includes = runic.make_platform_value(bool)
+    defer delete(rf.load_all_includes.d)
+    rf.load_all_includes.d[{.Any, .Any}] = true
+
+    rs_all, err_all := generate_runestone(
+        runic.platform_from_host(),
+        RUNESTONE_TEST_PATH,
+        rf,
+    )
+    if !expect_value(t, err_all, nil) do return
+    defer runic.runestone_destroy(&rs_all)
+
+    runic.from_postprocess_runestone(&rs_all, rf)
+
     expect_value(t, om.length(rs.types), 2)
     expect_value(t, om.length(rs.symbols), 0)
     expect_value(t, om.length(rs.constants), 0)
@@ -378,6 +392,16 @@ test_cpp_include :: proc(t: ^testing.T) {
             expect_value(t, len(callback_proc.parameters), 2)
         }
     }
+
+    expect_value(t, om.length(rs_all.types), 2)
+    expect_value(t, om.length(rs_all.symbols), 3)
+    expect_value(t, om.length(rs_all.constants), 0)
+
+    expect(t, om.contains(rs_all.symbols, "a"))
+    expect(t, om.contains(rs_all.symbols, "b"))
+    expect(t, om.contains(rs_all.symbols, "xyz"))
+    expect(t, om.contains(rs_all.types, "callback_proc"))
+    expect(t, om.contains(rs_all.types, "callbacker"))
 }
 
 @(test)

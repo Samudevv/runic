@@ -4,7 +4,7 @@
   + To
     + [ ] Add build tag-like line to the top of the generated header. Maybe use `#error` if the platform differs.
   + From
-    + [ ] If field widths are encountered write out a warning and generate those types as byte arrays
+    + [x] If field widths are encountered write out a warning and generate those types as byte arrays
 + Odin
   + To
     + [x] Generate `#Untyped` types as `Untyped` which is a non-existing type to force the user to fix those types

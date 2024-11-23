@@ -320,22 +320,6 @@ clang_type_to_runic_type :: proc(
                     return .Continue
                 }
 
-                field_size := clang.getFieldDeclBitWidth(cursor)
-
-                if field_size != -1 {
-                    parent_display_name := clang.getCursorDisplayName(parent)
-                    defer clang.disposeString(parent_display_name)
-
-                    fmt.eprintfln("field \"{}.{}\" has specific bit width of {}. This is not supported by runic. Therefore \"{}\" will be added as #Untyped", clang.getCString(parent_display_name), display_name, field_size, clang.getCString(parent_display_name))
-                    data.members^ = make([dynamic]runic.Member, data.allocator)
-                    return .Break
-                }
-
-                type_hint: Maybe(string)
-                if cursor_type.kind == .Int {
-                    type_hint = clang_var_decl_get_type_hint(cursor)
-                }
-
                 member_name: string = ---
                 if len(display_name) == 0 {
                     member_name = fmt.aprintf("member{}", len(data.members), allocator = data.allocator)
@@ -344,8 +328,35 @@ clang_type_to_runic_type :: proc(
                 }
 
                 type: runic.Type = ---
-                type, data.err = clang_type_to_runic_type(cursor_type, cursor, data.isz, data.anon_idx, data.types, data.allocator, type_hint, member_name)
-                if data.err != nil do return .Break
+
+                if field_size := clang.getFieldDeclBitWidth(cursor); field_size != -1 {
+                    parent_display_name := clang.getCursorDisplayName(parent)
+                    defer clang.disposeString(parent_display_name)
+                    parent_display_name_str := clang.getCString(parent_display_name)
+
+                    if field_size % 8 != 0 {
+                        fmt.eprintfln("field \"{}.{}\" has specific bit width of {}. This field can not be converted to a byte array, therefore the type will be set to \"#Untyped\"", parent_display_name_str, member_name, field_size)
+                        data.members^ = make([dynamic]runic.Member, len = 0, cap = 0, allocator = data.allocator)
+                        return .Break
+                    }
+
+                    fmt.eprintfln("field \"{}.{}\" has specific bit width of {}. This is not properly supported by runic. Therefore \"{}\" will be added as \"#UInt8 #Attr Arr {} #AttrEnd\"", parent_display_name_str, member_name, field_size / 8, member_name, field_size)
+
+                    array_info := make([dynamic]runic.Array, len = 1, cap = 1, allocator = data.allocator)
+                    array_info[0].size = u64(field_size / 8)
+                    type = runic.Type {
+                        spec       = runic.Builtin.UInt8,
+                        array_info = array_info,
+                    }
+                } else {
+                    type_hint: Maybe(string)
+                    if cursor_type.kind == .Int {
+                        type_hint = clang_var_decl_get_type_hint(cursor)
+                    }
+
+                    type, data.err = clang_type_to_runic_type(cursor_type, cursor, data.isz, data.anon_idx, data.types, data.allocator, type_hint, member_name)
+                    if data.err != nil do return .Break
+                }
 
                 #partial switch cursor_kind {
                 case .FieldDecl:

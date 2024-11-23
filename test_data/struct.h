@@ -10,6 +10,12 @@ struct my_struct {
   long long y : 5 * 6 + 3;
 };
 
+struct byte_array {
+  int x : 8;
+  long y : 16;
+  unsigned int b : 24;
+};
+
 struct wl_output;
 
 typedef struct _sszu_ {

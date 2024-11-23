@@ -7,7 +7,7 @@
     + [ ] If field widths are encountered write out a warning and generate those types as byte arrays
 + Odin
   + To
-    + [ ] Generate `#Untyped` types as `Untyped` which is a non-existing type to force the user to fix those types
+    + [x] Generate `#Untyped` types as `Untyped` which is a non-existing type to force the user to fix those types
     + [ ] Fix build tag
   + From
     + [ ] Implement Odin-specific types

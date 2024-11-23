@@ -856,9 +856,10 @@ write_type :: proc(
 
 write_builtin_type :: proc(wd: io.Writer, ty: runic.Builtin) -> io.Error {
     switch ty {
-    case .Untyped, .Void:
-        // TODO: Add Untyped as type and then change this to Untyped
-        io.write_string(wd, "^^^rawptr") or_return
+    case .Untyped:
+        io.write_string(wd, "ThisTypeIsUntyped") or_return
+    case .Void:
+        io.write_string(wd, "ThisTypeIsVoid") or_return
     case .RawPtr:
         io.write_string(wd, "rawptr") or_return
     case .SInt8:

@@ -1000,7 +1000,7 @@ write_foreign_lib_name :: proc(
         rel_lib, rel_err := filepath.rel(dir_name, lib_name)
         defer if rel_err == .None do delete(rel_lib)
 
-        if rel_err != .None || len(out_lib) > len(lib_name) {
+        if rel_err != .None || len(rel_lib) > len(lib_name) {
             out_lib = lib_name
         } else {
             out_lib = rel_lib

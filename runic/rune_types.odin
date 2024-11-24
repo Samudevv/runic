@@ -74,6 +74,7 @@ To :: struct {
     detect:        OdinDetect,
     no_build_tag:  bool,
     use_when_else: bool,
+    add_libs:      PlatformValue([]string),
 }
 
 Wrapper :: struct {

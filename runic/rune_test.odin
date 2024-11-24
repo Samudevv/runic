@@ -160,6 +160,31 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, wrapper.in_headers[0], in_header)
     expect_value(t, wrapper.out_header, out_header)
     expect_value(t, wrapper.out_source, out_source)
+
+    add_libs_any := platform_value_get([]string, to.add_libs, {.Any, .Any})
+    add_libs_linux := platform_value_get(
+        []string,
+        to.add_libs,
+        {.Linux, .Any},
+    )
+    add_libs_win64 := platform_value_get(
+        []string,
+        to.add_libs,
+        {.Windows, .x86_64},
+    )
+
+    test_data_dir, _ := filepath.abs("test_data")
+    defer delete(test_data_dir)
+    GLx86 := filepath.join({test_data_dir, "lib", "GLx86.lib"})
+    defer delete(GLx86)
+
+    expect_value(t, len(add_libs_any), 1)
+    expect_value(t, len(add_libs_linux), 2)
+    expect_value(t, len(add_libs_win64), 1)
+    expect_value(t, add_libs_any[0], "libGL.so")
+    expect_value(t, add_libs_linux[0], "libEGL.so")
+    expect_value(t, add_libs_linux[1], "libGLX.so")
+    expect_value(t, add_libs_win64[0], GLx86)
 }
 
 @(test)

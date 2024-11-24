@@ -2087,6 +2087,107 @@ parse_rune :: proc(
                 }
             }
 
+            {
+                context.allocator = rn_arena_alloc
+
+                t.add_libs = make_platform_value([]string)
+            }
+
+            for key, value in to {
+                splits, alloc_err := strings.split(key, ".")
+                errors.wrap(alloc_err) or_return
+
+                name: string = ---
+                os, arch: Maybe(string)
+
+                if len(splits) == 0 {
+                    err = errors.message("invalid key in \"to\"")
+                    return
+                } else if len(splits) == 1 {
+                    #no_bounds_check name = splits[0]
+                } else if len(splits) == 2 {
+                    #no_bounds_check name = splits[0]
+                    #no_bounds_check os = splits[1]
+                } else if len(splits) == 3 {
+                    #no_bounds_check name = splits[0]
+                    #no_bounds_check os = splits[1]
+                    #no_bounds_check arch = splits[2]
+                } else {
+                    err = errors.message("invalid key in \"from\": {}", key)
+                    return
+                }
+
+                delete(splits)
+
+                plat, plat_ok := platform_from_strings(os, arch)
+                if !plat_ok {
+                    err = errors.message(
+                        "invalid platform for \"from.{}\" os=\"{}\" arch=\"{}\"",
+                        name,
+                        os,
+                        arch,
+                    )
+                    return
+                }
+
+                switch name {
+                case "add_libs":
+                    #partial switch v in value {
+                    case string:
+                        arr := make(
+                            [dynamic]string,
+                            len = 1,
+                            cap = 1,
+                            allocator = rn_arena_alloc,
+                        )
+                        arr[0] = relative_to_file(
+                            file_path,
+                            v,
+                            rn_arena_alloc,
+                            true,
+                        )
+                        t.add_libs.d[plat] = arr[:]
+                    case yaml.Sequence:
+                        arr := make(
+                            [dynamic]string,
+                            len = 0,
+                            cap = len(v),
+                            allocator = rn_arena_alloc,
+                        )
+                        for lib, lib_idx in v {
+                            #partial switch l in lib {
+                            case string:
+                                append(
+                                    &arr,
+                                    relative_to_file(
+                                        file_path,
+                                        l,
+                                        rn_arena_alloc,
+                                        true,
+                                    ),
+                                )
+                            case:
+                                err = errors.message(
+                                    "\"to.{}\"[{}] has invalid type: %T",
+                                    key,
+                                    lib_idx,
+                                    l,
+                                )
+                                return
+                            }
+                        }
+                        t.add_libs.d[plat] = arr[:]
+                    case:
+                        err = errors.message(
+                            "\"to.{}\" has invalid type: %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
+                }
+            }
+
             rn.to = t
         case string:
             if to != "stdout" {

@@ -61,3 +61,8 @@ to:
       'SDL2/SDL_Renderer.h': 'vendor:sdl2'
     remaps:
       'SDL_Renderer': 'Renderer'
+  add_libs: libGL.so
+  add_libs.linux:
+    - libEGL.so
+    - libGLX.so
+  add_libs.windows.x86_64: lib/GLx86.lib

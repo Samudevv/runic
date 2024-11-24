@@ -716,16 +716,29 @@ write_type :: proc(
 
     switch rn.detect.multi_pointer {
     case "auto":
-        if pointer_count >= 1 &&
+        is_array_and_pointer :=
+            len(ty.array_info) != 0 &&
+            ty.array_info[len(ty.array_info) - 1].pointer_info.count != 0
+
+        if (is_array_and_pointer ||
+               (len(ty.array_info) == 0 && pointer_count >= 1)) &&
            len(var_name) > 1 &&
            strings.has_suffix(var_name, "s") {
             is_multi_pointer = true
-            pointer_count -= 1
+            if is_array_and_pointer {
+                ty.array_info[len(ty.array_info) - 1].pointer_info.count -= 1
+            } else {
+                pointer_count -= 1
+            }
         }
     }
 
+    if is_multi_pointer {
+        io.write_string(wd, "[^]") or_return
+    }
+
     #reverse for a in ty.array_info {
-        pointer, pointer_err := strings.repeat("^", int(ty.pointer_info.count))
+        pointer, pointer_err := strings.repeat("^", int(a.pointer_info.count))
         if pointer_err != .None {
             return errors.Error(
                 errors.message("failed to create pointer string for array"),
@@ -751,10 +764,6 @@ write_type :: proc(
     if len(pointer) != 0 {
         io.write_string(wd, pointer) or_return
         delete(pointer)
-    }
-
-    if is_multi_pointer {
-        io.write_string(wd, "[^]") or_return
     }
 
     switch spec in ty.spec {

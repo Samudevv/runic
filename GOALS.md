@@ -19,7 +19,7 @@
   + To
     + [x] Generate `#Untyped` types as `Untyped` which is a non-existing type to force the user to fix those types
     + [ ] Fix build tag
-    + [ ] Fix auto multi pointer to generate for the outer most array
+    + [x] Fix auto multi pointer to generate for the outer most array
     + [ ] Add `add_libs` field to add additional libraries that should be linked
   + From
     + [ ] Implement Odin-specific types

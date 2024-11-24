@@ -59,13 +59,15 @@ odin_anon_1_bindings :: struct {
 }
 odin_struct_bindings :: struct {
     context_m: ^i32,
-    baz: ^^[10]^^f64,
+    baz: [10]^^f64,
 }
 odin_bar_struct_bindings :: struct {
     odin_struct_bindings_m: odin_struct_bindings,
 }
 odin_bar_union_bindings :: struct #raw_union {odin_struct_bindings_m: odin_struct_bindings, }
 odin_complex_ptr_bindings :: [13][10][5]i32
+odin_this_is_multis_bindings :: [^]^u8
+odin_this_is_multi1s_bindings :: [^][10]^^u8
 
 when #config(FOO_PKG_STATIC, false) {
     foreign import foo_pkg_runic "system:libfoo.a"
@@ -172,6 +174,8 @@ main :: proc() {}`
                 "bar_struct_t" = 3,
                 "bar_union" = 4,
                 "complex_ptr_t" = 5,
+                "this_is_multis" = 6,
+                "this_is_multi1s" = 7,
             },
             data = {
                 {
@@ -271,6 +275,21 @@ main :: proc() {}`
                         array_info = {{size = 5}, {size = 10}, {size = 13}},
                     },
                 },
+                {
+                    key = "this_is_multis",
+                    value = {
+                        spec = runic.Builtin.UInt8,
+                        pointer_info = {count = 2},
+                    },
+                },
+                {
+                    key = "this_is_multi1s",
+                    value = {
+                        spec = runic.Builtin.UInt8,
+                        pointer_info = {count = 2},
+                        array_info = {{size = 10, pointer_info = {count = 1}}},
+                    },
+                },
             },
         },
     }
@@ -282,6 +301,7 @@ main :: proc() {}`
         trim_suffix = runic.TrimSet{functions = {"_func"}, types = {"_t"}},
         add_prefix = runic.AddSet{"odin_", "odin_", "odin_", ""},
         add_suffix = runic.AddSet{"_bindings", "_bindings", "_bindings", ""},
+        detect = {multi_pointer = "auto"},
     }
 
     runic.to_preprocess_runestone(&rs, rn, ODIN_RESERVED)
@@ -455,6 +475,7 @@ foreign extern_test_runic {
 }
 
 `
+
 
     data, ok := os.read_entire_file("test_data/extern_test.odin")
     if !expect(t, ok) do return

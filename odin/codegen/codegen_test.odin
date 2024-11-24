@@ -41,12 +41,7 @@ test_to_odin_codegen :: proc(t: ^testing.T) {
     defer runtime.arena_destroy(&arena)
     context.allocator = runtime.arena_allocator(&arena)
 
-    plat := runic.Platform {
-        os   = .Linux,
-        arch = .x86_64,
-    }
-
-    ODIN_EXPECTED :: `#+build linux amd64
+    ODIN_EXPECTED :: `#+build darwin amd64
 package foo_pkg
 
 odin_anon_0_bindings :: struct {
@@ -70,9 +65,13 @@ odin_this_is_multis_bindings :: [^]^u8
 odin_this_is_multi1s_bindings :: [^][10]^^u8
 
 when #config(FOO_PKG_STATIC, false) {
-    foreign import foo_pkg_runic "system:libfoo.a"
+    when ODIN_OS == .Darwin {
+        foreign import foo_pkg_runic { "system:foo", "system:baz", "system:bar", "system:autumn", "lib/libcompiled.a" }
+    } else {
+        foreign import foo_pkg_runic { "system:libfoo.a", "system:libbaz.a", "system:bar", "system:autumn", "lib/libcompiled.a" }
+    }
 } else {
-    foreign import foo_pkg_runic "libfoo.so"
+    foreign import foo_pkg_runic { "libfoo.so", "system:libbaz.a", "system:bar", "system:autumn", "lib/libcompiled.a" }
 }
 
 @(default_calling_convention = "c")
@@ -92,6 +91,7 @@ odin_not_the_sub_bindings :: odin_add_int_bindings
 
 main :: proc() {}`
 
+
     abs_test_data, abs_ok := filepath.abs("test_data")
     if !expect(t, abs_ok) do return
     defer delete(abs_test_data)
@@ -100,6 +100,7 @@ main :: proc() {}`
 
     rs := runic.Runestone {
         version = 0,
+        platform = {.Macos, .x86_64},
         lib = {shared = lib_shared, static = "libfoo.a"},
         symbols = om.OrderedMap(string, runic.Symbol) {
             indices = {
@@ -294,6 +295,11 @@ main :: proc() {}`
         },
     }
 
+    test_data_dir, _ := filepath.abs("test_data")
+    defer delete(test_data_dir)
+    libcompiled := filepath.join({test_data_dir, "lib", "libcompiled.a"})
+    defer delete(libcompiled)
+
     rn := runic.To {
         language = "odin",
         package_name = "foo-pkg",
@@ -302,7 +308,18 @@ main :: proc() {}`
         add_prefix = runic.AddSet{"odin_", "odin_", "odin_", ""},
         add_suffix = runic.AddSet{"_bindings", "_bindings", "_bindings", ""},
         detect = {multi_pointer = "auto"},
+        add_libs = {
+            d = {
+                {.Any, .Any} = {
+                    "libbaz.a",
+                    "libbar.so",
+                    "libautumn.dylib",
+                    libcompiled,
+                },
+            },
+        },
     }
+    defer delete(rn.add_libs.d)
 
     runic.to_preprocess_runestone(&rs, rn, ODIN_RESERVED)
 
@@ -323,7 +340,7 @@ main :: proc() {}`
         append(
             &rc.cross,
             runic.PlatformRunestone {
-                plats = {plat},
+                plats = {rs.platform},
                 runestone = {file_path = abs_file_name, stone = rs},
             },
         )

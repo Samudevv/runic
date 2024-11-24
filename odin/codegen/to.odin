@@ -40,33 +40,56 @@ generate_bindings :: proc(
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
 
-    if !rn.no_build_tag {
-        for entry, cross_idx in rc.cross {
-            if cross_idx == 0 {
+
+    write_build_tag: if !rn.no_build_tag {
+        // Construct a list of all platforms that need to be part of the build tag
+        unique_plats := make(
+            [dynamic]runic.Platform,
+            len = 0,
+            cap = len(rc.cross),
+        )
+        defer delete(unique_plats)
+
+        for entry in rc.cross {
+            for plat in entry.plats {
+                tag_plat := plat
+                if rn.ignore_arch {
+                    tag_plat.arch = .Any
+                }
+                if tag_plat.os != .Any || tag_plat.arch != .Any {
+                    if !slice.contains(unique_plats[:], tag_plat) {
+                        append(&unique_plats, tag_plat)
+                    }
+                }
+            }
+        }
+
+        if len(unique_plats) == 0 do break write_build_tag
+
+        for plat, plat_idx in unique_plats {
+            if plat_idx == 0 {
                 io.write_string(wd, "#+build ") or_return
             }
 
-            plats := entry.plats
+            os_names: []string = ---
 
-            for plat, plat_idx in plats {
-                os_names: []string = ---
+            switch plat.os {
+            case .Any:
+                os_names = []string{}
+            case .Linux:
+                os_names = []string{"linux"}
+            case .Windows:
+                os_names = []string{"windows"}
+            case .Macos:
+                os_names = []string{"darwin"}
+            case .BSD:
+                os_names = []string{"freebsd", "openbsd", "netbsd"}
+            }
 
-                switch plat.os {
-                case .Any:
-                    os_names = []string{}
-                case .Linux:
-                    os_names = []string{"linux"}
-                case .Windows:
-                    os_names = []string{"windows"}
-                case .Macos:
-                    os_names = []string{"darwin"}
-                case .BSD:
-                    os_names = []string{"freebsd", "openbsd", "netbsd"}
-                }
-
+            if len(os_names) != 0 {
                 for os, os_idx in os_names {
                     io.write_string(wd, os) or_return
-                    if !rn.ignore_arch {
+                    if plat.arch != .Any {
                         io.write_rune(wd, ' ') or_return
                         switch plat.arch {
                         case .Any:
@@ -80,17 +103,29 @@ generate_bindings :: proc(
                             io.write_string(wd, "arm32") or_return
                         }
                     }
+
                     if os_idx != len(os_names) - 1 {
                         io.write_string(wd, ", ") or_return
                     }
                 }
-
-                if plat_idx == len(plats) - 1 &&
-                   cross_idx == len(rc.cross) - 1 {
-                    io.write_rune(wd, '\n') or_return
-                } else {
-                    io.write_string(wd, ", ") or_return
+            } else {
+                switch plat.arch {
+                case .Any:
+                case .x86_64:
+                    io.write_string(wd, "amd64") or_return
+                case .arm64:
+                    io.write_string(wd, "arm64") or_return
+                case .x86:
+                    io.write_string(wd, "i386") or_return
+                case .arm32:
+                    io.write_string(wd, "arm32") or_return
                 }
+            }
+
+            if plat_idx == len(unique_plats) - 1 {
+                io.write_rune(wd, '\n') or_return
+            } else {
+                io.write_string(wd, ", ") or_return
             }
         }
     }

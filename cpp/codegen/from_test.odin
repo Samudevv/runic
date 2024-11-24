@@ -407,13 +407,16 @@ test_cpp_include :: proc(t: ^testing.T) {
 
     expect_value(t, om.length(rs_all.types), 2)
     expect_value(t, om.length(rs_all.symbols), 3)
-    expect_value(t, om.length(rs_all.constants), 0)
+    expect_value(t, om.length(rs_all.constants), 1)
 
     expect(t, om.contains(rs_all.symbols, "a"))
     expect(t, om.contains(rs_all.symbols, "b"))
     expect(t, om.contains(rs_all.symbols, "xyz"))
     expect(t, om.contains(rs_all.types, "callback_proc"))
     expect(t, om.contains(rs_all.types, "callbacker"))
+
+    consta := om.get(rs_all.constants, "INCLUDE_CHILD")
+    expect_value(t, consta.value.(i64), 15)
 }
 
 @(test)

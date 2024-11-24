@@ -1,3 +1,5 @@
+#define INCLUDE_CHILD 15
+
 int a;
 int b;
 const char *xyz;

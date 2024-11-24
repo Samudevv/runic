@@ -13,7 +13,6 @@
     + [ ] Add build tag-like line to the top of the generated header. Maybe use `#error` if the platform differs.
   + From
     + [x] If field widths are encountered write out a warning and generate those types as byte arrays
-    + [ ] Fix macros of includes not being loaded when `load_all_includes` is enabled
     + [ ] Find solution for forward declarations that are not implemented in the header
     + [ ] Add `forward_decl_to_rawptr`. Put forward declarations into separate list and then add them as types if there implementation is not in `Runestone.types`. Probably also need to add the source of it.
 + Odin

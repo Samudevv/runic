@@ -210,6 +210,7 @@ SYSTEM_INCLUDE_FILES :: [?]string {
     "wchar.h",
     "wctype.h",
     "wordexp.h",
+    "pthread.h",
 }
 
 SYSTEM_INCLUDE_FILE_CONTENTS := map[string]string {

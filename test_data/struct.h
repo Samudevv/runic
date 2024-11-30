@@ -17,6 +17,11 @@ struct byte_array {
 };
 
 struct wl_output;
+union super_union;
+typedef struct mega_type super_type;
+typedef struct {
+  struct non_exist a;
+} tippy_toes;
 
 typedef struct _sszu_ {
   volatile float x;

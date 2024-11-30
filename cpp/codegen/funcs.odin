@@ -11,17 +11,19 @@ import clang "shared:libclang"
 
 @(private)
 ClangToRunicTypeContext :: struct {
-    int_sizes:  Int_Sizes,
-    anon_index: ^int,
-    types:      ^om.OrderedMap(string, runic.Type),
-    allocator:  runtime.Allocator,
+    int_sizes:     Int_Sizes,
+    anon_index:    ^int,
+    types:         ^om.OrderedMap(string, runic.Type),
+    forward_decls: ^[dynamic]string,
+    allocator:     runtime.Allocator,
 }
 
 @(private = "file")
 RecordData :: struct {
-    members: ^[dynamic]runic.Member,
-    ctx:     ^ClangToRunicTypeContext,
-    err:     errors.Error,
+    members:        ^[dynamic]runic.Member,
+    members_failed: bool,
+    ctx:            ^ClangToRunicTypeContext,
+    err:            errors.Error,
 }
 
 @(private = "file")
@@ -324,11 +326,11 @@ clang_type_to_runic_type :: proc(
 
                     if field_size % 8 != 0 {
                         fmt.eprintfln("field \"{}.{}\" has specific bit width of {}. This field can not be converted to a byte array, therefore the type will be set to \"#Untyped\"", parent_display_name_str, member_name, field_size)
-                        data.members^ = make([dynamic]runic.Member, len = 0, cap = 0, allocator = data.ctx.allocator)
+                        data.members_failed = true
                         return .Break
                     }
 
-                    fmt.eprintfln("field \"{}.{}\" has specific bit width of {}. This is not properly supported by runic. Therefore \"{}\" will be added as \"#UInt8 #Attr Arr {} #AttrEnd\"", parent_display_name_str, member_name, field_size / 8, member_name, field_size)
+                    fmt.eprintfln("field \"{}.{}\" has specific bit width of {}. This is not properly supported by runic. Therefore \"{}\" will be added as \"#UInt8 #Attr Arr {} #AttrEnd\"", parent_display_name_str, member_name, field_size, member_name, field_size / 8)
 
                     array_info := make([dynamic]runic.Array, len = 1, cap = 1, allocator = data.ctx.allocator)
                     array_info[0].size = u64(field_size / 8)
@@ -352,6 +354,19 @@ clang_type_to_runic_type :: proc(
 
                     append(data.members, runic.Member{name = member_name, type = type})
                 case:
+                    #partial switch spec in type.spec {
+                    case runic.Struct:
+                        if len(spec.members) == 0 {
+                            append(data.ctx.forward_decls, member_name)
+                            return .Continue
+                        }
+                    case runic.Union:
+                        if len(spec.members) == 0 {
+                            append(data.ctx.forward_decls, member_name)
+                            return .Continue
+                        }
+                    }
+
                     om.insert(data.ctx.types, member_name, type)
                 }
 
@@ -360,19 +375,14 @@ clang_type_to_runic_type :: proc(
 
         err = data.err
 
-        #partial switch cursor_kind {
-        case .StructDecl:
-            tp.spec = runic.Struct{members}
-        case .UnionDecl:
-            tp.spec = runic.Union{members}
-        }
-
-        if len(members) == 0 {
-            display_name := clang.getCursorDisplayName(cursor)
-            defer clang.disposeString(display_name)
-
-            tp = runic.Type {
-                spec = runic.Builtin.Untyped,
+        if data.members_failed {
+            tp.spec = runic.Builtin.Untyped
+        } else {
+            #partial switch cursor_kind {
+            case .StructDecl:
+                tp.spec = runic.Struct{members}
+            case .UnionDecl:
+                tp.spec = runic.Union{members}
             }
         }
     case .Enum:

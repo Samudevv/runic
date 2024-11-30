@@ -143,7 +143,7 @@ test_cpp_struct :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 9)
+    expect_value(t, om.length(rs.types), 14)
 
     abc_t := om.get(rs.types, "abc_t")
     abc_struct := abc_t.spec.(runic.Struct)
@@ -180,7 +180,29 @@ test_cpp_struct :: proc(t: ^testing.T) {
     expect_value(t, x, "x_struct_anon_0")
 
     wl_output := om.get(rs.types, "wl_output")
-    expect_value(t, wl_output.spec.(runic.Builtin), runic.Builtin.Untyped)
+    expect_value(t, wl_output.spec.(runic.Builtin), runic.Builtin.RawPtr)
+    expect_value(
+        t,
+        om.get(rs.types, "mega_type").spec.(runic.Builtin),
+        runic.Builtin.RawPtr,
+    )
+    expect_value(
+        t,
+        om.get(rs.types, "non_exist").spec.(runic.Builtin),
+        runic.Builtin.RawPtr,
+    )
+    expect_value(
+        t,
+        om.get(rs.types, "super_union").spec.(runic.Builtin),
+        runic.Builtin.RawPtr,
+    )
+    expect_value(t, om.get(rs.types, "super_type").spec.(string), "mega_type")
+    expect_value(
+        t,
+        om.get(rs.types, "tippy_toes").spec.(runic.Struct).members[0].type.spec.(string),
+        "non_exist",
+    )
+
     my_struct := om.get(rs.types, "my_struct")
     expect_value(t, my_struct.spec.(runic.Builtin), runic.Builtin.Untyped)
 
@@ -381,7 +403,7 @@ test_cpp_include :: proc(t: ^testing.T) {
 
     runic.from_postprocess_runestone(&rs_all, rf)
 
-    expect_value(t, om.length(rs.types), 2)
+    expect_value(t, om.length(rs.types), 4)
     expect_value(t, om.length(rs.symbols), 0)
     expect_value(t, om.length(rs.constants), 0)
 
@@ -405,7 +427,10 @@ test_cpp_include :: proc(t: ^testing.T) {
         }
     }
 
-    expect_value(t, om.length(rs_all.types), 2)
+    expect(t, om.contains(rs.types, "lower_t"))
+    expect(t, om.contains(rs.types, "below_t"))
+
+    expect_value(t, om.length(rs_all.types), 4)
     expect_value(t, om.length(rs_all.symbols), 3)
     expect_value(t, om.length(rs_all.constants), 1)
 
@@ -414,9 +439,20 @@ test_cpp_include :: proc(t: ^testing.T) {
     expect(t, om.contains(rs_all.symbols, "xyz"))
     expect(t, om.contains(rs_all.types, "callback_proc"))
     expect(t, om.contains(rs_all.types, "callbacker"))
+    expect(t, om.contains(rs_all.types, "lower_t"))
+    expect(t, om.contains(rs_all.types, "below_t"))
+
+    expect_value(t, om.get(rs_all.types, "lower_t").spec.(string), "below_t")
+    expect_value(
+        t,
+        om.get(rs_all.types, "below_t").spec.(runic.Struct).members[0].name,
+        "a",
+    )
 
     consta := om.get(rs_all.constants, "INCLUDE_CHILD")
     expect_value(t, consta.value.(i64), 15)
+
+
 }
 
 @(test)

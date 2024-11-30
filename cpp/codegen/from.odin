@@ -444,6 +444,7 @@ generate_runestone :: proc(
         plat,
     )
 
+    forward_decls := make([dynamic]string)
     data := ClientData {
         rs                = &rs,
         arena_alloc       = arena_alloc,
@@ -458,12 +459,14 @@ generate_runestone :: proc(
                 int_sizes = int_sizes_from_platform(plat),
                 anon_index = new_clone(int(0)),
                 types = &rs.types,
+                forward_decls = &forward_decls,
                 allocator = rs_arena_alloc,
             },
         ),
     }
     defer free(data.ctx)
     defer free(data.ctx.anon_index)
+    defer delete(forward_decls)
 
     index := clang.createIndex(0, 0)
     defer clang.disposeIndex(index)
@@ -651,6 +654,7 @@ generate_runestone :: proc(
                                     data.ctx.types = data.included_anons
                                     defer data.ctx.types = &data.rs.types
 
+                                    // TODO: handle forward declarations
                                     type: runic.Type = ---
                                     type, data.err = clang_type_to_runic_type(
                                         typedef,
@@ -707,6 +711,7 @@ generate_runestone :: proc(
                             data.arena_alloc,
                         )
 
+                        // TODO: if a forward declaration is declared in one included file (included by header A), but the implementation is defined in a file included by header B. This leads to the forward declaration being added instead of the implementation, maybe changing included_types to a map of arrays and then add every declaration found could solve this.
                         if !(display_name in data.included_types) {
                             data.included_types[display_name] = IncludedType {
                                 file_name = strings.clone(
@@ -863,9 +868,27 @@ generate_runestone :: proc(
 
                     #partial switch spec in type.spec {
                     case runic.Struct:
-                        if len(spec.members) == 0 do return .Continue
+                        if len(spec.members) == 0 {
+                            append(
+                                data.ctx.forward_decls,
+                                strings.clone(
+                                    display_name,
+                                    data.ctx.allocator,
+                                ),
+                            )
+                            return .Continue
+                        }
                     case runic.Union:
-                        if len(spec.members) == 0 do return .Continue
+                        if len(spec.members) == 0 {
+                            append(
+                                data.ctx.forward_decls,
+                                strings.clone(
+                                    display_name,
+                                    data.ctx.allocator,
+                                ),
+                            )
+                            return .Continue
+                        }
                     case runic.Enum:
                         if len(spec.entries) == 0 {
                             type.spec = spec.type
@@ -1089,6 +1112,13 @@ generate_runestone :: proc(
         }
     }
 
+    // Make forward declarations into actual types if their implementations could not be found in the other header files
+    for decl in forward_decls {
+        if !om.contains(rs.types, decl) && !(decl in included_types) {
+            om.insert(&rs.types, decl, runic.Type{spec = runic.Builtin.RawPtr})
+        }
+    }
+
     runic.ignore_types(&rs.types, ignore)
 
     // Look for unknown types
@@ -1096,6 +1126,7 @@ generate_runestone :: proc(
 
     // Try to find the unknown types in the includes
     unknown_anons := om.make(string, runic.Type)
+    unknown_forward_decls := make([dynamic]string)
     for unknown in unknown_types {
         if included_type_value, ok := included_types[unknown]; ok {
             type: runic.Type = ---
@@ -1136,7 +1167,9 @@ generate_runestone :: proc(
                 }
 
                 data.ctx.types = &unknown_anons
+                data.ctx.forward_decls = &unknown_forward_decls
                 defer data.ctx.types = &data.rs.types
+                defer data.ctx.forward_decls = &forward_decls
 
                 type, data.err = clang_type_to_runic_type(
                     included_type,
@@ -1144,6 +1177,23 @@ generate_runestone :: proc(
                     data.ctx,
                     name_hint = unknown,
                 )
+
+                #partial switch spec in type.spec {
+                case runic.Struct:
+                    if len(spec.members) == 0 {
+                        append(&unknown_forward_decls, unknown)
+                        type = {
+                            spec = runic.Builtin.RawPtr,
+                        }
+                    }
+                case runic.Union:
+                    if len(spec.members) == 0 {
+                        append(&unknown_forward_decls, unknown)
+                        type = {
+                            spec = runic.Builtin.RawPtr,
+                        }
+                    }
+                }
             case runic.Type:
                 type = included_type
 
@@ -1194,13 +1244,33 @@ generate_runestone :: proc(
             )
             is_extern := runic.single_list_glob(rf.extern, included_file_name)
 
+            for decl in unknown_forward_decls {
+                if is_extern {
+                    if decl in included_types do continue
+
+                    om.insert(
+                        &rs.externs,
+                        decl,
+                        runic.Extern {
+                            source = included_file_name,
+                            type = {spec = runic.Builtin.RawPtr},
+                        },
+                    )
+                } else {
+                    if om.contains(rs.types, decl) do continue
+
+                    om.insert(
+                        &rs.types,
+                        decl,
+                        runic.Type{spec = runic.Builtin.RawPtr},
+                    )
+                }
+            }
+            delete(unknown_forward_decls)
+            unknown_forward_decls = make([dynamic]string)
+
             for &entry in unknown_anons.data {
                 anon_name, t := entry.key, &entry.value
-
-                if b, b_ok := t.spec.(runic.Builtin); b_ok && b == .Untyped {
-                    // This means that there was a forward declaration used inside a Struct etc. therefore we can ignore this
-                    continue
-                }
 
                 if is_extern {
                     unknowns := runic.check_for_unknown_types(t, rs.externs)

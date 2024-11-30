@@ -1115,6 +1115,10 @@ generate_runestone :: proc(
     // Make forward declarations into actual types if their implementations could not be found in the other header files
     for decl in forward_decls {
         if !om.contains(rs.types, decl) && !(decl in included_types) {
+            fmt.eprintfln(
+                "info: forward declaration \"{}\" will be added as '#RawPtr'",
+                decl,
+            )
             om.insert(&rs.types, decl, runic.Type{spec = runic.Builtin.RawPtr})
         }
     }

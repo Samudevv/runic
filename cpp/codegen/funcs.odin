@@ -9,14 +9,19 @@ import om "root:ordered_map"
 import "root:runic"
 import clang "shared:libclang"
 
+@(private)
+ClangToRunicTypeContext :: struct {
+    int_sizes:  Int_Sizes,
+    anon_index: ^int,
+    types:      ^om.OrderedMap(string, runic.Type),
+    allocator:  runtime.Allocator,
+}
+
 @(private = "file")
 RecordData :: struct {
-    members:   ^[dynamic]runic.Member,
-    allocator: runtime.Allocator,
-    err:       errors.Error,
-    isz:       Int_Sizes,
-    types:     ^om.OrderedMap(string, runic.Type),
-    anon_idx:  ^int,
+    members: ^[dynamic]runic.Member,
+    ctx:     ^ClangToRunicTypeContext,
+    err:     errors.Error,
 }
 
 @(private = "file")
@@ -24,11 +29,8 @@ FuncParamsData :: struct {
     param_idx:  int,
     num_params: i32,
     func:       ^runic.Function,
-    allocator:  runtime.Allocator,
-    isz:        Int_Sizes,
-    anon_idx:   ^int,
+    ctx:        ^ClangToRunicTypeContext,
     err:        errors.Error,
-    types:      ^om.OrderedMap(string, runic.Type),
 }
 
 @(private = "file")
@@ -98,10 +100,7 @@ union_is_unnamed :: proc {
 clang_type_to_runic_type :: proc(
     type: clang.Type,
     cursor: clang.Cursor,
-    isz: Int_Sizes,
-    anon_idx: ^int,
-    types: ^om.OrderedMap(string, runic.Type),
-    allocator := context.allocator,
+    ctx: ^ClangToRunicTypeContext,
     type_hint: Maybe(string) = nil,
     name_hint: string = "TYPE_NAME_UNKNOWN",
 ) -> (
@@ -112,50 +111,50 @@ clang_type_to_runic_type :: proc(
     case .Void:
         tp.spec = runic.Builtin.Void
     case .Bool:
-        tp.spec = bool_type(isz._Bool)
+        tp.spec = bool_type(ctx.int_sizes._Bool)
     case .Char_U:
-        tp.spec = int_type(isz.char, false)
+        tp.spec = int_type(ctx.int_sizes.char, false)
     case .UChar:
-        tp.spec = int_type(isz.char, false)
+        tp.spec = int_type(ctx.int_sizes.char, false)
     case .Char16:
         tp.spec = runic.Builtin.SInt16
     case .Char32:
         tp.spec = runic.Builtin.SInt32
     case .UShort:
-        tp.spec = int_type(isz.short, false)
+        tp.spec = int_type(ctx.int_sizes.short, false)
     case .UInt:
-        tp.spec = int_type(isz.Int, false)
+        tp.spec = int_type(ctx.int_sizes.Int, false)
     case .ULong:
-        tp.spec = int_type(isz.long, false)
+        tp.spec = int_type(ctx.int_sizes.long, false)
     case .ULongLong:
-        tp.spec = int_type(isz.longlong, false)
+        tp.spec = int_type(ctx.int_sizes.longlong, false)
     case .UInt128:
         tp.spec = runic.Builtin.SInt128
     case .Char_S:
-        tp.spec = int_type(isz.char, true)
+        tp.spec = int_type(ctx.int_sizes.char, true)
     case .SChar:
-        tp.spec = int_type(isz.char, true)
+        tp.spec = int_type(ctx.int_sizes.char, true)
     case .Short:
-        tp.spec = int_type(isz.short, true)
+        tp.spec = int_type(ctx.int_sizes.short, true)
     case .Int:
         if th, ok := type_hint.?;
            ok && th != "int" && th != "signed" && th != "signed int" {
-            tp.spec = handle_builtin_int(th, isz, allocator)
+            tp.spec = handle_builtin_int(th, ctx.int_sizes, ctx.allocator)
         } else {
-            tp.spec = int_type(isz.Int, true)
+            tp.spec = int_type(ctx.int_sizes.Int, true)
         }
     case .Long:
-        tp.spec = int_type(isz.long, true)
+        tp.spec = int_type(ctx.int_sizes.long, true)
     case .LongLong:
-        tp.spec = int_type(isz.longlong, true)
+        tp.spec = int_type(ctx.int_sizes.longlong, true)
     case .Int128:
         tp.spec = runic.Builtin.SInt128
     case .Float:
-        tp.spec = float_type(isz.float)
+        tp.spec = float_type(ctx.int_sizes.float)
     case .Double:
-        tp.spec = float_type(isz.double)
+        tp.spec = float_type(ctx.int_sizes.double)
     case .LongDouble:
-        tp.spec = float_type(isz.long_double)
+        tp.spec = float_type(ctx.int_sizes.long_double)
     case .Float128:
         tp.spec = runic.Builtin.Float128
     case .Elaborated:
@@ -173,14 +172,15 @@ clang_type_to_runic_type :: proc(
             tp = clang_type_to_runic_type(
                 named_type,
                 named_cursor,
-                isz,
-                anon_idx,
-                types,
-                allocator,
+                ctx,
                 name_hint = name_hint,
             ) or_return
         } else {
-            tp.spec = handle_builtin_int(named_name, isz, allocator)
+            tp.spec = handle_builtin_int(
+                named_name,
+                ctx.int_sizes,
+                ctx.allocator,
+            )
         }
     case .Pointer:
         pointee := clang.getPointeeType(type)
@@ -195,16 +195,13 @@ clang_type_to_runic_type :: proc(
         tp = clang_type_to_runic_type(
             pointee,
             cursor,
-            isz,
-            anon_idx,
-            types,
-            allocator,
+            ctx,
             pointee_hint,
             name_hint,
         ) or_return
 
         if _, ok := tp.spec.(runic.FunctionPointer); !ok {
-            handle_anon_type(&tp, types, anon_idx, "pointer", allocator)
+            handle_anon_type(&tp, ctx, "pointer")
         }
 
         if pointee.kind == .Void {
@@ -233,20 +230,17 @@ clang_type_to_runic_type :: proc(
         tp = clang_type_to_runic_type(
             arr_type,
             cursor,
-            isz,
-            anon_idx,
-            types,
-            allocator,
+            ctx,
             type_hint,
             name_hint,
         ) or_return
 
-        handle_anon_type(&tp, types, anon_idx, "array", allocator)
+        handle_anon_type(&tp, ctx, "array")
 
         arr_size := clang.getArraySize(type)
 
         if len(tp.array_info) == 0 {
-            tp.array_info = make([dynamic]runic.Array, allocator)
+            tp.array_info = make([dynamic]runic.Array, ctx.allocator)
         }
 
         append(&tp.array_info, runic.Array{})
@@ -261,18 +255,15 @@ clang_type_to_runic_type :: proc(
         tp = clang_type_to_runic_type(
             arr_type,
             cursor,
-            isz,
-            anon_idx,
-            types,
-            allocator,
+            ctx,
             type_hint,
             name_hint,
         ) or_return
 
-        handle_anon_type(&tp, types, anon_idx, "array", allocator)
+        handle_anon_type(&tp, ctx, "array")
 
         if len(tp.array_info) == 0 {
-            tp.array_info = make([dynamic]runic.Array, allocator)
+            tp.array_info = make([dynamic]runic.Array, ctx.allocator)
         }
 
         append(&tp.array_info, runic.Array{})
@@ -291,18 +282,15 @@ clang_type_to_runic_type :: proc(
             type_name = type_name[space_idx + 1:]
         }
 
-        tp.spec = handle_builtin_int(type_name, isz, allocator)
+        tp.spec = handle_builtin_int(type_name, ctx.int_sizes, ctx.allocator)
     case .Record:
         cursor_kind := clang.getCursorKind(cursor)
 
-        members := make([dynamic]runic.Member, allocator)
+        members := make([dynamic]runic.Member, ctx.allocator)
 
         data := RecordData {
-            members   = &members,
-            allocator = allocator,
-            isz       = isz,
-            types     = types,
-            anon_idx  = anon_idx,
+            members = &members,
+            ctx     = ctx,
         }
 
         clang.visitChildren(cursor, proc "c" (cursor, parent: clang.Cursor, client_data: clang.ClientData) -> clang.ChildVisitResult {
@@ -322,9 +310,9 @@ clang_type_to_runic_type :: proc(
 
                 member_name: string = ---
                 if len(display_name) == 0 {
-                    member_name = fmt.aprintf("member{}", len(data.members), allocator = data.allocator)
+                    member_name = fmt.aprintf("member{}", len(data.members), allocator = data.ctx.allocator)
                 } else {
-                    member_name = strings.clone(display_name, data.allocator)
+                    member_name = strings.clone(display_name, data.ctx.allocator)
                 }
 
                 type: runic.Type = ---
@@ -336,13 +324,13 @@ clang_type_to_runic_type :: proc(
 
                     if field_size % 8 != 0 {
                         fmt.eprintfln("field \"{}.{}\" has specific bit width of {}. This field can not be converted to a byte array, therefore the type will be set to \"#Untyped\"", parent_display_name_str, member_name, field_size)
-                        data.members^ = make([dynamic]runic.Member, len = 0, cap = 0, allocator = data.allocator)
+                        data.members^ = make([dynamic]runic.Member, len = 0, cap = 0, allocator = data.ctx.allocator)
                         return .Break
                     }
 
                     fmt.eprintfln("field \"{}.{}\" has specific bit width of {}. This is not properly supported by runic. Therefore \"{}\" will be added as \"#UInt8 #Attr Arr {} #AttrEnd\"", parent_display_name_str, member_name, field_size / 8, member_name, field_size)
 
-                    array_info := make([dynamic]runic.Array, len = 1, cap = 1, allocator = data.allocator)
+                    array_info := make([dynamic]runic.Array, len = 1, cap = 1, allocator = data.ctx.allocator)
                     array_info[0].size = u64(field_size / 8)
                     type = runic.Type {
                         spec       = runic.Builtin.UInt8,
@@ -354,17 +342,17 @@ clang_type_to_runic_type :: proc(
                         type_hint = clang_var_decl_get_type_hint(cursor)
                     }
 
-                    type, data.err = clang_type_to_runic_type(cursor_type, cursor, data.isz, data.anon_idx, data.types, data.allocator, type_hint, member_name)
+                    type, data.err = clang_type_to_runic_type(cursor_type, cursor, data.ctx, type_hint, member_name)
                     if data.err != nil do return .Break
                 }
 
                 #partial switch cursor_kind {
                 case .FieldDecl:
-                    handle_anon_type(&type, data.types, data.anon_idx, member_name, data.allocator)
+                    handle_anon_type(&type, data.ctx, member_name)
 
                     append(data.members, runic.Member{name = member_name, type = type})
                 case:
-                    om.insert(data.types, member_name, type)
+                    om.insert(data.ctx.types, member_name, type)
                 }
 
                 return .Continue
@@ -394,10 +382,7 @@ clang_type_to_runic_type :: proc(
         enum_type := clang_type_to_runic_type(
             enum_int_type,
             clang.getTypeDeclaration(enum_int_type),
-            isz,
-            anon_idx,
-            types,
-            allocator,
+            ctx,
             name_hint = name_hint,
         ) or_return
 
@@ -416,7 +401,7 @@ clang_type_to_runic_type :: proc(
             return
         }
 
-        e.entries = make([dynamic]runic.EnumEntry, allocator)
+        e.entries = make([dynamic]runic.EnumEntry, ctx.allocator)
 
         clang.visitChildren(
             cursor,
@@ -459,18 +444,15 @@ clang_type_to_runic_type :: proc(
         func.return_type = clang_type_to_runic_type(
             type_return_type,
             return_type_cursor,
-            isz,
-            anon_idx,
-            types,
-            allocator,
+            ctx,
             name_hint = name_hint,
         ) or_return
 
-        handle_anon_type(&func.return_type, types, anon_idx, "func", allocator)
+        handle_anon_type(&func.return_type, ctx, "func")
 
         func.parameters = make(
             [dynamic]runic.Member,
-            allocator = allocator,
+            allocator = ctx.allocator,
             len = 0,
             cap = num_params,
         )
@@ -481,10 +463,7 @@ clang_type_to_runic_type :: proc(
         data := FuncParamsData {
             num_params = num_params,
             func       = &func,
-            allocator  = allocator,
-            isz        = isz,
-            anon_idx   = anon_idx,
-            types      = types,
+            ctx        = ctx,
         }
 
         // NOTE: If the return type of the function pointer is unknown the children can not be visited
@@ -504,9 +483,9 @@ clang_type_to_runic_type :: proc(
 
                 param_name: string = ---
                 if len(display_name) == 0 {
-                    param_name = fmt.aprintf("param{}", data.param_idx, allocator = data.allocator)
+                    param_name = fmt.aprintf("param{}", data.param_idx, allocator = data.ctx.allocator)
                 } else {
-                    param_name = strings.clone(display_name, data.allocator)
+                    param_name = strings.clone(display_name, data.ctx.allocator)
                 }
 
                 param_hint: Maybe(string)
@@ -515,10 +494,10 @@ clang_type_to_runic_type :: proc(
                 }
 
                 type: runic.Type = ---
-                type, data.err = clang_type_to_runic_type(param_type, cursor, data.isz, data.anon_idx, data.types, data.allocator, param_hint, param_name)
+                type, data.err = clang_type_to_runic_type(param_type, cursor, data.ctx, param_hint, param_name)
                 if data.err != nil do return .Break
 
-                handle_anon_type(&type, data.types, data.anon_idx, param_name, data.allocator)
+                handle_anon_type(&type, data.ctx, param_name)
 
                 append(&data.func.parameters, runic.Member{name = param_name, type = type})
 
@@ -563,7 +542,7 @@ clang_type_to_runic_type :: proc(
             }
         }
 
-        tp.spec = new_clone(func, allocator)
+        tp.spec = new_clone(func, ctx.allocator)
     case:
         err = clang_source_error(cursor, "unsupported type \"{}\"", type.kind)
         return
@@ -646,10 +625,8 @@ temp_file :: proc(
 @(private)
 handle_anon_type :: #force_inline proc(
     tp: ^runic.Type,
-    types: ^om.OrderedMap(string, runic.Type),
-    anon_idx: ^int,
+    ctx: ^ClangToRunicTypeContext,
     prefix: string = "",
-    allocator := context.allocator,
 ) {
     type_name: string = ---
 
@@ -658,36 +635,36 @@ handle_anon_type :: #force_inline proc(
         type_name = fmt.aprintf(
             "{}_struct_anon_{}",
             prefix,
-            anon_idx^,
-            allocator = allocator,
+            ctx.anon_index^,
+            allocator = ctx.allocator,
         )
     case runic.Enum:
         type_name = fmt.aprintf(
             "{}_enum_anon_{}",
             prefix,
-            anon_idx^,
-            allocator = allocator,
+            ctx.anon_index^,
+            allocator = ctx.allocator,
         )
     case runic.Union:
         type_name = fmt.aprintf(
             "{}_union_anon_{}",
             prefix,
-            anon_idx^,
-            allocator = allocator,
+            ctx.anon_index^,
+            allocator = ctx.allocator,
         )
     case runic.FunctionPointer:
         type_name = fmt.aprintf(
             "{}_func_ptr_anon_{}",
             prefix,
-            anon_idx^,
-            allocator = allocator,
+            ctx.anon_index^,
+            allocator = ctx.allocator,
         )
     case:
         return
     }
 
-    anon_idx^ += 1
-    om.insert(types, type_name, runic.Type{spec = tp.spec})
+    ctx.anon_index^ += 1
+    om.insert(ctx.types, type_name, runic.Type{spec = tp.spec})
     tp.spec = type_name
 }
 

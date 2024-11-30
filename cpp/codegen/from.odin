@@ -47,17 +47,15 @@ IncludedType :: struct {
 @(private = "file")
 ClientData :: struct {
     rs:                ^runic.Runestone,
-    allocator:         runtime.Allocator,
     arena_alloc:       runtime.Allocator,
     err:               errors.Error,
-    isz:               Int_Sizes,
     included_types:    ^map[string]IncludedType,
     included_anons:    ^om.OrderedMap(string, runic.Type),
     macros:            ^om.OrderedMap(string, Macro),
-    anon_idx:          ^int,
     rune_file_name:    string,
     load_all_includes: bool,
     extern:            []string,
+    ctx:               ^ClangToRunicTypeContext,
 }
 
 generate_runestone :: proc(
@@ -446,20 +444,27 @@ generate_runestone :: proc(
         plat,
     )
 
-    anon_idx: int
     data := ClientData {
         rs                = &rs,
-        allocator         = rs_arena_alloc,
         arena_alloc       = arena_alloc,
-        isz               = int_sizes_from_platform(plat),
         included_types    = &included_types,
         included_anons    = &included_anons,
         macros            = &macros,
-        anon_idx          = &anon_idx,
         rune_file_name    = rune_file_name,
         load_all_includes = load_all_includes,
         extern            = rf.extern,
+        ctx               = new_clone(
+            ClangToRunicTypeContext {
+                int_sizes = int_sizes_from_platform(plat),
+                anon_index = new_clone(int(0)),
+                types = &rs.types,
+                allocator = rs_arena_alloc,
+            },
+        ),
     }
+    defer free(data.ctx)
+    defer free(data.ctx.anon_index)
+
     index := clang.createIndex(0, 0)
     defer clang.disposeIndex(index)
     units := make(
@@ -581,7 +586,6 @@ generate_runestone :: proc(
             ) -> clang.ChildVisitResult {
                 data := cast(^ClientData)client_data
                 context = runtime.default_context()
-                rs_arena_alloc := data.allocator
 
                 cursor_kind := clang.getCursorKind(cursor)
                 cursor_type := clang.getCursorType(cursor)
@@ -644,14 +648,14 @@ generate_runestone :: proc(
                                 pointee := clang.getPointeeType(typedef)
                                 if pointee.kind == .FunctionProto ||
                                    pointee.kind == .FunctionNoProto {
+                                    data.ctx.types = data.included_anons
+                                    defer data.ctx.types = &data.rs.types
+
                                     type: runic.Type = ---
                                     type, data.err = clang_type_to_runic_type(
                                         typedef,
                                         cursor,
-                                        data.isz,
-                                        data.anon_idx,
-                                        data.included_anons,
-                                        rs_arena_alloc,
+                                        data.ctx,
                                         nil,
                                         type_name,
                                     )
@@ -796,10 +800,7 @@ generate_runestone :: proc(
                     type, data.err = clang_type_to_runic_type(
                         typedef,
                         cursor,
-                        data.isz,
-                        data.anon_idx,
-                        &data.rs.types,
-                        rs_arena_alloc,
+                        data.ctx,
                         type_hint,
                         type_name,
                     )
@@ -807,7 +808,7 @@ generate_runestone :: proc(
 
                     om.insert(
                         &data.rs.types,
-                        strings.clone(type_name, rs_arena_alloc),
+                        strings.clone(type_name, data.ctx.allocator),
                         type,
                     )
                 case .VarDecl:
@@ -829,25 +830,16 @@ generate_runestone :: proc(
                     type, data.err = clang_type_to_runic_type(
                         cursor_type,
                         cursor,
-                        data.isz,
-                        data.anon_idx,
-                        &data.rs.types,
-                        rs_arena_alloc,
+                        data.ctx,
                         type_hint,
                         display_name,
                     )
                     if data.err != nil do break
 
-                    var_name := strings.clone(display_name, rs_arena_alloc)
+                    var_name := strings.clone(display_name, data.ctx.allocator)
 
                     if _, ok := type.spec.(runic.FunctionPointer); !ok {
-                        handle_anon_type(
-                            &type,
-                            &data.rs.types,
-                            data.anon_idx,
-                            var_name,
-                            data.allocator,
-                        )
+                        handle_anon_type(&type, data.ctx, var_name)
                     }
 
                     om.insert(
@@ -864,10 +856,7 @@ generate_runestone :: proc(
                     type, data.err = clang_type_to_runic_type(
                         cursor_type,
                         cursor,
-                        data.isz,
-                        data.anon_idx,
-                        &data.rs.types,
-                        rs_arena_alloc,
+                        data.ctx,
                         name_hint = display_name,
                     )
                     if data.err != nil do break
@@ -885,7 +874,7 @@ generate_runestone :: proc(
 
                     om.insert(
                         &data.rs.types,
-                        strings.clone(display_name, rs_arena_alloc),
+                        strings.clone(display_name, data.ctx.allocator),
                         type,
                     )
                 case .FunctionDecl:
@@ -919,26 +908,17 @@ generate_runestone :: proc(
                     func.return_type, data.err = clang_type_to_runic_type(
                         cursor_return_type,
                         cursor,
-                        data.isz,
-                        data.anon_idx,
-                        &data.rs.types,
-                        rs_arena_alloc,
+                        data.ctx,
                         type_hint,
                         return_type_name_hint,
                     )
                     if data.err != nil do break
 
-                    handle_anon_type(
-                        &func.return_type,
-                        &data.rs.types,
-                        data.anon_idx,
-                        func_name,
-                        rs_arena_alloc,
-                    )
+                    handle_anon_type(&func.return_type, data.ctx, func_name)
 
                     func.parameters = make(
                         [dynamic]runic.Member,
-                        allocator = rs_arena_alloc,
+                        allocator = data.ctx.allocator,
                         len = 0,
                         cap = num_params,
                     )
@@ -965,12 +945,12 @@ generate_runestone :: proc(
                             param_name_str = fmt.aprintf(
                                 "param{}",
                                 idx,
-                                allocator = rs_arena_alloc,
+                                allocator = data.ctx.allocator,
                             )
                         } else {
                             param_name_str = strings.clone(
                                 param_name,
-                                rs_arena_alloc,
+                                data.ctx.allocator,
                             )
                         }
 
@@ -985,22 +965,13 @@ generate_runestone :: proc(
                         type, data.err = clang_type_to_runic_type(
                             param_type,
                             param_cursor,
-                            data.isz,
-                            data.anon_idx,
-                            &data.rs.types,
-                            rs_arena_alloc,
+                            data.ctx,
                             type_hint,
                             param_name,
                         )
                         if data.err != nil do break cursor_kind_switch
 
-                        handle_anon_type(
-                            &type,
-                            &data.rs.types,
-                            data.anon_idx,
-                            param_name_str,
-                            rs_arena_alloc,
-                        )
+                        handle_anon_type(&type, data.ctx, param_name_str)
 
                         append(
                             &func.parameters,
@@ -1027,7 +998,7 @@ generate_runestone :: proc(
 
                     om.insert(
                         &data.rs.symbols,
-                        strings.clone(func_name, rs_arena_alloc),
+                        strings.clone(func_name, data.ctx.allocator),
                         runic.Symbol{value = func},
                     )
                 case .MacroDefinition:
@@ -1164,13 +1135,13 @@ generate_runestone :: proc(
                     }
                 }
 
+                data.ctx.types = &unknown_anons
+                defer data.ctx.types = &data.rs.types
+
                 type, data.err = clang_type_to_runic_type(
                     included_type,
                     cursor,
-                    data.isz,
-                    data.anon_idx,
-                    &unknown_anons,
-                    rs_arena_alloc,
+                    data.ctx,
                     name_hint = unknown,
                 )
             case runic.Type:
@@ -1219,7 +1190,7 @@ generate_runestone :: proc(
 
             included_file_name := strings.clone(
                 included_type_value.file_name,
-                rs_arena_alloc,
+                data.ctx.allocator,
             )
             is_extern := runic.single_list_glob(rf.extern, included_file_name)
 
@@ -1433,7 +1404,7 @@ generate_runestone :: proc(
 
                     var_name_str := strings.clone(
                         var_name[start:],
-                        data.allocator,
+                        data.ctx.allocator,
                     )
 
                     om.insert(
@@ -1459,7 +1430,7 @@ generate_runestone :: proc(
                                 strings.trim_suffix(const_value, "\""),
                                 "\"",
                             ),
-                            data.allocator,
+                            data.ctx.allocator,
                         )
                         const.type.spec = runic.Builtin.String
                     } else if strings.has_prefix(const_value, "'") &&
@@ -1470,7 +1441,7 @@ generate_runestone :: proc(
                                 strings.trim_suffix(const_value, "'"),
                                 "'",
                             ),
-                            data.allocator,
+                            data.ctx.allocator,
                         )
                         const.type.spec = runic.Builtin.SInt8
                     } else if value_i64, ok_i64 := strconv.parse_i64(
@@ -1509,7 +1480,7 @@ generate_runestone :: proc(
 
                         const.value = strings.clone(
                             const_value,
-                            data.allocator,
+                            data.ctx.allocator,
                         )
                     }
                 }

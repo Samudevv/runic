@@ -367,6 +367,8 @@ clang_type_to_runic_type :: proc(
                         }
                     }
 
+                    if om.contains(data.ctx.types^, member_name) do break
+
                     om.insert(data.ctx.types, member_name, type)
                 }
 

@@ -524,6 +524,8 @@ generate_runestone :: proc(
                     type_name := clang_str(type_name_clang)
                     defer clang.disposeString(type_name_clang)
 
+                    if om.contains(data.rs.types, type_name) do break
+
                     type_hint: Maybe(string)
                     if typedef.kind == .Int {
                         type_hint = clang_typedef_get_type_hint(cursor)
@@ -569,6 +571,8 @@ generate_runestone :: proc(
                     case .Auto, .None, .Register, .Extern:
                     }
 
+                    if om.contains(data.rs.symbols, display_name) do break
+
                     type_hint: Maybe(string)
                     if cursor_type.kind == .Int {
                         type_hint = clang_var_decl_get_type_hint(cursor)
@@ -599,6 +603,8 @@ generate_runestone :: proc(
                     if cursor_kind == .StructDecl && struct_is_unnamed(display_name) do return .Continue
                     if cursor_kind == .UnionDecl && union_is_unnamed(display_name) do return .Continue
                     if cursor_kind == .EnumDecl && enum_is_unnamed(display_name) do return .Continue
+
+                    if om.contains(data.rs.types, display_name) do break
 
                     type: runic.Type = ---
                     type, data.err = clang_type_to_runic_type(
@@ -655,14 +661,16 @@ generate_runestone :: proc(
                     }
                     if clang.Cursor_isFunctionInlined(cursor) do return .Continue
 
+                    func_name_clang := clang.getCursorSpelling(cursor)
+                    func_name := clang_str(func_name_clang)
+                    defer clang.disposeString(func_name_clang)
+
+                    if om.contains(data.rs.symbols, func_name) do break
+
                     cursor_return_type := clang.getCursorResultType(cursor)
                     num_params := clang.Cursor_getNumArguments(cursor)
 
                     func: runic.Function
-
-                    func_name_clang := clang.getCursorSpelling(cursor)
-                    func_name := clang_str(func_name_clang)
-                    defer clang.disposeString(func_name_clang)
 
                     type_hint := clang_func_return_type_get_type_hint(cursor)
 

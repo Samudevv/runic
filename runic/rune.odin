@@ -217,6 +217,136 @@ parse_rune :: proc(
                     }
                 }
 
+                if defines, ok := wrapper_map["defines"]; ok {
+                    #partial switch v in defines {
+                    case yaml.Mapping:
+                        wrapper.defines = make(
+                            map[string]string,
+                            capacity = len(v),
+                            allocator = rn_arena_alloc,
+                        )
+
+                        for name, v_value in v {
+                            #partial switch value in v_value {
+                            case string:
+                                wrapper.defines[name] = value
+                            case:
+                                err = errors.message(
+                                    "\"wrapper.defines.{}\" has invalid type %T",
+                                    name,
+                                    value,
+                                )
+                                return
+                            }
+                        }
+                    case:
+                        err = errors.message(
+                            "\"wrapper.defines\" has invalid type %T",
+                            v,
+                        )
+                        return
+                    }
+                }
+
+                if include_dirs, ok := wrapper_map["includedirs"]; ok {
+                    #partial switch v in include_dirs {
+                    case string:
+                        arr := make(
+                            [dynamic]string,
+                            len = 1,
+                            cap = 1,
+                            allocator = rn_arena_alloc,
+                        )
+                        arr[0] = relative_to_file(file_path, v, rn_arena_alloc)
+                        wrapper.include_dirs = arr[:]
+                    case yaml.Sequence:
+                        arr := make(
+                            [dynamic]string,
+                            len = 0,
+                            cap = len(v),
+                            allocator = rn_arena_alloc,
+                        )
+
+                        for v_value, idx in v {
+                            #partial switch value in v_value {
+                            case string:
+                                append(
+                                    &arr,
+                                    relative_to_file(
+                                        file_path,
+                                        value,
+                                        rn_arena_alloc,
+                                    ),
+                                )
+                            case:
+                                err = errors.message(
+                                    "\"wrapper.includedirs\"[{}] has invalid type %T",
+                                    idx,
+                                    value,
+                                )
+                                return
+                            }
+                        }
+
+                        wrapper.include_dirs = arr[:]
+                    case:
+                        err = errors.message(
+                            "\"wrapper.includedirs\" has invalid type %T",
+                            v,
+                        )
+                        return
+                    }
+                }
+
+                if flags, ok := wrapper_map["flags"]; ok {
+                    #partial switch v in flags {
+                    case string:
+                        arr := make(
+                            [dynamic]cstring,
+                            len = 1,
+                            cap = 1,
+                            allocator = rn_arena_alloc,
+                        )
+                        arr[0] = strings.clone_to_cstring(v, rn_arena_alloc)
+                        wrapper.flags = arr[:]
+                    case yaml.Sequence:
+                        arr := make(
+                            [dynamic]cstring,
+                            len = 0,
+                            cap = len(v),
+                            allocator = rn_arena_alloc,
+                        )
+
+                        for v_value, idx in v {
+                            #partial switch value in v_value {
+                            case string:
+                                append(
+                                    &arr,
+                                    strings.clone_to_cstring(
+                                        value,
+                                        rn_arena_alloc,
+                                    ),
+                                )
+                            case:
+                                err = errors.message(
+                                    "\"wrapper.flags\"[{}] has invalid type %T",
+                                    idx,
+                                    value,
+                                )
+                                return
+                            }
+                        }
+
+                        wrapper.flags = arr[:]
+                    case:
+                        err = errors.message(
+                            "\"wrapper.flags\" has invalid type %T",
+                            v,
+                        )
+                        return
+                    }
+                }
+
                 if in_headers_value, ok := wrapper_map["in_headers"]; ok {
                     #partial switch in_headers in in_headers_value {
                     case yaml.Sequence:

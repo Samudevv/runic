@@ -5,6 +5,14 @@ platforms:
 wrapper:
   language: c
   from_compiler_flags: false
+  defines:
+    FOO: BAR
+  includedirs:
+    - header_files/
+    - inc/other_headers
+  flags:
+    - -fsomething
+    - -nostdinc
   in_headers: wrapper.h
   out_header: wrapper.gen.h
   out_source: wrapper.gen.c

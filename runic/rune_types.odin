@@ -83,6 +83,9 @@ Wrapper :: struct {
     language:            string,
     // C/C++
     from_compiler_flags: bool,
+    defines:             map[string]string,
+    include_dirs:        []string,
+    flags:               []cstring,
     in_headers:          []string,
     out_header:          string,
     out_source:          string,

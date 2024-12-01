@@ -2,7 +2,7 @@
 
 + Wrapper
   + [x] Add `from_compiler_flags` to import the compiler flags from `from`
-    + [ ] Add `includedirs`, `defines`, `flags` fields which get added on top of the `from_compiler_flags`
+    + [x] Add `includedirs`, `defines`, `flags` fields which get added on top of the `from_compiler_flags`
   + [ ] Add `load_all_includes`
   + [ ] Make more multi platform: Separate files for each platform
   + [ ] Bonus: Add make files (nmake on windows) which compile the wrapper (field `gen_make_files`)

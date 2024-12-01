@@ -165,10 +165,23 @@ test_rune :: proc(t: ^testing.T) {
     wrapper := rn.wrapper.?
     expect_value(t, wrapper.language, "c")
     expect_value(t, wrapper.from_compiler_flags, false)
+    expect_value(t, wrapper.defines["FOO"], "BAR")
     expect_value(t, len(wrapper.in_headers), 1)
     expect_value(t, wrapper.in_headers[0], in_header)
     expect_value(t, wrapper.out_header, out_header)
     expect_value(t, wrapper.out_source, out_source)
+
+    wrapper_incs := wrapper.include_dirs
+    expect_value(t, len(wrapper_incs), 2)
+    wi1 := filepath.join({cwd, "test_data/header_files/"})
+    wi2 := filepath.join({cwd, "test_data/inc/other_headers"})
+    defer delete(wi1)
+    defer delete(wi2)
+    expect_value(t, wrapper_incs[0], wi1)
+    expect_value(t, wrapper_incs[1], wi2)
+    expect_value(t, len(wrapper.flags), 2)
+    expect_value(t, wrapper.flags[0], "-fsomething")
+    expect_value(t, wrapper.flags[1], "-nostdinc")
 
     add_libs_any := platform_value_get([]string, to.add_libs, {.Any, .Any})
     add_libs_linux := platform_value_get([]string, to.add_libs, {.Linux, .Any})

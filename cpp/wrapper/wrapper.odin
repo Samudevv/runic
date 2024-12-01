@@ -50,9 +50,14 @@ generate_wrapper :: proc(
     // TODO: do not hardcode the platform
     plat := runic.Platform{.Linux, .x86_64}
 
-    defines: map[string]string
-    include_dirs: []string
-    flags: []cstring
+    defines := make(map[string]string, capacity = len(rn.defines))
+    include_dirs := make([dynamic]string, len = 0, cap = len(rn.include_dirs))
+    flags := make([dynamic]cstring, len = 0, cap = len(rn.flags))
+    defer delete(defines)
+    defer delete(include_dirs)
+    defer delete(flags)
+
+    append(&include_dirs, ..rn.include_dirs)
 
     if rn.from_compiler_flags {
         if from, from_ok := rf.?; from_ok {
@@ -61,32 +66,41 @@ generate_wrapper :: proc(
                 from.defines,
                 plat,
             )
-            if d_ok do defines = from_defines
+            if d_ok {
+                for key, value in from_defines {
+                    defines[key] = value
+                }
+            }
 
             from_include_dirs, inc_ok := runic.platform_value_get(
                 []string,
                 from.includedirs,
                 plat,
             )
-            if inc_ok do include_dirs = from_include_dirs
+            if inc_ok do append(&include_dirs, ..from_include_dirs)
 
             from_flags, f_ok := runic.platform_value_get(
                 []cstring,
                 from.flags,
                 plat,
             )
-            if f_ok do flags = from_flags
+            if f_ok do append(&flags, ..from_flags)
         }
     }
+
+    for key, value in rn.defines {
+        defines[key] = value
+    }
+    append(&flags, ..rn.flags)
 
     clang_flags := cppcdg.generate_clang_flags(
         plat = plat,
         disable_stdint_macros = false,
         defines = defines,
-        include_dirs = include_dirs,
+        include_dirs = include_dirs[:],
         enable_host_includes = false,
         stdinc_gen_dir = nil,
-        flags = flags,
+        flags = flags[:],
         allocator = arena_alloc,
     )
     defer delete(clang_flags)

@@ -77,292 +77,26 @@ generate_runestone :: proc(
     rs.platform = plat
     runic.set_library(plat, &rs, rf)
 
-    clang_flags := make([dynamic]cstring, arena_alloc)
-
-    // Macros for all operating systems: https://sourceforge.net/p/predef/wiki/OperatingSystems/
-    // Macros for all architectures: https://sourceforge.net/p/predef/wiki/Architectures/
-    // Undefine all platform related macros
-    UNDEFINES :: [?]cstring {
-        // Android
-        "-U__ANDROID__",
-        // BSD
-        "-U__FreeBSD__",
-        "-U__FreeBSD_kernel__",
-        "-U__NetBSD__",
-        "-U__OpenBSD__",
-        "-U__bsdi__",
-        "-U__DragonFly__",
-        "-U_SYSTYPE_BSD",
-        "-UBSD",
-        // Linux
-        "-U__GLIBC__",
-        "-U__gnu_linux__",
-        "-U__linux__",
-        "-Ulinux",
-        "-U__linux",
-        // MacOS
-        "-Umacintosh",
-        "-UMacintosh",
-        "-U__APPLE__",
-        "-U__MACH__",
-        // Windows
-        "-U_WIN16",
-        "-U_WIN32",
-        "-U_WIN64",
-        // AMD64 & x86_64
-        "-U__amd64__",
-        "-U__amd64",
-        "-U__x86_64__",
-        "-U__x86_64",
-        // ARM
-        "-U__arm__",
-        "-U__thumb__",
-        "-U__aarch64__",
-        // x86
-        "-Ui386",
-        "-U__i386",
-        "-U__i386__",
-        "-U__i486__",
-        "-U__i586__",
-        "-U__i686__",
-    }
-    for u in UNDEFINES {
-        append(&clang_flags, u)
-    }
-
-    // Define platform related macros
-    platform_defines: []cstring
-    switch plat.os {
-    case .Linux:
-        platform_defines = []cstring {
-            "-D__GLIBC__",
-            "-D__gnu_linux__",
-            "-D__linux__",
-            "-Dlinux",
-            "-D__linux",
-        }
-    case .Macos:
-        platform_defines = []cstring {
-            "-Dmacintosh",
-            "-DMacintosh",
-            "-D__APPLE__",
-            "-D__MACH__",
-        }
-    case .Windows:
-        platform_defines = []cstring{"-D_WIN16", "-D_WIN32", "-D_WIN64"}
-    case .BSD:
-        platform_defines = []cstring {
-            "-D__FreeBSD__",
-            "-D__FreeBSD_kernel__",
-            "-D__bsdi__",
-            "-D_SYSTYPE_BSD",
-            "-DBSD",
-        }
-    case .Any:
-    // Everything stays undefined
-    }
-
-    append(&clang_flags, ..platform_defines)
-
-    switch plat.arch {
-    case .x86:
-        platform_defines = []cstring {
-            "-Di386",
-            "-D__i386",
-            "-D__i386__",
-            "-D__i486__",
-            "-D__i586__",
-            "-D__i686__",
-        }
-    case .x86_64:
-        platform_defines = []cstring {
-            "-D__amd64__",
-            "-D__amd64",
-            "-D__x86_64__",
-            "-D__x86_64",
-        }
-    case .arm32:
-        platform_defines = []cstring{"-D__arm__"}
-    case .arm64:
-        platform_defines = []cstring{"-D__arm__", "-D__aarch64__"}
-    case .Any:
-    // Everything stays undefined
-    }
-
-    append(&clang_flags, ..platform_defines)
-
-    if disable_stdint_macros, ok := runic.platform_value_get(
+    disable_stdint_macros, dsm_ok := runic.platform_value_get(
         bool,
         rf.disable_stdint_macros,
         plat,
-    ); !(ok && disable_stdint_macros) {
+    )
+    disable_stdint_macros = dsm_ok && disable_stdint_macros
 
-        // Macros for stdint (+ size_t) types
-        stdint_macros: []cstring
-        switch plat.os {
-        case .Windows:
-            switch plat.arch {
-            case .x86_64, .arm64:
-                stdint_macros = []cstring {
-                    "-Dint8_t=signed char",
-                    "-Dint16_t=signed short",
-                    "-Dint32_t=signed int",
-                    "-Dint64_t=signed long long",
-                    "-Duint8_t=unsigned char",
-                    "-Duint16_t=unsigned short",
-                    "-Duint32_t=unsigned int",
-                    "-Duint64_t=unsigned long long",
-                    "-Dbool=_Bool",
-                    "-Dsize_t=unsigned long long",
-                    "-Dintptr_t=signed long long",
-                    "-Duintptr_t=unsigned long long",
-                    "-Dptrdiff_t=signed long long",
-                }
-            case .x86, .arm32:
-                stdint_macros = []cstring {
-                    "-Dint8_t=signed char",
-                    "-Dint16_t=signed short",
-                    "-Dint32_t=signed int",
-                    "-Dint64_t=signed long long",
-                    "-Duint8_t=unsigned char",
-                    "-Duint16_t=unsigned short",
-                    "-Duint32_t=unsigned int",
-                    "-Duint64_t=unsigned long long",
-                    "-Dbool=_Bool",
-                    "-Dsize_t=unsigned long",
-                    "-Dintptr_t=signed long",
-                    "-Duintptr_t=unsigned long",
-                    "-Dptrdiff_t=signed long",
-                }
-            case .Any:
-            // Leave it empty, but should be unreachable
-            }
-        case .Linux, .BSD, .Macos:
-            stdint_macros = []cstring {
-                "-Dint8_t=signed char",
-                "-Dint16_t=signed short",
-                "-Dint32_t=signed int",
-                "-Dint64_t=signed long long",
-                "-Duint8_t=unsigned char",
-                "-Duint16_t=unsigned short",
-                "-Duint32_t=unsigned int",
-                "-Duint64_t=unsigned long long",
-                "-Dbool=_Bool",
-                "-Dsize_t=unsigned long",
-                "-Dintptr_t=signed long",
-                "-Duintptr_t=unsigned long",
-                "-Dptrdiff_t=signed long",
-            }
-        case .Any:
-        // Leave it empty, but should be unreachable
-        }
-
-        append(&clang_flags, ..stdint_macros)
-    }
-
-    target_flag: cstring = ---
-    switch plat.os {
-    case .Linux:
-        switch plat.arch {
-        case .x86_64:
-            target_flag = "--target=x86_64-linux-gnu"
-        case .arm64:
-            target_flag = "--target=aarch64-linux-gnu"
-        case .x86:
-            target_flag = "--target=i686-linux-gnu"
-        case .arm32:
-            target_flag = "--target=arm-linux-gnu"
-        case .Any:
-            target_flag = "--target=any-linux-gnu"
-        }
-    case .Windows:
-        switch plat.arch {
-        case .x86_64:
-            target_flag = "--target=x86_64-windows-msvc"
-        case .arm64:
-            target_flag = "--target=aarch64-windows-msvc"
-        case .x86:
-            target_flag = "--target=i686-windows-msvc"
-        case .arm32:
-            target_flag = "--target=arm-windows-msvc"
-        case .Any:
-            target_flag = "--target=any-windows-msvc"
-        }
-    case .Macos:
-        switch plat.arch {
-        case .x86_64:
-            target_flag = "--target=x86_64-apple-darwin"
-        case .arm64:
-            target_flag = "--target=aarch64-apple-darwin"
-        case .x86:
-            target_flag = "--target=i686-apple-darwin"
-        case .arm32:
-            target_flag = "--target=arm-apple-darwin"
-        case .Any:
-            target_flag = "--target=any-apple-darwin"
-        }
-    case .BSD:
-        switch plat.arch {
-        case .x86_64:
-            target_flag = "--target=x86_64-unknown-freebsd"
-        case .arm64:
-            target_flag = "--target=aarch64-unknown-freebsd"
-        case .x86:
-            target_flag = "--target=i686-unknown-freebsd"
-        case .arm32:
-            target_flag = "--target=arm-unknown-freebsd"
-        case .Any:
-            target_flag = "--target=any-unknown-freebsd"
-        }
-    case .Any:
-        switch plat.arch {
-        case .x86_64:
-            target_flag = "--target=x86_64-any-none"
-        case .arm64:
-            target_flag = "--target=aarch64-any-none"
-        case .x86:
-            target_flag = "--target=i686-any-none"
-        case .arm32:
-            target_flag = "--target=arm-any-none"
-        case .Any:
-            target_flag = "--target=any-any-none"
-        }
-    }
-
-    append(&clang_flags, target_flag)
-    if plat.arch == .arm32 {
-        append(&clang_flags, "-mfloat-abi=soft")
-    }
-
-    if rune_defines, ok := runic.platform_value_get(
+    rune_defines, rd_ok := runic.platform_value_get(
         map[string]string,
         rf.defines,
         plat,
-    ); ok {
-        for name, value in rune_defines {
-            arg := strings.clone_to_cstring(
-                fmt.aprintf("-D{}={}", name, value, allocator = arena_alloc),
-                arena_alloc,
-            )
+    )
+    if !rd_ok do rune_defines = make(map[string]string, allocator = arena_alloc)
 
-            append(&clang_flags, arg)
-        }
-    }
-
-    if include_dirs, ok := runic.platform_value_get(
+    include_dirs, inc_ok := runic.platform_value_get(
         []string,
         rf.includedirs,
         plat,
-    ); ok {
-        for inc in include_dirs {
-            arg := strings.clone_to_cstring(
-                fmt.aprintf("-I{}", inc, allocator = arena_alloc),
-                arena_alloc,
-            )
-
-            append(&clang_flags, arg)
-        }
-    }
+    )
+    if !inc_ok do include_dirs = make([]string, 0, arena_alloc)
 
     // Generate system includes as empty files just for placeholders
     stdinc_gen_dir: Maybe(string)
@@ -370,18 +104,25 @@ generate_runestone :: proc(
         delete_system_includes(gen_dir)
     }
 
-    if enable_host_includes, ok := runic.platform_value_get(
+    enable_host_includes, hinc_ok := runic.platform_value_get(
         bool,
         rf.enable_host_includes,
         plat,
-    ); !(ok && enable_host_includes) {
-        append(&clang_flags, "-nostdinc")
+    )
+    enable_host_includes = hinc_ok && enable_host_includes
 
-        if disable_system_include_gen, gen_ok := runic.platform_value_get(
-            bool,
-            rf.disable_system_include_gen,
-            plat,
-        ); !(gen_ok && disable_system_include_gen) {
+    disable_system_include_gen, dsysinc_ok := runic.platform_value_get(
+        bool,
+        rf.disable_system_include_gen,
+        plat,
+    )
+    disable_system_include_gen = dsysinc_ok && disable_system_include_gen
+
+    flags, flag_ok := runic.platform_value_get([]cstring, rf.flags, plat)
+    if !flag_ok do flags = make([]cstring, 0, arena_alloc)
+
+    if !enable_host_includes {
+        if !disable_system_include_gen {
             stdinc_gen_dir_ok: bool = ---
             stdinc_gen_dir, stdinc_gen_dir_ok = system_includes_gen_dir(
                 plat,
@@ -389,25 +130,15 @@ generate_runestone :: proc(
             )
 
             if stdinc_gen_dir_ok {
-                ok = generate_system_includes(stdinc_gen_dir.?)
-
-                if ok {
-                    include_dir := strings.concatenate(
-                        {"-I", stdinc_gen_dir.?},
-                        arena_alloc,
-                    )
-                    include_dir_cstr := strings.clone_to_cstring(
-                        include_dir,
-                        arena_alloc,
-                    )
-                    append(&clang_flags, include_dir_cstr)
-                } else {
+                if !generate_system_includes(stdinc_gen_dir.?) {
                     fmt.eprintfln(
                         "FATAL: failed to generate system includes for platform {}.{} into \"{}\"",
                         plat.os,
                         plat.arch,
                         stdinc_gen_dir,
                     )
+
+                    stdinc_gen_dir = nil
                 }
             } else {
                 stdinc_gen_dir = nil
@@ -420,11 +151,17 @@ generate_runestone :: proc(
         }
     }
 
-    if flags, ok := runic.platform_value_get([]cstring, rf.flags, plat); ok {
-        for f in flags {
-            append(&clang_flags, f)
-        }
-    }
+    clang_flags := generate_clang_flags(
+        plat,
+        disable_stdint_macros,
+        rune_defines,
+        include_dirs,
+        enable_host_includes,
+        stdinc_gen_dir,
+        flags,
+        arena_alloc,
+    )
+    defer delete(clang_flags)
 
     headers := runic.platform_value_get([]string, rf.headers, plat)
     ignore := runic.platform_value_get(runic.IgnoreSet, rf.ignore, plat)

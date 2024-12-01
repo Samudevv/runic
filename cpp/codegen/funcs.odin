@@ -812,3 +812,305 @@ clang_str :: #force_inline proc(clang_str: clang.String) -> string {
     return strings.string_from_ptr(cast(^byte)cstr, len(cstr))
 }
 
+
+generate_clang_flags :: proc(
+    plat: runic.Platform,
+    disable_stdint_macros: bool,
+    defines: map[string]string,
+    include_dirs: []string,
+    enable_host_includes: bool,
+    stdinc_gen_dir: Maybe(string),
+    flags: []cstring,
+    allocator := context.allocator,
+) -> (
+    clang_flags: [dynamic]cstring,
+) {
+    clang_flags = make([dynamic]cstring, context.allocator)
+
+    // Macros for all operating systems: https://sourceforge.net/p/predef/wiki/OperatingSystems/
+    // Macros for all architectures: https://sourceforge.net/p/predef/wiki/Architectures/
+    // Undefine all platform related macros
+    UNDEFINES :: [?]cstring {
+        // Android
+        "-U__ANDROID__",
+        // BSD
+        "-U__FreeBSD__",
+        "-U__FreeBSD_kernel__",
+        "-U__NetBSD__",
+        "-U__OpenBSD__",
+        "-U__bsdi__",
+        "-U__DragonFly__",
+        "-U_SYSTYPE_BSD",
+        "-UBSD",
+        // Linux
+        "-U__GLIBC__",
+        "-U__gnu_linux__",
+        "-U__linux__",
+        "-Ulinux",
+        "-U__linux",
+        // MacOS
+        "-Umacintosh",
+        "-UMacintosh",
+        "-U__APPLE__",
+        "-U__MACH__",
+        // Windows
+        "-U_WIN16",
+        "-U_WIN32",
+        "-U_WIN64",
+        // AMD64 & x86_64
+        "-U__amd64__",
+        "-U__amd64",
+        "-U__x86_64__",
+        "-U__x86_64",
+        // ARM
+        "-U__arm__",
+        "-U__thumb__",
+        "-U__aarch64__",
+        // x86
+        "-Ui386",
+        "-U__i386",
+        "-U__i386__",
+        "-U__i486__",
+        "-U__i586__",
+        "-U__i686__",
+    }
+    for u in UNDEFINES {
+        append(&clang_flags, u)
+    }
+
+    // Define platform related macros
+    platform_defines: []cstring
+    switch plat.os {
+    case .Linux:
+        platform_defines = []cstring {
+            "-D__GLIBC__",
+            "-D__gnu_linux__",
+            "-D__linux__",
+            "-Dlinux",
+            "-D__linux",
+        }
+    case .Macos:
+        platform_defines = []cstring {
+            "-Dmacintosh",
+            "-DMacintosh",
+            "-D__APPLE__",
+            "-D__MACH__",
+        }
+    case .Windows:
+        platform_defines = []cstring{"-D_WIN16", "-D_WIN32", "-D_WIN64"}
+    case .BSD:
+        platform_defines = []cstring {
+            "-D__FreeBSD__",
+            "-D__FreeBSD_kernel__",
+            "-D__bsdi__",
+            "-D_SYSTYPE_BSD",
+            "-DBSD",
+        }
+    case .Any:
+    // Everything stays undefined
+    }
+
+    append(&clang_flags, ..platform_defines)
+
+
+    switch plat.arch {
+    case .x86:
+        platform_defines = []cstring {
+            "-Di386",
+            "-D__i386",
+            "-D__i386__",
+            "-D__i486__",
+            "-D__i586__",
+            "-D__i686__",
+        }
+    case .x86_64:
+        platform_defines = []cstring {
+            "-D__amd64__",
+            "-D__amd64",
+            "-D__x86_64__",
+            "-D__x86_64",
+        }
+    case .arm32:
+        platform_defines = []cstring{"-D__arm__"}
+    case .arm64:
+        platform_defines = []cstring{"-D__arm__", "-D__aarch64__"}
+    case .Any:
+    // Everything stays undefined
+    }
+
+    append(&clang_flags, ..platform_defines)
+
+    if !disable_stdint_macros {
+        // Macros for stdint (+ size_t) types
+        stdint_macros: []cstring
+        switch plat.os {
+        case .Windows:
+            switch plat.arch {
+            case .x86_64, .arm64:
+                stdint_macros = []cstring {
+                    "-Dint8_t=signed char",
+                    "-Dint16_t=signed short",
+                    "-Dint32_t=signed int",
+                    "-Dint64_t=signed long long",
+                    "-Duint8_t=unsigned char",
+                    "-Duint16_t=unsigned short",
+                    "-Duint32_t=unsigned int",
+                    "-Duint64_t=unsigned long long",
+                    "-Dbool=_Bool",
+                    "-Dsize_t=unsigned long long",
+                    "-Dintptr_t=signed long long",
+                    "-Duintptr_t=unsigned long long",
+                    "-Dptrdiff_t=signed long long",
+                }
+            case .x86, .arm32:
+                stdint_macros = []cstring {
+                    "-Dint8_t=signed char",
+                    "-Dint16_t=signed short",
+                    "-Dint32_t=signed int",
+                    "-Dint64_t=signed long long",
+                    "-Duint8_t=unsigned char",
+                    "-Duint16_t=unsigned short",
+                    "-Duint32_t=unsigned int",
+                    "-Duint64_t=unsigned long long",
+                    "-Dbool=_Bool",
+                    "-Dsize_t=unsigned long",
+                    "-Dintptr_t=signed long",
+                    "-Duintptr_t=unsigned long",
+                    "-Dptrdiff_t=signed long",
+                }
+            case .Any:
+            // Leave it empty, but should be unreachable
+            }
+        case .Linux, .BSD, .Macos:
+            stdint_macros = []cstring {
+                "-Dint8_t=signed char",
+                "-Dint16_t=signed short",
+                "-Dint32_t=signed int",
+                "-Dint64_t=signed long long",
+                "-Duint8_t=unsigned char",
+                "-Duint16_t=unsigned short",
+                "-Duint32_t=unsigned int",
+                "-Duint64_t=unsigned long long",
+                "-Dbool=_Bool",
+                "-Dsize_t=unsigned long",
+                "-Dintptr_t=signed long",
+                "-Duintptr_t=unsigned long",
+                "-Dptrdiff_t=signed long",
+            }
+        case .Any:
+        // Leave it empty, but should be unreachable
+        }
+
+        append(&clang_flags, ..stdint_macros)
+    }
+
+    target_flag: cstring = ---
+    switch plat.os {
+    case .Linux:
+        switch plat.arch {
+        case .x86_64:
+            target_flag = "--target=x86_64-linux-gnu"
+        case .arm64:
+            target_flag = "--target=aarch64-linux-gnu"
+        case .x86:
+            target_flag = "--target=i686-linux-gnu"
+        case .arm32:
+            target_flag = "--target=arm-linux-gnu"
+        case .Any:
+            target_flag = "--target=any-linux-gnu"
+        }
+    case .Windows:
+        switch plat.arch {
+        case .x86_64:
+            target_flag = "--target=x86_64-windows-msvc"
+        case .arm64:
+            target_flag = "--target=aarch64-windows-msvc"
+        case .x86:
+            target_flag = "--target=i686-windows-msvc"
+        case .arm32:
+            target_flag = "--target=arm-windows-msvc"
+        case .Any:
+            target_flag = "--target=any-windows-msvc"
+        }
+    case .Macos:
+        switch plat.arch {
+        case .x86_64:
+            target_flag = "--target=x86_64-apple-darwin"
+        case .arm64:
+            target_flag = "--target=aarch64-apple-darwin"
+        case .x86:
+            target_flag = "--target=i686-apple-darwin"
+        case .arm32:
+            target_flag = "--target=arm-apple-darwin"
+        case .Any:
+            target_flag = "--target=any-apple-darwin"
+        }
+    case .BSD:
+        switch plat.arch {
+        case .x86_64:
+            target_flag = "--target=x86_64-unknown-freebsd"
+        case .arm64:
+            target_flag = "--target=aarch64-unknown-freebsd"
+        case .x86:
+            target_flag = "--target=i686-unknown-freebsd"
+        case .arm32:
+            target_flag = "--target=arm-unknown-freebsd"
+        case .Any:
+            target_flag = "--target=any-unknown-freebsd"
+        }
+    case .Any:
+        switch plat.arch {
+        case .x86_64:
+            target_flag = "--target=x86_64-any-none"
+        case .arm64:
+            target_flag = "--target=aarch64-any-none"
+        case .x86:
+            target_flag = "--target=i686-any-none"
+        case .arm32:
+            target_flag = "--target=arm-any-none"
+        case .Any:
+            target_flag = "--target=any-any-none"
+        }
+    }
+
+    append(&clang_flags, target_flag)
+    if plat.arch == .arm32 {
+        append(&clang_flags, "-mfloat-abi=soft")
+    }
+
+    for name, value in defines {
+        arg := strings.clone_to_cstring(
+            fmt.aprintf("-D{}={}", name, value, allocator = allocator),
+            allocator,
+        )
+
+        append(&clang_flags, arg)
+    }
+
+    for inc in include_dirs {
+        arg := strings.clone_to_cstring(
+            fmt.aprintf("-I{}", inc, allocator = allocator),
+            allocator,
+        )
+
+        append(&clang_flags, arg)
+    }
+
+    if !enable_host_includes {
+        append(&clang_flags, "-nostdinc")
+
+        if inc, ok := stdinc_gen_dir.?; ok {
+            arg := strings.clone_to_cstring(
+                fmt.aprintf("-I{}", inc, allocator = allocator),
+                allocator,
+            )
+
+            append(&clang_flags, arg)
+        }
+    }
+
+    append(&clang_flags, ..flags)
+
+    return
+}
+

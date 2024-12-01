@@ -29,9 +29,11 @@ test_cpp_wrapper :: proc(t: ^testing.T) {
     cwd := os.get_current_directory()
     defer delete(cwd)
 
+    rune_file_name := filepath.join({cwd, "test_data/wrapper_rune.yml"})
     in_header := filepath.join({cwd, "test_data/wrapper_in_header.h"})
     out_header := filepath.join({cwd, "test_data/wrapper_out_header.h"})
     out_source := filepath.join({cwd, "test_data/wrapper_out_source.c"})
+    defer delete(rune_file_name)
     defer delete(in_header)
     defer delete(out_header)
     defer delete(out_source)
@@ -50,7 +52,7 @@ test_cpp_wrapper :: proc(t: ^testing.T) {
     defer delete(rf.defines.d)
     defer delete(rf.defines.d[{}])
 
-    err := generate_wrapper(rn, rf)
+    err := generate_wrapper(rune_file_name, rn, rf)
     expect_value(t, err, nil)
 
     header_data, header_ok := os.read_entire_file(

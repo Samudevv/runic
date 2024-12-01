@@ -86,6 +86,8 @@ Wrapper :: struct {
     defines:             map[string]string,
     include_dirs:        []string,
     flags:               []cstring,
+    load_all_includes:   bool,
+    extern:              []string,
     in_headers:          []string,
     out_header:          string,
     out_source:          string,

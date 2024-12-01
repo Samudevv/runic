@@ -182,6 +182,15 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, len(wrapper.flags), 2)
     expect_value(t, wrapper.flags[0], "-fsomething")
     expect_value(t, wrapper.flags[1], "-nostdinc")
+    expect_value(t, wrapper.load_all_includes, true)
+    expect_value(t, len(wrapper.extern), 2)
+
+    ext1 := filepath.join({cwd, "test_data/stdarg.h"})
+    ext2 := filepath.join({cwd, "test_data/third_party/files/*"})
+    defer delete(ext1)
+    defer delete(ext2)
+    expect_value(t, wrapper.extern[0], ext1)
+    expect_value(t, wrapper.extern[1], ext2)
 
     add_libs_any := platform_value_get([]string, to.add_libs, {.Any, .Any})
     add_libs_linux := platform_value_get([]string, to.add_libs, {.Linux, .Any})

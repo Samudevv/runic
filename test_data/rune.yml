@@ -13,6 +13,10 @@ wrapper:
   flags:
     - -fsomething
     - -nostdinc
+  load_all_includes: true
+  extern:
+    - stdarg.h
+    - 'third_party/files/*'
   in_headers: wrapper.h
   out_header: wrapper.gen.h
   out_source: wrapper.gen.c

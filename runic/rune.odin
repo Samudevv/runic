@@ -347,6 +347,70 @@ parse_rune :: proc(
                     }
                 }
 
+                if load_all_includes, ok := wrapper_map["load_all_includes"];
+                   ok {
+                    #partial switch v in load_all_includes {
+                    case bool:
+                        wrapper.load_all_includes = v
+                    case:
+                        err = errors.message(
+                            "\"wrapper.load_all_includes\" has invalid type %T",
+                            v,
+                        )
+                        return
+                    }
+                }
+
+                if extern, ok := wrapper_map["extern"]; ok {
+                    #partial switch v in extern {
+                    case string:
+                        arr := make(
+                            [dynamic]string,
+                            len = 1,
+                            cap = 1,
+                            allocator = rn_arena_alloc,
+                        )
+                        arr[0] = v
+                        wrapper.extern = arr[:]
+                    case yaml.Sequence:
+                        arr := make(
+                            [dynamic]string,
+                            len = 0,
+                            cap = len(v),
+                            allocator = rn_arena_alloc,
+                        )
+
+                        for v_value, idx in v {
+                            #partial switch value in v_value {
+                            case string:
+                                append(
+                                    &arr,
+                                    relative_to_file(
+                                        file_path,
+                                        value,
+                                        rn_arena_alloc,
+                                    ),
+                                )
+                            case:
+                                err = errors.message(
+                                    "\"wrapper.extern\"[{}] has invalid type %T",
+                                    idx,
+                                    value,
+                                )
+                                return
+                            }
+                        }
+
+                        wrapper.extern = arr[:]
+                    case:
+                        err = errors.message(
+                            "\"wrapper.extern\" has invalid type %T",
+                            v,
+                        )
+                        return
+                    }
+                }
+
                 if in_headers_value, ok := wrapper_map["in_headers"]; ok {
                     #partial switch in_headers in in_headers_value {
                     case yaml.Sequence:

@@ -806,7 +806,6 @@ clang_func_return_type_get_type_hint :: proc(
     return type_hint
 }
 
-@(private)
 clang_str :: #force_inline proc(clang_str: clang.String) -> string {
     cstr := clang.getCString(clang_str)
     return strings.string_from_ptr(cast(^byte)cstr, len(cstr))

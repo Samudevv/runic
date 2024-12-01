@@ -29,11 +29,15 @@ import clang "shared:libclang"
 
 @(private = "file")
 ClientData :: struct {
-    header: io.Writer,
-    source: io.Writer,
+    header:            io.Writer,
+    source:            io.Writer,
+    load_all_includes: bool,
+    extern:            []string,
+    rune_file_name:    string,
 }
 
 generate_wrapper :: proc(
+    rune_file_name: string,
     rn: runic.Wrapper,
     rf: Maybe(runic.From),
 ) -> (
@@ -50,6 +54,7 @@ generate_wrapper :: proc(
     // TODO: do not hardcode the platform
     plat := runic.Platform{.Linux, .x86_64}
 
+    extern := rn.extern
     defines := make(map[string]string, capacity = len(rn.defines))
     include_dirs := make([dynamic]string, len = 0, cap = len(rn.include_dirs))
     flags := make([dynamic]cstring, len = 0, cap = len(rn.flags))
@@ -85,6 +90,10 @@ generate_wrapper :: proc(
                 plat,
             )
             if f_ok do append(&flags, ..from_flags)
+
+            if len(extern) == 0 {
+                extern = from.extern
+            }
         }
     }
 
@@ -135,8 +144,11 @@ generate_wrapper :: proc(
     defer os.close(out_source)
 
     data := ClientData {
-        header = os.stream_from_handle(out_header),
-        source = os.stream_from_handle(out_source),
+        header            = os.stream_from_handle(out_header),
+        source            = os.stream_from_handle(out_source),
+        load_all_includes = rn.load_all_includes,
+        extern            = extern,
+        rune_file_name    = rune_file_name,
     }
 
     index := clang.createIndex(0, 0)
@@ -246,7 +258,44 @@ generate_wrapper :: proc(
 
                 defer clang.disposeString(display_name_clang)
 
-                if !clang.Location_isFromMainFile(cursor_location) do return .Continue
+                not_from_main_file: if !clang.Location_isFromMainFile(
+                    cursor_location,
+                ) {
+                    if !data.load_all_includes do return .Continue
+
+                    file: clang.File = ---
+                    clang.getSpellingLocation(
+                        cursor_location,
+                        &file,
+                        nil,
+                        nil,
+                        nil,
+                    )
+                    file_name_clang := clang.getFileName(file)
+                    defer clang.disposeString(file_name_clang)
+                    file_name_str := cppcdg.clang_str(file_name_clang)
+                    // NOTE: flags that define macros (e.g. "-DFOO_STATIC") are also parsed. To make sure that they are ignored this is added
+                    if len(file_name_str) == 0 do return .Continue
+
+                    file_name: string = ---
+
+                    replaced_file_name, was_alloc := strings.replace_all(
+                        file_name_str,
+                        "\\",
+                        "/",
+                    )
+                    defer if was_alloc do delete(replaced_file_name)
+
+                    rel_file_name, rel_ok := runic.absolute_to_file(
+                        data.rune_file_name,
+                        replaced_file_name,
+                    )
+                    defer if rel_ok do delete(rel_file_name)
+
+                    file_name = rel_file_name if rel_ok else replaced_file_name
+
+                    if runic.single_list_glob(data.extern, file_name) do return .Continue
+                }
 
                 #partial cursor_kind_switch: switch cursor_kind {
                 case .FunctionDecl:

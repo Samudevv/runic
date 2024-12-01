@@ -104,7 +104,9 @@ main :: proc() {
                 from = rf
             }
 
-            err = errors.wrap(cppwrap.generate_wrapper(wrapper, from))
+            err = errors.wrap(
+                cppwrap.generate_wrapper(rune_file_name, wrapper, from),
+            )
         case:
             fmt.eprintfln(
                 "wrapper language \"{}\" is not supported",

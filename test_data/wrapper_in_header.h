@@ -17,3 +17,7 @@ inline struct foo_t japanese() { return foo_tert{}; }
 struct foo_t chinese() {
   return foo_t {}
 }
+
+#ifdef DYNA_FUNC
+inline int dyna_func(int a, int b) { return a + b; }
+#endif

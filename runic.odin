@@ -99,7 +99,12 @@ main :: proc() {
     if wrapper, ok := rune.wrapper.?; ok {
         switch strings.to_lower(wrapper.language, context.temp_allocator) {
         case "c", "cpp", "c++", "cxx":
-            err = errors.wrap(cppwrap.generate_wrapper(wrapper))
+            from: Maybe(runic.From)
+            if rf, rf_ok := rune.from.(runic.From); rf_ok {
+                from = rf
+            }
+
+            err = errors.wrap(cppwrap.generate_wrapper(wrapper, from))
         case:
             fmt.eprintfln(
                 "wrapper language \"{}\" is not supported",

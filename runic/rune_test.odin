@@ -164,6 +164,7 @@ test_rune :: proc(t: ^testing.T) {
 
     wrapper := rn.wrapper.?
     expect_value(t, wrapper.language, "c")
+    expect_value(t, wrapper.from_compiler_flags, false)
     expect_value(t, len(wrapper.in_headers), 1)
     expect_value(t, wrapper.in_headers[0], in_header)
     expect_value(t, wrapper.out_header, out_header)

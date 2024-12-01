@@ -184,7 +184,9 @@ parse_rune :: proc(
         }
 
         if wrapper_value, wrapper_ok := y["wrapper"]; wrapper_ok {
-            wrapper: Wrapper
+            wrapper := Wrapper {
+                from_compiler_flags = true,
+            }
 
             #partial switch wrapper_map in wrapper_value {
             case yaml.Mapping:
@@ -199,6 +201,20 @@ parse_rune :: proc(
                 } else {
                     err = errors.message("\"wrapper.language\" is required")
                     return
+                }
+
+                if from_compiler_flags, ok :=
+                       wrapper_map["from_compiler_flags"]; ok {
+                    #partial switch v in from_compiler_flags {
+                    case bool:
+                        wrapper.from_compiler_flags = v
+                    case:
+                        err = errors.message(
+                            "\"wrapper.from_compiler_flags\" has invalid type %T",
+                            v,
+                        )
+                        return
+                    }
                 }
 
                 if in_headers_value, ok := wrapper_map["in_headers"]; ok {

@@ -1,7 +1,7 @@
 # Goals for future versions
 
 + Wrapper
-  + [ ] Add `from_compiler_flags` to import the compiler flags from `from`
+  + [x] Add `from_compiler_flags` to import the compiler flags from `from`
     + [ ] Add `includedirs`, `defines`, `flags` fields which get added on top of the `from_compiler_flags`
   + [ ] Add `load_all_includes`
   + [ ] Make more multi platform: Separate files for each platform

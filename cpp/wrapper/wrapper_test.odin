@@ -37,13 +37,20 @@ test_cpp_wrapper :: proc(t: ^testing.T) {
     defer delete(out_source)
 
     rn := runic.Wrapper {
-        language   = "c",
-        in_headers = {in_header},
-        out_header = out_header,
-        out_source = out_source,
+        language            = "c",
+        in_headers          = {in_header},
+        out_header          = out_header,
+        out_source          = out_source,
+        from_compiler_flags = true,
     }
 
-    err := generate_wrapper(rn)
+    rf := runic.From {
+        defines = {{{} = {"DYNA_FUNC" = "1"}}},
+    }
+    defer delete(rf.defines.d)
+    defer delete(rf.defines.d[{}])
+
+    err := generate_wrapper(rn, rf)
     expect_value(t, err, nil)
 
     header_data, header_ok := os.read_entire_file(
@@ -65,7 +72,9 @@ extern void print_stuff_wrapper(int a, int b);
 extern const float ** do_other_stuff_wrapper(float c, float ** d);
 extern spelling_t alphabet_wrapper();
 extern struct foo_t japanese_wrapper();
+extern int dyna_func_wrapper(int a, int b);
 `
+
 
     SOURCE_EXPECTED :: `#include "wrapper_out_header.h"
 
@@ -85,7 +94,12 @@ struct foo_t japanese_wrapper() {
     return japanese();
 }
 
+int dyna_func_wrapper(int a, int b) {
+    return dyna_func(a, b);
+}
+
 `
+
 
     if expect_value(t, len(string(header_data)), len(HEADER_EXPECTED)) {
         expect_value(t, string(header_data), HEADER_EXPECTED)

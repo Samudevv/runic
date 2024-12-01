@@ -22,6 +22,7 @@ import "core:io"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
+import cppcdg "root:cpp/codegen"
 import "root:errors"
 import "root:runic"
 import clang "shared:libclang"
@@ -32,72 +33,76 @@ ClientData :: struct {
     source: io.Writer,
 }
 
-generate_wrapper :: proc(rn: runic.Wrapper) -> (err: union {
+generate_wrapper :: proc(
+    rn: runic.Wrapper,
+    rf: Maybe(runic.From),
+) -> (
+    err: union {
         errors.Error,
         io.Error,
-    }) {
+    },
+) {
     arena: runtime.Arena
     errors.wrap(runtime.arena_init(&arena, 0, context.allocator)) or_return
     defer runtime.arena_destroy(&arena)
     arena_alloc := runtime.arena_allocator(&arena)
 
-    clang_flags := [?]cstring {
-        // Android
-        "-U__ANDROID__",
-        // BSD
-        "-U__FreeBSD__",
-        "-U__FreeBSD_kernel__",
-        "-U__NetBSD__",
-        "-U__OpenBSD__",
-        "-U__bsdi__",
-        "-U__DragonFly__",
-        "-U_SYSTYPE_BSD",
-        "-UBSD",
-        // Linux
-        "-U__GLIBC__",
-        "-U__gnu_linux__",
-        "-U__linux__",
-        "-Ulinux",
-        "-U__linux",
-        // MacOS
-        "-Umacintosh",
-        "-UMacintosh",
-        "-U__APPLE__",
-        "-U__MACH__",
-        // Windows
-        "-U_WIN16",
-        "-U_WIN32",
-        "-U_WIN64",
-        // AMD64 & x86_64
-        "-U__amd64__",
-        "-U__amd64",
-        "-U__x86_64__",
-        "-U__x86_64",
-        // ARM
-        "-U__arm__",
-        "-U__thumb__",
-        "-U__aarch64__",
-        // x86
-        "-Ui386",
-        "-U__i386",
-        "-U__i386__",
-        "-U__i486__",
-        "-U__i586__",
-        "-U__i686__",
+    // TODO: do not hardcode the platform
+    plat := runic.Platform{.Linux, .x86_64}
 
-        // Linux
-        "-D__GLIBC__",
-        "-D__gnu_linux__",
-        "-D__linux__",
-        "-Dlinux",
-        "-D__linux",
-        // x86_64
-        "-D__amd64__",
-        "-D__amd64",
-        "-D__x86_64__",
-        "-D__x86_64",
-        // Target
-        "--target=x86_64-linux-gnu",
+    defines: map[string]string
+    include_dirs: []string
+    flags: []cstring
+
+    if rn.from_compiler_flags {
+        if from, from_ok := rf.?; from_ok {
+            from_defines, d_ok := runic.platform_value_get(
+                map[string]string,
+                from.defines,
+                plat,
+            )
+            if d_ok do defines = from_defines
+
+            from_include_dirs, inc_ok := runic.platform_value_get(
+                []string,
+                from.includedirs,
+                plat,
+            )
+            if inc_ok do include_dirs = from_include_dirs
+
+            from_flags, f_ok := runic.platform_value_get(
+                []cstring,
+                from.flags,
+                plat,
+            )
+            if f_ok do flags = from_flags
+        }
+    }
+
+    clang_flags := cppcdg.generate_clang_flags(
+        plat = plat,
+        disable_stdint_macros = false,
+        defines = defines,
+        include_dirs = include_dirs,
+        enable_host_includes = false,
+        stdinc_gen_dir = nil,
+        flags = flags,
+        allocator = arena_alloc,
+    )
+    defer delete(clang_flags)
+
+    when ODIN_DEBUG {
+        os.write_string(os.stderr, "wrapper clang_flags:")
+        for flag in clang_flags {
+            os.write_string(os.stderr, " \"")
+
+            flag_str := strings.clone_from_cstring(flag)
+            defer delete(flag_str)
+
+            os.write_string(os.stderr, flag_str)
+            os.write_rune(os.stderr, '"')
+        }
+        os.write_rune(os.stderr, '\n')
     }
 
     out_header, out_header_err := os.open(

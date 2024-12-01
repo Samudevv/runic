@@ -21,6 +21,7 @@ import "base:runtime"
 import "core:io"
 import "core:os"
 import "core:path/filepath"
+import "core:slice"
 import "core:strings"
 import cppcdg "root:cpp/codegen"
 import "root:errors"
@@ -34,6 +35,7 @@ ClientData :: struct {
     load_all_includes: bool,
     extern:            []string,
     rune_file_name:    string,
+    parsed_names:      ^[dynamic]string,
 }
 
 generate_wrapper :: proc(
@@ -143,12 +145,19 @@ generate_wrapper :: proc(
     errors.wrap(out_source_err, "failed to create out source") or_return
     defer os.close(out_source)
 
+    parsed_names := make([dynamic]string)
+    defer delete(parsed_names)
+    defer for name in parsed_names {
+        delete(name)
+    }
+
     data := ClientData {
         header            = os.stream_from_handle(out_header),
         source            = os.stream_from_handle(out_source),
         load_all_includes = rn.load_all_includes,
         extern            = extern,
         rune_file_name    = rune_file_name,
+        parsed_names      = &parsed_names,
     }
 
     index := clang.createIndex(0, 0)
@@ -301,6 +310,13 @@ generate_wrapper :: proc(
                 case .FunctionDecl:
                     if !(storage_class == .Static || clang.Cursor_isFunctionInlined(cursor)) do return .Continue
 
+                    func_name_clang := clang.getCursorSpelling(cursor)
+                    func_name := clang_str(func_name_clang)
+                    defer clang.disposeString(func_name_clang)
+
+                    if slice.contains(data.parsed_names^[:], func_name) do return .Continue
+                    append(data.parsed_names, strings.clone(func_name))
+
                     cursor_return_type := clang.getCursorResultType(cursor)
                     return_type_spelling_clang := clang.getTypeSpelling(
                         cursor_return_type,
@@ -309,10 +325,7 @@ generate_wrapper :: proc(
                         return_type_spelling_clang,
                     )
                     num_params := clang.Cursor_getNumArguments(cursor)
-                    func_name_clang := clang.getCursorSpelling(cursor)
-                    func_name := clang_str(func_name_clang)
 
-                    defer clang.disposeString(func_name_clang)
                     defer clang.disposeString(return_type_spelling_clang)
 
                     // TODO: handle io errors

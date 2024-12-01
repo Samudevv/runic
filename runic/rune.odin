@@ -312,9 +312,14 @@ parse_rune :: proc(
                 f.disable_stdint_macros = make_platform_value(bool)
                 f.flags = make_platform_value([]cstring)
                 f.load_all_includes = make_platform_value(bool)
+                f.forward_decl_type = make_platform_value(Type)
                 f.packages = make_platform_value([]string)
                 f.remaps = make(map[string]string)
                 f.aliases = make(map[string][]string)
+
+                f.forward_decl_type.d[{.Any, .Any}] = {
+                    spec = Builtin.RawPtr,
+                }
             }
 
             errors.assert(
@@ -1280,6 +1285,28 @@ parse_rune :: proc(
                     #partial switch v in value {
                     case bool:
                         f.load_all_includes.d[plat] = v
+                    case:
+                        err = errors.message(
+                            "\"from.{}\" has invalid type %T",
+                            key,
+                            v,
+                        )
+                        return
+                    }
+                case "forward_decl_type":
+                    #partial switch v in value {
+                    case string:
+                        v_type, v_err := parse_type(v)
+                        if v_err != nil {
+                            err = errors.message(
+                                "\"from.{}\": failed to parse type: {}",
+                                key,
+                                v_err,
+                            )
+                            return
+                        }
+
+                        f.forward_decl_type.d[plat] = v_type
                     case:
                         err = errors.message(
                             "\"from.{}\" has invalid type %T",

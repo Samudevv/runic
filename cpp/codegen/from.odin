@@ -444,6 +444,12 @@ generate_runestone :: proc(
         plat,
     )
 
+    forward_decl_type := runic.platform_value_get(
+        runic.Type,
+        rf.forward_decl_type,
+        plat,
+    )
+
     forward_decls := make([dynamic]string)
     data := ClientData {
         rs                = &rs,
@@ -1116,10 +1122,10 @@ generate_runestone :: proc(
     for decl in forward_decls {
         if !om.contains(rs.types, decl) && !(decl in included_types) {
             fmt.eprintfln(
-                "info: forward declaration \"{}\" will be added as '#RawPtr'",
+                "info: forward declaration \"{}\" will be added as defined by \"from.forward_decl_type\" (default: '#RawPtr')",
                 decl,
             )
-            om.insert(&rs.types, decl, runic.Type{spec = runic.Builtin.RawPtr})
+            om.insert(&rs.types, decl, forward_decl_type)
         }
     }
 
@@ -1257,17 +1263,13 @@ generate_runestone :: proc(
                         decl,
                         runic.Extern {
                             source = included_file_name,
-                            type = {spec = runic.Builtin.RawPtr},
+                            type = forward_decl_type,
                         },
                     )
                 } else {
                     if om.contains(rs.types, decl) do continue
 
-                    om.insert(
-                        &rs.types,
-                        decl,
-                        runic.Type{spec = runic.Builtin.RawPtr},
-                    )
+                    om.insert(&rs.types, decl, forward_decl_type)
                 }
             }
             delete(unknown_forward_decls)

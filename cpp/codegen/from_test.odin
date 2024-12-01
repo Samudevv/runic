@@ -128,12 +128,14 @@ test_cpp_struct :: proc(t: ^testing.T) {
     using testing
 
     rf := runic.From {
-        language = "c",
-        shared = {d = {runic.Platform{.Any, .Any} = "libstruct.so"}},
-        headers = {d = {runic.Platform{.Any, .Any} = {"test_data/struct.h"}}},
+        language          = "c",
+        shared            = {{{} = "libstruct.so"}},
+        headers           = {{{} = {"test_data/struct.h"}}},
+        forward_decl_type = {{{} = {spec = runic.Builtin.RawPtr}}},
     }
     defer delete(rf.shared.d)
     defer delete(rf.headers.d)
+    defer delete(rf.forward_decl_type.d)
 
     rs, err := generate_runestone(
         runic.platform_from_host(),

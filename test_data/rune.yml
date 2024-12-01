@@ -24,6 +24,8 @@ from:
   disable_stdint_macros.windows: false
   load_all_includes: true
   load_all_includes.macos: false
+  forward_decl_type.linux: '#Untyped'
+  forward_decl_type.windows: '#SInt32'
   defines:
     MYFOO: !!int 2
   overwrite:

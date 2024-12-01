@@ -67,6 +67,14 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, load_all_includes_any, true)
     expect_value(t, load_all_includes_macos, false)
 
+    forward_decl_type_any := f.forward_decl_type.d[Platform{.Any, .Any}]
+    forward_decl_type_linux := f.forward_decl_type.d[Platform{.Linux, .Any}]
+    forward_decl_type_windows :=
+        f.forward_decl_type.d[Platform{.Windows, .Any}]
+    expect_value(t, forward_decl_type_any.spec.(Builtin), Builtin.RawPtr)
+    expect_value(t, forward_decl_type_linux.spec.(Builtin), Builtin.Untyped)
+    expect_value(t, forward_decl_type_windows.spec.(Builtin), Builtin.SInt32)
+
     ow := f.overwrite.d[Platform{.Any, .Any}]
     expect_value(t, len(ow.functions), 3)
     for func in ow.functions {
@@ -162,11 +170,7 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, wrapper.out_source, out_source)
 
     add_libs_any := platform_value_get([]string, to.add_libs, {.Any, .Any})
-    add_libs_linux := platform_value_get(
-        []string,
-        to.add_libs,
-        {.Linux, .Any},
-    )
+    add_libs_linux := platform_value_get([]string, to.add_libs, {.Linux, .Any})
     add_libs_win64 := platform_value_get(
         []string,
         to.add_libs,

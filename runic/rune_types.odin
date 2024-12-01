@@ -54,6 +54,7 @@ From :: struct {
     disable_stdint_macros:      PlatformValue(bool),
     flags:                      PlatformValue([]cstring),
     load_all_includes:          PlatformValue(bool),
+    forward_decl_type:          PlatformValue(Type),
     // Odin
     packages:                   PlatformValue([]string),
 }

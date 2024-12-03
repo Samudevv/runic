@@ -1252,7 +1252,9 @@ from_postprocess_runestone :: proc(rs: ^Runestone, from: From) {
     ignore_symbols(&rs.symbols, ignore)
 
     overwrite := platform_value_get(OverwriteSet, from.overwrite, rs.platform)
-    overwrite_runestone(rs, overwrite)
+    if err := overwrite_runestone(rs, overwrite); err != nil {
+      fmt.eprintfln("failed to overwrite runestone: {}", err)
+    }
 
     // Validate unknown types
     validate_unknown_types(rs)

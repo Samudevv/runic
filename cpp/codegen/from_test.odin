@@ -801,13 +801,24 @@ test_cpp_macros :: proc(t: ^testing.T) {
     C := om.get(rs.constants, "C")
     expect_value(t, C.value.(i64), 3)
 
-    expect(t, !om.contains(rs.constants, "glCreateProgram"))
-
     slashy := om.get(rs.constants, "SLASHY")
     expect_value(t, slashy.value.(string), "COUNT 1 2 3 4")
 
     plat_macro := om.get(rs.constants, "PLAT")
     expect_value(t, plat_macro.value.(string), "windows")
+
+    expect(t, !om.contains(rs.constants, "glCreateProgram"))
+    expect(t, om.contains(rs.constants, "A"))
+    expect(t, om.contains(rs.constants, "B"))
+    expect(t, om.contains(rs.constants, "C"))
+    expect(t, om.contains(rs.constants, "PLAT"))
+    expect(t, !om.contains(rs.constants, "glClearColor"))
+    expect(t, om.contains(rs.constants, "DO_VAR"))
+    expect(t, om.contains(rs.constants, "MULTI_VAR"))
+    expect(t, om.contains(rs.constants, "ALSO_VAR"))
+    expect(t, om.contains(rs.constants, "REC_VAR"))
+    expect(t, om.contains(rs.constants, "RECY"))
+    expect(t, om.contains(rs.constants, "SLASHY"))
 }
 
 @(test)

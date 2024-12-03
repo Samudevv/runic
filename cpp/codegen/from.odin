@@ -23,6 +23,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:strconv"
 import "core:strings"
+import "core:unicode"
 import "root:errors"
 import om "root:ordered_map"
 import "root:runic"
@@ -807,26 +808,46 @@ generate_runestone :: proc(
                     )
 
                     macro_def := buffer[start_offset:end_offset]
-                    macro_name_value := strings.split_after_n(
-                        macro_def,
-                        " ",
-                        2,
-                        data.arena_alloc,
+                    macro_name_end: int = len(macro_def)
+                    open_parens: int
+                    macro_def_loop: for r, idx in macro_def {
+                        switch r {
+                        case '(':
+                            open_parens += 1
+                        case ')':
+                            open_parens -= 1
+                            if open_parens == 0 {
+                                macro_name_end = idx
+                                break macro_def_loop
+                            }
+                        case:
+                            if open_parens == 0 && unicode.is_space(r) {
+                                macro_name_end = idx
+                                break macro_def_loop
+                            }
+                        }
+                    }
+
+                    macro_name := strings.clone(
+                        macro_def[:macro_name_end],
+                        data.ctx.allocator,
                     )
 
-                    macro_name := macro_name_value[0]
                     macro_value: string = ---
-                    if len(macro_name_value) == 2 {
-                        macro_value = macro_name_value[1]
-                    } else {
+                    if macro_name_end == len(macro_def) {
                         macro_value = ""
+                    } else {
+                        macro_value = strings.clone(
+                            strings.trim_space(macro_def[macro_name_end:]),
+                            data.ctx.allocator,
+                        )
                     }
 
                     om.insert(
                         data.macros,
-                        strings.trim_right_space(macro_name),
+                        macro_name,
                         Macro {
-                            def = strings.trim_left_space(macro_value),
+                            def = macro_value,
                             func = bool(
                                 clang.Cursor_isMacroFunctionLike(cursor),
                             ),

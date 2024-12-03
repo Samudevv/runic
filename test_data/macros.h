@@ -36,7 +36,7 @@ int unknown_func(int a, int b);
 void odin_compiler(const char a);
 #endif
 
-#define GLEW_GET_FUNC(x) x
+#define GLEW_GET_FUNC(x)x
 
 #define glClearColor GLEW_GET_FUNC(__glewClearColor)
 

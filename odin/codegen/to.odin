@@ -1147,6 +1147,7 @@ ODIN_RESERVED :: []string {
     "return",
     "break",
     "import",
+    "where",
 }
 
 plat_if_expr :: proc(

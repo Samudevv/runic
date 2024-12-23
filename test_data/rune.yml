@@ -19,6 +19,7 @@ wrapper:
     - 'third_party/files/*'
   in_headers: wrapper.h
   out_header: wrapper.gen.h
+  out_header.macos: wrapper.macos.h
   out_source: wrapper.gen.c
   add_header_to_from: yes
 from:

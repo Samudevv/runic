@@ -78,20 +78,20 @@ To :: struct {
     add_libs:      PlatformValue([]string),
 }
 
-// TODO: maybe make all values PlatformValue
 Wrapper :: struct {
     language:            string,
     // C/C++
-    from_compiler_flags: bool,
-    defines:             map[string]string,
-    include_dirs:        []string,
-    flags:               []cstring,
-    load_all_includes:   bool,
-    extern:              []string,
-    in_headers:          []string,
-    out_header:          string,
-    out_source:          string,
+    from_compiler_flags: PlatformValue(bool),
+    defines:             PlatformValue(map[string]string),
+    include_dirs:        PlatformValue([]string),
+    flags:               PlatformValue([]cstring),
+    load_all_includes:   PlatformValue(bool),
+    extern:              PlatformValue([]string),
+    in_headers:          PlatformValue([]string),
+    out_header:          PlatformValue(string),
+    out_source:          PlatformValue(string),
     add_header_to_from:  bool,
+    multi_platform:      bool,
 }
 
 TrimSet :: struct {

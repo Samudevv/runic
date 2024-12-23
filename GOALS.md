@@ -1,7 +1,7 @@
 # Goals for future versions
 
 + Wrapper
-  + [ ] Make more multi platform: Separate files for each platform
+  + [x] Make more multi platform: Separate files for each platform
   + [x] Automatically add output header files to headers of `from` with field `add_out_header_to_from`
 + C
   + To

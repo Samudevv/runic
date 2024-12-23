@@ -18,6 +18,8 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 package runic
 
 import "base:runtime"
+import "core:fmt"
+import "core:path/filepath"
 import "core:strings"
 
 Platform :: struct {
@@ -202,5 +204,38 @@ make_platform_value :: #force_inline proc(
 ) #optional_allocator_error {
     pv.d, err = make(map[Platform]T, allocator = allocator, capacity = cap)
     return
+}
+
+platform_file_name :: proc(
+    file_name: string,
+    plat: Platform,
+    allocator := context.allocator,
+) -> string {
+    dir := filepath.dir(file_name, allocator)
+    stem := filepath.stem(file_name)
+    ext := filepath.ext(file_name)
+
+    // BONUS TODO: Do this without an allocation
+    os_str := fmt.aprint(plat.os, allocator = allocator)
+    arch_str := fmt.aprint(plat.arch, allocator = allocator)
+
+    bd: strings.Builder
+    strings.builder_init(
+        &bd,
+        len = 0,
+        cap = len(file_name) + 1 + 1 + len(os_str) + len(arch_str),
+        allocator = allocator,
+    )
+
+    strings.write_string(&bd, dir)
+    strings.write_rune(&bd, filepath.SEPARATOR)
+    strings.write_string(&bd, stem)
+    strings.write_rune(&bd, '-')
+    strings.write_string(&bd, os_str)
+    strings.write_rune(&bd, '_')
+    strings.write_string(&bd, arch_str)
+    strings.write_string(&bd, ext)
+
+    return strings.to_string(bd)
 }
 

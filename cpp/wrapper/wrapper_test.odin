@@ -19,6 +19,7 @@ package cpp_wrapper
 
 import "core:os"
 import "core:path/filepath"
+import "core:strings"
 import "core:testing"
 import "root:runic"
 
@@ -40,11 +41,16 @@ test_cpp_wrapper :: proc(t: ^testing.T) {
 
     rn := runic.Wrapper {
         language            = "c",
-        in_headers          = {in_header},
-        out_header          = out_header,
-        out_source          = out_source,
-        from_compiler_flags = true,
+        in_headers          = {{{} = {in_header}}},
+        out_header          = {{{} = out_header}},
+        out_source          = {{{} = out_source}},
+        from_compiler_flags = {{{} = true}},
+        multi_platform      = true,
     }
+    defer delete(rn.in_headers.d)
+    defer delete(rn.out_header.d)
+    defer delete(rn.out_source.d)
+    defer delete(rn.from_compiler_flags.d)
 
     rf := runic.From {
         defines = {{{} = {"DYNA_FUNC" = "1"}}},
@@ -52,19 +58,33 @@ test_cpp_wrapper :: proc(t: ^testing.T) {
     defer delete(rf.defines.d)
     defer delete(rf.defines.d[{}])
 
-    err := generate_wrapper(rune_file_name, rn, rf)
+    err := generate_wrapper(
+        rune_file_name,
+        {{.Linux, .x86_64}, {.Windows, .x86_64}},
+        rn,
+        rf,
+    )
     expect_value(t, err, nil)
 
-    header_data, header_ok := os.read_entire_file(
-        "test_data/wrapper_out_header.h",
+    header_data_linux, linux_ok := os.read_entire_file(
+        "test_data/wrapper_out_header-Linux_x86_64.h",
     )
-    if !expect(t, header_ok) do return
-    defer delete(header_data)
-    source_data, source_ok := os.read_entire_file(
-        "test_data/wrapper_out_source.c",
+    header_data_windows, windows_ok := os.read_entire_file(
+        "test_data/wrapper_out_header-Windows_x86_64.h",
     )
-    if !expect(t, source_ok) do return
-    defer delete(source_data)
+    if !expect(t, linux_ok && windows_ok) do return
+    defer delete(header_data_linux)
+    defer delete(header_data_windows)
+
+    source_data_linux, linux_src_ok := os.read_entire_file(
+        "test_data/wrapper_out_source-Linux_x86_64.c",
+    )
+    source_data_windows, windows_src_ok := os.read_entire_file(
+        "test_data/wrapper_out_source-Windows_x86_64.c",
+    )
+    if !expect(t, linux_src_ok && windows_src_ok) do return
+    defer delete(source_data_linux)
+    defer delete(source_data_windows)
 
     HEADER_EXPECTED :: `#pragma once
 
@@ -78,7 +98,7 @@ extern int dyna_func_wrapper(int a, int b);
 `
 
 
-    SOURCE_EXPECTED :: `#include "wrapper_out_header.h"
+    SOURCE_EXPECTED :: `#include "wrapper_out_header-%OS_ARCH%.h"
 
 void print_stuff_wrapper(int a, int b) {
     print_stuff(a, b);
@@ -103,12 +123,46 @@ int dyna_func_wrapper(int a, int b) {
 `
 
 
-    if expect_value(t, len(string(header_data)), len(HEADER_EXPECTED)) {
-        expect_value(t, string(header_data), HEADER_EXPECTED)
+    source_expected_linux, _ := strings.replace(
+        SOURCE_EXPECTED,
+        "%OS_ARCH%",
+        "Linux_x86_64",
+        1,
+    )
+    source_expected_windows, _ := strings.replace(
+        SOURCE_EXPECTED,
+        "%OS_ARCH%",
+        "Windows_x86_64",
+        1,
+    )
+    defer delete(source_expected_linux)
+    defer delete(source_expected_windows)
+
+
+    if expect_value(t, len(string(header_data_linux)), len(HEADER_EXPECTED)) {
+        expect_value(t, string(header_data_linux), HEADER_EXPECTED)
+    }
+    if expect_value(
+        t,
+        len(string(header_data_windows)),
+        len(HEADER_EXPECTED),
+    ) {
+        expect_value(t, string(header_data_windows), HEADER_EXPECTED)
     }
 
-    if expect_value(t, len(string(source_data)), len(SOURCE_EXPECTED)) {
-        expect_value(t, string(source_data), SOURCE_EXPECTED)
+    if expect_value(
+        t,
+        len(string(source_data_linux)),
+        len(source_expected_linux),
+    ) {
+        expect_value(t, string(source_data_linux), source_expected_linux)
+    }
+    if expect_value(
+        t,
+        len(string(source_data_windows)),
+        len(source_expected_windows),
+    ) {
+        expect_value(t, string(source_data_windows), source_expected_windows)
     }
 }
 

@@ -20,7 +20,7 @@ test_data/*.ppm
 test_data/write_to_handle
 test_data/extern_test_runestone.ini
 test_data/extern_test.odin
-test_data/wrapper_out_source.c
+test_data/wrapper_out*
 build/
 ols.json
 examples/olivec/olivec/

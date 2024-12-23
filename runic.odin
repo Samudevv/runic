@@ -105,7 +105,7 @@ main :: proc() {
             }
 
             err = errors.wrap(
-                cppwrap.generate_wrapper(rune_file_name, wrapper, from),
+                cppwrap.generate_wrapper(rune_file_name, plats, wrapper, from),
             )
         case:
             fmt.eprintfln(

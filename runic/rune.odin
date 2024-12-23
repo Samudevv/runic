@@ -19,6 +19,7 @@ package runic
 
 import "base:runtime"
 import "core:bytes"
+import "core:fmt"
 import "core:io"
 import "core:path/filepath"
 import "core:path/slashpath"
@@ -639,7 +640,7 @@ parse_rune :: proc(
                         )
                         arr[0] = v
 
-                        i_set.macros = arr[:]
+                        i_set.constants = arr[:]
                         i_set.functions = arr[:]
                         i_set.variables = arr[:]
                         i_set.types = arr[:]
@@ -666,43 +667,57 @@ parse_rune :: proc(
                             }
                         }
 
-                        i_set.macros = arr[:]
+                        i_set.constants = arr[:]
                         i_set.functions = arr[:]
                         i_set.variables = arr[:]
                         i_set.types = arr[:]
                     case yaml.Mapping:
-                        macros_arr: [dynamic]string
+                        constants_arr: [dynamic]string
                         functions_arr: [dynamic]string
                         variables_arr: [dynamic]string
                         types_arr: [dynamic]string
 
-                        if macros, ok := v["macros"]; ok {
-                            #partial switch m in macros {
+                        macros_v, macros_ok := v["macros"]
+                        constants_v, constants_ok := v["constants"]
+
+                        if macros_ok {
+                            fmt.eprintln(
+                                "warning: \"from.ignore.macros\" is deprecated use \"from.ignore.constants\" instead",
+                            )
+
+                            if !constants_ok {
+                                constants_v = macros_v
+                                constants_ok = macros_ok
+                            }
+                        }
+
+                        if constants_ok {
+                            #partial switch c in constants_v {
                             case string:
-                                macros_arr = make(
+                                constants_arr = make(
                                     [dynamic]string,
                                     allocator = rn_arena_alloc,
                                     len = 1,
                                     cap = 1,
                                 )
-                                macros_arr[0] = m
+                                constants_arr[0] = c
                             case yaml.Sequence:
-                                macros_arr = make(
+                                constants_arr = make(
                                     [dynamic]string,
                                     allocator = rn_arena_alloc,
                                     len = 0,
-                                    cap = len(m),
+                                    cap = len(c),
                                 )
-                                for seq_m, idx in m {
-                                    #partial switch m_seq in seq_m {
+                                for seq_c, idx in c {
+                                    #partial switch c_seq in seq_c {
                                     case string:
-                                        append(&macros_arr, m_seq)
+                                        append(&constants_arr, c_seq)
                                     case:
                                         err = errors.message(
-                                            "\"from.{}.macros\"[{}] has invalid type %T",
+                                            "\"from.{}.constants\"[{}] has invalid type %T",
                                             key,
                                             idx,
-                                            m_seq,
+                                            c_seq,
                                         )
                                         return
                                     }
@@ -812,7 +827,7 @@ parse_rune :: proc(
                             }
                         }
 
-                        i_set.macros = macros_arr[:]
+                        i_set.constants = constants_arr[:]
                         i_set.functions = functions_arr[:]
                         i_set.variables = variables_arr[:]
                         i_set.types = types_arr[:]
@@ -2727,7 +2742,7 @@ ignore_constants :: proc(
         entry := constants.data[idx]
         name := entry.key
 
-        if single_list_glob(ignore.macros, name) {
+        if single_list_glob(ignore.constants, name) {
             om.delete_key(constants, name)
             idx -= 1
         }

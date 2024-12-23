@@ -109,7 +109,7 @@ AddSet :: struct {
 }
 
 IgnoreSet :: struct {
-    macros:    []string,
+    constants: []string,
     functions: []string,
     variables: []string,
     types:     []string,

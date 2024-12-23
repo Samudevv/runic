@@ -27,5 +27,5 @@
 + [ ] Overwrite types (#Untyped means don't use the type at all)
 + [ ] Prettier and more useful logs
 + [ ] Better error messages
-+ [ ] Change `ignore.macros` to `ignore.constants`
++ [x] Change `ignore.macros` to `ignore.constants`
 + [ ] Add `#Opaque` Type

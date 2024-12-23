@@ -887,10 +887,12 @@ generate_runestone :: proc(
     // Make forward declarations into actual types if their implementations could not be found in the other header files
     for decl in forward_decls {
         if !om.contains(rs.types, decl) && !(decl in included_types) {
-            fmt.eprintfln(
-                "info: forward declaration \"{}\" will be added as defined by \"from.forward_decl_type\" (default: '#RawPtr')",
-                decl,
-            )
+            when ODIN_DEBUG {
+                fmt.eprintfln(
+                    "debug: forward declaration \"{}\" will be added as defined by \"from.forward_decl_type\" (default: '#RawPtr')",
+                    decl,
+                )
+            }
             om.insert(&rs.types, decl, forward_decl_type)
         }
     }

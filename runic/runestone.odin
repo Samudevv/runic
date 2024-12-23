@@ -1253,7 +1253,7 @@ from_postprocess_runestone :: proc(rs: ^Runestone, from: From) {
 
     overwrite := platform_value_get(OverwriteSet, from.overwrite, rs.platform)
     if err := overwrite_runestone(rs, overwrite); err != nil {
-      fmt.eprintfln("failed to overwrite runestone: {}", err)
+        fmt.eprintfln("failed to overwrite runestone: {}", err)
     }
 
     // Validate unknown types
@@ -1307,17 +1307,24 @@ from_postprocess_runestone :: proc(rs: ^Runestone, from: From) {
                     defer delete(dependency_path)
 
                     if cyclic_dependency_detected {
-                        if !references_type_as_pointer_or_array(type, dep) {
-                            fmt.eprintln("warning: dependency cycle detected ")
-                            for dp in dependency_path {
-                                fmt.eprintf("{}->", dp)
-                            }
-                            fmt.eprintfln("{}", name)
-                            fmt.eprintfln(
-                                "warning: {} will not be moved above {} which depends on it",
+                        when ODIN_DEBUG {
+                            if !references_type_as_pointer_or_array(
+                                type,
                                 dep,
-                                name,
-                            )
+                            ) {
+                                fmt.eprintln(
+                                    "debug: dependency cycle detected ",
+                                )
+                                for dp in dependency_path {
+                                    fmt.eprintf("{}->", dp)
+                                }
+                                fmt.eprintfln("{}", name)
+                                fmt.eprintfln(
+                                    "debug: {} will not be moved above {} which depends on it",
+                                    dep,
+                                    name,
+                                )
+                            }
                         }
                     } else {
                         om.move(&rs.types, dep, i)

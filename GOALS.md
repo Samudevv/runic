@@ -8,7 +8,7 @@
     + [ ] Add build tag-like line to the top of the generated header. Maybe use `#error` if the platform differs.
   + From
     + [ ] Improve macro parsing
-        + [ ] Parse strings as strings
+        + [x] Parse strings as strings
         + [ ] Try to remove parenthesis
 + Odin
   + To
@@ -28,3 +28,4 @@
 + [ ] Prettier and more useful logs
 + [ ] Better error messages
 + [ ] Change `ignore.macros` to `ignore.constants`
++ [ ] Add `#Opaque` Type

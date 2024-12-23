@@ -289,10 +289,19 @@ generate_bindings_from_runestone :: proc(
             if len(value) == 0 {
                 io.write_string(wd, "\"\"")
             } else {
-                io.write_rune(wd, '`') or_return
-                io.write_string(wd, value) or_return
-                io.write_rune(wd, '`') or_return
+                if b, b_ok := const.type.spec.(runic.Builtin);
+                   b_ok && b == .String {
+                    io.write_rune(wd, '"') or_return
+                    io.write_string(wd, value) or_return
+                    io.write_rune(wd, '"') or_return
+                } else {
+                    io.write_rune(wd, '`') or_return
+                    io.write_string(wd, value) or_return
+                    io.write_rune(wd, '`') or_return
+                }
             }
+        case:
+            io.write_rune(wd, '0') or_return
         }
         io.write_rune(wd, '\n') or_return
     }

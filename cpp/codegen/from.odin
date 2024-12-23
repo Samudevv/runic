@@ -1267,12 +1267,12 @@ generate_runestone :: proc(
                     const := &entry.value
                     const.type.spec = runic.Builtin.Untyped
 
-                    if strings.has_prefix(const_value, "\"") &&
-                       strings.has_suffix(const_value, "\"") {
+                    if strings.has_prefix(const_value, "\\\"") &&
+                       strings.has_suffix(const_value, "\\\"") {
                         const.value = strings.clone(
                             strings.trim_prefix(
-                                strings.trim_suffix(const_value, "\""),
-                                "\"",
+                                strings.trim_suffix(const_value, "\\\""),
+                                "\\\"",
                             ),
                             data.ctx.allocator,
                         )

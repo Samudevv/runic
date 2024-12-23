@@ -186,6 +186,7 @@ parse_rune :: proc(
         if wrapper_value, wrapper_ok := y["wrapper"]; wrapper_ok {
             wrapper := Wrapper {
                 from_compiler_flags = true,
+                add_header_to_from  = true,
             }
 
             #partial switch wrapper_map in wrapper_value {
@@ -490,6 +491,19 @@ parse_rune :: proc(
                     case:
                         err = errors.message(
                             "\"wrapper.out_source\" has invalid type",
+                        )
+                        return
+                    }
+                }
+
+                if add_header_to_from, ok := wrapper_map["add_header_to_from"];
+                   ok {
+                    #partial switch header_value in add_header_to_from {
+                    case bool:
+                        wrapper.add_header_to_from = header_value
+                    case:
+                        err = errors.message(
+                            "\"wrapper.add_header_to_from\" has invalid type",
                         )
                         return
                     }
@@ -1287,6 +1301,11 @@ parse_rune :: proc(
                             v,
                         )
                         return
+                    }
+
+                    if wrapper, wrapper_ok := rn.wrapper.?;
+                       wrapper_ok && wrapper.add_header_to_from {
+                        append(&h_seq, wrapper.out_header)
                     }
 
                     f.headers.d[plat] = h_seq[:]

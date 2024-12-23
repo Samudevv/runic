@@ -36,6 +36,9 @@ test_rune :: proc(t: ^testing.T) {
     defer rune_destroy(&rn)
     if !expect_value(t, err, nil) do return
 
+    cwd := os.get_current_directory()
+    defer delete(cwd)
+
     expect_value(t, rn.version, 0)
 
     expect_value(t, rn.from.(From).language, "c")
@@ -45,10 +48,29 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, rn.platforms[0].arch, Architecture.x86_64)
     expect_value(t, rn.platforms[1].arch, Architecture.x86_64)
 
+    foo_h := filepath.join({cwd, "test_data/foo.h"})
+    foz_h := filepath.join({cwd, "test_data/foz.h"})
+    bar_h := filepath.join({cwd, "test_data/bar.h"})
+    wrapper_gen_h := filepath.join({cwd, "test_data/wrapper.gen.h"})
+    plat_macos_h := filepath.join({cwd, "test_data/plat_macos.h"})
+    defer delete(foo_h)
+    defer delete(foz_h)
+    defer delete(bar_h)
+    defer delete(wrapper_gen_h)
+    defer delete(plat_macos_h)
+
     f := rn.from.(From)
+    any_headers := f.headers.d[{.Any, .Any}]
+    macos_headers := f.headers.d[{.Macos, .Any}]
     expect_value(t, f.shared.d[Platform{.Any, .Any}], "libfoo.so")
-    expect_value(t, len(f.headers.d[Platform{.Any, .Any}]), 3)
-    expect_value(t, len(f.headers.d[Platform{.Macos, .Any}]), 1)
+    expect_value(t, len(any_headers), 4)
+    expect_value(t, len(macos_headers), 2)
+    expect_value(t, any_headers[0], foo_h)
+    expect_value(t, any_headers[1], foz_h)
+    expect_value(t, any_headers[2], bar_h)
+    expect_value(t, any_headers[3], wrapper_gen_h)
+    expect_value(t, macos_headers[0], plat_macos_h)
+    expect_value(t, macos_headers[1], wrapper_gen_h)
     expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].types), 4)
     expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].functions), 3)
     expect_value(t, f.enable_host_includes.d[Platform{.Any, .Any}], true)
@@ -152,9 +174,6 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, aliases["SDL_Renderer"][0], "SDL_Painter")
     expect_value(t, aliases["SDL_Renderer"][1], "SDL_Drawer")
 
-    cwd := os.get_current_directory()
-    defer delete(cwd)
-
     in_header := filepath.join({cwd, "test_data/wrapper.h"})
     out_header := filepath.join({cwd, "test_data/wrapper.gen.h"})
     out_source := filepath.join({cwd, "test_data/wrapper.gen.c"})
@@ -165,6 +184,7 @@ test_rune :: proc(t: ^testing.T) {
     wrapper := rn.wrapper.?
     expect_value(t, wrapper.language, "c")
     expect_value(t, wrapper.from_compiler_flags, false)
+    expect_value(t, wrapper.add_header_to_from, true)
     expect_value(t, wrapper.defines["FOO"], "BAR")
     expect_value(t, len(wrapper.in_headers), 1)
     expect_value(t, wrapper.in_headers[0], in_header)

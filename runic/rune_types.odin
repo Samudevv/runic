@@ -91,6 +91,7 @@ Wrapper :: struct {
     in_headers:          []string,
     out_header:          string,
     out_source:          string,
+    add_header_to_from:  bool,
 }
 
 TrimSet :: struct {

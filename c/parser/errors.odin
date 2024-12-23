@@ -17,7 +17,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package parser
 
-import ctz "core:c/frontend/tokenizer"
+import ctz "root:c/tokenizer"
 import "root:errors"
 
 @(private)

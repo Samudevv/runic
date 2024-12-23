@@ -18,13 +18,13 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 package runic
 
 import "base:runtime"
-import ctz "core:c/frontend/tokenizer"
 import "core:fmt"
 import "core:io"
 import "core:path/filepath"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
+import ctz "root:c/tokenizer"
 import "root:errors"
 import "root:ini"
 import om "root:ordered_map"

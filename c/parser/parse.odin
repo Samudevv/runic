@@ -19,13 +19,13 @@ package parser
 
 import "base:runtime"
 import "core:bytes"
-import ctz "core:c/frontend/tokenizer"
 import "core:fmt"
 import "core:io"
 import "core:os"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
+import ctz "root:c/tokenizer"
 import "root:errors"
 import om "root:ordered_map"
 import "root:runic"
@@ -1006,7 +1006,30 @@ parse_constant_integer_expression :: proc(
             strings.write_string(&str_expr, token.lit)
         case .Punct:
             switch token.lit {
-            case "+", "-", "*", "/", "%", "(", ")", "<", ">", "<<", ">>", "<=", ">=", "==", "!=", "!", "~", "^", ":", "?", "|", "&", "&&", "||":
+            case "+",
+                 "-",
+                 "*",
+                 "/",
+                 "%",
+                 "(",
+                 ")",
+                 "<",
+                 ">",
+                 "<<",
+                 ">>",
+                 "<=",
+                 ">=",
+                 "==",
+                 "!=",
+                 "!",
+                 "~",
+                 "^",
+                 ":",
+                 "?",
+                 "|",
+                 "&",
+                 "&&",
+                 "||":
                 strings.write_string(&str_expr, token.lit)
             case:
                 if slice.contains(end_tokens, token.lit) do break token_loop
@@ -1484,3 +1507,4 @@ skip_variable_definition :: proc(
     if token.kind == .EOF do return token, errors_eof(token)
     return
 }
+

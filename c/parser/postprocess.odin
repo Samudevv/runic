@@ -18,8 +18,8 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 package parser
 
 import "base:runtime"
-import ctz "core:c/frontend/tokenizer"
 import "core:strings"
+import ctz "root:c/tokenizer"
 import "root:errors"
 import om "root:ordered_map"
 
@@ -344,3 +344,4 @@ evaluate_macro_func_call :: proc(
     ) or_return
     return
 }
+

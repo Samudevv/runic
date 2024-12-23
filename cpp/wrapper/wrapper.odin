@@ -36,6 +36,7 @@ ClientData :: struct {
     extern:            []string,
     rune_file_name:    string,
     parsed_names:      ^[dynamic]string,
+    context_allocator: runtime.Allocator,
 }
 
 generate_wrapper :: proc(
@@ -158,6 +159,7 @@ generate_wrapper :: proc(
         extern            = extern,
         rune_file_name    = rune_file_name,
         parsed_names      = &parsed_names,
+        context_allocator = context.allocator,
     }
 
     index := clang.createIndex(0, 0)
@@ -257,6 +259,7 @@ generate_wrapper :: proc(
             ) -> clang.ChildVisitResult {
                 data := cast(^ClientData)client_data
                 context = runtime.default_context()
+                context.allocator = data.context_allocator
 
                 cursor_kind := clang.getCursorKind(cursor)
                 // cursor_type := clang.getCursorType(cursor)

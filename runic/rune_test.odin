@@ -51,28 +51,42 @@ test_rune :: proc(t: ^testing.T) {
     foo_h := filepath.join({cwd, "test_data/foo.h"})
     foz_h := filepath.join({cwd, "test_data/foz.h"})
     bar_h := filepath.join({cwd, "test_data/bar.h"})
-    wrapper_gen_h := filepath.join({cwd, "test_data/wrapper.gen.h"})
-    wrapper_macos_h := filepath.join({cwd, "test_data/wrapper.macos.h"})
+    wrapper_gen_linux_h := filepath.join(
+        {cwd, "test_data/wrapper.gen-Linux_x86_64.h"},
+    )
+    wrapper_gen_windows_h := filepath.join(
+        {cwd, "test_data/wrapper.gen-Windows_x86_64.h"},
+    )
     plat_macos_h := filepath.join({cwd, "test_data/plat_macos.h"})
     defer delete(foo_h)
     defer delete(foz_h)
     defer delete(bar_h)
-    defer delete(wrapper_gen_h)
-    defer delete(wrapper_macos_h)
+    defer delete(wrapper_gen_linux_h)
+    defer delete(wrapper_gen_windows_h)
     defer delete(plat_macos_h)
 
     f := rn.from.(From)
     any_headers := f.headers.d[{.Any, .Any}]
     macos_headers := f.headers.d[{.Macos, .Any}]
+    linux_headers := f.headers.d[{.Linux, .x86_64}]
+    windows_headers := f.headers.d[{.Windows, .x86_64}]
     expect_value(t, f.shared.d[Platform{.Any, .Any}], "libfoo.so")
-    expect_value(t, len(any_headers), 4)
-    expect_value(t, len(macos_headers), 2)
+    expect_value(t, len(any_headers), 3)
+    expect_value(t, len(linux_headers), 4)
+    expect_value(t, len(windows_headers), 4)
+    expect_value(t, len(macos_headers), 1)
     expect_value(t, any_headers[0], foo_h)
     expect_value(t, any_headers[1], foz_h)
     expect_value(t, any_headers[2], bar_h)
-    expect_value(t, any_headers[3], wrapper_gen_h)
+    expect_value(t, linux_headers[0], foo_h)
+    expect_value(t, linux_headers[1], foz_h)
+    expect_value(t, linux_headers[2], bar_h)
+    expect_value(t, linux_headers[3], wrapper_gen_linux_h)
+    expect_value(t, windows_headers[0], foo_h)
+    expect_value(t, windows_headers[1], foz_h)
+    expect_value(t, windows_headers[2], bar_h)
+    expect_value(t, windows_headers[3], wrapper_gen_windows_h)
     expect_value(t, macos_headers[0], plat_macos_h)
-    expect_value(t, macos_headers[1], wrapper_macos_h)
     expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].types), 4)
     expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].functions), 3)
     expect_value(t, f.enable_host_includes.d[Platform{.Any, .Any}], true)
@@ -190,8 +204,8 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, wrapper.defines.d[{.Any, .Any}]["FOO"], "BAR")
     expect_value(t, len(wrapper.in_headers.d[{.Any, .Any}]), 1)
     expect_value(t, wrapper.in_headers.d[{.Any, .Any}][0], in_header)
-    expect_value(t, wrapper.out_header.d[{.Any, .Any}], out_header)
-    expect_value(t, wrapper.out_source.d[{.Any, .Any}], out_source)
+    expect_value(t, wrapper.out_header, out_header)
+    expect_value(t, wrapper.out_source, out_source)
 
     wrapper_incs := wrapper.include_dirs.d[{.Any, .Any}]
     expect_value(t, len(wrapper_incs), 2)

@@ -200,8 +200,6 @@ parse_rune :: proc(
                 load_all_includes = make_platform_value(bool)
                 extern = make_platform_value([]string)
                 in_headers = make_platform_value([]string)
-                out_header = make_platform_value(string)
-                out_source = make_platform_value(string)
 
                 from_compiler_flags.d[{.Any, .Any}] = true
 
@@ -518,7 +516,7 @@ parse_rune :: proc(
                     case "out_header":
                         #partial switch v in map_value {
                         case string:
-                            wrapper.out_header.d[plat] = relative_to_file(
+                            wrapper.out_header = relative_to_file(
                                 file_path,
                                 v,
                                 rn_arena_alloc,
@@ -534,7 +532,7 @@ parse_rune :: proc(
                     case "out_source":
                         #partial switch v in map_value {
                         case string:
-                            wrapper.out_source.d[plat] = relative_to_file(
+                            wrapper.out_source = relative_to_file(
                                 file_path,
                                 v,
                                 rn_arena_alloc,
@@ -1376,16 +1374,6 @@ parse_rune :: proc(
                             v,
                         )
                         return
-                    }
-
-                    if wrapper, wrapper_ok := rn.wrapper.?;
-                       wrapper_ok && wrapper.add_header_to_from {
-                        out_header := platform_value_get(
-                            string,
-                            wrapper.out_header,
-                            plat,
-                        )
-                        if len(out_header) != 0 do append(&h_seq, out_header)
                     }
 
                     f.headers.d[plat] = h_seq[:]
@@ -2537,6 +2525,86 @@ parse_rune :: proc(
     case:
         err = errors.message("yaml file has invalid type %T", y)
         return
+    }
+
+    // Add the out header to the header of from if requested
+    if wrapper, wrapper_ok := rn.wrapper.?;
+       wrapper_ok && wrapper.add_header_to_from {
+        #partial switch &from in rn.from {
+        case From:
+            // First gather all different out headers based on the platform
+            out_headers := make(map[Platform]string)
+            defer delete(out_headers)
+
+            if !wrapper.multi_platform || len(rn.platforms) < 2 {
+                out_headers[{}] = wrapper.out_header
+            } else {
+                for rn_plat in rn.platforms {
+                    out_header_platted := platform_file_name(
+                        wrapper.out_header,
+                        rn_plat,
+                        rn_arena_alloc,
+                    )
+
+                    out_headers[rn_plat] = out_header_platted
+                }
+            }
+
+            // Try to insert everyone of these out headers into the headers separately
+            for plat, header in out_headers {
+                inserted: bool
+
+                // If it is already there insert it into them
+                for from_plat, &from_headers in from.headers.d {
+                    if from_plat != plat do continue
+
+                    arr := make(
+                        [dynamic]string,
+                        len = 0,
+                        cap = len(from_headers) + 1,
+                        allocator = rn_arena_alloc,
+                    )
+                    append(&arr, ..from_headers)
+                    append(&arr, header)
+
+                    from_headers = arr[:]
+                    inserted = true
+                }
+
+                // Otherwise find the next most common platform and add them together as a new entry
+                if !inserted {
+                    more_common_headers: Maybe([]string)
+
+                    common_plat := Platform{plat.os, .Any}
+                    if common_plat in from.headers.d {
+                        more_common_headers = from.headers.d[common_plat]
+                    } else {
+                        common_plat = {.Any, .Any}
+                        if common_plat in from.headers.d {
+                            more_common_headers = from.headers.d[common_plat]
+                        }
+                    }
+
+                    cap := 1
+                    if more_common_headers == nil {
+                        common_plat = plat
+                    } else {
+                        cap += len(more_common_headers.?)
+                    }
+
+                    arr := make(
+                        [dynamic]string,
+                        len = 0,
+                        cap = cap,
+                        allocator = rn_arena_alloc,
+                    )
+                    append(&arr, ..(more_common_headers.? or_else []string{}))
+                    append(&arr, header)
+
+                    from.headers.d[plat] = arr[:]
+                }
+            }
+        }
     }
 
     return

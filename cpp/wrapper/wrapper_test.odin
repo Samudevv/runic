@@ -42,14 +42,12 @@ test_cpp_wrapper :: proc(t: ^testing.T) {
     rn := runic.Wrapper {
         language            = "c",
         in_headers          = {{{} = {in_header}}},
-        out_header          = {{{} = out_header}},
-        out_source          = {{{} = out_source}},
+        out_header          = out_header,
+        out_source          = out_source,
         from_compiler_flags = {{{} = true}},
         multi_platform      = true,
     }
     defer delete(rn.in_headers.d)
-    defer delete(rn.out_header.d)
-    defer delete(rn.out_source.d)
     defer delete(rn.from_compiler_flags.d)
 
     rf := runic.From {

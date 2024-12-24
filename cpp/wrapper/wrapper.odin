@@ -81,16 +81,6 @@ generate_wrapper :: proc(
             plat,
         )
         rune_flags := runic.platform_value_get([]cstring, rn.flags, plat)
-        rune_out_header := runic.platform_value_get(
-            string,
-            rn.out_header,
-            plat,
-        )
-        rune_out_source := runic.platform_value_get(
-            string,
-            rn.out_source,
-            plat,
-        )
         in_headers := runic.platform_value_get([]string, rn.in_headers, plat)
         load_all_includes := runic.platform_value_get(
             bool,
@@ -177,16 +167,16 @@ generate_wrapper :: proc(
 
         out_header_name, out_source_name: string = ---, ---
         if len(plats) == 1 {
-            out_header_name = rune_out_header
-            out_source_name = rune_out_source
+            out_header_name = rn.out_header
+            out_source_name = rn.out_source
         } else {
             out_header_name = runic.platform_file_name(
-                rune_out_header,
+                rn.out_header,
                 plat,
                 arena_alloc,
             )
             out_source_name = runic.platform_file_name(
-                rune_out_source,
+                rn.out_source,
                 plat,
                 arena_alloc,
             )

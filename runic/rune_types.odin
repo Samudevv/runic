@@ -88,8 +88,8 @@ Wrapper :: struct {
     load_all_includes:   PlatformValue(bool),
     extern:              PlatformValue([]string),
     in_headers:          PlatformValue([]string),
-    out_header:          PlatformValue(string),
-    out_source:          PlatformValue(string),
+    out_header:          string,
+    out_source:          string,
     add_header_to_from:  bool,
     multi_platform:      bool,
 }

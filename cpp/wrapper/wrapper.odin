@@ -98,7 +98,7 @@ generate_wrapper :: proc(
             plat,
         )
 
-        defines := make(map[string]string, capacity = len(rune_defines))
+        defines := make(map[string]string, len(rune_defines))
         include_dirs := make(
             [dynamic]string,
             len = 0,

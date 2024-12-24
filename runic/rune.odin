@@ -274,7 +274,7 @@ parse_rune :: proc(
                         case yaml.Mapping:
                             arr := make(
                                 map[string]string,
-                                capacity = len(v),
+                                len(v),
                                 allocator = rn_arena_alloc,
                             )
 
@@ -1448,8 +1448,8 @@ parse_rune :: proc(
                     case yaml.Mapping:
                         d_map := make(
                             map[string]string,
+                            len(v),
                             allocator = rn_arena_alloc,
-                            capacity = len(v),
                         )
 
                         for d_key, d_value in v {
@@ -2338,8 +2338,8 @@ parse_rune :: proc(
                     case yaml.Mapping:
                         t.extern.sources = make(
                             map[string]string,
+                            len(sources),
                             allocator = rn_arena_alloc,
-                            capacity = len(sources),
                         )
 
                         for source_name, import_name_value in sources {
@@ -2362,8 +2362,8 @@ parse_rune :: proc(
                         case yaml.Mapping:
                             t.extern.remaps = make(
                                 map[string]string,
+                                len(remaps),
                                 allocator = rn_arena_alloc,
-                                capacity = len(remaps),
                             )
 
                             for type_name, remap_name_value in remaps {

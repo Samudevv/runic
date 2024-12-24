@@ -202,7 +202,7 @@ make_platform_value :: #force_inline proc(
     pv: PlatformValue(T),
     err: runtime.Allocator_Error,
 ) #optional_allocator_error {
-    pv.d, err = make(map[Platform]T, allocator = allocator, capacity = cap)
+    pv.d, err = make(map[Platform]T, cap, allocator = allocator)
     return
 }
 

@@ -576,7 +576,7 @@ generate_bindings_from_runestone :: proc(
                         io.write_string(wd, " {\n") or_return
 
                         if b, b_ok := func_ptr.return_type.spec.(runic.Builtin);
-                           b_ok && b == .Void {
+                           b_ok && b == .Untyped {
                             io.write_string(wd, "    ") or_return
                         } else {
                             io.write_string(wd, "    return ") or_return
@@ -686,7 +686,7 @@ write_procedure :: proc(
 
     io.write_rune(ps, ')') or_return
 
-    if b, ok := fc.return_type.spec.(runic.Builtin); ok && b == .Void {
+    if b, ok := fc.return_type.spec.(runic.Builtin); ok && b == .Untyped {
         io.write_string(wd, strings.to_string(proc_build)) or_return
         return nil
     }
@@ -876,8 +876,6 @@ write_builtin_type :: proc(wd: io.Writer, ty: runic.Builtin) -> io.Error {
     switch ty {
     case .Untyped:
         io.write_string(wd, "ThisTypeIsUntyped") or_return
-    case .Void:
-        io.write_string(wd, "ThisTypeIsVoid") or_return
     case .RawPtr:
         io.write_string(wd, "rawptr") or_return
     case .SInt8:
@@ -916,6 +914,8 @@ write_builtin_type :: proc(wd: io.Writer, ty: runic.Builtin) -> io.Error {
         io.write_string(wd, "b32") or_return
     case .Bool64:
         io.write_string(wd, "b64") or_return
+    case .Opaque:
+        io.write_string(wd, "struct #packed {}") or_return
     }
 
     return .None

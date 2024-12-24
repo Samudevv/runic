@@ -608,8 +608,6 @@ parse_type_token :: proc(
         switch token.lit {
         case "Untyped":
             type.spec = Builtin.Untyped
-        case "Void":
-            type.spec = Builtin.Void
         case "RawPtr":
             type.spec = Builtin.RawPtr
         case "SInt8":
@@ -648,6 +646,8 @@ parse_type_token :: proc(
             type.spec = Builtin.Bool32
         case "Bool64":
             type.spec = Builtin.Bool64
+        case "Opaque":
+            type.spec = Builtin.Opaque
         case "Struct":
             token = token.next
 

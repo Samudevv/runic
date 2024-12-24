@@ -601,7 +601,7 @@ parse_rune :: proc(
                 f.aliases = make(map[string][]string)
 
                 f.forward_decl_type.d[{.Any, .Any}] = {
-                    spec = Builtin.RawPtr,
+                    spec = Builtin.Opaque,
                 }
             }
 

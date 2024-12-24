@@ -35,9 +35,9 @@ shared = libfoo.so
 static = libfoo.a
 
 [symbols]
-func.foo1234 = #Void a #SInt32 #Attr Ptr 1 #AttrEnd b #SInt32 #Attr Ptr 1 #AttrEnd
+func.foo1234 = #Untyped a #SInt32 #Attr Ptr 1 #AttrEnd b #SInt32 #Attr Ptr 1 #AttrEnd
 func.output_print_name = #SInt32 output output #Attr Ptr 1 #AttrEnd
-func.print = #Void args #Variadic
+func.print = #Untyped args #Variadic
 func.funcy = #RawPtr
 var.foo_varZZXX6 = #Float32 #Attr Ptr 1 Arr 10 #AttrEnd
 var.idx = #UInt64
@@ -77,6 +77,7 @@ APP_NAME = "Hello World" #SInt8 #Attr Ptr 1 #AttrEnd
 LENGTH = 267.345 #Float64
 `
 
+
 @(test)
 test_example_runestone :: proc(t: ^testing.T) {
     using testing
@@ -103,7 +104,7 @@ test_example_runestone :: proc(t: ^testing.T) {
     expect_value(
         t,
         om.get(symbols, "foo").value.(Function).return_type.spec.(Builtin),
-        Builtin.Void,
+        Builtin.Untyped,
     )
     expect_value(t, len(om.get(symbols, "foo").value.(Function).parameters), 2)
     expect_value(

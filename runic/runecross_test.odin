@@ -34,7 +34,7 @@ static = libsame1.a
 [symbols]
 var.a = #SInt32
 var.b = #Struct x type1 y #UInt8 #Attr Ptr 1 #AttrEnd
-func.c = #Void a #String b #String #Attr Arr 5 #AttrEnd
+func.c = #Untyped a #String b #String #Attr Arr 5 #AttrEnd
 `
 
 SAME_RUNESTONE2 :: `
@@ -49,7 +49,7 @@ static = libsame2.a
 [symbols]
 var.a = #SInt32
 var.b = #Struct x type1 y #UInt8 #Attr Ptr 1 #AttrEnd
-func.c = #Void a #String b #String #Attr Arr 4 #AttrEnd
+func.c = #Untyped a #String b #String #Attr Arr 4 #AttrEnd
 `
 
 @(test)
@@ -88,17 +88,17 @@ shared = liblinux.so
 
 [types]
 BigInt = #SInt64
-PFNGLDELETEARRAYSETSEXTPROC = #FuncPtr #Void n GLsizei arrayset #RawPtr #Attr ReadOnly Arr 0 #AttrEnd
-PFNGLWINDOWRECTANGLESEXTPROC = #FuncPtr #Void mode GLenum count GLsizei box GLint #Attr ReadOnly Arr 0 #AttrEnd
-PFNGLPROGRAMNAMEDPARAMETER4DVNVPROC = #FuncPtr #Void id GLuint len GLsizei name GLubyte #Attr ReadOnly Ptr 1 #AttrEnd v GLdouble #Attr ReadOnly Arr 0 #AttrEnd
-PFNGLPROGRAMNAMEDPARAMETER4FVNVPROC = #FuncPtr #Void id GLuint len GLsizei name GLubyte #Attr ReadOnly Ptr 1 #AttrEnd v GLfloat #Attr ReadOnly Arr 0 #AttrEnd
-PFNGLWEIGHTPATHSNVPROC = #FuncPtr #Void resultPath GLuint numPaths GLsizei paths GLuint #Attr ReadOnly Arr 0 #AttrEnd weights GLfloat #Attr ReadOnly Arr 0 #AttrEnd
-PFNGLGETINTEGERUI64I_VNVPROC = #FuncPtr #Void value GLenum index GLuint result GLuint64EXT #Attr Arr 0 #AttrEnd
+PFNGLDELETEARRAYSETSEXTPROC = #FuncPtr #Untyped n GLsizei arrayset #RawPtr #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLWINDOWRECTANGLESEXTPROC = #FuncPtr #Untyped mode GLenum count GLsizei box GLint #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLPROGRAMNAMEDPARAMETER4DVNVPROC = #FuncPtr #Untyped id GLuint len GLsizei name GLubyte #Attr ReadOnly Ptr 1 #AttrEnd v GLdouble #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLPROGRAMNAMEDPARAMETER4FVNVPROC = #FuncPtr #Untyped id GLuint len GLsizei name GLubyte #Attr ReadOnly Ptr 1 #AttrEnd v GLfloat #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLWEIGHTPATHSNVPROC = #FuncPtr #Untyped resultPath GLuint numPaths GLsizei paths GLuint #Attr ReadOnly Arr 0 #AttrEnd weights GLfloat #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLGETINTEGERUI64I_VNVPROC = #FuncPtr #Untyped value GLenum index GLuint result GLuint64EXT #Attr Arr 0 #AttrEnd
 
 [symbols]
-func.write_out = #Void data #RawPtr num #UInt64
-func.say_hello = #Void
-func.multiply = #Void value BigInt
+func.write_out = #Untyped data #RawPtr num #UInt64
+func.say_hello = #Untyped
+func.multiply = #Untyped value BigInt
 `
 
 WINDOWS_RUNESTONE :: `
@@ -112,17 +112,17 @@ shared = windows.lib
 
 [types]
 BigInt = #SInt32
-PFNGLDELETEARRAYSETSEXTPROC = #FuncPtr #Void n GLsizei arrayset #RawPtr #Attr ReadOnly Arr 0 #AttrEnd
-PFNGLWINDOWRECTANGLESEXTPROC = #FuncPtr #Void mode GLenum count GLsizei box GLint #Attr ReadOnly Arr 0 #AttrEnd
-PFNGLPROGRAMNAMEDPARAMETER4DVNVPROC = #FuncPtr #Void id GLuint len GLsizei name GLubyte #Attr ReadOnly Ptr 1 #AttrEnd v GLdouble #Attr ReadOnly Arr 0 #AttrEnd
-PFNGLPROGRAMNAMEDPARAMETER4FVNVPROC = #FuncPtr #Void id GLuint len GLsizei name GLubyte #Attr ReadOnly Ptr 1 #AttrEnd v GLfloat #Attr ReadOnly Arr 0 #AttrEnd
-PFNGLWEIGHTPATHSNVPROC = #FuncPtr #Void resultPath GLuint numPaths GLsizei paths GLuint #Attr ReadOnly Arr 0 #AttrEnd weights GLfloat #Attr ReadOnly Arr 0 #AttrEnd
-PFNGLGETINTEGERUI64I_VNVPROC = #FuncPtr #Void value GLenum index GLuint result GLuint64EXT #Attr Arr 0 #AttrEnd
+PFNGLDELETEARRAYSETSEXTPROC = #FuncPtr #Untyped n GLsizei arrayset #RawPtr #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLWINDOWRECTANGLESEXTPROC = #FuncPtr #Untyped mode GLenum count GLsizei box GLint #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLPROGRAMNAMEDPARAMETER4DVNVPROC = #FuncPtr #Untyped id GLuint len GLsizei name GLubyte #Attr ReadOnly Ptr 1 #AttrEnd v GLdouble #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLPROGRAMNAMEDPARAMETER4FVNVPROC = #FuncPtr #Untyped id GLuint len GLsizei name GLubyte #Attr ReadOnly Ptr 1 #AttrEnd v GLfloat #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLWEIGHTPATHSNVPROC = #FuncPtr #Untyped resultPath GLuint numPaths GLsizei paths GLuint #Attr ReadOnly Arr 0 #AttrEnd weights GLfloat #Attr ReadOnly Arr 0 #AttrEnd
+PFNGLGETINTEGERUI64I_VNVPROC = #FuncPtr #Untyped value GLenum index GLuint result GLuint64EXT #Attr Arr 0 #AttrEnd
 
 [symbols]
-func.write_out = #Void data #RawPtr
-func.say_hello = #Void
-func.multiply = #Void value BigInt
+func.write_out = #Untyped data #RawPtr
+func.say_hello = #Untyped
+func.multiply = #Untyped value BigInt
 `
 
 @(test)

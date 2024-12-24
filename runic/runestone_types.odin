@@ -33,7 +33,6 @@ Runestone :: struct {
 
 Builtin :: enum {
     Untyped,
-    Void,
     RawPtr,
     SInt8,
     SInt16,
@@ -53,6 +52,7 @@ Builtin :: enum {
     Bool16,
     Bool32,
     Bool64,
+    Opaque,
 }
 
 Member :: struct {

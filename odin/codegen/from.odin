@@ -487,7 +487,7 @@ proc_type_to_function :: proc(
     }
 
     if p.results == nil || len(p.results.list) == 0 {
-        fn.return_type.spec = runic.Builtin.Void
+        fn.return_type.spec = runic.Builtin.Untyped
         return
     }
 

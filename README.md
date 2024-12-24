@@ -88,9 +88,9 @@ shared = libfoo.so
 static = libfoo.a
 
 [symbols]
-func.foo1234 = #Void a #SInt32 #Attr Ptr 1 #AttrEnd b #SInt32 #Attr Ptr 1 #AttrEnd
+func.foo1234 = #Untyped a #SInt32 #Attr Ptr 1 #AttrEnd b #SInt32 #Attr Ptr 1 #AttrEnd
 func.output_print_name = #SInt32 output output #Attr Ptr 1 #AttrEnd
-func.print = #Void var_args #Variadic
+func.print = #Untyped var_args #Variadic
 func.funcy = #RawPtr
 var.foo_varZZXX6 = #Float32 #Attr Ptr 1 Arr 10 #AttrEnd
 var.idx = #UInt64

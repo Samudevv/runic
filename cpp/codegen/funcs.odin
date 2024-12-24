@@ -111,7 +111,7 @@ clang_type_to_runic_type :: proc(
 ) {
     #partial switch type.kind {
     case .Void:
-        tp.spec = runic.Builtin.Void
+        tp.spec = runic.Builtin.Untyped
     case .Bool:
         tp.spec = bool_type(ctx.int_sizes._Bool)
     case .Char_U:

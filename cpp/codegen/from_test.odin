@@ -666,14 +666,14 @@ test_cpp_function :: proc(t: ^testing.T) {
     hello_world := om.get(rs.symbols, "hello_world")
     hw := hello_world.value.(runic.Function)
 
-    expect_value(t, hw.return_type.spec.(runic.Builtin), runic.Builtin.Void)
+    expect_value(t, hw.return_type.spec.(runic.Builtin), runic.Builtin.Untyped)
     expect_value(t, len(hw.parameters), 0)
     expect(t, !hw.variadic)
 
     foo := om.get(rs.symbols, "foo")
     fooo := foo.value.(runic.Function)
 
-    expect_value(t, fooo.return_type.spec.(runic.Builtin), runic.Builtin.Void)
+    expect_value(t, fooo.return_type.spec.(runic.Builtin), runic.Builtin.Untyped)
     expect_value(t, len(fooo.parameters), 3)
     expect_value(t, fooo.parameters[1].name, "b")
 
@@ -730,7 +730,7 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     hell := hello.value.(runic.Type).spec.(runic.FunctionPointer)
 
     expect_value(t, len(hell.parameters), 0)
-    expect_value(t, hell.return_type.spec.(runic.Builtin), runic.Builtin.Void)
+    expect_value(t, hell.return_type.spec.(runic.Builtin), runic.Builtin.Untyped)
 
     bye := om.get(rs.symbols, "bye")
     by := bye.value.(runic.Type).spec.(runic.FunctionPointer)

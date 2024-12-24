@@ -839,10 +839,7 @@ write_type_specifier :: proc(
     switch s in spec {
     case runic.Builtin:
         switch s {
-        case .Untyped:
-            // TODO: Add Untyped as type
-            return errors.Error(errors.message("Untyped"))
-        case .Void:
+        case .Opaque, .Untyped:
             io.write_string(wd, "void") or_return
         case .RawPtr:
             io.write_string(wd, "void*") or_return

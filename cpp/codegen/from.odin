@@ -889,7 +889,7 @@ generate_runestone :: proc(
         if !om.contains(rs.types, decl) && !(decl in included_types) {
             when ODIN_DEBUG {
                 fmt.eprintfln(
-                    "debug: forward declaration \"{}\" will be added as defined by \"from.forward_decl_type\" (default: '#RawPtr')",
+                    "debug: forward declaration \"{}\" will be added as defined by \"from.forward_decl_type\" (default: '#Opaque')",
                     decl,
                 )
             }

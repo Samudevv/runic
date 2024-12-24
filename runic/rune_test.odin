@@ -109,7 +109,7 @@ test_rune :: proc(t: ^testing.T) {
     forward_decl_type_linux := f.forward_decl_type.d[Platform{.Linux, .Any}]
     forward_decl_type_windows :=
         f.forward_decl_type.d[Platform{.Windows, .Any}]
-    expect_value(t, forward_decl_type_any.spec.(Builtin), Builtin.RawPtr)
+    expect_value(t, forward_decl_type_any.spec.(Builtin), Builtin.Opaque)
     expect_value(t, forward_decl_type_linux.spec.(Builtin), Builtin.Untyped)
     expect_value(t, forward_decl_type_windows.spec.(Builtin), Builtin.SInt32)
 
@@ -268,12 +268,12 @@ test_overwrite :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     type, err = parse_type("#String #Attr Arr 5 #AttrEnd")
     if !expect_value(t, err, nil) do return
-    func_ptr, err = parse_type("#FuncPtr #Void a #SInt32 b #Float32")
+    func_ptr, err = parse_type("#FuncPtr #Untyped a #SInt32 b #Float32")
     if !expect_value(t, err, nil) do return
     unon, err = parse_type("#Union foo #RawPtr bar #RawPtr")
     if !expect_value(t, err, nil) do return
 
-    func1, err = parse_func("#Void a #SInt32 b #String")
+    func1, err = parse_func("#Untyped a #SInt32 b #String")
     if !expect_value(t, err, nil) do return
     func2, err = parse_func("#UInt32 a #SInt32 b #String")
     if !expect_value(t, err, nil) do return

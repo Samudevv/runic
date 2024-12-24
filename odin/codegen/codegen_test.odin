@@ -68,7 +68,7 @@ when #config(FOO_PKG_STATIC, false) {
     when ODIN_OS == .Darwin {
         foreign import foo_pkg_runic { "system:foo", "system:baz", "system:bar", "system:autumn", "lib/libcompiled.a" }
     } else {
-        foreign import foo_pkg_runic { "system:libfoo.a", "system:libbaz.a", "system:bar", "system:autumn", "lib/libcompiled.a" }
+        foreign import foo_pkg_runic { "system:libfoo.a", "system:libbaz.a", "system:libbar.a", "system:libautumn.a", "lib/libcompiled.a" }
     }
 } else {
     foreign import foo_pkg_runic { "libfoo.so", "system:libbaz.a", "system:bar", "system:autumn", "lib/libcompiled.a" }
@@ -308,7 +308,7 @@ main :: proc() {}`
         add_prefix = runic.AddSet{"odin_", "odin_", "odin_", ""},
         add_suffix = runic.AddSet{"_bindings", "_bindings", "_bindings", ""},
         detect = {multi_pointer = "auto"},
-        add_libs = {
+        add_libs_shared = {
             d = {
                 {.Any, .Any} = {
                     "libbaz.a",
@@ -318,8 +318,19 @@ main :: proc() {}`
                 },
             },
         },
+        add_libs_static = {
+            d = {
+                {.Any, .Any} = {
+                    "libbaz.a",
+                    "libbar.a",
+                    "libautumn.a",
+                    libcompiled,
+                },
+            },
+        },
     }
-    defer delete(rn.add_libs.d)
+    defer delete(rn.add_libs_shared.d)
+    defer delete(rn.add_libs_static.d)
 
     runic.to_preprocess_runestone(&rs, rn, ODIN_RESERVED)
 

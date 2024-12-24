@@ -239,10 +239,10 @@ platform_file_name :: proc(
     return strings.to_string(bd)
 }
 
-platform_matches :: #force_inline proc(p1, p2: Platform) -> bool {
+platform_matches :: #force_inline proc(p1, p2: Platform, ignore_arch := false) -> bool {
     return(
         (p1.os == .Any || p2.os == .Any || p1.os == p2.os) &&
-        (p1.arch == .Any || p2.arch == .Any || p1.arch == p2.arch) \
+        (ignore_arch || p1.arch == .Any || p2.arch == .Any || p1.arch == p2.arch) \
     )
 }
 

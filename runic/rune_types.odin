@@ -60,22 +60,23 @@ From :: struct {
 }
 
 To :: struct {
-    language:      string,
+    language:        string,
     // General
-    static_switch: string,
-    out:           string,
-    trim_prefix:   TrimSet,
-    trim_suffix:   TrimSet,
-    add_prefix:    AddSet,
-    add_suffix:    AddSet,
-    ignore_arch:   bool,
-    extern:        ExternRune,
+    static_switch:   string,
+    out:             string,
+    trim_prefix:     TrimSet,
+    trim_suffix:     TrimSet,
+    add_prefix:      AddSet,
+    add_suffix:      AddSet,
+    ignore_arch:     bool,
+    extern:          ExternRune,
     // Odin
-    package_name:  string,
-    detect:        OdinDetect,
-    no_build_tag:  bool,
-    use_when_else: bool,
-    add_libs:      PlatformValue([]string),
+    package_name:    string,
+    detect:          OdinDetect,
+    no_build_tag:    bool,
+    use_when_else:   bool,
+    add_libs_shared: PlatformValue([]string),
+    add_libs_static: PlatformValue([]string),
 }
 
 Wrapper :: struct {

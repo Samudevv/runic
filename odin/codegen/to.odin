@@ -211,30 +211,10 @@ generate_bindings :: proc(
         }
 
         // Determine which add libs fit this specific runestone
-        add_libs := make([dynamic]AddLibs, len = 0, cap = len(rn.add_libs.d))
-        defer delete(add_libs)
-
-        for add_lib_plat, rn_add_libs in rn.add_libs.d {
-            for rs_plat in plats {
-                if (add_lib_plat.os == .Any ||
-                       rs_plat.os == .Any ||
-                       add_lib_plat.os == rs_plat.os) &&
-                   (rn.ignore_arch ||
-                           add_lib_plat.arch == .Any ||
-                           rs_plat.arch == .Any ||
-                           add_lib_plat.arch == rs_plat.arch) {
-                    append(
-                        &add_libs,
-                        AddLibs{plat = add_lib_plat, libs = rn_add_libs},
-                    )
-                }
-            }
-        }
-
-        slice.sort_by(add_libs[:], proc(i, j: AddLibs) -> bool {
-                if i.plat.os == j.plat.os do return i.plat.arch > j.plat.arch
-                return i.plat.os > j.plat.os
-            })
+        add_libs_static := add_libs_for_runestone(plats, rn.add_libs_static)
+        add_libs_shared := add_libs_for_runestone(plats, rn.add_libs_shared)
+        defer delete(add_libs_static)
+        defer delete(add_libs_shared)
 
         errors.wrap(
             generate_bindings_from_runestone(
@@ -243,7 +223,8 @@ generate_bindings :: proc(
                 wd,
                 file_path,
                 package_name,
-                add_libs,
+                add_libs_static,
+                add_libs_shared,
             ),
         ) or_return
 
@@ -266,7 +247,8 @@ generate_bindings_from_runestone :: proc(
     wd: io.Writer,
     file_path: string,
     package_name: string,
-    add_libs: [dynamic]AddLibs,
+    add_libs_static: [dynamic]AddLibs,
+    add_libs_shared: [dynamic]AddLibs,
 ) -> union {
         errors.Error,
         io.Error,
@@ -398,7 +380,7 @@ generate_bindings_from_runestone :: proc(
                     file_path,
                     package_name,
                     static,
-                    add_libs,
+                    add_libs_static,
                     rn.ignore_arch,
                     true,
                 ) or_return
@@ -411,7 +393,7 @@ generate_bindings_from_runestone :: proc(
                 file_path,
                 package_name,
                 static,
-                add_libs,
+                add_libs_static,
                 rn.ignore_arch,
             ) or_return
             io.write_rune(wd, '\n') or_return
@@ -427,7 +409,7 @@ generate_bindings_from_runestone :: proc(
                 file_path,
                 package_name,
                 shared,
-                add_libs,
+                add_libs_shared,
                 rn.ignore_arch,
             ) or_return
 
@@ -459,7 +441,7 @@ generate_bindings_from_runestone :: proc(
                     file_path,
                     package_name,
                     lib_name,
-                    add_libs,
+                    add_libs_static,
                     rn.ignore_arch,
                     true,
                 ) or_return
@@ -476,7 +458,7 @@ generate_bindings_from_runestone :: proc(
                 file_path,
                 package_name,
                 lib_name,
-                add_libs,
+                add_libs_shared if is_shared else add_libs_static,
                 rn.ignore_arch,
             ) or_return
 
@@ -1289,5 +1271,31 @@ import_path :: proc(
 
     import_path_name = strings.trim_space(import_name[start_idx:])
     return
+}
+
+@(private = "file")
+add_libs_for_runestone :: proc(
+    plats: []runic.Platform,
+    rn_add_libs: runic.PlatformValue([]string),
+) -> [dynamic]AddLibs {
+    rs_add_libs := make([dynamic]AddLibs, len = 0, cap = len(rn_add_libs.d))
+
+    for add_lib_plat, add_libs in rn_add_libs.d {
+        for rs_plat in plats {
+            if runic.platform_matches(add_lib_plat, rs_plat) {
+                append(
+                    &rs_add_libs,
+                    AddLibs{plat = add_lib_plat, libs = add_libs},
+                )
+            }
+        }
+    }
+
+    slice.sort_by(rs_add_libs[:], proc(i, j: AddLibs) -> bool {
+            if i.plat.os == j.plat.os do return i.plat.arch > j.plat.arch
+            return i.plat.os > j.plat.os
+        })
+
+    return rs_add_libs
 }
 

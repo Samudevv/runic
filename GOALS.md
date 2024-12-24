@@ -5,7 +5,7 @@
     + [ ] Add build tag-like line to the top of the generated header. Maybe use `#error` if the platform differs.
 + Odin
   + To
-    + [ ] Make different 'add_libs' for shared and static
+    + [x] Make different 'add_libs' for shared and static
     + [ ] Generate constants always as "constants"
   + From
     + [ ] Implement Odin-specific types

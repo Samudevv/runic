@@ -81,4 +81,5 @@ to:
   add_libs.linux:
     - libEGL.so
     - libGLX.so
-  add_libs.windows.x86_64: lib/GLx86.lib
+  add_libs.static.windows.x86_64: lib/GLx86.lib
+  add_libs.shared.linux.arm64: libfoo.so

@@ -228,12 +228,25 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, wrapper.extern.d[{.Any, .Any}][0], ext1)
     expect_value(t, wrapper.extern.d[{.Any, .Any}][1], ext2)
 
-    add_libs_any := platform_value_get([]string, to.add_libs, {.Any, .Any})
-    add_libs_linux := platform_value_get([]string, to.add_libs, {.Linux, .Any})
+    add_libs_any := platform_value_get(
+        []string,
+        to.add_libs_shared,
+        {.Any, .Any},
+    )
+    add_libs_linux := platform_value_get(
+        []string,
+        to.add_libs_shared,
+        {.Linux, .Any},
+    )
     add_libs_win64 := platform_value_get(
         []string,
-        to.add_libs,
+        to.add_libs_static,
         {.Windows, .x86_64},
+    )
+    add_libs_linux_arm64 := platform_value_get(
+        []string,
+        to.add_libs_shared,
+        {.Linux, .arm64},
     )
 
     test_data_dir, _ := filepath.abs("test_data")
@@ -244,10 +257,12 @@ test_rune :: proc(t: ^testing.T) {
     expect_value(t, len(add_libs_any), 1)
     expect_value(t, len(add_libs_linux), 2)
     expect_value(t, len(add_libs_win64), 1)
+    expect_value(t, len(add_libs_linux_arm64), 1)
     expect_value(t, add_libs_any[0], "libGL.so")
     expect_value(t, add_libs_linux[0], "libEGL.so")
     expect_value(t, add_libs_linux[1], "libGLX.so")
     expect_value(t, add_libs_win64[0], GLx86)
+    expect_value(t, add_libs_linux_arm64[0], "libfoo.so")
 }
 
 @(test)

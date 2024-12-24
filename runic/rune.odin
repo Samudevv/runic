@@ -215,16 +215,16 @@ parse_rune :: proc(
                     os_str: Maybe(string)
                     arch_str: Maybe(string)
 
-                    switch len(name_plat) {
+                    #no_bounds_check switch len(name_plat) {
                     case 1:
-                        #no_bounds_check name = name_plat[0]
+                        name = name_plat[0]
                     case 2:
-                        #no_bounds_check name = name_plat[0]
-                        #no_bounds_check os_str = name_plat[1]
+                        name = name_plat[0]
+                        os_str = name_plat[1]
                     case 3:
-                        #no_bounds_check name = name_plat[0]
-                        #no_bounds_check os_str = name_plat[1]
-                        #no_bounds_check arch_str = name_plat[2]
+                        name = name_plat[0]
+                        os_str = name_plat[1]
+                        arch_str = name_plat[2]
                     case:
                         err = errors.message(
                             "\"wrapper.{}\" has invalid key",
@@ -617,19 +617,20 @@ parse_rune :: proc(
                 name: string = ---
                 os, arch: Maybe(string)
 
-                if len(splits) == 0 {
+                switch len(splits) {
+                case 0:
                     err = errors.message("invalid key in \"from\"")
                     return
-                } else if len(splits) == 1 {
-                    #no_bounds_check name = splits[0]
-                } else if len(splits) == 2 {
-                    #no_bounds_check name = splits[0]
-                    #no_bounds_check os = splits[1]
-                } else if len(splits) == 3 {
-                    #no_bounds_check name = splits[0]
-                    #no_bounds_check os = splits[1]
-                    #no_bounds_check arch = splits[2]
-                } else {
+                case 1:
+                    name = splits[0]
+                case 2:
+                    name = splits[0]
+                    os = splits[1]
+                case 3:
+                    name = splits[0]
+                    os = splits[1]
+                    arch = splits[2]
+                case:
                     err = errors.message("invalid key in \"from\": {}", key)
                     return
                 }
@@ -2414,7 +2415,8 @@ parse_rune :: proc(
             {
                 context.allocator = rn_arena_alloc
 
-                t.add_libs = make_platform_value([]string)
+                t.add_libs_shared = make_platform_value([]string)
+                t.add_libs_static = make_platform_value([]string)
             }
 
             for key, value in to {
@@ -2423,20 +2425,63 @@ parse_rune :: proc(
 
                 name: string = ---
                 os, arch: Maybe(string)
+                lib_type: Maybe(string)
 
-                if len(splits) == 0 {
+                #no_bounds_check switch len(splits) {
+                case 0:
                     err = errors.message("invalid key in \"to\"")
                     return
-                } else if len(splits) == 1 {
-                    #no_bounds_check name = splits[0]
-                } else if len(splits) == 2 {
-                    #no_bounds_check name = splits[0]
-                    #no_bounds_check os = splits[1]
-                } else if len(splits) == 3 {
-                    #no_bounds_check name = splits[0]
-                    #no_bounds_check os = splits[1]
-                    #no_bounds_check arch = splits[2]
-                } else {
+                case 1:
+                    name = splits[0]
+                case 2:
+                    name = splits[0]
+                    if name == "add_libs" {
+                        if splits[1] == "static" || splits[1] == "shared" {
+                            lib_type = splits[1]
+                            break
+                        }
+                    }
+
+                    os = splits[1]
+                case 3:
+                    name = splits[0]
+                    if name == "add_libs" {
+                        if splits[1] == "static" || splits[1] == "shared" {
+                            lib_type = splits[1]
+                            os = splits[2]
+                            break
+                        }
+                    }
+
+                    os = splits[1]
+                    arch = splits[2]
+                case 4:
+                    name = splits[0]
+                    if name == "add_libs" {
+                        if splits[1] != "static" && splits[1] != "shared" {
+                            err = errors.message(
+                                "invalid key in \"from\": {}. Must be either {}.static.{}.{} or {}.shared.{}.{}",
+                                key,
+                                splits[0],
+                                splits[2],
+                                splits[3],
+                                splits[0],
+                                splits[2],
+                                splits[3],
+                            )
+                            return
+                        }
+                        lib_type = splits[1]
+                        os = splits[2]
+                        arch = splits[3]
+                    } else {
+                        err = errors.message(
+                            "invalid key in \"from\": {}",
+                            key,
+                        )
+                        return
+                    }
+                case:
                     err = errors.message("invalid key in \"from\": {}", key)
                     return
                 }
@@ -2456,9 +2501,10 @@ parse_rune :: proc(
 
                 switch name {
                 case "add_libs":
+                    arr: [dynamic]string = ---
                     #partial switch v in value {
                     case string:
-                        arr := make(
+                        arr = make(
                             [dynamic]string,
                             len = 1,
                             cap = 1,
@@ -2470,9 +2516,9 @@ parse_rune :: proc(
                             rn_arena_alloc,
                             true,
                         )
-                        t.add_libs.d[plat] = arr[:]
+
                     case yaml.Sequence:
-                        arr := make(
+                        arr = make(
                             [dynamic]string,
                             len = 0,
                             cap = len(v),
@@ -2500,7 +2546,6 @@ parse_rune :: proc(
                                 return
                             }
                         }
-                        t.add_libs.d[plat] = arr[:]
                     case:
                         err = errors.message(
                             "\"to.{}\" has invalid type: %T",
@@ -2508,6 +2553,18 @@ parse_rune :: proc(
                             v,
                         )
                         return
+                    }
+
+                    if lt, lt_ok := lib_type.?; lt_ok {
+                        switch lt {
+                        case "static":
+                            t.add_libs_static.d[plat] = arr[:]
+                        case "shared":
+                            t.add_libs_shared.d[plat] = arr[:]
+                        }
+                    } else {
+                        t.add_libs_static.d[plat] = arr[:]
+                        t.add_libs_shared.d[plat] = arr[:]
                     }
                 }
             }

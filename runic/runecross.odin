@@ -40,6 +40,7 @@ RunestoneWithFile :: struct {
 cross_the_runes :: proc(
     file_paths: []string,
     stones: []Runestone,
+    extern_sources: map[string]string = nil,
 ) -> (
     rc: Runecross,
     err: errors.Error,
@@ -287,7 +288,7 @@ cross_the_runes :: proc(
     }
 
     // extern
-    for &stone in rc.cross {
+    for &stone, stone_idx in rc.cross {
         externs := &stone.externs
 
         // Loop over all plaforms of a runestone
@@ -325,8 +326,36 @@ cross_the_runes :: proc(
                 for arch in archs {
                     look_up_plat := Platform{os, arch}
                     if origin_stone, ok := om.get(origin, look_up_plat); ok {
-                        for entry in origin_stone.externs.data {
+                        origin_extern_loop: for entry in origin_stone.externs.data {
                             type_name, extern := entry.key, entry.value
+
+                            // If there is no source defined for the extern type only add it if it is not part of a more common runestone
+                            // NOTE: The algorithm for determining wether there is a more common runestone is not perfect
+                            source_defined: bool
+                            if extern_sources != nil do _, source_defined = map_glob(extern_sources, extern.source)
+                            if !source_defined {
+                                // Loop over all plats of the stone
+                                for stone_plat in stone.plats {
+                                    // Go one step higher in commonality per iteration
+                                    for sp := stone_plat;
+                                        sp.os != .Any || sp.arch != .Any; {
+                                        if sp.arch == .Any {
+                                            sp.os = .Any
+                                        } else {
+                                            sp.arch = .Any
+                                        }
+
+                                        // Go through all cross stones and check wether a stone with this more common platform exists
+                                        for common_cross, common_idx in rc.cross {
+                                            if common_idx == stone_idx do continue
+
+                                            for common_plat in common_cross.plats {
+                                                if common_plat == sp do continue origin_extern_loop
+                                            }
+                                        }
+                                    }
+                                }
+                            }
 
                             // if the extern already exists check if it has the same type
                             // the source does not matter

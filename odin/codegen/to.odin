@@ -823,6 +823,8 @@ write_type :: proc(
         io.write_string(wd, "#type ") or_return
         write_procedure(wd, spec^, rn, externs) or_return
     case runic.ExternType:
+        type_name := rn.extern.remaps[string(spec)] or_else string(spec)
+
         if extern, ok := om.get(externs, string(spec)); ok {
             import_name, import_ok := runic.map_glob(
                 rn.extern.sources,
@@ -830,24 +832,22 @@ write_type :: proc(
             )
 
             if !import_ok {
-                io.write_string(wd, string(spec)) or_return
+                io.write_string(wd, type_name) or_return
             } else {
                 prefix := import_prefix(import_name)
-                type_name :=
-                    rn.extern.remaps[string(spec)] or_else string(spec)
-
                 io.write_string(wd, prefix) or_return
                 io.write_rune(wd, '.') or_return
                 io.write_string(wd, type_name) or_return
             }
         } else {
-            err = errors.Error(
-                errors.message(
-                    "extern type \"{}\" has not been defined in the extern section",
+            io.write_string(wd, type_name) or_return
+
+            when ODIN_DEBUG {
+                fmt.eprintfln(
+                    "debug: extern type \"{}\" has not been defined in the extern section",
                     spec,
-                ),
-            )
-            return
+                )
+            }
         }
     }
 

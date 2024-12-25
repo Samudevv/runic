@@ -287,6 +287,7 @@ main :: proc() {
         runecross, rc_err := runic.cross_the_runes(
             file_paths[:],
             runestones[:],
+            to.extern.sources,
         )
         if rc_err != nil {
             fmt.eprintfln("failed to cross the runes: {}", rc_err)

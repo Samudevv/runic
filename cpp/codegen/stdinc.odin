@@ -22,6 +22,8 @@ import "core:fmt"
 import "core:math/rand"
 import "core:os"
 import "core:path/filepath"
+import "core:path/slashpath"
+import "core:slice"
 import "core:strings"
 import "root:runic"
 
@@ -366,5 +368,34 @@ make_directory_parents :: proc(path: string) -> os.Error {
     }
 
     return nil
+}
+
+system_includes_gen_extern :: proc(
+    rf_extern: []string,
+    stdinc_gen_dir: string,
+    allocator := context.allocator,
+) -> [dynamic]string {
+    arr := make(
+        [dynamic]string,
+        len = 0,
+        cap = len(rf_extern) + 1 + 1,
+        allocator = allocator,
+    )
+
+    append(&arr, ..rf_extern)
+    append(&arr, slashpath.join({stdinc_gen_dir, "*"}, allocator))
+
+    for file_path in SYSTEM_INCLUDE_FILES {
+        if idx := strings.index_rune(file_path, '/'); idx != -1 {
+            dir := file_path[:idx]
+
+            path := slashpath.join({stdinc_gen_dir, dir, "*"}, allocator)
+            if !slice.contains(arr[:], path) {
+                append(&arr, path)
+            }
+        }
+    }
+
+    return arr
 }
 

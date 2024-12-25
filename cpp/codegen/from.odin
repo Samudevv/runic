@@ -188,6 +188,17 @@ generate_runestone :: proc(
         plat,
     )
 
+    // Add stdinc gen dir to externs
+    extern := rf.extern
+    if add_extern, ok := stdinc_gen_dir.?; ok {
+        arr := system_includes_gen_extern(
+            rf.extern,
+            add_extern,
+            arena_alloc,
+        )
+        extern = arr[:]
+    }
+
     forward_decls := make([dynamic]string)
     data := ClientData {
         rs                = &rs,
@@ -197,7 +208,7 @@ generate_runestone :: proc(
         macros            = &macros,
         rune_file_name    = rune_file_name,
         load_all_includes = load_all_includes,
-        extern            = rf.extern,
+        extern            = extern[:],
         ctx               = new_clone(
             ClangToRunicTypeContext {
                 int_sizes = int_sizes_from_platform(plat),

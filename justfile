@@ -1,22 +1,21 @@
 set windows-shell := ['powershell.exe']
 
-YAML_STATIC := if os() == 'linux' {
-  'false'
-} else if os() == 'windows' {
-  'true'
-} else if os() == 'macos' {
-  if arch() == 'x86_64' {
-    'true'
-  } else {
-    'false'
-  }
+YAML_STATIC := if os() == 'macos' {
+    if arch() == 'aarch64' {
+        'false'
+    } else {
+        'true'
+    }
 } else {
-  'false'
-}
-YAML_STATIC_DEBUG := if os() == 'windows' {
-  'true'
-} else {
-  'false'
+    if os() == 'windows' {
+        if arch() == 'aarch64' {
+            'false'
+        } else {
+            'true'
+        }
+    } else {
+        'true'
+    }
 }
 
 EXTRA_LINKER_FLAGS := if os() == 'macos' {
@@ -35,7 +34,7 @@ ODIN_FLAGS := (
   '-collection:shared=shared ' +
   EXTRA_LINKER_FLAGS
 )
-ODIN_DEBUG_FLAGS := '-debug -define:YAML_STATIC=' + YAML_STATIC_DEBUG
+ODIN_DEBUG_FLAGS := '-debug -define:YAML_STATIC=' + YAML_STATIC
 ODIN_RELEASE_FLAGS := (
   '-o:speed ' +
   '-define:YAML_STATIC=' + YAML_STATIC

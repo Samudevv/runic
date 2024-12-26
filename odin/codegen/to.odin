@@ -69,10 +69,7 @@ generate_bindings :: proc(
 
         if len(unique_plats) == 0 do break write_build_tag
 
-        slice.sort_by(unique_plats[:], proc(i, j: runic.Platform) -> bool {
-            if i.os == j.os do return i.arch < j.arch
-            return i.os < j.os
-        })
+        slice.sort_by(unique_plats[:], runic.platform_less)
 
         for plat, plat_idx in unique_plats {
             if plat_idx == 0 {

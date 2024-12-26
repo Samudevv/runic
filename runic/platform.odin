@@ -343,11 +343,18 @@ minimize_platforms :: proc(
     }
 
     // 5. Sort the list
-    slice.sort_by(unique_plats[:], proc(i, j: Platform) -> bool {
-        if i.os == j.os do return i.arch < j.arch
-        return i.os < j.os
-    })
+    slice.sort_by(unique_plats[:], platform_less)
 
     return unique_plats
+}
+
+platform_less :: proc(i, j: Platform) -> bool {
+    if i.os == j.os do return i.arch < j.arch
+    return i.os < j.os
+}
+
+platform_greater :: proc(i, j: Platform) -> bool {
+    if i.os == j.os do return i.arch > j.arch
+    return i.os > j.os
 }
 

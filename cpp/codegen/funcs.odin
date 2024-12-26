@@ -1018,7 +1018,7 @@ generate_clang_flags :: proc(
         case .arm32:
             target_flag = "--target=arm-linux-gnu"
         case .Any:
-            target_flag = "--target=any-linux-gnu"
+            target_flag = "--target=unknown-linux-gnu"
         }
     case .Windows:
         switch plat.arch {
@@ -1031,7 +1031,7 @@ generate_clang_flags :: proc(
         case .arm32:
             target_flag = "--target=arm-windows-msvc"
         case .Any:
-            target_flag = "--target=any-windows-msvc"
+            target_flag = "--target=unknown-windows-msvc"
         }
     case .Macos:
         switch plat.arch {
@@ -1044,7 +1044,7 @@ generate_clang_flags :: proc(
         case .arm32:
             target_flag = "--target=arm-apple-darwin"
         case .Any:
-            target_flag = "--target=any-apple-darwin"
+            target_flag = "--target=unknown-apple-darwin"
         }
     case .BSD:
         switch plat.arch {
@@ -1057,25 +1057,25 @@ generate_clang_flags :: proc(
         case .arm32:
             target_flag = "--target=arm-unknown-freebsd"
         case .Any:
-            target_flag = "--target=any-unknown-freebsd"
+            target_flag = "--target=unknown-unknown-freebsd"
         }
     case .Any:
         switch plat.arch {
         case .x86_64:
-            target_flag = "--target=x86_64-any-none"
+            target_flag = "--target=x86_64-unknown-none"
         case .arm64:
-            target_flag = "--target=aarch64-any-none"
+            target_flag = "--target=aarch64-unknown-none"
         case .x86:
-            target_flag = "--target=i686-any-none"
+            target_flag = "--target=i686-unknown-none"
         case .arm32:
-            target_flag = "--target=arm-any-none"
+            target_flag = "--target=arm-unknown-none"
         case .Any:
-            target_flag = "--target=any-any-none"
+            target_flag = "--target=unknown-unknown-none"
         }
     }
 
     append(&clang_flags, target_flag)
-    if plat.arch == .arm32 {
+    if plat.arch == .arm32 && plat.os != .Windows {
         append(&clang_flags, "-mfloat-abi=soft")
     }
 

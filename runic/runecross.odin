@@ -83,7 +83,6 @@ cross_the_runes :: proc(
         return
     }
 
-
     origin := om.make(Platform, RunestoneWithFile)
     defer om.delete(origin)
 
@@ -299,31 +298,31 @@ cross_the_runes :: proc(
         //  Linux Any -> it needs to be part of all Linux runestones
         //  Any x86_64 -> it needs to be part of all x86_64 runestones
         for plat in stone.plats {
-            oses: [dynamic]OS
-            archs: [dynamic]Architecture
-            defer delete(oses)
-            defer delete(archs)
+            stone_oses: [dynamic]OS
+            stone_archs: [dynamic]Architecture
+            defer delete(stone_oses)
+            defer delete(stone_archs)
 
             if plat.os == .Any {
                 for os in OS_MIN ..= OS_MAX {
-                    append(&oses, os)
+                    append(&stone_oses, os)
                 }
             } else {
-                append(&oses, plat.os)
+                append(&stone_oses, plat.os)
             }
 
             if plat.arch == .Any {
                 for arch in Architecture_MIN ..= Architecture_MAX {
-                    append(&archs, arch)
+                    append(&stone_archs, arch)
                 }
             } else {
-                append(&archs, plat.arch)
+                append(&stone_archs, plat.arch)
             }
 
             // Look up every runestone of every platform
             // and add the externs of it
-            for os in oses {
-                for arch in archs {
+            for os in stone_oses {
+                for arch in stone_archs {
                     look_up_plat := Platform{os, arch}
                     if origin_stone, ok := om.get(origin, look_up_plat); ok {
                         origin_extern_loop: for entry in origin_stone.externs.data {

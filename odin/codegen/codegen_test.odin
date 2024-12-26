@@ -351,7 +351,7 @@ main :: proc() {}`
         append(
             &rc.cross,
             runic.PlatformRunestone {
-                plats = {rs.platform},
+                plats = {{}},
                 runestone = {file_path = abs_file_name, stone = rs},
             },
         )
@@ -360,6 +360,7 @@ main :: proc() {}`
             generate_bindings(
                 rc,
                 rn,
+                {{.Macos, .x86_64}},
                 os.stream_from_handle(file),
                 abs_file_name,
             ),
@@ -465,6 +466,7 @@ test_to_odin_extern :: proc(t: ^testing.T) {
         generate_bindings(
             rc,
             rt,
+            {runic.platform_from_host()},
             os.stream_from_handle(out_file),
             RUNESTONE_TEST_PATH,
         ),

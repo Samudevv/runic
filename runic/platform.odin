@@ -20,6 +20,7 @@ package runic
 import "base:runtime"
 import "core:fmt"
 import "core:path/filepath"
+import "core:slice"
 import "core:strings"
 
 Platform :: struct {
@@ -239,10 +240,114 @@ platform_file_name :: proc(
     return strings.to_string(bd)
 }
 
-platform_matches :: #force_inline proc(p1, p2: Platform, ignore_arch := false) -> bool {
+platform_matches :: #force_inline proc(
+    p1, p2: Platform,
+    ignore_arch := false,
+) -> bool {
     return(
         (p1.os == .Any || p2.os == .Any || p1.os == p2.os) &&
-        (ignore_arch || p1.arch == .Any || p2.arch == .Any || p1.arch == p2.arch) \
+        (ignore_arch ||
+                p1.arch == .Any ||
+                p2.arch == .Any ||
+                p1.arch == p2.arch) \
     )
+}
+
+minimize_platforms :: proc(
+    rune_platforms: []Platform,
+    stone_plats: []Platform,
+    ignore_arch: bool,
+    allocator := context.allocator,
+) -> [dynamic]Platform {
+    unique_plats := make(
+        [dynamic]Platform,
+        len = 0,
+        cap = len(stone_plats),
+        allocator = allocator,
+    )
+    any_plats := make([dynamic]Platform, len = 0, cap = len(stone_plats))
+    oses := make([dynamic]OS, len = 0, cap = len(rune_platforms))
+    arches := make([dynamic]Architecture, len = 0, cap = len(rune_platforms))
+    defer delete(any_plats)
+    defer delete(oses)
+    defer delete(arches)
+
+    // Try to minimize the number of platform entries
+
+    // 1. Count how many oses and arches we have specified in the rune.platforms
+    for p in rune_platforms {
+        if !slice.contains(oses[:], p.os) do append(&oses, p.os)
+        if !slice.contains(arches[:], p.arch) do append(&arches, p.arch)
+    }
+
+    append(&unique_plats, ..stone_plats)
+
+    // 2. Construct a list of all platforms where all oses or arches are present
+    for p, idx in unique_plats {
+        if p.os == .Any || p.arch == .Any {
+            if !slice.contains(any_plats[:], p) {
+                append(&any_plats, p)
+            }
+            continue
+        }
+
+        p_oses := make([dynamic]OS, len = 1, cap = len(oses))
+        p_arches := make([dynamic]Architecture, len = 1, cap = len(arches))
+        defer delete(p_oses)
+        defer delete(p_arches)
+
+        p_oses[0] = p.os
+        p_arches[0] = p.arch
+
+        // Count how often the os or arch appears
+        for b, idy in unique_plats {
+            if idx == idy do continue
+
+            if b.os == p.os {
+                if !slice.contains(p_arches[:], b.arch) {
+                    append(&p_arches, b.arch)
+                }
+            }
+            if b.arch == p.arch {
+                if !slice.contains(p_oses[:], b.os) {
+                    append(&p_oses, b.os)
+                }
+            }
+        }
+
+        // If the count is as high as the total count add the plat to the list
+        if len(p_oses) == len(oses) || len(p_arches) == len(arches) {
+            any_plat := Platform {
+                .Any if len(p_oses) == len(oses) else p.os,
+                .Any if len(p_arches) == len(arches) else p.arch,
+            }
+            if !slice.contains(any_plats[:], any_plat) {
+                append(&any_plats, any_plat)
+            }
+        }
+    }
+
+    // 3. Remove all platforms that are covered by the any plats
+    for any_plat in any_plats {
+        for idx := 0; idx < len(unique_plats); idx += 1 {
+            if platform_matches(unique_plats[idx], any_plat) {
+                ordered_remove(&unique_plats, idx)
+                idx -= 1
+            }
+        }
+    }
+
+    // 4. Add the any plats to the list
+    for any_plat in any_plats {
+        append(&unique_plats, any_plat)
+    }
+
+    // 5. Sort the list
+    slice.sort_by(unique_plats[:], proc(i, j: Platform) -> bool {
+        if i.os == j.os do return i.arch < j.arch
+        return i.os < j.os
+    })
+
+    return unique_plats
 }
 

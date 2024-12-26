@@ -337,6 +337,7 @@ main :: proc() {
                 odincdg.generate_bindings(
                     runecross,
                     to,
+                    rune.platforms,
                     os.stream_from_handle(out_file),
                     out_file_name,
                 ),

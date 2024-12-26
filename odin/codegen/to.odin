@@ -36,6 +36,7 @@ AddLibs :: struct {
 generate_bindings :: proc(
     rc: runic.Runecross,
     rn: runic.To,
+    platforms: []runic.Platform,
     wd: io.Writer,
     file_path: string,
 ) -> union {
@@ -52,25 +53,26 @@ generate_bindings :: proc(
         unique_plats := make(
             [dynamic]runic.Platform,
             len = 0,
-            cap = len(rc.cross),
+            cap = len(platforms),
         )
         defer delete(unique_plats)
 
-        for entry in rc.cross {
-            for plat in entry.plats {
-                tag_plat := plat
-                if rn.ignore_arch {
-                    tag_plat.arch = .Any
-                }
-                if tag_plat.os != .Any || tag_plat.arch != .Any {
-                    if !slice.contains(unique_plats[:], tag_plat) {
-                        append(&unique_plats, tag_plat)
-                    }
-                }
+        for plat in platforms {
+            tag_plat := plat
+            if rn.ignore_arch {
+                tag_plat.arch = .Any
+            }
+            if !slice.contains(unique_plats[:], tag_plat) {
+                append(&unique_plats, tag_plat)
             }
         }
 
         if len(unique_plats) == 0 do break write_build_tag
+
+        slice.sort_by(unique_plats[:], proc(i, j: runic.Platform) -> bool {
+            if i.os == j.os do return i.arch < j.arch
+            return i.os < j.os
+        })
 
         for plat, plat_idx in unique_plats {
             if plat_idx == 0 {
@@ -206,7 +208,12 @@ generate_bindings :: proc(
             if rn.use_when_else && idx == len(rc.cross) - 1 && write_when {
                 io.write_string(wd, "{\n\n") or_return
             } else {
-                write_when = when_plats(wd, plats, rn.ignore_arch) or_return
+                write_when = when_plats(
+                    wd,
+                    platforms,
+                    plats,
+                    rn.ignore_arch,
+                ) or_return
             }
         }
 
@@ -342,7 +349,7 @@ generate_bindings_from_runestone :: proc(
 
     is_also_macos :=
         slice.count_proc(rs.plats, proc(plat: runic.Platform) -> bool {
-            return plat.os == .Macos
+            return plat.os == .Macos || plat.os == .Any
         }) != 0
 
     if rs.lib.shared != nil || rs.lib.static != nil {
@@ -367,7 +374,7 @@ generate_bindings_from_runestone :: proc(
                 is_also_macos &&
                 !filepath.is_abs(static) &&
                 strings.has_prefix(static, "lib") &&
-                strings.has_suffix(static, ".a")
+                strings.has_suffix(static, ".a") // TODO: Also ask wether the add_libs are static system libs
 
             if macos_system_static_fix {
                 io.write_string(
@@ -1199,6 +1206,7 @@ plat_if_expr :: proc(
 
 when_plats :: proc(
     wd: io.Writer,
+    rune_platforms: []runic.Platform,
     plats: []runic.Platform,
     ignore_arch: bool,
 ) -> (
@@ -1209,9 +1217,16 @@ when_plats :: proc(
         return false, .None
     }
 
+    unique_plats := runic.minimize_platforms(
+        rune_platforms,
+        plats,
+        ignore_arch,
+    )
+    defer delete(unique_plats)
+
     b: strings.Builder
 
-    for p in plats {
+    for p in unique_plats {
         if if_expr, ok := plat_if_expr(p, ignore_arch).?; ok {
             if strings.builder_len(b) != 0 {
                 strings.write_string(&b, " || ")

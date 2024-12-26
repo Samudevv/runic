@@ -385,13 +385,13 @@ cross_the_runes :: proc(
         }
     }
 
+    for &cross in rc.cross {
+        slice.sort_by(cross.plats, platform_less)
+    }
+
     slice.sort_by(rc.cross[:], proc(i, j: PlatformRunestone) -> bool {
-        return(
-            (len(i.plats) == 1 &&
-                i.plats[0].os == .Any &&
-                i.plats[0].arch == .Any) ||
-            (len(i.plats) < len(j.plats)) \
-        )
+        if len(i.plats) == len(j.plats) do return platform_less(i.plats[0], j.plats[0])
+        return len(i.plats) < len(j.plats)
     })
 
     return

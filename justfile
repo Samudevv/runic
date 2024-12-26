@@ -114,7 +114,7 @@ package ARCH=arch(): release (make-directory BUILD_DIR / 'package')
     cp icon.png "{{ BUILD_DIR / 'runic.AppDir' / 'runic-icon.png' }}"
 
     printf '[Desktop Entry]\nType=Application\nName=runic\nIcon=runic-icon\nExec=/usr/bin/runic\nTerminal=true\nCategories=Utility' > "{{ BUILD_DIR / 'runic.AppDir' / 'runic.desktop' }}"
-    printf '#! /bin/sh\nset -ex\nHERE=$(dirname $(readlink -f $0))\nEXEC=$HERE/usr/bin/runic\nexport LD_LIBRARY_PATH=$HERE/usr/lib/:$LD_LIBRARY_PATH\nldd $EXEC\nexec $EXEC $@' > "{{ BUILD_DIR / 'runic.AppDir' / 'AppRun' }}"
+    printf '#! /bin/sh\nHERE=$(dirname $(readlink -f $0))\nEXEC=$HERE/usr/bin/runic\nexport LD_LIBRARY_PATH=$HERE/usr/lib/:$LD_LIBRARY_PATH\nexec $EXEC $@' > "{{ BUILD_DIR / 'runic.AppDir' / 'AppRun' }}"
     chmod o+x "{{ BUILD_DIR / 'runic.AppDir' / 'AppRun' }}"
 
     cp {{ shell("ldd build/runic | grep -v 'linux-vdso\\.\\|libm\\.\\|libc\\.\\|ld-linux-.*\\.' | cut -d' ' -f3 | xargs") }} "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"

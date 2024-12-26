@@ -40,7 +40,7 @@ ODIN_RELEASE_FLAGS := (
   '-define:YAML_STATIC=' + YAML_STATIC
 )
 
-BUILD_DIR := 'build'
+BUILD_DIR := justfile_dir() / 'build'
 EXE_EXT := if os_family() == 'unix' {''} else {'.exe'}
 
 default: release
@@ -97,6 +97,44 @@ check PACKAGE='.' TARGET='' ODIN_JOBS=num_cpus():
 
 example EXAMPLE: debug
   @just --justfile "{{ 'examples' / EXAMPLE / 'justfile' }}" example
+
+APPIMAGETOOL_INSTALL_DIR := home_dir() / '.local' / 'bin'
+[linux]
+install-appimagetool DIR=APPIMAGETOOL_INSTALL_DIR: (make-directory DIR)
+    curl -SL 'https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-'{{ arch() }}'.AppImage' --output "{{ DIR / 'appimagetool' }}"
+    chmod ugo+x "{{ DIR / 'appimagetool' }}"
+
+[linux]
+package ARCH=arch(): release (make-directory BUILD_DIR / 'package')
+    mkdir -p "{{ BUILD_DIR / 'runic.AppDir'}}"
+    mkdir -p "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'bin' }}"
+    mkdir -p "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+
+    cp "{{ BUILD_DIR / 'runic' }}" "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'bin' }}"
+    cp /usr/share/icons/AdwaitaLegacy/48x48/mimetypes/application-x-executable.png "{{ BUILD_DIR / 'runic.AppDir' }}"
+
+    printf '[Desktop Entry]\nType=Application\nName=runic\nIcon=application-x-executable\nExec=/usr/bin/runic\nTerminal=true\nCategories=Utility' > "{{ BUILD_DIR / 'runic.AppDir' / 'runic.desktop' }}"
+    printf '#! /bin/sh\nset -ex\nHERE=$(dirname $(readlink -f $0))\nEXEC=$HERE/usr/bin/runic\nexport LD_LIBRARY_PATH=$HERE/usr/lib/:$LD_LIBRARY_PATH\nldd $EXEC\nexec $EXEC $@' > "{{ BUILD_DIR / 'runic.AppDir' / 'AppRun' }}"
+    chmod o+x "{{ BUILD_DIR / 'runic.AppDir' / 'AppRun' }}"
+
+    cp $(ldd "{{ BUILD_DIR / 'runic' }}" | grep libclang | cut -d' ' -f3 | xargs) "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+    cp $(ldd "{{ BUILD_DIR / 'runic' }}" | grep libLLVM | cut -d' ' -f3 | xargs) "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+    cp $(ldd "{{ BUILD_DIR / 'runic' }}" | grep libffi | cut -d' ' -f3 | xargs) "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+    cp $(ldd "{{ BUILD_DIR / 'runic' }}" | grep libedit | cut -d' ' -f3 | xargs) "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+    cp $(ldd "{{ BUILD_DIR / 'runic' }}" | grep 'libz\.' | cut -d' ' -f3 | xargs) "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+    cp $(ldd "{{ BUILD_DIR / 'runic' }}" | grep 'libzstd' | cut -d' ' -f3 | xargs) "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+    cp $(ldd "{{ BUILD_DIR / 'runic' }}" | grep 'libncursesw' | cut -d' ' -f3 | xargs) "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+    cp $(ldd "{{ BUILD_DIR / 'runic' }}" | grep 'libxml2' | cut -d' ' -f3 | xargs) "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+    cp $(ldd "{{ BUILD_DIR / 'runic' }}" | grep 'liblzma' | cut -d' ' -f3 | xargs) "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+    cp $(ldd "{{ BUILD_DIR / 'runic' }}" | grep 'libicuuc' | cut -d' ' -f3 | xargs) "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+    cp $(ldd "{{ BUILD_DIR / 'runic' }}" | grep 'libicudata' | cut -d' ' -f3 | xargs) "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+    cp $(ldd "{{ BUILD_DIR / 'runic' }}" | grep 'libstdc++' | cut -d' ' -f3 | xargs) "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+    cp $(ldd "{{ BUILD_DIR / 'runic' }}" | grep 'libgcc_s' | cut -d' ' -f3 | xargs) "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
+
+    cd "{{ BUILD_DIR / 'package' }}" && ARCH={{ ARCH }} appimagetool "{{ BUILD_DIR / 'runic.AppDir' }}"
+    chmod ugo+x "{{ BUILD_DIR / 'package' / 'runic-' + ARCH + '.AppImage' }}"
+
+    rm -r "{{ BUILD_DIR / 'runic.AppDir' }}"
 
 ARCH := if arch() == 'aarch64' { 'arm64' } else { arch() }
 [windows]

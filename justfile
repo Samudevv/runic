@@ -111,9 +111,9 @@ package ARCH=arch(): release (make-directory BUILD_DIR / 'package')
     mkdir -p "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
 
     cp "{{ BUILD_DIR / 'runic' }}" "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'bin' }}"
-    cp /usr/share/icons/AdwaitaLegacy/48x48/mimetypes/application-x-executable.png "{{ BUILD_DIR / 'runic.AppDir' }}"
+    cp icon.png "{{ BUILD_DIR / 'runic.AppDir' / 'runic-icon.png' }}"
 
-    printf '[Desktop Entry]\nType=Application\nName=runic\nIcon=application-x-executable\nExec=/usr/bin/runic\nTerminal=true\nCategories=Utility' > "{{ BUILD_DIR / 'runic.AppDir' / 'runic.desktop' }}"
+    printf '[Desktop Entry]\nType=Application\nName=runic\nIcon=runic-icon\nExec=/usr/bin/runic\nTerminal=true\nCategories=Utility' > "{{ BUILD_DIR / 'runic.AppDir' / 'runic.desktop' }}"
     printf '#! /bin/sh\nset -ex\nHERE=$(dirname $(readlink -f $0))\nEXEC=$HERE/usr/bin/runic\nexport LD_LIBRARY_PATH=$HERE/usr/lib/:$LD_LIBRARY_PATH\nldd $EXEC\nexec $EXEC $@' > "{{ BUILD_DIR / 'runic.AppDir' / 'AppRun' }}"
     chmod o+x "{{ BUILD_DIR / 'runic.AppDir' / 'AppRun' }}"
 

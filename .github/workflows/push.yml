@@ -53,19 +53,34 @@ jobs:
 
       - name: Build runic release
         run: just
-        if: matrix.os != 'windows-latest'
+        if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
+      - name: Build runic AppImage
+        run: |
+          mkdir appimagetool_bin/
+          just install-appimagetool appimagetool_bin/
+          export PATH=$(pwd)/appimagetool_bin/:$PATH
+          just package
+        if: matrix.os == 'ubuntu-24.04'
       - name: Build runic release
         run: just package
         if: matrix.os == 'windows-latest'
       - name: Rename runic artifact
         run: mv build/runic build/runic.${{ env.plat }}
-        if: matrix.os != 'windows-latest'
+        if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
 
       - uses: actions/upload-artifact@v4
-        if: matrix.os != 'windows-latest'
+        if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
         with:
           name: runic-${{ env.plat }}
           path: ${{ github.workspace }}/build/runic.${{ env.plat }}
+          if-no-files-found: warn
+          overwrite: true
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-24.04'
+        with:
+          name: runic-${{ env.plat }}
+          path: ${{ github.workspace }}/build/package/*
           if-no-files-found: warn
           overwrite: true
           compression-level: 0

@@ -24,6 +24,7 @@ import "core:path/filepath"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
+import "core:unicode"
 import ctz "root:c/tokenizer"
 import "root:errors"
 import "root:ini"
@@ -1486,7 +1487,7 @@ to_preprocess_runestone :: proc(
 
                 if to.trim_prefix.enum_type_name {
                     type := &rs.types.data[idx].value
-                    trim_enum_type_names(type, processed)
+                    trim_enum_type_names(type, processed, rs_arena_alloc)
                 }
             }
         }
@@ -1517,7 +1518,7 @@ to_preprocess_runestone :: proc(
 
                     if to.trim_prefix.enum_type_name {
                         type := &rs.externs.data[idx].value.type
-                        trim_enum_type_names(type, processed)
+                        trim_enum_type_names(type, processed, rs_arena_alloc)
                     }
                 }
             }
@@ -1929,7 +1930,11 @@ identifier_overlaps_extern :: #force_inline proc(
 }
 
 @(private)
-trim_enum_type_names :: proc(type: ^Type, type_name: string) {
+trim_enum_type_names :: proc(
+    type: ^Type,
+    type_name: string,
+    allocator := context.allocator,
+) {
     #partial switch &em in type.spec {
     case Enum:
         snake_case_name := strings.to_screaming_snake_case(type_name)
@@ -1938,19 +1943,48 @@ trim_enum_type_names :: proc(type: ^Type, type_name: string) {
         for &entry in em.entries {
             // BONUS TODO: detect specific case of entry name
             if type_name != snake_case_name {
-                if strings.has_prefix(entry.name, type_name) {
+                if len(entry.name) > len(type_name) &&
+                   strings.has_prefix(entry.name, type_name) {
                     entry.name = entry.name[len(type_name):]
-                    if entry.name[0] == '_' {
+                    if entry.name[0] == '_' && len(entry.name) != 1 {
                         entry.name = entry.name[1:]
                     }
+
+                    first_rune: rune
+                    for r in entry.name {
+                        first_rune = r
+                        break
+                    }
+
+                    if unicode.is_number(first_rune) {
+                        entry.name = strings.concatenate(
+                            {"_", entry.name},
+                            allocator,
+                        )
+                    }
+
                     continue
                 }
             }
 
-            if strings.has_prefix(entry.name, snake_case_name) {
+            if len(entry.name) > len(snake_case_name) &&
+               strings.has_prefix(entry.name, snake_case_name) {
                 entry.name = entry.name[len(snake_case_name):]
                 if entry.name[0] == '_' {
                     entry.name = entry.name[1:]
+                }
+
+                first_rune: rune
+                for r in entry.name {
+                    first_rune = r
+                    break
+                }
+
+                if unicode.is_number(first_rune) {
+                    entry.name = strings.concatenate(
+                        {"_", entry.name},
+                        allocator,
+                    )
                 }
             }
         }

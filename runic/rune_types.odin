@@ -64,7 +64,7 @@ To :: struct {
     // General
     static_switch:   string,
     out:             string,
-    trim_prefix:     TrimSet,
+    trim_prefix:     TrimPrefix,
     trim_suffix:     TrimSet,
     add_prefix:      AddSet,
     add_suffix:      AddSet,
@@ -100,6 +100,11 @@ TrimSet :: struct {
     variables: []string,
     types:     []string,
     constants: []string,
+}
+
+TrimPrefix :: struct {
+    using trim_set: TrimSet,
+    enum_type_name: bool,
 }
 
 AddSet :: struct {

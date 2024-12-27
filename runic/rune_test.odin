@@ -166,6 +166,8 @@ test_rune :: proc(t: ^testing.T) {
     to := rn.to.(To)
     expect_value(t, to.static_switch, "FOO_STATIC")
 
+    expect_value(t, to.trim_prefix.enum_type_name, true)
+
     extern := to.extern
     expect_value(t, extern.trim_prefix, true)
     expect_value(t, extern.trim_suffix, false)

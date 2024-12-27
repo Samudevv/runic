@@ -1404,6 +1404,65 @@ to_preprocess_runestone :: proc(
     defer delete(new_type_names)
     defer delete(new_extern_names)
 
+    if to_needs_to_process_constant_names(to) {
+        constant_entries, ce_alloc_err := slice.map_entries(
+            rs.constants.indices,
+        )
+        if ce_alloc_err == .None {
+            defer delete(constant_entries)
+
+            for entry in constant_entries {
+                name, idx := entry.key, entry.value
+
+                processed := process_constant_name(
+                    name,
+                    to,
+                    reserved = reserved_keywords,
+                    allocator = rs_arena_alloc,
+                )
+
+                delete_key(&rs.constants.indices, name)
+                rs.constants.indices[processed] = idx
+                rs.constants.data[idx].key = processed
+            }
+        }
+
+
+        for &entry in rs.types.data {
+            type := &entry.value
+
+            #partial switch &emum in type.spec {
+            case Enum:
+                for &enum_entry in emum.entries {
+                    enum_entry.name = process_constant_name(
+                        enum_entry.name,
+                        to,
+                        reserved = reserved_keywords,
+                        allocator = rs_arena_alloc,
+                    )
+                }
+            }
+        }
+
+        if to_needs_to_process_extern_enum_entry_names(to) {
+            for &entry in rs.externs.data {
+                type := &entry.value
+
+                #partial switch &emum in type.spec {
+                case Enum:
+                    for &enum_entry in emum.entries {
+                        enum_entry.name = process_constant_name(
+                            enum_entry.name,
+                            to,
+                            reserved = reserved_keywords,
+                            allocator = rs_arena_alloc,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     if to_needs_to_process_type_names(to) {
         type_entries, te_alloc_err := slice.map_entries(rs.types.indices)
         if te_alloc_err == .None {
@@ -1424,6 +1483,11 @@ to_preprocess_runestone :: proc(
                 rs.types.data[idx].key = processed
 
                 new_type_names[name] = processed
+
+                if to.trim_prefix.enum_type_name {
+                    type := &rs.types.data[idx].value
+                    trim_enum_type_names(type, processed)
+                }
             }
         }
 
@@ -1450,6 +1514,11 @@ to_preprocess_runestone :: proc(
                     rs.externs.data[idx].key = processed
 
                     new_extern_names[name] = processed
+
+                    if to.trim_prefix.enum_type_name {
+                        type := &rs.externs.data[idx].value.type
+                        trim_enum_type_names(type, processed)
+                    }
                 }
             }
         }
@@ -1514,65 +1583,6 @@ to_preprocess_runestone :: proc(
 
                 if sym.remap == nil {
                     sym.remap = name
-                }
-            }
-        }
-    }
-
-    if to_needs_to_process_constant_names(to) {
-        constant_entries, ce_alloc_err := slice.map_entries(
-            rs.constants.indices,
-        )
-        if ce_alloc_err == .None {
-            defer delete(constant_entries)
-
-            for entry in constant_entries {
-                name, idx := entry.key, entry.value
-
-                processed := process_constant_name(
-                    name,
-                    to,
-                    reserved = reserved_keywords,
-                    allocator = rs_arena_alloc,
-                )
-
-                delete_key(&rs.constants.indices, name)
-                rs.constants.indices[processed] = idx
-                rs.constants.data[idx].key = processed
-            }
-        }
-
-
-        for &entry in rs.types.data {
-            type := &entry.value
-
-            #partial switch &emum in type.spec {
-            case Enum:
-                for &enum_entry in emum.entries {
-                    enum_entry.name = process_constant_name(
-                        enum_entry.name,
-                        to,
-                        reserved = reserved_keywords,
-                        allocator = rs_arena_alloc,
-                    )
-                }
-            }
-        }
-
-        if to_needs_to_process_extern_enum_entry_names(to) {
-            for &entry in rs.externs.data {
-                type := &entry.value
-
-                #partial switch &emum in type.spec {
-                case Enum:
-                    for &enum_entry in emum.entries {
-                        enum_entry.name = process_constant_name(
-                            enum_entry.name,
-                            to,
-                            reserved = reserved_keywords,
-                            allocator = rs_arena_alloc,
-                        )
-                    }
                 }
             }
         }
@@ -1916,5 +1926,34 @@ identifier_overlaps_extern :: #force_inline proc(
 ) -> bool {
     extern, ok := om.get(externs, ident)
     return ok && !(extern.source in to.extern.sources)
+}
+
+@(private)
+trim_enum_type_names :: proc(type: ^Type, type_name: string) {
+    #partial switch &em in type.spec {
+    case Enum:
+        snake_case_name := strings.to_screaming_snake_case(type_name)
+        defer delete(snake_case_name)
+
+        for &entry in em.entries {
+            // BONUS TODO: detect specific case of entry name
+            if type_name != snake_case_name {
+                if strings.has_prefix(entry.name, type_name) {
+                    entry.name = entry.name[len(type_name):]
+                    if entry.name[0] == '_' {
+                        entry.name = entry.name[1:]
+                    }
+                    continue
+                }
+            }
+
+            if strings.has_prefix(entry.name, snake_case_name) {
+                entry.name = entry.name[len(snake_case_name):]
+                if entry.name[0] == '_' {
+                    entry.name = entry.name[1:]
+                }
+            }
+        }
+    }
 }
 

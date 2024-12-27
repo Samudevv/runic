@@ -68,6 +68,7 @@ to:
     functions: foo_
     variables: bar_
     types: [baz_, SDL_]
+    enum_type_name: true
   trim_suffix:
     types: _t
   extern:

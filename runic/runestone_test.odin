@@ -335,3 +335,78 @@ test_cyclic_dependency :: proc(t: ^testing.T) {
     expect(t, references_type_as_pointer_or_array(array_type, "arrayed"))
 }
 
+@(test)
+test_trim_enum_type_names :: proc(t: ^testing.T) {
+    using testing
+
+    {
+        type_name :: "SlidingDirection"
+        type := Type {
+            spec = Enum {
+                type = .SInt32,
+                entries = {
+                    {"SLIDING_DIRECTION_UP", 0},
+                    {"SLIDING_DIRECTION_DOWN", 1},
+                    {"SLIDING_DIRECTION_LEFT", 2},
+                    {"SLIDING_DIRECTION_RIGHT", 3},
+                },
+            },
+        }
+        defer delete(type.spec.(Enum).entries)
+
+        trim_enum_type_names(&type, type_name)
+
+        e := type.spec.(Enum)
+        expect_value(t, e.entries[0].name, "UP")
+        expect_value(t, e.entries[1].name, "DOWN")
+        expect_value(t, e.entries[2].name, "LEFT")
+        expect_value(t, e.entries[3].name, "RIGHT")
+    }
+    {
+        type_name :: "SlidingDirection"
+        type := Type {
+            spec = Enum {
+                type = .SInt32,
+                entries = {
+                    {"SlidingDirectionUp", 0},
+                    {"SlidingDirectionDown", 1},
+                    {"SlidingDirectionLeft", 2},
+                    {"SlidingDirectionRight", 3},
+                },
+            },
+        }
+        defer delete(type.spec.(Enum).entries)
+
+        trim_enum_type_names(&type, type_name)
+
+        e := type.spec.(Enum)
+        expect_value(t, e.entries[0].name, "Up")
+        expect_value(t, e.entries[1].name, "Down")
+        expect_value(t, e.entries[2].name, "Left")
+        expect_value(t, e.entries[3].name, "Right")
+    }
+    {
+        type_name :: "sliding_direction"
+        type := Type {
+            spec = Enum {
+                type = .SInt32,
+                entries = {
+                    {"sliding_direction_up", 0},
+                    {"sliding_direction_down", 1},
+                    {"sliding_direction_left", 2},
+                    {"sliding_direction_right", 3},
+                },
+            },
+        }
+        defer delete(type.spec.(Enum).entries)
+
+        trim_enum_type_names(&type, type_name)
+
+        e := type.spec.(Enum)
+        expect_value(t, e.entries[0].name, "up")
+        expect_value(t, e.entries[1].name, "down")
+        expect_value(t, e.entries[2].name, "left")
+        expect_value(t, e.entries[3].name, "right")
+    }
+}
+

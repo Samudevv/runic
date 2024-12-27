@@ -303,7 +303,10 @@ main :: proc() {}`
     rn := runic.To {
         language = "odin",
         package_name = "foo-pkg",
-        trim_prefix = runic.TrimSet{{"foo_"}, {"foo_"}, {"foo_"}, {""}},
+        trim_prefix = runic.TrimPrefix {
+            {{"foo_"}, {"foo_"}, {"foo_"}, {""}},
+            false,
+        },
         trim_suffix = runic.TrimSet{functions = {"_func"}, types = {"_t"}},
         add_prefix = runic.AddSet{"odin_", "odin_", "odin_", ""},
         add_suffix = runic.AddSet{"_bindings", "_bindings", "_bindings", ""},

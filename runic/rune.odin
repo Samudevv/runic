@@ -1886,7 +1886,7 @@ parse_rune :: proc(
                                     append(&functions_arr, f_seq)
                                 case:
                                     err = errors.message(
-                                        "\"from.trim_prefix.functions\"[{}] has invalid type %T",
+                                        "\"to.trim_prefix.functions\"[{}] has invalid type %T",
                                         idx,
                                         f_seq,
                                     )
@@ -1895,7 +1895,7 @@ parse_rune :: proc(
                             }
                         case:
                             err = errors.message(
-                                "\"from.trim_prefix.functions\" has invald type %T",
+                                "\"to.trim_prefix.functions\" has invald type %T",
                                 f,
                             )
                             return
@@ -1913,7 +1913,7 @@ parse_rune :: proc(
                                     append(&variables_arr, v_seq)
                                 case:
                                     err = errors.message(
-                                        "\"from.trim_prefix.variables\"[{}] has invalid type %T",
+                                        "\"to.trim_prefix.variables\"[{}] has invalid type %T",
                                         idx,
                                         v_seq,
                                     )
@@ -1922,7 +1922,7 @@ parse_rune :: proc(
                             }
                         case:
                             err = errors.message(
-                                "\"from.trim_prefix.variables\" has invald type %T",
+                                "\"to.trim_prefix.variables\" has invald type %T",
                                 var,
                             )
                             return
@@ -1940,7 +1940,7 @@ parse_rune :: proc(
                                     append(&types_arr, t_seq)
                                 case:
                                     err = errors.message(
-                                        "\"from.trim_prefix.types\"[{}] has invalid type %T",
+                                        "\"to.trim_prefix.types\"[{}] has invalid type %T",
                                         idx,
                                         t_seq,
                                     )
@@ -1949,7 +1949,7 @@ parse_rune :: proc(
                             }
                         case:
                             err = errors.message(
-                                "\"from.trim_prefix.types\" has invald type %T",
+                                "\"to.trim_prefix.types\" has invald type %T",
                                 t,
                             )
                             return
@@ -1967,7 +1967,7 @@ parse_rune :: proc(
                                     append(&constants_arr, c_seq)
                                 case:
                                     err = errors.message(
-                                        "\"from.trim_prefix.constants\"[{}] has invalid type %T",
+                                        "\"to.trim_prefix.constants\"[{}] has invalid type %T",
                                         idx,
                                         c_seq,
                                     )
@@ -1976,7 +1976,20 @@ parse_rune :: proc(
                             }
                         case:
                             err = errors.message(
-                                "\"from.trim_prefix.constants\" has invald type %T",
+                                "\"to.trim_prefix.constants\" has invald type %T",
+                                t,
+                            )
+                            return
+                        }
+                    }
+
+                    if "enum_type_name" in trim_prefix {
+                        #partial switch etn in trim_prefix["enum_type_name"] {
+                        case bool:
+                            t.trim_prefix.enum_type_name = etn
+                        case:
+                            err = errors.message(
+                                "\"to.trim_prefix.enum_type_name\" has invalid type %T",
                                 t,
                             )
                             return
@@ -2054,7 +2067,7 @@ parse_rune :: proc(
                                     append(&functions_arr, f_seq)
                                 case:
                                     err = errors.message(
-                                        "\"from.trim_suffix.functions\"[{}] has invalid type %T",
+                                        "\"to.trim_suffix.functions\"[{}] has invalid type %T",
                                         idx,
                                         f_seq,
                                     )
@@ -2063,7 +2076,7 @@ parse_rune :: proc(
                             }
                         case:
                             err = errors.message(
-                                "\"from.trim_suffix.functions\" has invald type %T",
+                                "\"to.trim_suffix.functions\" has invald type %T",
                                 f,
                             )
                             return
@@ -2081,7 +2094,7 @@ parse_rune :: proc(
                                     append(&variables_arr, v_seq)
                                 case:
                                     err = errors.message(
-                                        "\"from.trim_suffix.variables\"[{}] has invalid type %T",
+                                        "\"to.trim_suffix.variables\"[{}] has invalid type %T",
                                         idx,
                                         v_seq,
                                     )
@@ -2090,7 +2103,7 @@ parse_rune :: proc(
                             }
                         case:
                             err = errors.message(
-                                "\"from.trim_suffix.variables\" has invald type %T",
+                                "\"to.trim_suffix.variables\" has invald type %T",
                                 var,
                             )
                             return
@@ -2108,7 +2121,7 @@ parse_rune :: proc(
                                     append(&types_arr, t_seq)
                                 case:
                                     err = errors.message(
-                                        "\"from.trim_suffix.types\"[{}] has invalid type %T",
+                                        "\"to.trim_suffix.types\"[{}] has invalid type %T",
                                         idx,
                                         t_seq,
                                     )
@@ -2117,7 +2130,7 @@ parse_rune :: proc(
                             }
                         case:
                             err = errors.message(
-                                "\"from.trim_suffix.types\" has invald type %T",
+                                "\"to.trim_suffix.types\" has invald type %T",
                                 t,
                             )
                             return
@@ -2135,7 +2148,7 @@ parse_rune :: proc(
                                     append(&constants_arr, c_seq)
                                 case:
                                     err = errors.message(
-                                        "\"from.trim_suffix.constants\"[{}] has invalid type %T",
+                                        "\"to.trim_suffix.constants\"[{}] has invalid type %T",
                                         idx,
                                         c_seq,
                                     )
@@ -2144,7 +2157,7 @@ parse_rune :: proc(
                             }
                         case:
                             err = errors.message(
-                                "\"from.trim_suffix.constants\" has invald type %T",
+                                "\"to.trim_suffix.constants\" has invald type %T",
                                 t,
                             )
                             return
@@ -3389,14 +3402,17 @@ to_needs_to_process_type_names :: #force_inline proc(to: To) -> bool {
         len(to.trim_prefix.types) != 0 ||
         len(to.trim_suffix.types) != 0 ||
         len(to.add_prefix.types) != 0 ||
-        len(to.add_suffix.types) != 0 \
+        len(to.add_suffix.types) != 0 ||
+        to.trim_prefix.enum_type_name \
     )
 }
 
 @(private)
 to_needs_to_process_extern_names :: #force_inline proc(to: To) -> bool {
     return(
-        (to.extern.trim_prefix && len(to.trim_prefix.types) != 0) ||
+        (to.extern.trim_prefix &&
+            (len(to.trim_prefix.types) != 0 ||
+                    to.trim_prefix.enum_type_name)) ||
         (to.extern.trim_suffix && len(to.trim_suffix.types) != 0) ||
         (to.extern.add_prefix && len(to.add_prefix.types) != 0) ||
         (to.extern.add_suffix && len(to.add_suffix.types) != 0) \
@@ -3408,7 +3424,9 @@ to_needs_to_process_extern_enum_entry_names :: #force_inline proc(
     to: To,
 ) -> bool {
     return(
-        (to.extern.trim_prefix && len(to.trim_prefix.constants) != 0) ||
+        (to.extern.trim_prefix &&
+            (len(to.trim_prefix.constants) != 0 ||
+                    to.trim_prefix.enum_type_name)) ||
         (to.extern.trim_suffix && len(to.trim_suffix.constants) != 0) ||
         (to.extern.add_prefix && len(to.add_prefix.constants) != 0) ||
         (to.extern.add_suffix && len(to.add_suffix.constants) != 0) \

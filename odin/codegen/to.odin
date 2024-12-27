@@ -765,60 +765,82 @@ write_type :: proc(
     case runic.Builtin:
         write_builtin_type(wd, spec) or_return
     case runic.Struct:
-        io.write_string(wd, "struct {\n") or_return
-        for m in spec.members {
-            io.write_string(wd, "    ") or_return
+        if len(spec.members) == 0 {
+            io.write_string(wd, "struct {}") or_return
+        } else {
+            io.write_string(wd, "struct {\n") or_return
+            for m in spec.members {
 
-            type_bd: strings.Builder
-            strings.builder_init(&type_bd)
-            defer strings.builder_destroy(&type_bd)
+                type_bd: strings.Builder
+                strings.builder_init(&type_bd)
+                defer strings.builder_destroy(&type_bd)
 
-            write_type(
-                strings.to_stream(&type_bd),
-                m.name,
-                m.type,
-                rn,
-                externs,
-            ) or_return
+                write_type(
+                    strings.to_stream(&type_bd),
+                    m.name,
+                    m.type,
+                    rn,
+                    externs,
+                ) or_return
 
-            io.write_string(wd, m.name) or_return
-            io.write_string(wd, ": ") or_return
-            io.write_string(wd, strings.to_string(type_bd)) or_return
-            io.write_string(wd, ",\n") or_return
+                io.write_string(wd, "    ") or_return
+                io.write_string(wd, m.name) or_return
+                io.write_string(wd, ": ") or_return
+                io.write_string(wd, strings.to_string(type_bd)) or_return
+                io.write_string(wd, ",\n") or_return
+            }
+            io.write_rune(wd, '}') or_return
         }
-        io.write_rune(wd, '}') or_return
     case runic.Enum:
         io.write_string(wd, "enum ") or_return
         write_builtin_type(wd, spec.type) or_return
         io.write_string(wd, " {") or_return
-        for e in spec.entries {
+        for e, idx in spec.entries {
             // TODO: add new lines between enum values
             io.write_string(wd, e.name) or_return
             io.write_string(wd, " = ") or_return
-            fmt.wprintf(wd, "{}, ", e.value)
+
+            switch v in e.value {
+            case i64:
+                io.write_i64(wd, v) or_return
+            case string:
+                io.write_string(wd, v) or_return
+            case:
+                io.write_string(wd, "nil") or_return
+            }
+
+            if idx < len(spec.entries) - 1 {
+                io.write_rune(wd, ',') or_return
+            }
+            io.write_rune(wd, ' ') or_return
         }
         io.write_rune(wd, '}') or_return
     case runic.Union:
-        io.write_string(wd, "struct #raw_union {") or_return
-        for m in spec.members {
-            type_bd: strings.Builder
-            strings.builder_init(&type_bd)
-            defer strings.builder_destroy(&type_bd)
+        if len(spec.members) == 0 {
+            io.write_string(wd, "struct #raw_union {}") or_return
+        } else {
+            io.write_string(wd, "struct #raw_union {\n") or_return
+            for m in spec.members {
+                type_bd: strings.Builder
+                strings.builder_init(&type_bd)
+                defer strings.builder_destroy(&type_bd)
 
-            write_type(
-                strings.to_stream(&type_bd),
-                m.name,
-                m.type,
-                rn,
-                externs,
-            ) or_return
+                write_type(
+                    strings.to_stream(&type_bd),
+                    m.name,
+                    m.type,
+                    rn,
+                    externs,
+                ) or_return
 
-            io.write_string(wd, m.name) or_return
-            io.write_string(wd, ": ") or_return
-            io.write_string(wd, strings.to_string(type_bd)) or_return
-            io.write_string(wd, ", ") or_return
+                io.write_string(wd, "    ") or_return
+                io.write_string(wd, m.name) or_return
+                io.write_string(wd, ": ") or_return
+                io.write_string(wd, strings.to_string(type_bd)) or_return
+                io.write_string(wd, ",\n") or_return
+            }
+            io.write_rune(wd, '}') or_return
         }
-        io.write_rune(wd, '}') or_return
     case string:
         io.write_string(wd, spec) or_return
     case runic.Unknown:

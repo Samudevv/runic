@@ -59,7 +59,9 @@ odin_struct_bindings :: struct {
 odin_bar_struct_bindings :: struct {
     odin_struct_bindings_m: odin_struct_bindings,
 }
-odin_bar_union_bindings :: struct #raw_union {odin_struct_bindings_m: odin_struct_bindings, }
+odin_bar_union_bindings :: struct #raw_union {
+    odin_struct_bindings_m: odin_struct_bindings,
+}
 odin_complex_ptr_bindings :: [13][10][5]i32
 odin_this_is_multis_bindings :: [^]^u8
 odin_this_is_multi1s_bindings :: [^][10]^^u8

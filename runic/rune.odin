@@ -26,6 +26,7 @@ import "core:path/slashpath"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
+import "core:unicode"
 import "root:errors"
 import om "root:ordered_map"
 import "shared:yaml"
@@ -2731,19 +2732,9 @@ is_valid_identifier :: proc(ident: string) -> bool {
     if len(ident) == 0 do return false
 
     for r, idx in ident {
-        if idx == 0 {
-            switch r {
-            case '0' ..= '9':
-                return false
-            }
+        if !(unicode.is_letter(r) || r == '_') {
+            if idx == 0 || !unicode.is_number(r) do return false
         }
-
-        switch r {
-        case 0 ..= '/', ':' ..= '@', '[' ..= '`', '{' ..= 127:
-            return false
-        }
-
-        break
     }
 
 

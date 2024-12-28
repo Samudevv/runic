@@ -39,7 +39,8 @@ FuncParamsData :: struct {
 struct_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
     return(
         display_name == "" ||
-        strings.has_prefix(display_name, "struct (unnamed") \
+        strings.has_prefix(display_name, "struct (unnamed") ||
+        strings.has_prefix(display_name, "struct (anonymous") \
     )
 }
 
@@ -60,7 +61,8 @@ struct_is_unnamed :: proc {
 enum_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
     return(
         display_name == "" ||
-        strings.has_prefix(display_name, "enum (unnamed") \
+        strings.has_prefix(display_name, "enum (unnamed") ||
+        strings.has_prefix(display_name, "enum (anonymous") \
     )
 }
 
@@ -81,7 +83,8 @@ enum_is_unnamed :: proc {
 union_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
     return(
         display_name == "" ||
-        strings.has_prefix(display_name, "union (unnamed") \
+        strings.has_prefix(display_name, "union (unnamed") ||
+        strings.has_prefix(display_name, "union (anonymous") \
     )
 }
 

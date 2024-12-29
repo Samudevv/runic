@@ -10,10 +10,14 @@ For example if you would like to use odin in your project but also use a C libra
 
 ## Supported Languages
 
-| Language | From  |  To   |
-| -------- | :---: | :---: |
-| C        |   ✅   |   ✅   |
-| Odin     |   ✅   |   ✅   |
+| Language | From | To  |
+| -------- | :--: | :-: |
+| C        |  ✅  | ✅  |
+| Odin     |  ✅  | ✅  |
+
+## Documentation
+
+There is documentation available on the [wiki](https://github.com/Samudevv/runic/wiki).
 
 ## Usage
 
@@ -31,16 +35,16 @@ A **runestone** is an intermediate format that contains all symbols and necessar
 
 First make sure that all submodules are checked out. Then following dependencies are required:
 
-+ [odin](https://odin-lang.org)
-+ [just](https://just.systems/)
-+ [libclang](https://clang.llvm.org/docs/LibClang.html) *Preferred is version 18*
-+ [libyaml](https://github.com/yaml/libyaml)
+- [odin](https://odin-lang.org)
+- [just](https://just.systems/)
+- [libclang](https://clang.llvm.org/docs/LibClang.html) _Preferred is version 18_
+- [libyaml](https://github.com/yaml/libyaml)
 
 Arch Linux: `sudo pacman -S --needed --noconfirm base-devel just clang libyaml` <br>
 Ubuntu 24.04: `sudo apt install -y build-essential just libclang-18-dev libyaml-dev` <br>
-Ubuntu 22.04: `sudo apt install -y build-essential libclang-dev libyaml-dev` <br> *On older Ubuntu systems `libclang-18-dev` does not exist, so the newest version should be installed. The package `just` also does not exist, but a statically linked executable can be downloaded directly from the releases page of the repository*
+Ubuntu 22.04: `sudo apt install -y build-essential libclang-dev libyaml-dev` <br> _On older Ubuntu systems `libclang-18-dev` does not exist, so the newest version should be installed. The package `just` also does not exist, but a statically linked executable can be downloaded directly from the releases page of the repository_
 
-MacOS: `brew install llvm@18` *libyaml is already packaged into the odin library* <br>
+MacOS: `brew install llvm@18` _libyaml is already packaged into the odin library_ <br>
 Windows: All dependencies are already provided for the `x86_64` architecture <br>
 
 You may need to create a symlink manually called `libclang.so` that points to the correct library file.
@@ -60,6 +64,7 @@ This will build a release build of runic and write the resulting binary to `buil
 ```
 
 or
+
 ```console
 just
 ```
@@ -70,12 +75,14 @@ This will build a release build of runic and write the resulting binary to `buil
 
 This repository contains some examples which show how the tool can be used.
 
-+ [olivec](examples/olivec) <br> This example creates odin bindings to the rendering library [olive.c](https://github.com/tsoding/olive.c) and a program that uses said library to render an example image. Build it using:
+- [olivec](examples/olivec) <br> This example creates odin bindings to the rendering library [olive.c](https://github.com/tsoding/olive.c) and a program that uses said library to render an example image. Build it using:
   ```console
   just example olivec
   ```
 
 ## Runestone
+
+[Runestone Documentation](https://github.com/Samudevv/runic/wiki/Runestone)
 
 ```ini
 version = 0
@@ -129,6 +136,8 @@ LENGTH = 267.3450000000000273 #Float64
 A runestone is a (modified) ini file containing information about the contents of one library file which can either be a static or a shared library. Meant to replace the C header files which are usually used to define the symbols of a library file. The format is meant to be easily parsable even if a parser is written from scratch.
 
 ## Rune
+
+[Rune Documentation](https://github.com/Samudevv/runic/wiki/Rune)
 
 ```yaml
 version: 0

@@ -7,6 +7,8 @@
   + To
     + [x] Make different 'add_libs' for shared and static
     + [ ] Generate constants always as "constants"
+    + [ ] Add entry in the rune to configure the file names when generating multiple files.
+    + [ ] Add entry to rune to always output multiple files (one per platform, one per cross runestone).
   + From
     + [ ] Implement Odin-specific types
       + [ ] Slice, dynamic array

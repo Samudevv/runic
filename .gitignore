@@ -21,6 +21,7 @@ test_data/write_to_handle
 test_data/extern_test_runestone.ini
 test_data/extern_test.odin
 test_data/wrapper_out*
+test_data/test_odin_to_multiple_files*.odin
 build/
 ols.json
 examples/olivec/olivec/

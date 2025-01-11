@@ -217,8 +217,17 @@ platform_file_name :: proc(
     ext := filepath.ext(file_name)
 
     // BONUS TODO: Do this without an allocation
-    os_str := fmt.aprint(plat.os, allocator = allocator)
-    arch_str := fmt.aprint(plat.arch, allocator = allocator)
+    os_str, arch_str: string = ---, ---
+    if plat.os != .Any {
+        os_str = fmt.aprint(plat.os, allocator = allocator)
+    } else {
+        os_str = ""
+    }
+    if plat.arch != .Any {
+        arch_str = fmt.aprint(plat.arch, allocator = allocator)
+    } else {
+        arch_str = ""
+    }
 
     bd: strings.Builder
     strings.builder_init(
@@ -231,13 +240,71 @@ platform_file_name :: proc(
     strings.write_string(&bd, dir)
     strings.write_rune(&bd, filepath.SEPARATOR)
     strings.write_string(&bd, stem)
-    strings.write_rune(&bd, '-')
-    strings.write_string(&bd, os_str)
-    strings.write_rune(&bd, '_')
-    strings.write_string(&bd, arch_str)
+    if plat.os != .Any || plat.arch != .Any {
+        strings.write_rune(&bd, '-')
+        if plat.os != .Any {
+            strings.write_string(&bd, os_str)
+            if plat.arch != .Any {
+                strings.write_rune(&bd, '_')
+            }
+        }
+        if plat.arch != .Any {
+            strings.write_string(&bd, arch_str)
+        }
+    }
     strings.write_string(&bd, ext)
 
     return strings.to_string(bd)
+}
+
+multiple_platforms_file_name :: proc(
+    file_name: string,
+    plats: []Platform,
+    allocator := context.allocator,
+) -> string {
+    dir := filepath.dir(file_name, allocator)
+    stem := filepath.stem(file_name)
+    ext := filepath.ext(file_name)
+
+    defer delete(dir, allocator)
+
+    bd: strings.Builder
+    strings.builder_init(
+        &bd,
+        len = 0,
+        cap = len(file_name) + len(plats) * 2,
+        allocator = allocator,
+    )
+
+    strings.write_string(&bd, dir)
+    strings.write_rune(&bd, filepath.SEPARATOR)
+    strings.write_string(&bd, stem)
+
+    for plat in plats {
+        if plat.os == .Any && plat.arch == .Any do continue
+
+        strings.write_rune(&bd, '-')
+
+        if plat.os != .Any {
+            os_str := fmt.aprint(plat.os, allocator = allocator)
+            strings.write_string(&bd, os_str)
+            delete(os_str, allocator)
+            if plat.arch != .Any {
+                strings.write_rune(&bd, '_')
+            }
+        }
+
+        if plat.arch != .Any {
+            arch_str := fmt.aprint(plat.arch, allocator = allocator)
+            strings.write_string(&bd, arch_str)
+            delete(arch_str, allocator)
+        }
+    }
+
+    strings.write_string(&bd, ext)
+
+    return strings.to_string(bd)
+
 }
 
 platform_matches :: #force_inline proc(
@@ -356,5 +423,15 @@ platform_less :: proc(i, j: Platform) -> bool {
 platform_greater :: proc(i, j: Platform) -> bool {
     if i.os == j.os do return i.arch > j.arch
     return i.os > j.os
+}
+
+multiple_platforms_match :: proc(p1s, p2s: []Platform) -> bool {
+    for p1 in p1s {
+        for p2 in p2s {
+            if !platform_matches(p1, p2) do return false
+        }
+    }
+
+    return true
 }
 

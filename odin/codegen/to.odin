@@ -19,6 +19,7 @@ package odin_codegen
 import "base:runtime"
 import "core:fmt"
 import "core:io"
+import "core:os"
 import "core:path/filepath"
 import "core:path/slashpath"
 import "core:slice"
@@ -31,6 +32,19 @@ import "root:runic"
 AddLibs :: struct {
     plat: runic.Platform,
     libs: []string,
+}
+
+@(private = "file")
+ImportGroup :: struct {
+    imports:       []string,
+    cross_indices: [dynamic]int,
+    plats:         [dynamic]runic.Platform,
+}
+
+@(private = "file")
+RunestoneWriter :: struct {
+    wd:        Maybe(io.Writer),
+    file_path: string,
 }
 
 generate_bindings :: proc(
@@ -48,196 +62,556 @@ generate_bindings :: proc(
     arena_alloc := runtime.arena_allocator(&arena)
 
 
-    write_build_tag: if !rn.no_build_tag {
-        // Construct a list of all platforms that need to be part of the build tag
-        unique_plats := make(
-            [dynamic]runic.Platform,
+    // Handle Imports
+    // Only write out imports that are actually needed
+    // If imports differ per runestone write the runestones into separate files
+
+    // 1. First construct a list for every runestone that contains all the imports that this runestone uses
+    runestone_imports := make(
+        [dynamic][dynamic]string,
+        len = len(rc.cross),
+        cap = len(rc.cross),
+        allocator = arena_alloc,
+    )
+
+    for rs, idx in rc.cross {
+        rs_imps := &runestone_imports[idx]
+        rs_imps^ = make(
+            [dynamic]string,
             len = 0,
-            cap = len(platforms),
+            cap = len(rn.extern.sources),
+            allocator = arena_alloc,
         )
-        defer delete(unique_plats)
 
-        for plat in platforms {
-            tag_plat := plat
-            if rn.ignore_arch {
-                tag_plat.arch = .Any
-            }
-            if !slice.contains(unique_plats[:], tag_plat) {
-                append(&unique_plats, tag_plat)
-            }
-        }
+        // Loop over the types
+        for entry in rs.types.data {
+            type := entry.value
 
-        if len(unique_plats) == 0 do break write_build_tag
-
-        slice.sort_by(unique_plats[:], runic.platform_less)
-
-        for plat, plat_idx in unique_plats {
-            if plat_idx == 0 {
-                io.write_string(wd, "#+build ") or_return
-            }
-
-            os_names: []string = ---
-
-            switch plat.os {
-            case .Any:
-                os_names = []string{}
-            case .Linux:
-                os_names = []string{"linux"}
-            case .Windows:
-                os_names = []string{"windows"}
-            case .Macos:
-                os_names = []string{"darwin"}
-            case .BSD:
-                os_names = []string{"freebsd", "openbsd", "netbsd"}
-            }
-
-            if len(os_names) != 0 {
-                for os, os_idx in os_names {
-                    io.write_string(wd, os) or_return
-                    if plat.arch != .Any {
-                        io.write_rune(wd, ' ') or_return
-                        switch plat.arch {
-                        case .Any:
-                        case .x86_64:
-                            io.write_string(wd, "amd64") or_return
-                        case .arm64:
-                            io.write_string(wd, "arm64") or_return
-                        case .x86:
-                            io.write_string(wd, "i386") or_return
-                        case .arm32:
-                            io.write_string(wd, "arm32") or_return
+            #partial switch spec in type.spec {
+            case runic.ExternType:
+                extern_source, source_found :=
+                    runic.source_of_extern_type_from_runecross(spec, rc)
+                if source_found &&
+                   !slice.contains(rs_imps^[:], extern_source) {
+                    append(rs_imps, extern_source)
+                }
+            case runic.Struct:
+                for m in spec.members {
+                    #partial switch mt in m.type.spec {
+                    case runic.ExternType:
+                        extern_source, source_found :=
+                            runic.source_of_extern_type_from_runecross(mt, rc)
+                        if source_found &&
+                           !slice.contains(rs_imps^[:], extern_source) {
+                            append(rs_imps, extern_source)
                         }
                     }
-
-                    if os_idx != len(os_names) - 1 {
-                        io.write_string(wd, ", ") or_return
+                }
+            case runic.Union:
+                for m in spec.members {
+                    #partial switch mt in m.type.spec {
+                    case runic.ExternType:
+                        extern_source, source_found :=
+                            runic.source_of_extern_type_from_runecross(mt, rc)
+                        if source_found &&
+                           !slice.contains(rs_imps^[:], extern_source) {
+                            append(rs_imps, extern_source)
+                        }
                     }
                 }
-            } else {
-                switch plat.arch {
-                case .Any:
-                case .x86_64:
-                    io.write_string(wd, "amd64") or_return
-                case .arm64:
-                    io.write_string(wd, "arm64") or_return
-                case .x86:
-                    io.write_string(wd, "i386") or_return
-                case .arm32:
-                    io.write_string(wd, "arm32") or_return
+            case runic.FunctionPointer:
+                for p in spec.parameters {
+                    #partial switch pt in p.type.spec {
+                    case runic.ExternType:
+                        extern_source, source_found :=
+                            runic.source_of_extern_type_from_runecross(pt, rc)
+                        if source_found &&
+                           !slice.contains(rs_imps^[:], extern_source) {
+                            append(rs_imps, extern_source)
+                        }
+                    }
                 }
             }
+        }
 
-            if plat_idx == len(unique_plats) - 1 {
-                io.write_rune(wd, '\n') or_return
-            } else {
-                io.write_string(wd, ", ") or_return
+        // Loop over the symbols
+        for entry in rs.symbols.data {
+            symbol := entry.value
+
+            switch sym in symbol.value {
+            case runic.Type:
+                #partial switch spec in sym.spec {
+                case runic.ExternType:
+                    extern_source, source_found :=
+                        runic.source_of_extern_type_from_runecross(spec, rc)
+                    if source_found &&
+                       !slice.contains(rs_imps^[:], extern_source) {
+                        append(rs_imps, extern_source)
+                    }
+                case runic.Struct:
+                    for m in spec.members {
+                        #partial switch mt in m.type.spec {
+                        case runic.ExternType:
+                            extern_source, source_found :=
+                                runic.source_of_extern_type_from_runecross(
+                                    mt,
+                                    rc,
+                                )
+                            if source_found &&
+                               !slice.contains(rs_imps^[:], extern_source) {
+                                append(rs_imps, extern_source)
+                            }
+                        }
+                    }
+                case runic.Union:
+                    for m in spec.members {
+                        #partial switch mt in m.type.spec {
+                        case runic.ExternType:
+                            extern_source, source_found :=
+                                runic.source_of_extern_type_from_runecross(
+                                    mt,
+                                    rc,
+                                )
+                            if source_found &&
+                               !slice.contains(rs_imps^[:], extern_source) {
+                                append(rs_imps, extern_source)
+                            }
+                        }
+                    }
+                case runic.FunctionPointer:
+                    for p in spec.parameters {
+                        #partial switch pt in p.type.spec {
+                        case runic.ExternType:
+                            extern_source, source_found :=
+                                runic.source_of_extern_type_from_runecross(
+                                    pt,
+                                    rc,
+                                )
+                            if source_found &&
+                               !slice.contains(rs_imps^[:], extern_source) {
+                                append(rs_imps, extern_source)
+                            }
+                        }
+                    }
+                }
+            case runic.Function:
+                for p in sym.parameters {
+                    #partial switch pt in p.type.spec {
+                    case runic.ExternType:
+                        extern_source, source_found :=
+                            runic.source_of_extern_type_from_runecross(pt, rc)
+                        if source_found &&
+                           !slice.contains(rs_imps^[:], extern_source) {
+                            append(rs_imps, extern_source)
+                        }
+                    }
+                }
             }
         }
     }
 
-    io.write_string(wd, "package ") or_return
-
-    // Make sure that package name is not invalid
-    package_name := rn.package_name
-    ODIN_PACKAGE_INVALID :: [?]string{" ", "-", "?", "&", "|", "/", "\\"} // NOTE: more are invalid, but let's stop here
-    for str in ODIN_PACKAGE_INVALID {
-        package_name, _ = strings.replace(
-            package_name,
-            str,
-            "_",
-            -1,
-            arena_alloc,
-        )
-    }
-    if slice.contains(ODIN_RESERVED, package_name) {
-        package_name = strings.concatenate({package_name, "_"}, arena_alloc)
-    }
-
-
-    io.write_string(wd, package_name) or_return
-    io.write_string(wd, "\n\n") or_return
-
-    // Write all imports for the extern types
-    imports := make(
-        [dynamic][2]string,
-        allocator = arena_alloc,
+    // 2. Group matching import lists. Two import lists can be grouped together if
+    //          1. The imports lists match exactly or
+    //          2. The import list comes from a more common runestone and the import list is contained in the other one
+    grouped_imports := make(
+        [dynamic]ImportGroup,
         len = 0,
-        cap = len(rn.extern.sources),
+        cap = len(rc.cross),
+        allocator = arena_alloc,
     )
-    for _, source in rn.extern.sources {
-        import_name_overwrite, import_path_name := import_path(source)
-        if !slice.contains(
-            imports[:],
-            [2]string{import_name_overwrite, import_path_name},
-        ) {
+
+    group_imports_loop: for rs_imps, rs_idx in runestone_imports {
+        rs := rc.cross[rs_idx]
+
+        for &imp_group in grouped_imports {
+            // Does it match?
+
+            // 1. The import group matches exactly
+            if len(rs_imps) == len(imp_group.imports) {
+                matches_exactly := true
+                for rs_imp in rs_imps {
+                    if !slice.contains(imp_group.imports, rs_imp) {
+                        matches_exactly = false
+                        break
+                    }
+                }
+
+                if matches_exactly {
+                    append(&imp_group.cross_indices, rs_idx)
+                    for plat in rs.plats {
+                        if !slice.contains(imp_group.plats[:], plat) {
+                            append(&imp_group.plats, plat)
+                        }
+                    }
+                    continue group_imports_loop
+                }
+            }
+
+            // 2. Check if more common and stuff
+            has_more_common_rs := false
+            for imp_group_idx in imp_group.cross_indices {
+                imp_group_rs := rc.cross[imp_group_idx]
+                if runic.multiple_platforms_match(
+                    imp_group_rs.plats,
+                    rs.plats,
+                ) {
+                    has_more_common_rs = true
+                    break
+                }
+            }
+
+            if has_more_common_rs {
+                imports_are_contained := true
+                for rs_imp in rs_imps {
+                    if !slice.contains(imp_group.imports, rs_imp) {
+                        imports_are_contained = false
+                        break
+                    }
+                }
+
+                if imports_are_contained {
+                    append(&imp_group.cross_indices, rs_idx)
+                    for plat in rs.plats {
+                        if !slice.contains(imp_group.plats[:], plat) {
+                            append(&imp_group.plats, plat)
+                        }
+                    }
+                    continue group_imports_loop
+                }
+            }
+        }
+
+        // If nothing matches create a new entry
+        imp_group := ImportGroup {
+            imports       = rs_imps[:],
+            cross_indices = make(
+                [dynamic]int,
+                len = 1,
+                cap = len(rc.cross),
+                allocator = arena_alloc,
+            ),
+            plats         = make(
+                [dynamic]runic.Platform,
+                len = 0,
+                cap = len(platforms),
+                allocator = arena_alloc,
+            ),
+        }
+        imp_group.cross_indices[0] = rs_idx
+        append(&imp_group.plats, ..rs.plats)
+
+        append(&grouped_imports, imp_group)
+    }
+
+    when ODIN_DEBUG {
+        for imp_group in grouped_imports {
+            fmt.println("---- Import Group ----")
+            fmt.println("Plats: ", imp_group.plats)
+            fmt.print("Imports:")
+            for imp in imp_group.imports {
+                fmt.print(" ", imp)
+            }
+            fmt.println()
+            fmt.println("----------------------")
+        }
+    }
+
+    // 3. Create file names for the different import groups
+    runestone_writers := make(
+        [dynamic]RunestoneWriter,
+        len = 0,
+        cap = len(grouped_imports),
+        allocator = arena_alloc,
+    )
+    opened_handles := make(
+        [dynamic]os.Handle,
+        len = 0,
+        cap = len(grouped_imports),
+        allocator = arena_alloc,
+    )
+    defer for hd in opened_handles do os.close(hd)
+
+    for imp_group in grouped_imports {
+        // If it's any any, use the current writer
+        is_any_any := slice.contains(
+            imp_group.plats[:],
+            runic.Platform{.Any, .Any},
+        )
+
+        if is_any_any {
             append(
-                &imports,
-                [2]string{import_name_overwrite, import_path_name},
+                &runestone_writers,
+                RunestoneWriter{wd = wd, file_path = file_path},
+            )
+        } else {
+            mini_plats := runic.minimize_platforms(
+                platforms,
+                imp_group.plats[:],
+                rn.ignore_arch,
+            )
+            defer delete(mini_plats)
+
+            imp_file_name := runic.multiple_platforms_file_name(
+                file_path,
+                mini_plats[:],
+            )
+            defer delete(imp_file_name)
+
+            imp_wd: Maybe(io.Writer)
+            imp_file, imp_file_err := os.open(
+                imp_file_name,
+                os.O_CREATE | os.O_WRONLY | os.O_TRUNC,
+                0o666,
+            )
+            if imp_file_err != nil {
+                when ODIN_DEBUG {
+                    fmt.eprintfln(
+                        "debug: failed to create file for different platforms {}",
+                        mini_plats,
+                    )
+                }
+            } else {
+                imp_wd = os.stream_from_handle(imp_file)
+                append(&opened_handles, imp_file)
+            }
+
+            append(
+                &runestone_writers,
+                RunestoneWriter {
+                    wd = imp_wd,
+                    file_path = strings.clone(imp_file_name, arena_alloc),
+                },
             )
         }
     }
 
-    slice.sort_by(imports[:], proc(i, j: [2]string) -> bool {
-        name_i := i[0] if len(i[0]) != 0 else i[1]
-        name_j := j[0] if len(j[0]) != 0 else j[1]
+    // 4. Loop over all the runestone writers, create the list of imports and write to the file
+    for rs_writer, imp_idx in runestone_writers {
+        if rs_writer.wd == nil do continue
 
-        return name_i < name_j
-    })
+        rs_wd := rs_writer.wd.?
+        rs_file_path := rs_writer.file_path
+        imp_group := grouped_imports[imp_idx]
 
-    for importy in imports {
-        import_name_overwrite, import_path_name := importy[0], importy[1]
-        io.write_string(wd, "import ") or_return
-        if len(import_name_overwrite) != 0 {
-            io.write_string(wd, import_name_overwrite) or_return
-            io.write_rune(wd, ' ') or_return
-        }
-        io.write_rune(wd, '"') or_return
-        io.write_string(wd, import_path_name) or_return
-        io.write_string(wd, "\"\n") or_return
-    }
-    if len(imports) != 0 do io.write_rune(wd, '\n') or_return
+        write_build_tag: if !rn.no_build_tag {
+            // Construct a list of all platforms that need to be part of the build tag
+            build_tag_plats := make(
+                [dynamic]runic.Platform,
+                len = 0,
+                cap = len(platforms),
+            )
+            defer delete(build_tag_plats)
 
-    write_when := false
+            for plat in imp_group.plats {
+                for rn_plat in platforms {
+                    if runic.platform_matches(plat, rn_plat) {
+                        append(&build_tag_plats, rn_plat)
+                    }
+                }
+            }
 
-    for entry, idx in rc.cross {
-        plats := entry.plats
-        if !runic.runecross_is_simple(rc) {
-            if rn.use_when_else && idx == len(rc.cross) - 1 && write_when {
-                io.write_string(wd, "{\n\n") or_return
-            } else {
-                write_when = when_plats(
-                    wd,
-                    platforms,
-                    plats,
-                    rn.ignore_arch,
-                ) or_return
+            unique_plats := make(
+                [dynamic]runic.Platform,
+                len = 0,
+                cap = len(build_tag_plats),
+            )
+            defer delete(unique_plats)
+
+            for plat in build_tag_plats {
+                tag_plat := plat
+                if rn.ignore_arch {
+                    tag_plat.arch = .Any
+                }
+                if !slice.contains(unique_plats[:], tag_plat) {
+                    append(&unique_plats, tag_plat)
+                }
+            }
+
+            if len(unique_plats) == 0 do break write_build_tag
+
+            slice.sort_by(unique_plats[:], runic.platform_less)
+
+            for plat, plat_idx in unique_plats {
+                if plat_idx == 0 {
+                    io.write_string(rs_wd, "#+build ") or_return
+                }
+
+                os_names: []string = ---
+
+                switch plat.os {
+                case .Any:
+                    os_names = []string{}
+                case .Linux:
+                    os_names = []string{"linux"}
+                case .Windows:
+                    os_names = []string{"windows"}
+                case .Macos:
+                    os_names = []string{"darwin"}
+                case .BSD:
+                    os_names = []string{"freebsd", "openbsd", "netbsd"}
+                }
+
+                if len(os_names) != 0 {
+                    for os, os_idx in os_names {
+                        io.write_string(rs_wd, os) or_return
+                        if plat.arch != .Any {
+                            io.write_rune(rs_wd, ' ') or_return
+                            switch plat.arch {
+                            case .Any:
+                            case .x86_64:
+                                io.write_string(rs_wd, "amd64") or_return
+                            case .arm64:
+                                io.write_string(rs_wd, "arm64") or_return
+                            case .x86:
+                                io.write_string(rs_wd, "i386") or_return
+                            case .arm32:
+                                io.write_string(rs_wd, "arm32") or_return
+                            }
+                        }
+
+                        if os_idx != len(os_names) - 1 {
+                            io.write_string(rs_wd, ", ") or_return
+                        }
+                    }
+                } else {
+                    switch plat.arch {
+                    case .Any:
+                    case .x86_64:
+                        io.write_string(rs_wd, "amd64") or_return
+                    case .arm64:
+                        io.write_string(rs_wd, "arm64") or_return
+                    case .x86:
+                        io.write_string(rs_wd, "i386") or_return
+                    case .arm32:
+                        io.write_string(rs_wd, "arm32") or_return
+                    }
+                }
+
+                if plat_idx == len(unique_plats) - 1 {
+                    io.write_rune(rs_wd, '\n') or_return
+                } else {
+                    io.write_string(rs_wd, ", ") or_return
+                }
             }
         }
 
-        // Determine which add libs fit this specific runestone
-        add_libs_static := add_libs_for_runestone(plats, rn.add_libs_static)
-        add_libs_shared := add_libs_for_runestone(plats, rn.add_libs_shared)
-        defer delete(add_libs_static)
-        defer delete(add_libs_shared)
+        io.write_string(rs_wd, "package ") or_return
 
-        errors.wrap(
-            generate_bindings_from_runestone(
-                entry,
-                rn,
-                wd,
-                file_path,
+        // Make sure that package name is not invalid
+        package_name := rn.package_name
+        ODIN_PACKAGE_INVALID :: [?]string{" ", "-", "?", "&", "|", "/", "\\"} // NOTE: more are invalid, but let's stop here
+        for str in ODIN_PACKAGE_INVALID {
+            package_name, _ = strings.replace(
                 package_name,
-                add_libs_static,
-                add_libs_shared,
-            ),
-        ) or_return
+                str,
+                "_",
+                -1,
+                arena_alloc,
+            )
+        }
+        if slice.contains(ODIN_RESERVED, package_name) {
+            package_name = strings.concatenate(
+                {package_name, "_"},
+                arena_alloc,
+            )
+        }
 
-        if !runic.runecross_is_simple(rc) && write_when {
-            io.write_rune(wd, '}') or_return
-            if rn.use_when_else && idx != len(rc.cross) - 1 {
-                io.write_string(wd, " else ") or_return
-            } else {
-                io.write_string(wd, "\n\n") or_return
+        io.write_string(rs_wd, package_name) or_return
+        io.write_string(rs_wd, "\n\n") or_return
+
+
+        // Write all imports for the extern types
+        imports := make(
+            [dynamic][2]string,
+            allocator = arena_alloc,
+            len = 0,
+            cap = len(imp_group.imports),
+        )
+
+        for imp in imp_group.imports {
+            imp_name, imp_name_ok := runic.map_glob(rn.extern.sources, imp)
+            if !imp_name_ok do continue
+
+            import_name_overwrite, import_path_name := import_path(imp_name)
+            import_source := [2]string{import_name_overwrite, import_path_name}
+            if !slice.contains(imports[:], import_source) {
+                append(&imports, import_source)
+            }
+        }
+
+        slice.sort_by(imports[:], proc(i, j: [2]string) -> bool {
+            name_i := i[0] if len(i[0]) != 0 else i[1]
+            name_j := j[0] if len(j[0]) != 0 else j[1]
+
+            return name_i < name_j
+        })
+
+        for importy in imports {
+            import_name_overwrite, import_path_name := importy[0], importy[1]
+            io.write_string(rs_wd, "import ") or_return
+            if len(import_name_overwrite) != 0 {
+                io.write_string(rs_wd, import_name_overwrite) or_return
+                io.write_rune(rs_wd, ' ') or_return
+            }
+            io.write_rune(rs_wd, '"') or_return
+            io.write_string(rs_wd, import_path_name) or_return
+            io.write_string(rs_wd, "\"\n") or_return
+        }
+        if len(imports) != 0 do io.write_rune(rs_wd, '\n') or_return
+
+        // Loop over all runestones of the import group
+        write_when := false
+        for cross_idx, idx in imp_group.cross_indices {
+            rs := rc.cross[cross_idx]
+
+            plats := rs.plats
+            if !runic.runecross_is_simple(rc) {
+                if rn.use_when_else &&
+                   idx == len(imp_group.cross_indices) - 1 &&
+                   write_when {
+                    io.write_string(rs_wd, "{\n\n") or_return
+                } else {
+                    write_when = when_plats(
+                        rs_wd,
+                        platforms,
+                        plats,
+                        rn.ignore_arch,
+                    ) or_return
+                }
+            }
+
+            // Determine which add libs fit this specific runestone
+            add_libs_static := add_libs_for_runestone(
+                plats,
+                rn.add_libs_static,
+            )
+            add_libs_shared := add_libs_for_runestone(
+                plats,
+                rn.add_libs_shared,
+            )
+            defer delete(add_libs_static)
+            defer delete(add_libs_shared)
+
+            errors.wrap(
+                generate_bindings_from_runestone(
+                    rs,
+                    rn,
+                    rs_wd,
+                    rs_file_path,
+                    package_name,
+                    add_libs_static,
+                    add_libs_shared,
+                ),
+            ) or_return
+
+            if !runic.runecross_is_simple(rc) && write_when {
+                io.write_rune(rs_wd, '}') or_return
+                if rn.use_when_else &&
+                   idx != len(imp_group.cross_indices) - 1 {
+                    io.write_string(rs_wd, " else ") or_return
+                } else {
+                    io.write_string(rs_wd, "\n\n") or_return
+                }
             }
         }
     }

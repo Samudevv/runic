@@ -730,3 +730,19 @@ set_for_same_platforms :: proc(
     )
 }
 
+source_of_extern_type_from_runecross :: proc(
+    extern: ExternType,
+    rc: Runecross,
+) -> (
+    string,
+    bool,
+) #optional_ok {
+    for rs in rc.cross {
+        if ex, ok := om.get(rs.externs, string(extern)); ok {
+            return ex.source, true
+        }
+    }
+
+    return "", false
+}
+

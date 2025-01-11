@@ -21,6 +21,7 @@ import "base:runtime"
 import "core:io"
 import "core:os"
 import "core:path/filepath"
+import "core:strings"
 import "core:testing"
 import cppcdg "root:cpp/codegen"
 import "root:errors"
@@ -541,5 +542,155 @@ test_odin_import_path :: proc(t: ^testing.T) {
     expect_value(t, import_prefix("core:util"), "util")
     expect_value(t, import_prefix("u core:util"), "u")
     expect_value(t, import_prefix("../../../util"), "util")
+}
+
+@(test)
+test_odin_to_multiple_files :: proc(t: ^testing.T) {
+    using testing
+
+    LINUX_RUNESTONE :: `version = 0
+os = Linux
+arch = x86_64
+
+[lib]
+shared = libmulti.so
+
+[extern]
+Person = "person.h" #Struct age #SInt32 name #String
+Car = "car.h" #Struct tires #SInt32 owner #Extern Person
+Animal = "animal.h" #Struct species #String vehicle #Extern Car
+Dev = "dev.h" #Extern Person #Attr Ptr 1 #AttrEnd
+
+[symbols]
+func.car_drive = #Untyped car #Extern Car #Attr Ptr 1 #AttrEnd
+func.animal_growl = #Untyped animal #Extern Animal #Attr Ptr 1 #AttrEnd
+func.dev_code = #Untyped dev #Extern Dev #Attr Ptr 1 #AttrEnd lines #UInt64
+`
+
+
+    WINDOWS_RUNESTONE :: `version = 0
+os = Windows
+arch = x86_64
+
+[lib]
+shared = multid.lib
+
+[extern]
+Person = "person.h" #Struct age #SInt32 name #String
+Car = "car.h" #Struct tires #SInt32 owner #Extern Person
+Animal = "animal.h" #Struct species #String vehicle #Extern Car
+OfficeWorker = "office_worker.h" #Extern Person #Attr Ptr 1 #AttrEnd
+
+[symbols]
+func.car_drive = #Untyped car #Extern Car #Attr Ptr 1 #AttrEnd
+func.animal_growl = #Untyped animal #Extern Animal #Attr Ptr 1 #AttrEnd
+func.office_worker_write_off_taxes = #Untyped ow #Extern OfficeWorker #Attr Ptr 1 #AttrEnd year #UInt64 amount_in_dollar #SInt64
+`
+
+
+    MACOS_RUNESTONE :: `version = 0
+os = Macos
+arch = x86_64
+
+[lib]
+shared = libmulti.so
+
+[extern]
+Person = "person.h" #Struct age #SInt32 name #String
+Car = "car.h" #Struct tires #SInt32 owner #Extern Person
+Animal = "animal.h" #Struct species #String vehicle #Extern Car
+Designer = "designer.h" #Extern Person #Attr Ptr 1 #AttrEnd
+
+[symbols]
+func.car_drive = #Untyped car #Extern Car #Attr Ptr 1 #AttrEnd
+func.animal_growl = #Untyped animal #Extern Animal #Attr Ptr 1 #AttrEnd
+func.designer_draw_design = #Untyped designer #Extern Designer #Attr Ptr 1 #AttrEnd width #UInt64 height #UInt64
+`
+
+
+    cwd := os.get_current_directory()
+    defer delete(cwd)
+    test_data_dir := filepath.join({cwd, "test_data"})
+    defer delete(test_data_dir)
+
+    linux_rs_path := filepath.join({test_data_dir, "linux_rs"})
+    windows_rs_path := filepath.join({test_data_dir, "windows_rs"})
+    macos_rs_path := filepath.join({test_data_dir, "macos_rs"})
+    defer delete(linux_rs_path)
+    defer delete(windows_rs_path)
+    defer delete(macos_rs_path)
+
+    out_path := filepath.join(
+        {test_data_dir, "test_odin_to_multiple_files.odin"},
+    )
+    defer delete(out_path)
+
+    rn := runic.To {
+        language = "odin",
+        out = out_path,
+        package_name = "multi",
+        extern = {
+            sources = {
+                "person.h" = "vendor:person",
+                "car.h" = "vendor:car",
+                "animal.h" = "vendor:animal",
+                "dev.h" = "vendor:dev",
+                "office_worker.h" = "vendor:office",
+                "designer.h" = "vendor:design",
+            },
+        },
+    }
+    defer delete(rn.extern.sources)
+
+
+    linux_rs_reader, windows_rs_reader, macos_rs_reader: strings.Reader
+    strings.reader_init(&linux_rs_reader, LINUX_RUNESTONE)
+    strings.reader_init(&windows_rs_reader, WINDOWS_RUNESTONE)
+    strings.reader_init(&macos_rs_reader, MACOS_RUNESTONE)
+
+    linux_rs, linux_rs_err := runic.parse_runestone(
+        strings.reader_to_stream(&linux_rs_reader),
+        linux_rs_path,
+    )
+    if !expect_value(t, linux_rs_err, nil) do return
+    windows_rs, windows_rs_err := runic.parse_runestone(
+        strings.reader_to_stream(&windows_rs_reader),
+        windows_rs_path,
+    )
+    if !expect_value(t, windows_rs_err, nil) do return
+    macos_rs, macos_rs_err := runic.parse_runestone(
+        strings.reader_to_stream(&macos_rs_reader),
+        macos_rs_path,
+    )
+    if !expect_value(t, macos_rs_err, nil) do return
+
+    defer runic.runestone_destroy(&linux_rs)
+    defer runic.runestone_destroy(&windows_rs)
+    defer runic.runestone_destroy(&macos_rs)
+
+    rc, rc_err := runic.cross_the_runes(
+        {linux_rs_path, windows_rs_path, macos_rs_path},
+        {linux_rs, windows_rs, macos_rs},
+        rn.extern.sources,
+    )
+    if !expect_value(t, rc_err, nil) do return
+    defer runic.runecross_destroy(&rc)
+
+    out_file, out_err := os.open(
+        out_path,
+        os.O_CREATE | os.O_WRONLY | os.O_TRUNC,
+        0o644,
+    )
+    if !expect_value(t, out_err, nil) do return
+    defer os.close(out_file)
+
+    odin_err := generate_bindings(
+        rc,
+        rn,
+        {{.Linux, .x86_64}, {.Windows, .x86_64}, {.Macos, .x86_64}},
+        os.stream_from_handle(out_file),
+        rn.out,
+    )
+    if !expect_value(t, errors.wrap(odin_err), nil) do return
 }
 

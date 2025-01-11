@@ -67,16 +67,6 @@ odin_complex_ptr_bindings :: [13][10][5]i32
 odin_this_is_multis_bindings :: [^]^u8
 odin_this_is_multi1s_bindings :: [^][10]^^u8
 
-when #config(FOO_PKG_STATIC, false) {
-    when ODIN_OS == .Darwin {
-        foreign import foo_pkg_runic { "system:foo", "system:baz", "system:bar", "system:autumn", "lib/libcompiled.a" }
-    } else {
-        foreign import foo_pkg_runic { "system:libfoo.a", "system:libbaz.a", "system:libbar.a", "system:libautumn.a", "lib/libcompiled.a" }
-    }
-} else {
-    foreign import foo_pkg_runic { "libfoo.so", "system:libbaz.a", "system:bar", "system:autumn", "lib/libcompiled.a" }
-}
-
 @(default_calling_convention = "c")
 foreign foo_pkg_runic {
     @(link_name = "foo_add_int_func")
@@ -91,6 +81,16 @@ foreign foo_pkg_runic {
 }
 
 odin_not_the_sub_bindings :: odin_add_int_bindings
+
+when #config(FOO_PKG_STATIC, false) {
+    when ODIN_OS == .Darwin {
+        foreign import foo_pkg_runic { "system:foo", "system:baz", "system:bar", "system:autumn", "lib/libcompiled.a" }
+    } else {
+        foreign import foo_pkg_runic { "system:libfoo.a", "system:libbaz.a", "system:libbar.a", "system:libautumn.a", "lib/libcompiled.a" }
+    }
+} else {
+    foreign import foo_pkg_runic { "libfoo.so", "system:libbaz.a", "system:bar", "system:autumn", "lib/libcompiled.a" }
+}
 
 main :: proc() {}`
 
@@ -492,8 +492,6 @@ main_struct :: struct {
     b: the_system.from_system,
 }
 
-foreign import extern_test_runic "system:system_include"
-
 @(default_calling_convention = "c")
 foreign extern_test_runic {
     @(link_name = "ctx")
@@ -509,6 +507,8 @@ foreign extern_test_runic {
     new_donkey :: proc() -> third_party.donkey_t ---
 
 }
+
+foreign import extern_test_runic "system:system_include"
 
 `
 
@@ -692,5 +692,129 @@ func.designer_draw_design = #Untyped designer #Extern Designer #Attr Ptr 1 #Attr
         rn.out,
     )
     if !expect_value(t, errors.wrap(odin_err), nil) do return
+
+    ANY_EXPECTED :: `#+build linux amd64, windows amd64, darwin amd64
+package multi
+
+import "vendor:animal"
+import "vendor:car"
+
+@(default_calling_convention = "c")
+foreign multi_runic {
+    @(link_name = "car_drive")
+    car_drive :: proc(car: ^car.Car) ---
+
+    @(link_name = "animal_growl")
+    animal_growl :: proc(animal: ^animal.Animal) ---
+
+}
+
+when (ODIN_OS == .Windows) {
+
+foreign import multi_runic "system:multid.lib"
+
+}
+
+when (ODIN_OS == .Linux) || (ODIN_OS == .Darwin) {
+
+foreign import multi_runic "system:multi"
+
+}
+
+`
+
+
+    LINUX_EXPECTED :: `#+build linux amd64
+package multi
+
+import "vendor:dev"
+
+@(default_calling_convention = "c")
+foreign multi_runic {
+    @(link_name = "dev_code")
+    dev_code :: proc(dev: ^dev.Dev, lines: u64) ---
+
+}
+
+foreign import multi_runic "system:multi"
+
+`
+
+
+    WINDOWS_EXPECTED :: `#+build windows amd64
+package multi
+
+import "vendor:office"
+
+@(default_calling_convention = "c")
+foreign multi_runic {
+    @(link_name = "office_worker_write_off_taxes")
+    office_worker_write_off_taxes :: proc(ow: ^office.OfficeWorker, year: u64, amount_in_dollar: i64) ---
+
+}
+
+foreign import multi_runic "system:multid.lib"
+
+`
+
+
+    MACOS_EXPECTED :: `#+build darwin amd64
+package multi
+
+import "vendor:design"
+
+@(default_calling_convention = "c")
+foreign multi_runic {
+    @(link_name = "designer_draw_design")
+    designer_draw_design :: proc(designer: ^design.Designer, width: u64, height: u64) ---
+
+}
+
+foreign import multi_runic "system:multi"
+
+`
+
+
+    linux_path := filepath.join(
+        {test_data_dir, "test_odin_to_multiple_files-Linux.odin"},
+    )
+    windows_path := filepath.join(
+        {test_data_dir, "test_odin_to_multiple_files-Windows.odin"},
+    )
+    macos_path := filepath.join(
+        {test_data_dir, "test_odin_to_multiple_files-Macos.odin"},
+    )
+    defer delete(linux_path)
+    defer delete(windows_path)
+    defer delete(macos_path)
+
+    any_data, any_data_ok := os.read_entire_file(out_path)
+    if !expect(t, any_data_ok) do return
+    defer delete(any_data)
+
+    linux_data, linux_data_ok := os.read_entire_file(linux_path)
+    if !expect(t, linux_data_ok) do return
+    defer delete(linux_data)
+
+    windows_data, windows_data_ok := os.read_entire_file(windows_path)
+    if !expect(t, windows_data_ok) do return
+    defer delete(windows_data)
+
+    macos_data, macos_data_ok := os.read_entire_file(macos_path)
+    if !expect(t, macos_data_ok) do return
+    defer delete(macos_data)
+
+    if expect_value(t, len(any_data), len(ANY_EXPECTED)) {
+        expect_value(t, string(any_data), ANY_EXPECTED)
+    }
+    if expect_value(t, len(linux_data), len(LINUX_EXPECTED)) {
+        expect_value(t, string(linux_data), LINUX_EXPECTED)
+    }
+    if expect_value(t, len(windows_data), len(WINDOWS_EXPECTED)) {
+        expect_value(t, string(windows_data), WINDOWS_EXPECTED)
+    }
+    if expect_value(t, len(macos_data), len(MACOS_EXPECTED)) {
+        expect_value(t, string(macos_data), MACOS_EXPECTED)
+    }
 }
 

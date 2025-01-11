@@ -435,3 +435,13 @@ multiple_platforms_match :: proc(p1s, p2s: []Platform) -> bool {
     return true
 }
 
+multiple_platforms_any_match :: proc(p1s, p2s: []Platform) -> bool {
+    for p1 in p1s {
+        for p2 in p2s {
+            if platform_matches(p1, p2) do return true
+        }
+    }
+
+    return false
+}
+

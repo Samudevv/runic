@@ -305,14 +305,14 @@ generate_bindings :: proc(
 
     when ODIN_DEBUG {
         for imp_group in grouped_imports {
-            fmt.println("---- Import Group ----")
-            fmt.println("Plats: ", imp_group.plats)
-            fmt.print("Imports:")
+            fmt.println("debug: ---- Import Group ----")
+            fmt.println("debug: Plats: ", imp_group.plats)
+            fmt.print("debug: Imports:")
             for imp in imp_group.imports {
-                fmt.print(" ", imp)
+                fmt.print("debug: ", imp)
             }
             fmt.println()
-            fmt.println("----------------------")
+            fmt.println("debug: ----------------------")
         }
     }
 
@@ -564,29 +564,15 @@ generate_bindings :: proc(
         for cross_idx, idx in imp_group.cross_indices {
             rs := rc.cross[cross_idx]
 
-            plats := rs.plats
-            if !runic.runecross_is_simple(rc) {
-                if rn.use_when_else &&
-                   idx == len(imp_group.cross_indices) - 1 &&
-                   write_when {
-                    io.write_string(rs_wd, "{\n\n") or_return
-                } else {
-                    write_when = when_plats(
-                        rs_wd,
-                        platforms,
-                        plats,
-                        rn.ignore_arch,
-                    ) or_return
-                }
-            }
-
+            rs_builder: strings.Builder
+            defer strings.builder_destroy(&rs_builder)
             // Determine which add libs fit this specific runestone
             add_libs_static := add_libs_for_runestone(
-                plats,
+                rs.plats,
                 rn.add_libs_static,
             )
             add_libs_shared := add_libs_for_runestone(
-                plats,
+                rs.plats,
                 rn.add_libs_shared,
             )
             defer delete(add_libs_static)
@@ -596,7 +582,7 @@ generate_bindings :: proc(
                 generate_bindings_from_runestone(
                     rs,
                     rn,
-                    rs_wd,
+                    strings.to_stream(&rs_builder),
                     rs_file_path,
                     package_name,
                     add_libs_static,
@@ -604,13 +590,121 @@ generate_bindings :: proc(
                 ),
             ) or_return
 
-            if !runic.runecross_is_simple(rc) && write_when {
-                io.write_rune(rs_wd, '}') or_return
-                if rn.use_when_else &&
-                   idx != len(imp_group.cross_indices) - 1 {
-                    io.write_string(rs_wd, " else ") or_return
-                } else {
-                    io.write_string(rs_wd, "\n\n") or_return
+            rs_str := strings.to_string(rs_builder)
+            if len(rs_str) != 0 {
+                if len(imp_group.cross_indices) != 1 {
+                    if rn.use_when_else &&
+                       idx == len(imp_group.cross_indices) - 1 &&
+                       write_when {
+                        io.write_string(rs_wd, "{\n\n") or_return
+                    } else {
+                        write_when = when_plats(
+                            rs_wd,
+                            platforms,
+                            rs.plats,
+                            rn.ignore_arch,
+                        ) or_return
+                    }
+                }
+
+                io.write_string(rs_wd, rs_str) or_return
+
+                if len(imp_group.cross_indices) != 1 && write_when {
+                    io.write_rune(rs_wd, '}') or_return
+                    if rn.use_when_else &&
+                       idx != len(imp_group.cross_indices) - 1 {
+                        io.write_string(rs_wd, " else ") or_return
+                    } else {
+                        io.write_string(rs_wd, "\n\n") or_return
+                    }
+                }
+            }
+        }
+
+        // Generate all foreign import statements relevant for the file
+
+        // 1. Only generate them if we have symbols
+        have_symbols := false
+        for cross_idx in imp_group.cross_indices {
+            rs := rc.cross[cross_idx]
+            if om.length(rs.symbols) != 0 {
+                have_symbols = true
+                break
+            }
+        }
+
+        if have_symbols {
+            // 2. Get list of all runestones that are relevant for the file and have libraries
+            relevant_runestones := make(
+                [dynamic]int,
+                len = 0,
+                cap = len(rc.cross),
+                allocator = arena_alloc,
+            )
+
+            for rs, rs_idx in rc.cross {
+                if (rs.lib.shared != nil || rs.lib.static != nil) &&
+                   runic.multiple_platforms_any_match(
+                       imp_group.plats[:],
+                       rs.plats,
+                   ) {
+                    append(&relevant_runestones, rs_idx)
+                }
+            }
+
+            // 3. Loop over them and generate when statements and foreign import statements
+            write_when = false
+            for rs_idx, idx in relevant_runestones {
+                rs := rc.cross[rs_idx]
+
+                if len(imp_group.cross_indices) != 1 {
+                    if rn.use_when_else &&
+                       idx == len(relevant_runestones) - 1 &&
+                       write_when {
+                        io.write_string(rs_wd, "{\n\n") or_return
+                    } else {
+                        write_when = when_plats(
+                            rs_wd,
+                            platforms,
+                            rs.plats,
+                            rn.ignore_arch,
+                        ) or_return
+                    }
+                }
+
+                // Determine which add libs fit this specific runestone
+                add_libs_static := add_libs_for_runestone(
+                    rs.plats,
+                    rn.add_libs_static,
+                )
+                add_libs_shared := add_libs_for_runestone(
+                    rs.plats,
+                    rn.add_libs_shared,
+                )
+                defer delete(add_libs_static)
+                defer delete(add_libs_shared)
+
+
+                write_complete_foreign_import(
+                    rs_wd,
+                    rs_file_path,
+                    rs.plats,
+                    rs.lib,
+                    package_name,
+                    rn.static_switch,
+                    add_libs_static,
+                    add_libs_shared,
+                    rn.ignore_arch,
+                ) or_return
+
+                if len(imp_group.cross_indices) != 1 && write_when {
+                    io.write_rune(rs_wd, '}') or_return
+                    if rn.use_when_else &&
+                       idx != len(relevant_runestones) - 1 {
+                        io.write_string(rs_wd, " else ") or_return
+                    } else {
+                        io.write_string(rs_wd, "\n\n") or_return
+                    }
                 }
             }
         }
@@ -631,10 +725,6 @@ generate_bindings_from_runestone :: proc(
         errors.Error,
         io.Error,
     } {
-    arena: runtime.Arena
-    defer runtime.arena_destroy(&arena)
-    arena_alloc := runtime.arena_allocator(&arena)
-
     for entry in rs.constants.data {
         name, const := entry.key, entry.value
 
@@ -717,136 +807,6 @@ generate_bindings_from_runestone :: proc(
     }
 
     if om.length(rs.types) != 0 do io.write_rune(wd, '\n') or_return
-
-    is_also_macos :=
-        slice.count_proc(rs.plats, proc(plat: runic.Platform) -> bool {
-            return plat.os == .Macos || plat.os == .Any
-        }) != 0
-
-    if rs.lib.shared != nil || rs.lib.static != nil {
-        if rs.lib.shared != nil && rs.lib.static != nil {
-            static := rs.lib.static.?
-            shared := rs.lib.shared.?
-
-            static_switch := rn.static_switch
-            if len(static_switch) == 0 {
-                static_switch = strings.concatenate(
-                    {strings.to_upper(package_name, arena_alloc), "_STATIC"},
-                    arena_alloc,
-                )
-            }
-
-            io.write_string(wd, "when #config(") or_return
-            io.write_string(wd, static_switch) or_return
-            io.write_string(wd, ", false) {\n    ") or_return
-
-            // NOTE: On macos you can not directly write "system:libfoo.a" (which can be done on linux) you need to change it to "system:foo"
-            macos_system_static_fix :=
-                is_also_macos &&
-                !filepath.is_abs(static) &&
-                strings.has_prefix(static, "lib") &&
-                strings.has_suffix(static, ".a") // TODO: Also ask wether the add_libs are static system libs
-
-            if macos_system_static_fix {
-                io.write_string(
-                    wd,
-                    "when ODIN_OS == .Darwin {\n        ",
-                ) or_return
-
-                write_foreign_import(
-                    wd,
-                    file_path,
-                    package_name,
-                    static,
-                    add_libs_static,
-                    rn.ignore_arch,
-                    true,
-                ) or_return
-
-                io.write_string(wd, "\n    } else {\n        ") or_return
-            }
-
-            write_foreign_import(
-                wd,
-                file_path,
-                package_name,
-                static,
-                add_libs_static,
-                rn.ignore_arch,
-            ) or_return
-            io.write_rune(wd, '\n') or_return
-
-            if macos_system_static_fix {
-                io.write_string(wd, "    }\n") or_return
-            }
-
-            io.write_string(wd, "} else {\n    ") or_return
-
-            write_foreign_import(
-                wd,
-                file_path,
-                package_name,
-                shared,
-                add_libs_shared,
-                rn.ignore_arch,
-            ) or_return
-
-            io.write_string(wd, "\n}\n\n") or_return
-        } else {
-            lib_name: string = ---
-            is_shared: bool = ---
-
-            if shared, ok := rs.lib.shared.?; ok {
-                is_shared = true
-                lib_name = shared
-            } else {
-                is_shared = false
-                lib_name = rs.lib.static.?
-            }
-
-            macos_system_static_fix :=
-                !is_shared &&
-                is_also_macos &&
-                !filepath.is_abs(lib_name) &&
-                strings.has_prefix(lib_name, "lib") &&
-                strings.has_suffix(lib_name, ".a")
-
-            if macos_system_static_fix {
-                io.write_string(wd, "when ODIN_OS == .Darwin {\n") or_return
-
-                write_foreign_import(
-                    wd,
-                    file_path,
-                    package_name,
-                    lib_name,
-                    add_libs_static,
-                    rn.ignore_arch,
-                    true,
-                ) or_return
-
-                io.write_string(wd, "\n} else {\n") or_return
-            }
-
-            if macos_system_static_fix {
-                io.write_string(wd, "    ") or_return
-            }
-
-            write_foreign_import(
-                wd,
-                file_path,
-                package_name,
-                lib_name,
-                add_libs_shared if is_shared else add_libs_static,
-                rn.ignore_arch,
-            ) or_return
-
-            if macos_system_static_fix {
-                io.write_string(wd, "\n}\n\n") or_return
-            } else {
-                io.write_string(wd, "\n\n") or_return
-            }
-        }
-    }
 
     if om.length(rs.symbols) != 0 {
         io.write_string(
@@ -1705,5 +1665,148 @@ add_libs_for_runestone :: proc(
         })
 
     return rs_add_libs
+}
+
+@(private)
+write_complete_foreign_import :: proc(
+    wd: io.Writer,
+    file_path: string,
+    plats: []runic.Platform,
+    lib: runic.Library,
+    package_name, rn_static_switch: string,
+    add_libs_static: [dynamic]AddLibs,
+    add_libs_shared: [dynamic]AddLibs,
+    ignore_arch: bool,
+) -> io.Error {
+    is_also_macos :=
+        slice.count_proc(plats, proc(plat: runic.Platform) -> bool {
+                return plat.os == .Macos || plat.os == .Any
+            }) != 0
+
+    if lib.shared != nil || lib.static != nil {
+        if lib.shared != nil && lib.static != nil {
+            static := lib.static.?
+            shared := lib.shared.?
+
+            io.write_string(wd, "when #config(") or_return
+            if len(rn_static_switch) == 0 {
+                upper_package_name := strings.to_upper(package_name)
+                io.write_string(wd, upper_package_name) or_return
+                io.write_string(wd, "_STATIC") or_return
+                delete(upper_package_name)
+            } else {
+                io.write_string(wd, rn_static_switch) or_return
+            }
+            io.write_string(wd, ", false) {\n    ") or_return
+
+            // NOTE: On macos you can not directly write "system:libfoo.a" (which can be done on linux) you need to change it to "system:foo"
+            macos_system_static_fix :=
+                is_also_macos &&
+                !filepath.is_abs(static) &&
+                strings.has_prefix(static, "lib") &&
+                strings.has_suffix(static, ".a") // TODO: Also ask wether the add_libs are static system libs
+
+            if macos_system_static_fix {
+                io.write_string(
+                    wd,
+                    "when ODIN_OS == .Darwin {\n        ",
+                ) or_return
+
+                write_foreign_import(
+                    wd,
+                    file_path,
+                    package_name,
+                    static,
+                    add_libs_static,
+                    ignore_arch,
+                    true,
+                ) or_return
+
+                io.write_string(wd, "\n    } else {\n        ") or_return
+            }
+
+            write_foreign_import(
+                wd,
+                file_path,
+                package_name,
+                static,
+                add_libs_static,
+                ignore_arch,
+            ) or_return
+            io.write_rune(wd, '\n') or_return
+
+            if macos_system_static_fix {
+                io.write_string(wd, "    }\n") or_return
+            }
+
+            io.write_string(wd, "} else {\n    ") or_return
+
+            write_foreign_import(
+                wd,
+                file_path,
+                package_name,
+                shared,
+                add_libs_shared,
+                ignore_arch,
+            ) or_return
+
+            io.write_string(wd, "\n}\n\n") or_return
+        } else {
+            lib_name: string = ---
+            is_shared: bool = ---
+
+            if shared, ok := lib.shared.?; ok {
+                is_shared = true
+                lib_name = shared
+            } else {
+                is_shared = false
+                lib_name = lib.static.?
+            }
+
+            macos_system_static_fix :=
+                !is_shared &&
+                is_also_macos &&
+                !filepath.is_abs(lib_name) &&
+                strings.has_prefix(lib_name, "lib") &&
+                strings.has_suffix(lib_name, ".a")
+
+            if macos_system_static_fix {
+                io.write_string(wd, "when ODIN_OS == .Darwin {\n") or_return
+
+                write_foreign_import(
+                    wd,
+                    file_path,
+                    package_name,
+                    lib_name,
+                    add_libs_static,
+                    ignore_arch,
+                    true,
+                ) or_return
+
+                io.write_string(wd, "\n} else {\n") or_return
+            }
+
+            if macos_system_static_fix {
+                io.write_string(wd, "    ") or_return
+            }
+
+            write_foreign_import(
+                wd,
+                file_path,
+                package_name,
+                lib_name,
+                add_libs_shared if is_shared else add_libs_static,
+                ignore_arch,
+            ) or_return
+
+            if macos_system_static_fix {
+                io.write_string(wd, "\n}\n\n") or_return
+            } else {
+                io.write_string(wd, "\n\n") or_return
+            }
+        }
+    }
+
+    return .None
 }
 

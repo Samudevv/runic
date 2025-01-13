@@ -131,6 +131,16 @@ generate_bindings :: proc(
                         }
                     }
                 }
+
+                #partial switch pt in spec.return_type.spec {
+                case runic.ExternType:
+                    extern_source, source_found :=
+                        runic.source_of_extern_type_from_runecross(pt, rc)
+                    if source_found &&
+                       !slice.contains(rs_imps^[:], extern_source) {
+                        append(rs_imps, extern_source)
+                    }
+                }
             }
         }
 
@@ -193,6 +203,16 @@ generate_bindings :: proc(
                             }
                         }
                     }
+
+                    #partial switch pt in spec.return_type.spec {
+                    case runic.ExternType:
+                        extern_source, source_found :=
+                            runic.source_of_extern_type_from_runecross(pt, rc)
+                        if source_found &&
+                           !slice.contains(rs_imps^[:], extern_source) {
+                            append(rs_imps, extern_source)
+                        }
+                    }
                 }
             case runic.Function:
                 for p in sym.parameters {
@@ -204,6 +224,16 @@ generate_bindings :: proc(
                            !slice.contains(rs_imps^[:], extern_source) {
                             append(rs_imps, extern_source)
                         }
+                    }
+                }
+
+                #partial switch pt in sym.return_type.spec {
+                case runic.ExternType:
+                    extern_source, source_found :=
+                        runic.source_of_extern_type_from_runecross(pt, rc)
+                    if source_found &&
+                       !slice.contains(rs_imps^[:], extern_source) {
+                        append(rs_imps, extern_source)
                     }
                 }
             }

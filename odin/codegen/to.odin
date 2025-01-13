@@ -309,7 +309,7 @@ generate_bindings :: proc(
             fmt.println("debug: Plats: ", imp_group.plats)
             fmt.print("debug: Imports:")
             for imp in imp_group.imports {
-                fmt.print("debug: ", imp)
+                fmt.print(" ", imp)
             }
             fmt.println()
             fmt.println("debug: ----------------------")

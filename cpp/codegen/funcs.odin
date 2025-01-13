@@ -4,6 +4,7 @@ import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:unicode"
 import "root:errors"
 import om "root:ordered_map"
 import "root:runic"
@@ -1114,6 +1115,63 @@ generate_clang_flags :: proc(
     }
 
     append(&clang_flags, ..flags)
+
+    return
+}
+
+@(private)
+parse_macro_definition :: proc(
+    cursor: clang.Cursor,
+    allocator: runtime.Allocator,
+) -> (
+    macro_name, macro_value: string,
+) {
+    cursor_extent := clang.getCursorExtent(cursor)
+    cursor_start := clang.getRangeStart(cursor_extent)
+    cursor_end := clang.getRangeEnd(cursor_extent)
+
+    start_offset, end_offset: u32 = ---, ---
+    file: clang.File = ---
+    clang.getSpellingLocation(cursor_start, &file, nil, nil, &start_offset)
+    clang.getSpellingLocation(cursor_end, nil, nil, nil, &end_offset)
+
+    unit := clang.Cursor_getTranslationUnit(cursor)
+
+    buffer_size: u64 = ---
+    buf := clang.getFileContents(unit, file, &buffer_size)
+    buffer := strings.string_from_ptr(cast(^byte)buf, int(buffer_size))
+
+    macro_def := buffer[start_offset:end_offset]
+    macro_name_end: int = len(macro_def)
+    open_parens: int
+    macro_def_loop: for r, idx in macro_def {
+        switch r {
+        case '(':
+            open_parens += 1
+        case ')':
+            open_parens -= 1
+            if open_parens == 0 {
+                macro_name_end = idx
+                break macro_def_loop
+            }
+        case:
+            if open_parens == 0 && unicode.is_space(r) {
+                macro_name_end = idx
+                break macro_def_loop
+            }
+        }
+    }
+
+    macro_name = strings.clone(macro_def[:macro_name_end], allocator)
+
+    if macro_name_end == len(macro_def) {
+        macro_value = ""
+    } else {
+        macro_value = strings.clone(
+            strings.trim_space(macro_def[macro_name_end:]),
+            allocator,
+        )
+    }
 
     return
 }

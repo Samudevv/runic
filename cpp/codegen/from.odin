@@ -23,7 +23,6 @@ import "core:os"
 import "core:path/filepath"
 import "core:strconv"
 import "core:strings"
-import "core:unicode"
 import "root:errors"
 import om "root:ordered_map"
 import "root:runic"
@@ -31,8 +30,9 @@ import clang "shared:libclang"
 
 @(private = "file")
 Macro :: struct {
-    def:  string,
-    func: bool,
+    def:    string,
+    func:   bool,
+    extern: bool,
 }
 
 @(private)
@@ -191,11 +191,7 @@ generate_runestone :: proc(
     // Add stdinc gen dir to externs
     extern := rf.extern
     if add_extern, ok := stdinc_gen_dir.?; ok {
-        arr := system_includes_gen_extern(
-            rf.extern,
-            add_extern,
-            arena_alloc,
-        )
+        arr := system_includes_gen_extern(rf.extern, add_extern, arena_alloc)
         extern = arr[:]
     }
 
@@ -523,6 +519,23 @@ generate_runestone :: proc(
                                 ),
                             }
                         }
+                    case .MacroDefinition:
+                        macro_name, macro_value := parse_macro_definition(
+                            cursor,
+                            data.ctx.allocator,
+                        )
+
+                        om.insert(
+                            data.macros,
+                            macro_name,
+                            Macro {
+                                def = macro_value,
+                                func = bool(
+                                    clang.Cursor_isMacroFunctionLike(cursor),
+                                ),
+                                extern = true,
+                            },
+                        )
                     }
 
                     return .Continue
@@ -788,71 +801,10 @@ generate_runestone :: proc(
                         runic.Symbol{value = func},
                     )
                 case .MacroDefinition:
-                    cursor_extent := clang.getCursorExtent(cursor)
-                    cursor_start := clang.getRangeStart(cursor_extent)
-                    cursor_end := clang.getRangeEnd(cursor_extent)
-
-                    start_offset, end_offset: u32 = ---, ---
-                    file: clang.File = ---
-                    clang.getSpellingLocation(
-                        cursor_start,
-                        &file,
-                        nil,
-                        nil,
-                        &start_offset,
-                    )
-                    clang.getSpellingLocation(
-                        cursor_end,
-                        nil,
-                        nil,
-                        nil,
-                        &end_offset,
-                    )
-
-                    unit := clang.Cursor_getTranslationUnit(cursor)
-
-                    buffer_size: u64 = ---
-                    buf := clang.getFileContents(unit, file, &buffer_size)
-                    buffer := strings.string_from_ptr(
-                        cast(^byte)buf,
-                        int(buffer_size),
-                    )
-
-                    macro_def := buffer[start_offset:end_offset]
-                    macro_name_end: int = len(macro_def)
-                    open_parens: int
-                    macro_def_loop: for r, idx in macro_def {
-                        switch r {
-                        case '(':
-                            open_parens += 1
-                        case ')':
-                            open_parens -= 1
-                            if open_parens == 0 {
-                                macro_name_end = idx
-                                break macro_def_loop
-                            }
-                        case:
-                            if open_parens == 0 && unicode.is_space(r) {
-                                macro_name_end = idx
-                                break macro_def_loop
-                            }
-                        }
-                    }
-
-                    macro_name := strings.clone(
-                        macro_def[:macro_name_end],
+                    macro_name, macro_value := parse_macro_definition(
+                        cursor,
                         data.ctx.allocator,
                     )
-
-                    macro_value: string = ---
-                    if macro_name_end == len(macro_def) {
-                        macro_value = ""
-                    } else {
-                        macro_value = strings.clone(
-                            strings.trim_space(macro_def[macro_name_end:]),
-                            data.ctx.allocator,
-                        )
-                    }
 
                     om.insert(
                         data.macros,
@@ -862,6 +814,7 @@ generate_runestone :: proc(
                             func = bool(
                                 clang.Cursor_isMacroFunctionLike(cursor),
                             ),
+                            extern = false,
                         },
                     )
                 case .MacroExpansion, .InclusionDirective:
@@ -1176,7 +1129,7 @@ generate_runestone :: proc(
 
             for entry, idx in macros.data {
                 name, macro := entry.key, entry.value
-                if macro.func || len(macro.def) == 0 do continue
+                if macro.func || macro.extern || len(macro.def) == 0 do continue
 
                 prefix_name := strings.concatenate({"R", name}, arena_alloc)
                 for om.contains(macros, prefix_name) {
@@ -1228,6 +1181,40 @@ generate_runestone :: proc(
             return
         }
         defer clang.disposeTranslationUnit(unit)
+
+        when ODIN_DEBUG {
+            num_diag := clang.getNumDiagnostics(unit)
+            if num_diag != 0 {
+                for idx in 0 ..< num_diag {
+                    dig := clang.getDiagnostic(unit, idx)
+                    defer clang.disposeDiagnostic(dig)
+
+                    sev := clang.getDiagnosticSeverity(dig)
+                    dig_msg := clang.formatDiagnostic(
+                        dig,
+                        clang.defaultDiagnosticDisplayOptions(),
+                    )
+                    defer clang.disposeString(dig_msg)
+                    dig_str := clang.getCString(dig_msg)
+
+                    fmt.eprint("MACROS-FILE-")
+                    switch sev {
+                    case .Error:
+                        fmt.eprint("ERROR: ")
+                    case .Fatal:
+                        fmt.eprint("FATAL: ")
+                    case .Warning:
+                        fmt.eprint("WARNING: ")
+                    case .Note:
+                        fmt.eprint("NOTE: ")
+                    case .Ignored:
+                        fmt.eprint("IGNORED: ")
+                    }
+
+                    fmt.eprintln(dig_str)
+                }
+            }
+        }
 
         cursor := clang.getTranslationUnitCursor(unit)
 

@@ -1125,9 +1125,8 @@ generate_runestone :: proc(
                 fmt.fprintfln(macro_file, "#define {} {}", name, macro.def)
             }
 
-            os.write_string(macro_file, "const char")
-
-            for entry, idx in macros.data {
+            first_macro_written := false
+            for entry in macros.data {
                 name, macro := entry.key, entry.value
                 if macro.func || macro.extern || len(macro.def) == 0 do continue
 
@@ -1139,6 +1138,12 @@ generate_runestone :: proc(
                     )
                 }
 
+                if first_macro_written {
+                    os.write_rune(macro_file, ',')
+                } else {
+                    os.write_string(macro_file, "const char")
+                }
+
                 fmt.fprintf(
                     macro_file,
                     "*{}={}({})",
@@ -1146,12 +1151,11 @@ generate_runestone :: proc(
                     strings.to_string(stringify_name),
                     name,
                 )
-                if idx == om.length(macros) - 1 {
-                    os.write_rune(macro_file, ';')
-                } else {
-                    os.write_rune(macro_file, ',')
-                }
+
+                first_macro_written = true
             }
+
+            os.write_rune(macro_file, ';')
         }
 
         defer delete(macro_file_name)

@@ -20,12 +20,12 @@ package runic
 import "base:runtime"
 import "core:fmt"
 import "core:io"
+import odintz "core:odin/tokenizer"
 import "core:path/filepath"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "core:unicode"
-import ctz "root:c/tokenizer"
 import "root:errors"
 import "root:ini"
 import om "root:ordered_map"
@@ -554,59 +554,42 @@ write_runestone :: proc(
 
 @(private)
 parse_func :: proc(def: string) -> (func: Function, err: errors.Error) {
-    token_arena: runtime.Arena
-    defer runtime.arena_destroy(&token_arena)
-
-    token: ^ctz.Token = ---
-    {
-        context.allocator = runtime.arena_allocator(&token_arena)
-
-        tokenizer: ctz.Tokenizer
-        file := ctz.add_new_file(&tokenizer, "func", transmute([]u8)def, 1)
-        token = ctz.tokenize(&tokenizer, file)
-    }
-
-    errors.wrap(token != nil) or_return
-
-    func, _ = parse_func_token(token) or_return
+    // TODO: Add Error_Handler to odin tokenizer
+    tokenizer: odintz.Tokenizer = ---
+    odintz.init(&tokenizer, def, "func", nil)
+    func, _ = parse_func_token(&tokenizer) or_return
+    errors.assert(tokenizer.error_count == 0, "failed to tokenize func")
     return
 }
 
 @(private)
 parse_type :: proc(def: string) -> (type: Type, err: errors.Error) {
-    token_arena: runtime.Arena
-    defer runtime.arena_destroy(&token_arena)
-
-    token: ^ctz.Token = ---
-    {
-        context.allocator = runtime.arena_allocator(&token_arena)
-
-        tokenizer: ctz.Tokenizer
-        file := ctz.add_new_file(&tokenizer, "type", transmute([]u8)def, 1)
-        token = ctz.tokenize(&tokenizer, file)
-    }
-
-    errors.assert(token != nil) or_return
-
-    type, _ = parse_type_token(token) or_return
+    // TODO: Add Error_Handler to odin tokenizer
+    tokenizer: odintz.Tokenizer
+    odintz.init(&tokenizer, def, "type", nil)
+    type, _ = parse_type_token(&tokenizer) or_return
+    errors.assert(
+        tokenizer.error_count == 0,
+        "failed to tokenizer type",
+    ) or_return
     return
 }
 
 @(private = "file")
 parse_type_token :: proc(
-    _token: ^ctz.Token,
+    tokenizer: ^odintz.Tokenizer,
 ) -> (
     type: Type,
-    token: ^ctz.Token,
+    token: odintz.Token,
     err: errors.Error,
 ) {
-    token = _token
+    token = odintz.scan(tokenizer)
 
-    if token.kind == .Punct && token.lit == "#" {
-        token = token.next
+    if token.kind == .Hash {
+        token = odintz.scan(tokenizer)
         errors.assert(token.kind == .Ident) or_return
 
-        switch token.lit {
+        switch token.text {
         case "Untyped":
             type.spec = Builtin.Untyped
         case "RawPtr":
@@ -650,103 +633,101 @@ parse_type_token :: proc(
         case "Opaque":
             type.spec = Builtin.Opaque
         case "Struct":
-            token = token.next
-
             s: Struct = ---
-            s, token = parse_struct_token(token) or_return
+            s, token = parse_struct_token(tokenizer) or_return
             type.spec = s
             return
         case "Enum":
-            token = token.next
-
             e: Enum = ---
-            e, token = parse_enum_token(token) or_return
+            e, token = parse_enum_token(tokenizer) or_return
             type.spec = e
             return
         case "Union":
-            token = token.next
-
             u: Union = ---
-            u, token = parse_union_token(token) or_return
+            u, token = parse_union_token(tokenizer) or_return
             type.spec = u
             return
         case "Unknown":
-            token = token.next
+            token = odintz.scan(tokenizer)
             errors.assert(token.kind == .Ident) or_return
 
-            type.spec = Unknown(token.lit)
+            type.spec = Unknown(token.text)
         case "FuncPtr":
-            token = token.next
             func: Function = ---
-            func, token = parse_func_token(token) or_return
+            func, token = parse_func_token(tokenizer) or_return
             type.spec = cast(FunctionPointer)new_clone(func)
             return
         case "Extern":
-            token = token.next
+            token = odintz.scan(tokenizer)
             errors.assert(token.kind == .Ident) or_return
 
-            type.spec = ExternType(token.lit)
+            type.spec = ExternType(token.text)
         case:
-            err = errors.message("invalid type specifier {}", token.lit)
+            err = errors.message("invalid type specifier \"{}\"", token.text)
             return
         }
 
-        token = token.next
+        token = odintz.scan(tokenizer)
     } else if token.kind != .Ident {
         err = errors.message(
-            "invalid type specifier {}",
-            "EOF" if token.kind == .EOF else token.lit,
+            "invalid type specifier \"{}\"",
+            "EOF" if token.kind == .EOF else token.text,
         )
         return
     } else {
-        type.spec = token.lit
-        token = token.next
+        type.spec = token.text
+        token = odintz.scan(tokenizer)
     }
 
-    if token.lit == "#" {
-        if p := token.next; p.lit == "Attr" {
+    if token.kind == .Hash {
+        if p, ptz := odin_tokenizer_peek(tokenizer); p.text == "Attr" {
             current_pointer_info := &type.pointer_info
             current_array: ^Array
             current_read_only := &type.read_only
             current_write_only := &type.write_only
 
-            for token = p.next;
-                token.kind != .EOF && token.lit != "#";
-                token = token.next {
 
-                switch token.lit {
+            tokenizer^ = ptz
+
+            for token = odintz.scan(tokenizer);
+                token.kind != .EOF && token.kind != .Hash;
+                token = odintz.scan(tokenizer) {
+
+                errors.assert(token.kind == .Ident) or_return
+
+                switch token.text {
                 case "Ptr":
-                    token = token.next
-                    errors.assert(token.kind == .Number) or_return
+                    token = odintz.scan(tokenizer)
+                    errors.assert(token.kind == .Integer) or_return
 
-                    count, ok := strconv.parse_uint(token.lit)
+                    count, ok := strconv.parse_uint(token.text)
                     errors.wrap(ok) or_return
 
                     current_pointer_info.count += count
                     current_read_only = &current_pointer_info.read_only
                     current_write_only = &current_pointer_info.write_only
                 case "Arr":
-                    token = token.next
+                    token = odintz.scan(tokenizer)
 
                     append(&type.array_info, Array{})
                     current_array = &type.array_info[len(type.array_info) - 1]
 
                     #partial switch token.kind {
-                    case .Number:
-                        size, ok := strconv.parse_u64(token.lit)
+                    case .Integer:
+                        size, ok := strconv.parse_u64(token.text)
                         errors.wrap(ok) or_return
 
                         current_array.size = size if size != 0 else nil
                     case .String:
                         current_array.size = strings.trim_suffix(
-                            strings.trim_prefix(token.lit, "\""),
+                            strings.trim_prefix(token.text, "\""),
                             "\"",
                         )
                     case:
                         err = errors.message(
-                            "Number or String expected after Arr but got {} (\"{}\")",
+                            "Integer or String expected after Arr but got {} (\"{}\")",
                             token.kind,
-                            token.lit,
+                            token.text,
                         )
                         return
                     }
@@ -759,18 +740,21 @@ parse_type_token :: proc(
                 case "WriteOnly":
                     current_write_only^ = true
                 case:
-                    err = errors.message("invalid attribute {}", token.lit)
+                    err = errors.message(
+                        "invalid attribute \"{}\"",
+                        token.text,
+                    )
                     return
                 }
             }
-            token = token.next
+            token = odintz.scan(tokenizer)
 
             errors.assert(
-                token.lit == "AttrEnd",
+                token.text == "AttrEnd",
                 "#AttrEnd expected",
             ) or_return
 
-            token = token.next
+            token = odintz.scan(tokenizer)
         }
     }
 
@@ -779,30 +763,31 @@ parse_type_token :: proc(
 
 @(private = "file")
 parse_func_token :: proc(
-    _token: ^ctz.Token,
+    tokenizer: ^odintz.Tokenizer,
 ) -> (
     func: Function,
-    token: ^ctz.Token,
+    token: odintz.Token,
     err: errors.Error,
 ) {
-    func.return_type, token = parse_type_token(_token) or_return
+    func.return_type, token = parse_type_token(tokenizer) or_return
 
     for token.kind != .EOF {
         errors.assert(token.kind == .Ident) or_return
 
-        name := token.lit
-        token = token.next
+        name := token.text
 
-        if token.lit == "#" {
-            if p := token.next; p.lit == "Variadic" {
+        if p, ptz := odin_tokenizer_peek(tokenizer); p.kind == .Hash {
+            if p = odintz.scan(&ptz);
+               p.kind == .Ident && p.text == "Variadic" {
                 func.variadic = true
-                token = p.next
+                tokenizer^ = ptz
+                token = odintz.scan(tokenizer)
                 continue
             }
         }
 
         type: Type = ---
-        type, token = parse_type_token(token) or_return
+        type, token = parse_type_token(tokenizer) or_return
 
         append(&func.parameters, Member{name = name, type = type})
     }
@@ -812,42 +797,34 @@ parse_func_token :: proc(
 
 @(private = "file")
 parse_struct :: proc(def: string) -> (s: Struct, err: errors.Error) {
-    token_arena: runtime.Arena
-    defer runtime.arena_destroy(&token_arena)
-
-    token: ^ctz.Token = ---
-    {
-        context.allocator = runtime.arena_allocator(&token_arena)
-
-        tokenizer: ctz.Tokenizer
-        file := ctz.add_new_file(&tokenizer, "struct", transmute([]u8)def, 1)
-        token = ctz.tokenize(&tokenizer, file)
-    }
-
-    errors.assert(token != nil) or_return
-
-    s, _ = parse_struct_token(token) or_return
+    // TODO: ErrorHandler
+    tokenizer: odintz.Tokenizer = ---
+    odintz.init(&tokenizer, def, "struct", nil)
+    s, _ = parse_struct_token(&tokenizer) or_return
+    errors.assert(
+        tokenizer.error_count == 0,
+        "failed to tokenize struct",
+    ) or_return
     return
 }
 
 @(private = "file")
 parse_struct_token :: proc(
-    _token: ^ctz.Token,
+    tokenizer: ^odintz.Tokenizer,
 ) -> (
     s: Struct,
-    token: ^ctz.Token,
+    token: odintz.Token,
     err: errors.Error,
 ) {
-    token = _token
+    token = odintz.scan(tokenizer)
 
     for token.kind != .EOF {
         errors.assert(token.kind == .Ident) or_return
 
-        name := token.lit
-        token = token.next
+        name := token.text
 
         type: Type = ---
-        type, token = parse_type_token(token) or_return
+        type, token = parse_type_token(tokenizer) or_return
 
         append(&s.members, Member{name = name, type = type})
     }
@@ -857,39 +834,32 @@ parse_struct_token :: proc(
 
 @(private = "file")
 parse_enum :: proc(def: string) -> (e: Enum, err: errors.Error) {
-    token_arena: runtime.Arena
-    defer runtime.arena_destroy(&token_arena)
-
-    token: ^ctz.Token = ---
-    {
-        context.allocator = runtime.arena_allocator(&token_arena)
-
-        tokenizer: ctz.Tokenizer
-        file := ctz.add_new_file(&tokenizer, "enum", transmute([]u8)def, 1)
-        token = ctz.tokenize(&tokenizer, file)
-    }
-
-    errors.assert(token != nil) or_return
-
-    e, _ = parse_enum_token(token) or_return
+    // TODO: ErrorHandler
+    tokenizer: odintz.Tokenizer = ---
+    odintz.init(&tokenizer, def, "enum", nil)
+    e, _ = parse_enum_token(&tokenizer) or_return
+    errors.assert(
+        tokenizer.error_count == 0,
+        "failed to tokenize enum",
+    ) or_return
     return
 }
 
 @(private = "file")
 parse_enum_token :: proc(
-    _token: ^ctz.Token,
+    tokenizer: ^odintz.Tokenizer,
 ) -> (
     e: Enum,
-    token: ^ctz.Token,
+    token: odintz.Token,
     err: errors.Error,
 ) {
-    token = _token
+    token = odintz.scan(tokenizer)
 
-    errors.assert(token.lit == "#") or_return
-    token = token.next
+    errors.assert(token.kind == .Hash) or_return
+    token = odintz.scan(tokenizer)
     errors.assert(token.kind == .Ident) or_return
 
-    switch token.lit {
+    switch token.text {
     case "SInt8":
         e.type = .SInt8
     case "SInt16":
@@ -911,29 +881,29 @@ parse_enum_token :: proc(
     case "UInt128":
         e.type = .UInt128
     case:
-        err = errors.message("invalid enum type {}", token.lit)
+        err = errors.message("invalid enum type {}", token.text)
         return
     }
 
-    token = token.next
+    token = odintz.scan(tokenizer)
 
     for token.kind != .EOF {
         errors.assert(token.kind == .Ident) or_return
 
-        name := token.lit
-        token = token.next
+        name := token.text
+        token = odintz.scan(tokenizer)
 
         value: EnumConstant
 
         #partial switch token.kind {
-        case .Number:
-            n, ok := strconv.parse_i64(token.lit)
+        case .Integer:
+            n, ok := strconv.parse_i64(token.text)
             errors.wrap(ok) or_return
 
             value = n
         case .String:
             value = strings.trim_suffix(
-                strings.trim_prefix(token.lit, `"`),
+                strings.trim_prefix(token.text, `"`),
                 `"`,
             )
         case:
@@ -941,7 +911,7 @@ parse_enum_token :: proc(
             return
         }
 
-        token = token.next
+        token = odintz.scan(tokenizer)
 
         append(&e.entries, EnumEntry{name = name, value = value})
     }
@@ -960,14 +930,14 @@ parse_union :: proc(def: string) -> (u: Union, err: errors.Error) {
 
 @(private = "file")
 parse_union_token :: proc(
-    _token: ^ctz.Token,
+    tokenizer: ^odintz.Tokenizer,
 ) -> (
     u: Union,
-    token: ^ctz.Token,
+    token: odintz.Token,
     err: errors.Error,
 ) {
     s: Struct = ---
-    s, token = parse_struct_token(_token) or_return
+    s, token = parse_struct_token(tokenizer) or_return
     u = Union {
         members = s.members,
     }
@@ -976,73 +946,51 @@ parse_union_token :: proc(
 
 @(private)
 parse_constant :: proc(def: string) -> (c: Constant, err: errors.Error) {
-    token_arena: runtime.Arena
-    defer runtime.arena_destroy(&token_arena)
-
-    token: ^ctz.Token = ---
-    {
-        context.allocator = runtime.arena_allocator(&token_arena)
-
-        tokenizer: ctz.Tokenizer
-        file := ctz.add_new_file(&tokenizer, "constant", transmute([]u8)def, 1)
-        token = ctz.tokenize(&tokenizer, file)
-    }
-
-    errors.assert(token != nil) or_return
-
-    c, _ = parse_constant_token(token) or_return
+    // TODO: ErrorHandler
+    tokenizer: odintz.Tokenizer = ---
+    odintz.init(&tokenizer, def, "constant", nil)
+    c, _ = parse_constant_token(&tokenizer) or_return
+    errors.assert(tokenizer.error_count == 0, "failed to tokenize constant")
     return
 }
 
 @(private = "file")
 parse_constant_token :: proc(
-    _token: ^ctz.Token,
+    tokenizer: ^odintz.Tokenizer,
 ) -> (
     c: Constant,
-    token: ^ctz.Token,
+    token: odintz.Token,
     err: errors.Error,
 ) {
-    token = _token
+    token = odintz.scan(tokenizer)
 
     #partial switch token.kind {
-    case .Number:
+    case .Integer:
         ok: bool = ---
-        switch token.type_hint {
-        case .None:
-            c.value, ok = strconv.parse_i64(token.lit)
-            if !ok {
-                c.value, ok = strconv.parse_f64(token.lit)
-                errors.wrap(ok) or_return
-            }
-        case .Int ..= .Unsigned_Long_Long:
-            c.value, ok = strconv.parse_i64(token.lit)
-            errors.wrap(ok) or_return
-        case .Float ..= .Long_Double:
-            c.value, ok = strconv.parse_f64(token.lit)
-            errors.wrap(ok) or_return
-        case .UTF_8 ..= .UTF_Wide:
-            err = errors.empty()
-            return
-        }
+        c.value, ok = strconv.parse_i64(token.text)
+        errors.wrap(ok, "failed to parse constant as integer") or_return
+    case .Float:
+        ok: bool = ---
+        c.value, ok = strconv.parse_f64(token.text)
+        errors.wrap(ok, "failed to parse constant as float") or_return
     case .String:
         c.value = strings.trim_suffix(
-            strings.trim_prefix(token.lit, "\""),
+            strings.trim_prefix(token.text, "\""),
             "\"",
         )
     case:
         err = errors.message(
-            "{}: int, float or string expected but got {}",
+            "{}: int, float or string expected but got \"{}\"",
             token.pos.column,
-            token.lit,
+            token.text,
         )
         return
     }
 
-    token = token.next
+    p, _ := odin_tokenizer_peek(tokenizer)
+    errors.assert(p.kind == .Hash) or_return
 
-    errors.assert(token.kind == .Punct && token.lit == "#") or_return
-
-    c.type, token = parse_type_token(token) or_return
+    c.type, token = parse_type_token(tokenizer) or_return
     return
 }
 
@@ -1989,5 +1937,16 @@ trim_enum_type_names :: proc(
             }
         }
     }
+}
+
+@(private = "file")
+odin_tokenizer_peek :: #force_inline proc(
+    tokenizer: ^odintz.Tokenizer,
+) -> (
+    odintz.Token,
+    odintz.Tokenizer,
+) {
+    tokenizer_copy := tokenizer^
+    return odintz.scan(&tokenizer_copy), tokenizer_copy
 }
 

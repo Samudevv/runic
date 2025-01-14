@@ -1,3 +1,4 @@
+#+feature dynamic-literals
 package cpp_codegen
 
 import "core:testing"

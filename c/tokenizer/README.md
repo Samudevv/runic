@@ -1,6 +1,6 @@
 # The code of this folder has been copied from `core:c/frontend/tokenizer` of Odin `dev-2024-11`
 
-Since this package has been removed in `dev-2024-12`, it has been copied directly into the project.
+Since this package has been removed in `dev-2024-12`, it has been copied directly into the project. Only a small modification has been made to `token.odin` due to the addition of `#+ feature dynamic-literals` in `dev-2025-01`.
 
 ## License of Odin
 

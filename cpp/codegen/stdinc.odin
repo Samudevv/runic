@@ -215,10 +215,6 @@ SYSTEM_INCLUDE_FILES :: [?]string {
     "pthread.h",
 }
 
-SYSTEM_INCLUDE_FILE_CONTENTS := map[string]string {
-    "stdarg.h" = "typedef long double va_list;",
-}
-
 when ODIN_OS == .Windows {
     SYSTEM_INCLUDE_GEN_DIR :: "C:\\temp\\runic_system_includes\\"
 } else {
@@ -310,7 +306,7 @@ generate_system_includes :: proc(gen_dir: string) -> bool {
         )
         if err != nil do return false
 
-        if contents, contents_ok := SYSTEM_INCLUDE_FILE_CONTENTS[file_name];
+        if contents, contents_ok := system_includes_contents(file_name);
            contents_ok {
             os.write_string(fd, contents)
         }
@@ -397,5 +393,23 @@ system_includes_gen_extern :: proc(
     }
 
     return arr
+}
+
+system_includes_contents :: proc(
+    file_name: string,
+) -> (
+    contents: string,
+    ok: bool,
+) #optional_ok {
+    ok = true
+
+    switch file_name {
+    case "stdarg.h":
+        contents = "typedef long double va_list;"
+    case:
+        ok = false
+    }
+
+    return
 }
 

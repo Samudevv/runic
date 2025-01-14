@@ -1,3 +1,4 @@
+#+ feature dynamic-literals
 /*
 This file is part of runic.
 
@@ -57,6 +58,7 @@ var.linux_globals = Array
 
 `
 
+
     WINDOWS_RUNESTONE :: `
 version = 0
 
@@ -85,6 +87,8 @@ func.create_array = Array size my_size_type
 var.windows_globals = Array
 
 `
+
+
     MACOS_RUNESTONE :: `
 version = 0
 
@@ -113,6 +117,7 @@ func.create_array = Array size my_size_type
 var.macos_globals = Array
 
 `
+
 
     rn := runic.To {
         language = "c",
@@ -260,6 +265,7 @@ extern struct Window* create_window(char* name, uint32_t width, uint32_t height)
 extern struct Array create_array(my_size_type size);
 
 `
+
 
     expect_value(t, len(string(data)), len(EXPECTED_HEADER))
     expect_value(t, string(data), EXPECTED_HEADER)

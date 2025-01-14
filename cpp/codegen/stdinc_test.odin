@@ -42,8 +42,9 @@ test_cpp_stdinc :: proc(t: ^testing.T) {
 
         fd, err := os.open(file_path, os.O_RDONLY)
         if expect_value(t, err, nil) {
-            if expected_contents, expected_ok :=
-                   SYSTEM_INCLUDE_FILE_CONTENTS[file_name]; expected_ok {
+            if expected_contents, expected_ok := system_includes_contents(
+                file_name,
+            ); expected_ok {
                 contents, contents_ok := os.read_entire_file(fd)
                 if expect(t, contents_ok) {
                     if !expect_value(t, string(contents), expected_contents) do fmt.eprintfln("contents of {} differ from expected", file_name)

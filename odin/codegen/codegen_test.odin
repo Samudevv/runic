@@ -1,3 +1,4 @@
+#+ feature dynamic-literals
 /*
 This file is part of runic.
 

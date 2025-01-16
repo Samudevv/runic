@@ -326,7 +326,7 @@ generate_runestone :: proc(
 
         if is_fatal {
             fmt.eprintln(
-                "Errors occurred. The resulting runestone can not be trusted! Make sure to fix the errors accordingly. If system includes can not be found you may want to add them from https://git.musl-libc.org/cgit/musl/",
+                "Errors occurred. The resulting runestone can not be trusted! Make sure to fix the errors accordingly. If system includes can not be found you can check this page for help: https://github.com/Samudevv/runic/wiki#how-system-include-files-are-handled",
             )
         }
 

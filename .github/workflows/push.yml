@@ -62,8 +62,13 @@ jobs:
           just package
         if: matrix.os == 'ubuntu-24.04'
       - name: Build runic release
-        run: just package
         if: matrix.os == 'windows-latest'
+        run: just
+      - name: Build runic installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.5
+        if: matrix.os == 'windows-latest'
+        with:
+          path: windows_installer.iss
       - name: Rename runic artifact
         run: mv build/runic build/runic.${{ env.plat }}
         if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
@@ -88,7 +93,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         with:
           name: runic-${{ env.plat }}
-          path: ${{ github.workspace }}/build/runic.*.zip
+          path: ${{ github.workspace }}/build/package/*
           if-no-files-found: warn
           overwrite: true
           compression-level: 0

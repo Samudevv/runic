@@ -127,11 +127,7 @@ package ARCH=arch(): release (make-directory BUILD_DIR / 'package')
 ARCH := if arch() == 'aarch64' { 'arm64' } else { arch() }
 [windows]
 package: release (make-directory BUILD_DIR / 'package')
-  Copy-Item -Path "{{ BUILD_DIR / 'runic.exe' }}" -Destination "{{ BUILD_DIR / 'package' }}" -Force
-  Copy-Item -Path "{{ justfile_directory() / 'shared/libclang/lib/windows' / ARCH / 'libclang.dll' }}" -Destination "{{ BUILD_DIR / 'package' }}" -Force
-  Copy-Item -Path "{{ justfile_directory() / 'shared/libclang/README.md' }}" -Destination "{{ BUILD_DIR / 'package/libclang-LICENSE.md' }}" -Force
-  Copy-Item -Path "{{ justfile_directory() / 'shared/yaml/README.md' }}" -Destination "{{ BUILD_DIR / 'package/libyaml-LICENSE.md' }}" -Force
-  Compress-Archive -Path "{{ BUILD_DIR / 'package/*' }}" -DestinationPath "{{ BUILD_DIR / 'runic.windows-' + ARCH + '.zip' }}"
+    iscc windows_installer.iss
 
 [unix]
 clean:

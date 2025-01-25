@@ -19,7 +19,7 @@ YAML_STATIC := if os() == 'macos' {
 }
 
 EXTRA_LINKER_FLAGS := if os() == 'macos' {
-  '-extra-linker-flags:"-L' + shell('brew --prefix llvm@18') + '/lib"'
+  '-extra-linker-flags:"-L' + shell('brew --prefix llvm@19') + '/lib"'
 } else {
   ''
 }
@@ -127,6 +127,7 @@ package ARCH=arch(): release (make-directory BUILD_DIR / 'package')
 ARCH := if arch() == 'aarch64' { 'arm64' } else { arch() }
 [windows]
 package: release (make-directory BUILD_DIR / 'package')
+    just -f shared/libclang/justfile download-library "" "{{ BUILD_DIR }}"
     iscc windows_installer.iss
 
 [unix]

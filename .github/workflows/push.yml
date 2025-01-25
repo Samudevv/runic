@@ -25,13 +25,11 @@ jobs:
           sudo ln -rfs /usr/lib/x86_64-linux-gnu/libclang-18.so /usr/lib/x86_64-linux-gnu/libclang.so
           sudo ln -rfs /usr/lib/llvm-18/lib/libLLVM.so.1 /usr/lib/libLLVM-18.so.18.1
         if: matrix.os == 'ubuntu-24.04'
-      - name: Copy libclang
-        run: |
-          New-Item -Path build -ItemType Directory
-          Copy-Item -Path .\shared\libclang\lib\windows\x86_64\libclang.dll -Destination .\build\
+      - name: Download libclang.dll
+        run: just -f shared/libclang/justfile download-library "" "build/"
         if: matrix.os == 'windows-latest'
       - name: Install llvm
-        run: brew install llvm@18
+        run: brew install llvm@19
         if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
       - uses: laytan/setup-odin@v2
         with:

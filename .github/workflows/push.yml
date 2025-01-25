@@ -28,7 +28,7 @@ jobs:
 
   build-and-test:
     runs-on: ${{ matrix.os }}
-    depends: download-libclang.dll
+    needs: download-libclang.dll
     strategy:
       fail-fast: false
       matrix:

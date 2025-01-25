@@ -2,9 +2,9 @@ name: Build and Test
 on: [push]
 
 jobs:
-  download-libclang.dll:
+  download-libclang-dll:
     runs-on: ubuntu-24.04
-    name: Download and Extract libclang.dll
+    name: 'Download and Extract libclang.dll'
 
     steps:
       - uses: actions/checkout@v4
@@ -28,7 +28,7 @@ jobs:
 
   build-and-test:
     runs-on: ${{ matrix.os }}
-    needs: download-libclang.dll
+    needs: download-libclang-dll
     strategy:
       fail-fast: false
       matrix:

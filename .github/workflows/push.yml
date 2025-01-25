@@ -15,6 +15,7 @@ jobs:
         run: sudo apt -y install just
       - name: Download libclang.dll
         run: just download-library '' 'build/'
+        shell: bash
       - name: Upload libclang.dll
         uses: actions/upload-artifact@v4
         with:

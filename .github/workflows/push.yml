@@ -26,8 +26,15 @@ jobs:
           sudo ln -rfs /usr/lib/llvm-18/lib/libLLVM.so.1 /usr/lib/libLLVM-18.so.18.1
         if: matrix.os == 'ubuntu-24.04'
       - name: Download libclang.dll
-        run: just -f shared/libclang/justfile download-library "" "build/"
         if: matrix.os == 'windows-latest'
+        uses: addnab/docker-run-action@v3
+        with:
+          registry: registry.hub.docker.com
+          image: 'ubuntu:24.04'
+          options: -v ${{ github.workspace }}:/work
+          run: |
+            apt install -y just curl tar bash
+            just -f /work/shared/libclang/justfile download-library '' '/work/build/'
       - name: Install llvm
         run: brew install llvm@19
         if: matrix.os == 'macos-13' || matrix.os == 'macos-14'

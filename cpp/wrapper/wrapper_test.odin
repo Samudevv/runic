@@ -94,6 +94,8 @@ extern const float ** do_other_stuff_wrapper(float c, float ** d);
 extern spelling_t alphabet_wrapper();
 extern struct foo_t japanese_wrapper();
 extern int dyna_func_wrapper(int a, int b);
+extern int _beans_wrapper(int a);
+extern int beans_wrapper(int a);
 `
 
 
@@ -117,6 +119,14 @@ struct foo_t japanese_wrapper() {
 
 int dyna_func_wrapper(int a, int b) {
     return dyna_func(a, b);
+}
+
+int _beans_wrapper(int a) {
+    return _beans(a);
+}
+
+int beans_wrapper(int a) {
+    return beans(a);
 }
 
 `

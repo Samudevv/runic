@@ -36,6 +36,7 @@ ClientData :: struct {
     extern:            []string,
     rune_file_name:    string,
     parsed_names:      ^[dynamic]string,
+    main_file_name:    string,
     context_allocator: runtime.Allocator,
 }
 
@@ -302,6 +303,8 @@ generate_wrapper :: proc(
 
             cursor := clang.getTranslationUnitCursor(unit)
 
+            data.main_file_name = in_header
+
             clang.visitChildren(
                 cursor,
                 proc "c" (
@@ -324,7 +327,6 @@ generate_wrapper :: proc(
                     not_from_main_file: if !clang.Location_isFromMainFile(
                         cursor_location,
                     ) {
-                        if !data.load_all_includes do return .Continue
 
                         file: clang.File = ---
                         clang.getSpellingLocation(
@@ -337,8 +339,18 @@ generate_wrapper :: proc(
                         file_name_clang := clang.getFileName(file)
                         defer clang.disposeString(file_name_clang)
                         file_name_str := cppcdg.clang_str(file_name_clang)
-                        // NOTE: flags that define macros (e.g. "-DFOO_STATIC") are also parsed. To make sure that they are ignored this is added
-                        if len(file_name_str) == 0 do return .Continue
+
+                        if len(file_name_str) == 0 {
+                            // NOTE: In libclang 19 typedefinitions inside of macro expansions are sometimes not regarded as part of the main file
+                            if cursor_kind != .MacroDefinition do break not_from_main_file
+                            // NOTE: flags that define macros (e.g. "-DFOO_STATIC") are also parsed. To make sure that they are ignored this is added
+                            return .Continue
+                        } else if file_name_str == data.main_file_name {
+                            // NOTE: function declarations inside macro expansions are not considered as part of the main file even though the file name is the same (since libclang 19)
+                            break not_from_main_file
+                        }
+
+                        if !data.load_all_includes do return .Continue
 
                         file_name: string = ---
 

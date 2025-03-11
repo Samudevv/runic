@@ -21,3 +21,9 @@ struct foo_t chinese() {
 #ifdef DYNA_FUNC
 inline int dyna_func(int a, int b) { return a + b; }
 #endif
+
+#define DEFINE_FUNNY_FUNC(name) \
+inline int _##name(int a) { return a; } \
+inline int name(int a) { return _##name(a); }
+
+DEFINE_FUNNY_FUNC(beans)

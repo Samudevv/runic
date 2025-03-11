@@ -364,8 +364,12 @@ generate_runestone :: proc(
                     file_name_clang := clang.getFileName(file)
                     defer clang.disposeString(file_name_clang)
                     file_name_str := clang_str(file_name_clang)
-                    // NOTE: flags that define macros (e.g. "-DFOO_STATIC") are also parsed. To make sure that they are ignored this is added
-                    if len(file_name_str) == 0 do return .Continue
+                    if len(file_name_str) == 0 {
+                        // NOTE: In libclang 19 typedefinitions inside of macro expansions are sometimes not regarded as part of the main file
+                        if cursor_kind != .MacroDefinition do break not_from_main_file
+                        // NOTE: flags that define macros (e.g. "-DFOO_STATIC") are also parsed. To make sure that they are ignored this is added
+                        return .Continue
+                    }
 
                     file_name, _ := strings.replace_all(
                         file_name_str,

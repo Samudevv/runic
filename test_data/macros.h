@@ -69,3 +69,11 @@ void odin_compiler(const char a);
 
 void __glewCreateProgram();
 void __glewClearColor();
+
+#define DEFINE_MY_TYPE(name, parent) \
+  typedef parent _##name; \
+  typedef _##name name; \
+  name* init_##name();
+
+DEFINE_MY_TYPE(beans, int)
+DEFINE_MY_TYPE(lingo, beans)

@@ -794,6 +794,8 @@ test_cpp_macros :: proc(t: ^testing.T) {
     defer runic.runestone_destroy(&rs)
 
     if !expect_value(t, om.length(rs.constants), 10) do return
+    if !expect_value(t, om.length(rs.types), 4) do return
+    if !expect_value(t, om.length(rs.symbols), 5) do return
 
     A := om.get(rs.constants, "A")
     expect_value(t, A.value.(i64), 1)
@@ -820,6 +822,16 @@ test_cpp_macros :: proc(t: ^testing.T) {
     expect(t, om.contains(rs.constants, "REC_VAR"))
     expect(t, om.contains(rs.constants, "RECY"))
     expect(t, om.contains(rs.constants, "SLASHY"))
+
+    expect(t, om.contains(rs.types, "beans"))
+    expect(t, om.contains(rs.types, "_beans"))
+    expect(t, om.contains(rs.types, "lingo"))
+    expect(t, om.contains(rs.types, "_lingo"))
+
+    expect(t, om.contains(rs.symbols, "__glewCreateProgram"))
+    expect(t, om.contains(rs.symbols, "__glewClearColor"))
+    expect(t, om.contains(rs.symbols, "init_beans"))
+    expect(t, om.contains(rs.symbols, "init_lingo"))
 }
 
 @(test)

@@ -19,7 +19,7 @@ YAML_STATIC := if os() == 'macos' {
 }
 
 EXTRA_LINKER_FLAGS := if os() == 'macos' {
-  '-extra-linker-flags:"-L' + shell('brew --prefix llvm@19') + '/lib"'
+  '-extra-linker-flags:"-L' + shell('brew --prefix llvm@18') + '/lib"'
 } else {
   ''
 }

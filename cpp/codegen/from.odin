@@ -56,6 +56,7 @@ ClientData :: struct {
     rune_file_name:    string,
     load_all_includes: bool,
     extern:            []string,
+    main_file_name:    string,
     ctx:               ^ClangToRunicTypeContext,
 }
 
@@ -332,6 +333,13 @@ generate_runestone :: proc(
 
         cursor := clang.getTranslationUnitCursor(unit)
 
+        rel_main_file_name, rel_main_ok := runic.absolute_to_file(
+            rune_file_name,
+            header,
+            arena_alloc,
+        )
+        data.main_file_name = rel_main_file_name if rel_main_ok else header
+
         clang.visitChildren(
             cursor,
             proc "c" (
@@ -366,7 +374,8 @@ generate_runestone :: proc(
                     file_name_str := clang_str(file_name_clang)
                     if len(file_name_str) == 0 {
                         // NOTE: In libclang 19 typedefinitions inside of macro expansions are sometimes not regarded as part of the main file
-                        if cursor_kind != .MacroDefinition do break not_from_main_file
+                        // NOTE: but enabling this makes macro expanded types part of the main file
+                        // if cursor_kind != .MacroDefinition do break not_from_main_file
                         // NOTE: flags that define macros (e.g. "-DFOO_STATIC") are also parsed. To make sure that they are ignored this is added
                         return .Continue
                     }
@@ -385,8 +394,12 @@ generate_runestone :: proc(
                     if rel_ok do file_name = rel_file_name
 
                     load_as_main :=
-                        data.load_all_includes &&
-                        !runic.single_list_glob(data.extern, file_name)
+                        (file_name == data.main_file_name) ||
+                        (data.load_all_includes &&
+                                !runic.single_list_glob(
+                                        data.extern,
+                                        file_name,
+                                    ))
                     if load_as_main do break not_from_main_file
 
                     #partial switch cursor_kind {

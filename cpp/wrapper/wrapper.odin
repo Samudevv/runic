@@ -303,7 +303,12 @@ generate_wrapper :: proc(
 
             cursor := clang.getTranslationUnitCursor(unit)
 
-            data.main_file_name = in_header
+            rel_main_file_name, rel_main_ok := runic.absolute_to_file(
+                rune_file_name,
+                in_header,
+            )
+            data.main_file_name =
+                rel_main_file_name if rel_main_ok else in_header
 
             clang.visitChildren(
                 cursor,
@@ -342,15 +347,11 @@ generate_wrapper :: proc(
 
                         if len(file_name_str) == 0 {
                             // NOTE: In libclang 19 typedefinitions inside of macro expansions are sometimes not regarded as part of the main file
-                            if cursor_kind != .MacroDefinition do break not_from_main_file
+                            // NOTE: but enabling this makes macro expanded types part of the main file
+                            // if cursor_kind != .MacroDefinition do break not_from_main_file
                             // NOTE: flags that define macros (e.g. "-DFOO_STATIC") are also parsed. To make sure that they are ignored this is added
                             return .Continue
-                        } else if file_name_str == data.main_file_name {
-                            // NOTE: function declarations inside macro expansions are not considered as part of the main file even though the file name is the same (since libclang 19)
-                            break not_from_main_file
                         }
-
-                        if !data.load_all_includes do return .Continue
 
                         file_name: string = ---
 
@@ -369,6 +370,9 @@ generate_wrapper :: proc(
 
                         file_name =
                             rel_file_name if rel_ok else replaced_file_name
+
+                        if file_name == data.main_file_name do break not_from_main_file
+                        if !data.load_all_includes do return .Continue
 
                         if runic.single_list_glob(data.extern, file_name) do return .Continue
                     }

@@ -35,10 +35,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-latest, macos-13, macos-14]
-    name: ${{ matrix.os == 'ubuntu-24.04' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-arm64' || 'windows-x86_64' }}
+        os: [ubuntu-24.04, ubuntu-24.04-arm, windows-2022, macos-13, macos-14]
+    name: ${{ matrix.os == 'ubuntu-24.04' && 'linux-x86_64' || matrix.os == 'ubuntu-24.04-arm' && 'linux-aarch64' || matrix.os == 'macos-13' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-aarch64' || 'windows-x86_64' }}
     env:
-      plat: ${{ matrix.os == 'ubuntu-24.04' && 'linux-x86_64' || matrix.os == 'macos-13' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-arm64' || 'windows-x86_64' }}
+      os: ${{ startsWith(matrix.os, 'ubuntu') && 'linux' || startsWith(matrix.os, 'macos') && 'macos' || 'windows' }}
+      arch: ${{ matrix.os == 'ubuntu-24.04-arm' && 'aarch64' || matrix.os == 'macos-14' && 'aarch64' || 'x86_64' }}
+      plat: ${{ matrix.os == 'ubuntu-24.04' && 'linux-x86_64' || matrix.os == 'ubuntu-24.04-arm' && 'linux-aarch64' || matrix.os == 'macos-13' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-aarch64' || 'windows-x86_64' }}
 
 
     steps:
@@ -50,11 +52,11 @@ jobs:
       - name: Install libclang, llvm
         run: |
           sudo apt -y install libclang-18-dev libllvm18
-          sudo ln -rfs /usr/lib/x86_64-linux-gnu/libclang-18.so /usr/lib/x86_64-linux-gnu/libclang.so
+          sudo ln -rfs /usr/lib/${{ env.arch }}-linux-gnu/libclang-18.so /usr/lib/${{ env.arch }}-linux-gnu/libclang.so
           sudo ln -rfs /usr/lib/llvm-18/lib/libLLVM.so.1 /usr/lib/libLLVM-18.so.18.1
-        if: matrix.os == 'ubuntu-24.04'
+        if: env.os == 'linux'
       - name: Download libclang.dll
-        if: matrix.os == 'windows-latest'
+        if: env.os == 'windows'
         uses: actions/download-artifact@v4
         with:
           name: libclang.dll
@@ -62,13 +64,16 @@ jobs:
           path: build
       - name: Install llvm
         run: brew install llvm@18
-        if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
+        if: env.os == 'macos'
+      - name: Install apt-fast
+        run: '/bin/bash -c "$(curl -sL https://git.io/vokNn)"'
+        if: env.plat == 'linux-aarch64'
       - uses: laytan/setup-odin@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           release: dev-2025-04
       - uses: ilammy/msvc-dev-cmd@v1
-        if: matrix.os == 'windows-latest'
+        if: env.os == 'windows'
 
       - name: Test
         uses: nick-fields/retry@v3
@@ -83,28 +88,25 @@ jobs:
 
       - name: Build runic release
         run: just
-        if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
+        if: env.os == 'windows' || env.os == 'macos'
       - name: Build runic AppImage
         run: |
           mkdir appimagetool_bin/
           just install-appimagetool appimagetool_bin/
           export PATH=$(pwd)/appimagetool_bin/:$PATH
           just package
-        if: matrix.os == 'ubuntu-24.04'
-      - name: Build runic release
-        if: matrix.os == 'windows-latest'
-        run: just
+        if: env.os == 'linux'
       - name: Build runic installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.5
-        if: matrix.os == 'windows-latest'
+        if: env.os == 'windows'
         with:
           path: windows_installer.iss
       - name: Rename runic artifact
         run: mv build/runic build/runic.${{ env.plat }}
-        if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
+        if: env.os == 'macos'
 
       - uses: actions/upload-artifact@v4
-        if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
+        if: env.os == 'macos'
         with:
           name: runic-${{ env.plat }}
           path: ${{ github.workspace }}/build/runic.${{ env.plat }}
@@ -112,7 +114,7 @@ jobs:
           overwrite: true
           compression-level: 0
       - uses: actions/upload-artifact@v4
-        if: matrix.os == 'ubuntu-24.04'
+        if: env.os == 'linux'
         with:
           name: runic-${{ env.plat }}
           path: ${{ github.workspace }}/build/package/*
@@ -120,7 +122,7 @@ jobs:
           overwrite: true
           compression-level: 0
       - uses: actions/upload-artifact@v4
-        if: matrix.os == 'windows-latest'
+        if: env.os == 'windows'
         with:
           name: runic-${{ env.plat }}
           path: ${{ github.workspace }}/build/package/*
@@ -129,7 +131,7 @@ jobs:
           compression-level: 0
 
   create-release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build-and-test
     if: startsWith(github.ref, 'refs/tags/')
     permissions:

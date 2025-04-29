@@ -612,10 +612,12 @@ get_same_platforms :: proc(
         for entry in origin.data {
             plat := entry.key
 
-            origin_os_count += (origin_os & (1 << uint(plat.os))) == 0
+            origin_os_count +=
+                1 if ((origin_os & (1 << uint(plat.os))) == 0) else 0
             origin_os |= 1 << uint(plat.os)
 
-            origin_arch_count += (origin_arch & (1 << uint(plat.arch))) == 0
+            origin_arch_count +=
+                1 if ((origin_arch & (1 << uint(plat.arch))) == 0) else 0
             origin_arch |= 1 << uint(plat.arch)
         }
 
@@ -630,7 +632,7 @@ get_same_platforms :: proc(
                         break
                     }
                     stone_arch_count +=
-                        (stone_arch & (1 << uint(plat2.arch))) == 0
+                        1 if ((stone_arch & (1 << uint(plat2.arch))) == 0) else 0
                     stone_arch |= 1 << uint(plat2.arch)
                 }
             }
@@ -660,7 +662,8 @@ get_same_platforms :: proc(
                         stone_os_count = origin_os_count
                         break
                     }
-                    stone_os_count += (stone_os & (1 << uint(plat1.os))) == 0
+                    stone_os_count +=
+                        1 if ((stone_os & (1 << uint(plat1.os))) == 0) else 0
                     stone_os |= 1 << uint(plat1.os)
                 }
             }

@@ -334,7 +334,7 @@ generate_wrapper :: proc(
                     ) {
 
                         file: clang.File = ---
-                        clang.getSpellingLocation(
+                        clang.getFileLocation(
                             cursor_location,
                             &file,
                             nil,
@@ -346,6 +346,25 @@ generate_wrapper :: proc(
                         file_name_str := cppcdg.clang_str(file_name_clang)
 
                         if len(file_name_str) == 0 {
+                            when ODIN_DEBUG {
+                                if cursor_kind != .MacroDefinition {
+                                    display_name := clang_str(
+                                        display_name_clang,
+                                    )
+
+                                    os.write_string(
+                                        os.stderr,
+                                        "debug: display_name=\"",
+                                    )
+                                    os.write_string(os.stderr, display_name)
+                                    os.write_string(
+                                        os.stderr,
+                                        "\" will be ignored because the file name is empty",
+                                    )
+                                }
+                            }
+
+
                             // NOTE: In libclang 19 typedefinitions inside of macro expansions are sometimes not regarded as part of the main file
                             // NOTE: but enabling this makes macro expanded types part of the main file
                             // if cursor_kind != .MacroDefinition do break not_from_main_file
@@ -488,4 +507,3 @@ clang_str :: #force_inline proc(clang_str: clang.String) -> string {
     cstr := clang.getCString(clang_str)
     return strings.string_from_ptr(cast(^byte)cstr, len(cstr))
 }
-

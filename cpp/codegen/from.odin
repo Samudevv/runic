@@ -362,7 +362,7 @@ generate_runestone :: proc(
                     cursor_location,
                 ) {
                     file: clang.File = ---
-                    clang.getSpellingLocation(
+                    clang.getFileLocation(
                         cursor_location,
                         &file,
                         nil,
@@ -372,7 +372,18 @@ generate_runestone :: proc(
                     file_name_clang := clang.getFileName(file)
                     defer clang.disposeString(file_name_clang)
                     file_name_str := clang_str(file_name_clang)
+
                     if len(file_name_str) == 0 {
+                        when ODIN_DEBUG {
+                            if cursor_kind != .MacroDefinition {
+                                fmt.eprintfln(
+                                    "debug: cursor_kind={} display_name=\"{}\" will be ignored because the file name is empty",
+                                    cursor_kind,
+                                    display_name,
+                                )
+                            }
+                        }
+
                         // NOTE: In libclang 19 typedefinitions inside of macro expansions are sometimes not regarded as part of the main file
                         // NOTE: but enabling this makes macro expanded types part of the main file
                         // if cursor_kind != .MacroDefinition do break not_from_main_file
@@ -905,7 +916,7 @@ generate_runestone :: proc(
                     if named_name == unknown {
                         file: clang.File = ---
                         named_location := clang.getCursorLocation(named_cursor)
-                        clang.getSpellingLocation(
+                        clang.getFileLocation(
                             named_location,
                             &file,
                             nil,
@@ -1356,4 +1367,3 @@ generate_runestone :: proc(
 
     return
 }
-

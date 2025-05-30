@@ -364,9 +364,6 @@ generate_wrapper :: proc(
                                 }
                             }
 
-
-                            // NOTE: In libclang 19 typedefinitions inside of macro expansions are sometimes not regarded as part of the main file
-                            // NOTE: but enabling this makes macro expanded types part of the main file
                             // if cursor_kind != .MacroDefinition do break not_from_main_file
                             // NOTE: flags that define macros (e.g. "-DFOO_STATIC") are also parsed. To make sure that they are ignored this is added
                             return .Continue

@@ -11,8 +11,6 @@ jobs:
         with:
           repository: PucklaJ/odin-libclang
           ref: '19.1.7'
-      - name: Patch LLVM_VERSION in justfile
-        run: sed justfile -i -e '/^LLVM_VERSION/ s/19.1.7/18.1.8/'
       - name: Setup Just
         run: sudo apt -y install just
       - name: Download libclang.dll
@@ -63,7 +61,7 @@ jobs:
           merge-multiple: true
           path: build
       - name: Install llvm
-        run: brew install llvm@18
+        run: brew install llvm@19
         if: env.os == 'macos'
       - name: Install apt-fast
         run: '/bin/bash -c "$(curl -sL https://git.io/vokNn)"'

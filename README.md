@@ -37,14 +37,14 @@ First make sure that all submodules are checked out. Then following dependencies
 
 - [odin](https://odin-lang.org)
 - [just](https://just.systems/)
-- [libclang](https://clang.llvm.org/docs/LibClang.html) _Preferred is version 18_ **19 does currently not work**
+- [libclang](https://clang.llvm.org/docs/LibClang.html) (Confirmed Versions: 18, 19)
 - [libyaml](https://github.com/yaml/libyaml)
 
 Arch Linux: `sudo pacman -S --needed --noconfirm base-devel just clang18 libyaml` <br>
 Ubuntu 24.04: `sudo apt install -y build-essential just libclang-18-dev libyaml-dev` <br>
 Ubuntu 22.04: `sudo apt install -y build-essential libclang-dev libyaml-dev` <br> _On older Ubuntu systems `libclang-18-dev` does not exist, so the newest version should be installed. The package `just` also does not exist, but a statically linked executable can be downloaded directly from the releases page of the repository_
 
-MacOS: `brew install llvm@18` _libyaml is already packaged into the odin library_ <br>
+MacOS: `brew install llvm@19` _libyaml is already packaged into the odin library_ <br>
 Windows: All dependencies are already provided for the `x86_64` architecture <br>
 
 You may need to create a symlink manually called `libclang.so` that points to the correct library file.

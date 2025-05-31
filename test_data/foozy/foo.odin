@@ -74,6 +74,9 @@ pants :: enum i32 {
     pantalones,
 }
 
+mega_int_slice :: [][][]int
+super_int_slice :: []^^^[5][6][7]mega_int_slice
+
 @(export)
 foo :: proc "c" (a, b: int) -> int {
     return a + b * 2
@@ -116,6 +119,29 @@ multi_sausage :: proc "c" (over: ^^struct {
     }
     rs.x = 5
     return rs
+}
+
+@(export)
+print_slice :: proc "c" (s: []i64) {
+    for i, idx in s {
+        fmty.printfln("{}: \"{}\"", idx + 1, i)
+    }
+}
+
+@(export)
+add_slice :: proc "c" (s: ^[]i64, a: i64) {
+    for &i in s {
+        i += a
+    }
+}
+
+@(export)
+multi_add_slice :: proc "c" (ss: ^[5][]i64, a: i64) {
+    for &s in ss {
+        for &i in s {
+            i += a
+        }
+    }
 }
 
 @(export, link_name = "your_var")

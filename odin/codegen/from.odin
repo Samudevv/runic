@@ -689,18 +689,125 @@ type_to_type :: proc(
             type.array_info = make([dynamic]runic.Array, allocator)
         }
 
-        size: runic.ArraySize
-        #partial switch l in type_expr.len.derived_expr {
-        case ^odina.Basic_Lit:
-            #partial switch l.tok.kind {
-            case .Integer:
-                value, ok := strconv.parse_u64(l.tok.text)
-                errors.wrap(ok) or_return
-                size = value
+        if type_expr.len != nil {
+            size: runic.ArraySize
+
+            #partial switch l in type_expr.len.derived_expr {
+            case ^odina.Basic_Lit:
+                #partial switch l.tok.kind {
+                case .Integer:
+                    value, ok := strconv.parse_u64(l.tok.text)
+                    errors.wrap(ok) or_return
+                    size = value
+                }
+            }
+
+            append(&type.array_info, runic.Array{size = size})
+        } else {
+            // Slice
+            // TODO: are slices from different packages working?
+            // TODO: output the name in different casing (camelCase, PascalCase etc.)
+            // TODO: add prefix/suffix to name maybe?
+
+            slice_name_elements := make([dynamic]string, len = 0, cap = 3) // []^[5]int
+
+            needs_anon := false
+            slice_name_loop: for expr := type_expr.elem; expr != nil; {
+                #partial switch de in expr.derived_expr {
+                case ^odina.Ident:
+                    append(&slice_name_elements, de.name)
+                    break slice_name_loop
+                case ^odina.Array_Type:
+                    if de.len != nil {
+                        #partial switch l in de.len.derived_expr {
+                        case ^odina.Ident:
+                            append(&slice_name_elements, l.name)
+                        case ^odina.Basic_Lit:
+                            #partial switch l.tok.kind {
+                            case .Integer:
+                                append(&slice_name_elements, l.tok.text)
+                            case:
+                                append(&slice_name_elements, "unknown")
+                            }
+                        case:
+                            append(&slice_name_elements, "unknown")
+                            needs_anon = true
+                        }
+
+                        append(&slice_name_elements, "array")
+                    } else {
+                        append(&slice_name_elements, "slice")
+                    }
+
+                    expr = de.elem
+                    continue
+                case ^odina.Pointer_Type:
+                    append(&slice_name_elements, "pointer")
+                    expr = de.elem
+                    continue
+                case:
+                    append(&slice_name_elements, "unknown")
+                    needs_anon = true
+                    break slice_name_loop
+                }
+
+                break
+            }
+
+            slice_name_bd: strings.Builder
+            strings.builder_init(&slice_name_bd, allocator = allocator)
+
+            #reverse for e in slice_name_elements {
+                strings.write_string(&slice_name_bd, e)
+                strings.write_rune(&slice_name_bd, '_')
+            }
+            delete(slice_name_elements)
+
+            strings.write_string(&slice_name_bd, "slice")
+
+            if needs_anon {
+                strings.write_rune(&slice_name_bd, '_')
+                strings.write_int(&slice_name_bd, anon_counter^)
+                anon_counter^ += 1
+            }
+
+            slice_name := strings.to_string(slice_name_bd)
+
+            if needs_anon || !om.contains(types^, slice_name) {
+                slice_type: runic.Struct = ---
+                slice_type.members = make(
+                    [dynamic]runic.Member,
+                    len = 2,
+                    cap = 2,
+                    allocator = allocator,
+                )
+
+                slice_type.members[0].name = "data"
+                slice_type.members[0].type = type
+                if len(slice_type.members[0].type.array_info) != 0 {
+                    slice_type.members[0].type.array_info[len(slice_type.members[0].type.array_info) - 1].pointer_info.count +=
+                    1
+                } else {
+                    slice_type.members[0].type.pointer_info.count += 1
+                }
+
+                slice_type.members[1].name = "length"
+                switch plat.arch {
+                case .x86, .arm32:
+                    slice_type.members[1].type.spec = runic.Builtin.SInt32
+                case .x86_64, .arm64:
+                    slice_type.members[1].type.spec = runic.Builtin.SInt64
+                case .Any:
+                    slice_type.members[1].type.spec = runic.Builtin.Untyped
+                }
+
+                om.insert(types, slice_name, runic.Type{spec = slice_type})
+            }
+
+            type = runic.Type {
+                spec = slice_name,
             }
         }
-
-        append(&type.array_info, runic.Array{size = size})
     case ^odina.Multi_Pointer_Type:
         type = type_to_type(
             plat,

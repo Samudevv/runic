@@ -69,6 +69,24 @@ trousers = 0,
 skirt = 1,
 pantalones = 2,
 } pants;
+typedef struct int_slice {
+int64_t* data;
+int64_t length;
+} int_slice;
+typedef struct int_slice_slice {
+struct int_slice* data;
+int64_t length;
+} int_slice_slice;
+typedef struct int_slice_slice_slice {
+struct int_slice_slice* data;
+int64_t length;
+} int_slice_slice_slice;
+typedef struct int_slice_slice_slice mega_int_slice;
+typedef struct mega_int_slice_array_7_array_6_array_5_pointer_pointer_pointer_slice {
+mega_int_slice (****data)[5][6][7];
+int64_t length;
+} mega_int_slice_array_7_array_6_array_5_pointer_pointer_pointer_slice;
+typedef struct mega_int_slice_array_7_array_6_array_5_pointer_pointer_pointer_slice super_int_slice;
 typedef struct multi_foo_result {
 int64_t c;
 int64_t d;
@@ -81,6 +99,10 @@ typedef union anon_3 {
 uint32_t x;
 int32_t y;
 } anon_3;
+typedef struct i64_slice {
+int64_t* data;
+int64_t length;
+} i64_slice;
 
 extern super_multi your_var;
 extern float* mumu;
@@ -95,6 +117,9 @@ extern uint32_t super_foo(const struct my_foo a);
 extern void print_pants(const enum pants a);
 extern void print_sausages(const sausages b);
 extern union anon_3 multi_sausage(struct anon_2**const over);
+extern void print_slice(const struct i64_slice s);
+extern void add_slice(struct i64_slice*const s, const int64_t a);
+extern void multi_add_slice(const struct i64_slice (*ss)[5], const int64_t a);
 
 #define foozy_bar bar
 #define foozy_parse_int parse_int
@@ -105,4 +130,7 @@ extern union anon_3 multi_sausage(struct anon_2**const over);
 #define foozy_print_pants print_pants
 #define foozy_print_sausages print_sausages
 #define foozy_multi_sausage multi_sausage
+#define foozy_print_slice print_slice
+#define foozy_add_slice add_slice
+#define foozy_multi_add_slice multi_add_slice
 

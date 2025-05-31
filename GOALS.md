@@ -16,9 +16,8 @@
       + [ ] bit_set, bit_field
       + [ ] Struct alignment and packing
       + [ ] More complex constants (typed, expressions etc.)
-    + [ ] other calling conventions
-      + [ ] odin
-      + [ ] contextless
+    + [ ] Support extern system
+      + [ ] Add field to define certain packages or collections as extern
 + [ ] Prettier and more useful logs
 + [ ] Better error messages
 + [x] Add `#Opaque` Type

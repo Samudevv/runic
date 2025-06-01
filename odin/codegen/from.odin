@@ -618,41 +618,72 @@ type_to_type :: proc(
 ) {
     #partial switch type_expr in t.derived_expr {
     case ^odina.Ident:
-        type.spec = type_identifier_to_type_specifier(
-            plat,
-            type_expr.name,
-            allocator,
-        ) or_return
-
-        if type_name, ok := type.spec.(string); ok {
-            pkg: ^odina.Package = ---
-            if pkg, ok = current_package.?; ok {
-                prefix_type_name := fmt.aprintf(
-                    "{}_{}",
-                    pkg.name,
-                    type_name,
+        switch type_expr.name {
+        case "string":
+            if !om.contains(types^, "string") {
+                string_type: runic.Struct = ---
+                string_type.members = make(
+                    [dynamic]runic.Member,
+                    len = 2,
+                    cap = 2,
                     allocator = allocator,
                 )
 
-                if !om.contains(types^, prefix_type_name) {
-                    om.insert(
-                        types,
-                        prefix_type_name,
-                        runic.Type{spec = runic.Unknown(prefix_type_name)},
-                    )
-                    type = lookup_type_in_package(
-                        plat,
-                        type_name,
-                        pkg,
-                        types,
-                        anon_counter,
-                        ow,
-                        allocator,
-                    ) or_return
-                    om.insert(types, prefix_type_name, type)
+                string_type.members[0].name = "data"
+                string_type.members[0].type.spec = runic.Builtin.UInt8
+                string_type.members[0].type.pointer_info.count = 1
+
+                string_type.members[1].name = "length"
+                switch plat.arch {
+                case .x86, .arm32:
+                    string_type.members[1].type.spec = runic.Builtin.SInt32
+                case .x86_64, .arm64:
+                    string_type.members[1].type.spec = runic.Builtin.SInt64
+                case .Any:
+                    string_type.members[1].type.spec = runic.Builtin.Untyped
                 }
 
-                type.spec = prefix_type_name
+                om.insert(types, "string", runic.Type{spec = string_type})
+            }
+
+            type.spec = string("string")
+        case:
+            type.spec = type_identifier_to_type_specifier(
+                plat,
+                type_expr.name,
+                allocator,
+            ) or_return
+
+            if type_name, ok := type.spec.(string); ok {
+                pkg: ^odina.Package = ---
+                if pkg, ok = current_package.?; ok {
+                    prefix_type_name := fmt.aprintf(
+                        "{}_{}",
+                        pkg.name,
+                        type_name,
+                        allocator = allocator,
+                    )
+
+                    if !om.contains(types^, prefix_type_name) {
+                        om.insert(
+                            types,
+                            prefix_type_name,
+                            runic.Type{spec = runic.Unknown(prefix_type_name)},
+                        )
+                        type = lookup_type_in_package(
+                            plat,
+                            type_name,
+                            pkg,
+                            types,
+                            anon_counter,
+                            ow,
+                            allocator,
+                        ) or_return
+                        om.insert(types, prefix_type_name, type)
+                    }
+
+                    type.spec = prefix_type_name
+                }
             }
         }
     case ^odina.Pointer_Type:
@@ -1126,10 +1157,14 @@ type_identifier_to_type_specifier :: proc(
          "quaternion64",
          "quaternion128",
          "quaternion256",
-         "string",
          "typeid",
          "any":
         err = errors.message("{} is not supported", ident)
+    case "string":
+        err = errors.message(
+            "{} should not be used with this procedure",
+            ident,
+        )
     case:
         t = strings.clone(ident, allocator)
     }

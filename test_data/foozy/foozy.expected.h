@@ -103,6 +103,14 @@ typedef struct i64_slice {
 int64_t* data;
 int64_t length;
 } i64_slice;
+typedef struct string {
+uint8_t* data;
+int64_t length;
+} string;
+typedef struct string_slice {
+struct string* data;
+int64_t length;
+} string_slice;
 
 extern super_multi your_var;
 extern float* mumu;
@@ -120,6 +128,8 @@ extern union anon_3 multi_sausage(struct anon_2**const over);
 extern void print_slice(const struct i64_slice s);
 extern void add_slice(struct i64_slice*const s, const int64_t a);
 extern void multi_add_slice(const struct i64_slice (*ss)[5], const int64_t a);
+extern struct string cstring_to_string(const char* str);
+extern void print_strings(const struct string_slice str);
 
 #define foozy_bar bar
 #define foozy_parse_int parse_int
@@ -133,4 +143,6 @@ extern void multi_add_slice(const struct i64_slice (*ss)[5], const int64_t a);
 #define foozy_print_slice print_slice
 #define foozy_add_slice add_slice
 #define foozy_multi_add_slice multi_add_slice
+#define foozy_cstring_to_string cstring_to_string
+#define foozy_print_strings print_strings
 

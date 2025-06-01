@@ -144,6 +144,18 @@ multi_add_slice :: proc "c" (ss: ^[5][]i64, a: i64) {
     }
 }
 
+@(export)
+cstring_to_string :: proc "c" (str: cstring) -> string {
+    return strings.string_from_ptr(cast(^u8)str, len(str))
+}
+
+@(export)
+print_strings :: proc "c" (str: []string) {
+    for s, idx in str {
+        fmt.printfln("{}: \"{}\"", idx, s)
+    }
+}
+
 @(export, link_name = "your_var")
 my_var: super_multi
 

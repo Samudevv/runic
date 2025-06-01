@@ -774,6 +774,10 @@ type_to_type :: proc(
 
                     expr = de.elem
                     continue
+                case ^odina.Dynamic_Array_Type:
+                    append(&slice_name_elements, "dynamic_array")
+                    expr = de.elem
+                    continue
                 case ^odina.Pointer_Type:
                     append(&slice_name_elements, "pointer")
                     expr = de.elem
@@ -857,6 +861,152 @@ type_to_type :: proc(
             type.array_info[len(type.array_info) - 1].pointer_info.count += 1
         } else {
             type.pointer_info.count += 1
+        }
+    case ^odina.Dynamic_Array_Type:
+        // TODO: find out what 'tag' does
+
+        type = type_to_type(
+            plat,
+            type_expr.elem,
+            name,
+            types,
+            anon_counter,
+            imports,
+            current_package,
+            ow,
+            allocator,
+        ) or_return
+
+        dyn_name_elements := make([dynamic]string, len = 0, cap = 3) // [dynamic]^[5]int
+
+        needs_anon := false
+        dyn_name_loop: for expr := type_expr.elem; expr != nil; {
+            #partial switch de in expr.derived_expr {
+            case ^odina.Ident:
+                append(&dyn_name_elements, de.name)
+                break dyn_name_loop
+            case ^odina.Array_Type:
+                if de.len != nil {
+                    #partial switch l in de.len.derived_expr {
+                    case ^odina.Ident:
+                        append(&dyn_name_elements, l.name)
+                    case ^odina.Basic_Lit:
+                        #partial switch l.tok.kind {
+                        case .Integer:
+                            append(&dyn_name_elements, l.tok.text)
+                        case:
+                            append(&dyn_name_elements, "unknown")
+                        }
+                    case:
+                        append(&dyn_name_elements, "unknown")
+                        needs_anon = true
+                    }
+
+                    append(&dyn_name_elements, "array")
+                } else {
+                    append(&dyn_name_elements, "slice")
+                }
+
+                expr = de.elem
+                continue
+            case ^odina.Dynamic_Array_Type:
+                append(&dyn_name_elements, "dynamic_array")
+                expr = de.elem
+                continue
+            case ^odina.Pointer_Type:
+                append(&dyn_name_elements, "pointer")
+                expr = de.elem
+                continue
+            case:
+                append(&dyn_name_elements, "unknown")
+                needs_anon = true
+                break dyn_name_loop
+            }
+
+            break
+        }
+
+        dyn_name_bd: strings.Builder
+        strings.builder_init(&dyn_name_bd, allocator = allocator)
+
+        #reverse for e in dyn_name_elements {
+            strings.write_string(&dyn_name_bd, e)
+            strings.write_rune(&dyn_name_bd, '_')
+        }
+        delete(dyn_name_elements)
+
+        strings.write_string(&dyn_name_bd, "dynamic_array")
+
+        if needs_anon {
+            strings.write_rune(&dyn_name_bd, '_')
+            strings.write_int(&dyn_name_bd, anon_counter^)
+            anon_counter^ += 1
+        }
+
+        dynamic_array_name := strings.to_string(dyn_name_bd)
+
+        if needs_anon || !om.contains(types^, dynamic_array_name) {
+            dynamic_array_type: runic.Struct = ---
+            dynamic_array_type.members = make(
+                [dynamic]runic.Member,
+                len = 4,
+                cap = 4,
+                allocator = allocator,
+            )
+
+            dynamic_array_type.members[0].name = "data"
+            dynamic_array_type.members[0].type = type
+            if len(dynamic_array_type.members[0].type.array_info) != 0 {
+                dynamic_array_type.members[0].type.array_info[len(dynamic_array_type.members[0].type.array_info) - 1].pointer_info.count +=
+                1
+            } else {
+                dynamic_array_type.members[0].type.pointer_info.count += 1
+            }
+
+            dynamic_array_type.members[1].name = "length"
+            switch plat.arch {
+            case .x86, .arm32:
+                dynamic_array_type.members[1].type.spec = runic.Builtin.SInt32
+            case .x86_64, .arm64:
+                dynamic_array_type.members[1].type.spec = runic.Builtin.SInt64
+            case .Any:
+                dynamic_array_type.members[1].type.spec = runic.Builtin.Untyped
+            }
+
+            dynamic_array_type.members[2].name = "capacity"
+            switch plat.arch {
+            case .x86, .arm32:
+                dynamic_array_type.members[2].type.spec = runic.Builtin.SInt32
+            case .x86_64, .arm64:
+                dynamic_array_type.members[2].type.spec = runic.Builtin.SInt64
+            case .Any:
+                dynamic_array_type.members[2].type.spec = runic.Builtin.Untyped
+            }
+
+            dynamic_array_type.members[3].name = "allocator"
+            dynamic_array_type.members[3].type.spec = string(
+                "runtime_Allocator",
+            )
+
+            if !om.contains(types^, "runtime_Allocator") {
+                allocator_type := lookup_type_of_import(
+                    plat,
+                    imports,
+                    "runtime",
+                    "Allocator",
+                    types,
+                    anon_counter,
+                    ow,
+                    allocator,
+                ) or_return
+                om.insert(types, "runtime_Allocator", allocator_type)
+            }
+
+            om.insert(types, dynamic_array_name, runic.Type{spec = dynamic_array_type})
+        }
+
+        type = runic.Type {
+            spec = dynamic_array_name,
         }
     case ^odina.Enum_Type:
         e: runic.Enum
@@ -1471,18 +1621,23 @@ lookup_type_of_import :: proc(
     err: errors.Error,
 ) {
     imp, ok := imports[pkg]
-    errors.wrap(
-        ok,
-        fmt.aprint(
-            "package",
-            pkg,
-            "does not exist in",
-            slice.map_keys(imports^, allocator = errors.error_allocator),
-            allocator = errors.error_allocator,
-        ),
-    ) or_return
 
-    if imp.pkg == nil {
+    if !ok || imp.pkg == nil {
+        if !ok {
+            // Allow loading of base collection packages even if they have not been imported
+            switch pkg {
+            case "runtime", "builtin", "intrinsics", "sanitizer":
+                imp = Import {
+                    abs_path   = "",
+                    pkg        = nil,
+                    name       = pkg,
+                    collection = "base",
+                }
+            case:
+                imp = Import{}
+            }
+        }
+
         if imp.collection == "base" {
             switch imp.name {
             case "builtin":
@@ -1666,6 +1821,17 @@ lookup_type_of_import :: proc(
                 return
             }
         }
+
+        errors.assert(
+            ok,
+            fmt.aprint(
+                "package",
+                pkg,
+                "does not exist in",
+                slice.map_keys(imports^, allocator = errors.error_allocator),
+                allocator = errors.error_allocator,
+            ),
+        ) or_return
 
         context.allocator = allocator
 

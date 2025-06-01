@@ -87,10 +87,41 @@ mega_int_slice (****data)[5][6][7];
 int64_t length;
 } mega_int_slice_array_7_array_6_array_5_pointer_pointer_pointer_slice;
 typedef struct mega_int_slice_array_7_array_6_array_5_pointer_pointer_pointer_slice super_int_slice;
+typedef struct u8_pointer_pointer_pointer_array_5_slice {
+uint8_t*** (*data)[5];
+int64_t length;
+} u8_pointer_pointer_pointer_array_5_slice;
+typedef struct u8_pointer_pointer_pointer_array_5_slice_slice {
+struct u8_pointer_pointer_pointer_array_5_slice* data;
+int64_t length;
+} u8_pointer_pointer_pointer_array_5_slice_slice;
+typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice {
+struct u8_pointer_pointer_pointer_array_5_slice_slice* data;
+int64_t length;
+} u8_pointer_pointer_pointer_array_5_slice_slice_slice;
 typedef struct runtime_Allocator {
 void* procedure;
 void* data;
 } runtime_Allocator;
+typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array {
+struct u8_pointer_pointer_pointer_array_5_slice_slice_slice* data;
+int64_t length;
+int64_t capacity;
+struct runtime_Allocator allocator;
+} u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array;
+typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array {
+struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array* data;
+int64_t length;
+int64_t capacity;
+struct runtime_Allocator allocator;
+} u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array;
+typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array_dynamic_array {
+struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array* data;
+int64_t length;
+int64_t capacity;
+struct runtime_Allocator allocator;
+} u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array_dynamic_array;
+typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array_dynamic_array confusing_type;
 typedef struct runtime_Allocator my_allocator;
 typedef void intrinsics_objc_object;
 typedef intrinsics_objc_object my_obj;
@@ -139,6 +170,12 @@ void* user_ptr;
 int64_t user_index;
 void* _internal;
 } runtime_Context;
+typedef struct int_dynamic_array {
+int64_t* data;
+int64_t length;
+int64_t capacity;
+struct runtime_Allocator allocator;
+} int_dynamic_array;
 
 extern super_multi your_var;
 extern float* mumu;
@@ -159,6 +196,7 @@ extern void multi_add_slice(const struct i64_slice (*ss)[5], const int64_t a);
 extern struct string cstring_to_string(const char* str);
 extern void print_strings(const struct string_slice str);
 extern struct runtime_Context odin_default_context();
+extern void append_five(struct int_dynamic_array*const arr, const int64_t value);
 
 #define foozy_bar bar
 #define foozy_parse_int parse_int
@@ -175,4 +213,5 @@ extern struct runtime_Context odin_default_context();
 #define foozy_cstring_to_string cstring_to_string
 #define foozy_print_strings print_strings
 #define foozy_odin_default_context odin_default_context
+#define foozy_append_five append_five
 

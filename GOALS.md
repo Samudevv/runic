@@ -11,7 +11,7 @@
     + [ ] Add entry to rune to always output multiple files (one per platform, one per cross runestone).
   + From
     + [ ] Implement Odin-specific types
-      + [ ] Slice, dynamic array
+      + [x] Slice, dynamic array
       + [ ] Union
       + [ ] bit_set, bit_field
       + [ ] Struct alignment and packing

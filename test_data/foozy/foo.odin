@@ -78,6 +78,7 @@ pants :: enum i32 {
 
 mega_int_slice :: [][][]int
 super_int_slice :: []^^^[5][6][7]mega_int_slice
+confusing_type :: [dynamic][dynamic][dynamic][][][][5]^^^u8
 
 my_allocator :: runtime.Allocator
 my_obj :: intrinsics.objc_object
@@ -165,6 +166,13 @@ print_strings :: proc "c" (str: []string) {
 @(export)
 odin_default_context :: proc "c" () -> runtime.Context {
     return runtime.default_context()
+}
+
+@(export)
+append_five :: proc "c" (arr: ^[dynamic]int, value: int) {
+    for _ in 0..<5 {
+        append(arr, value)
+    }
 }
 
 @(export, link_name = "your_var")

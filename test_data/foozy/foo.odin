@@ -19,6 +19,8 @@ package foozy
 
 import "../../runic"
 import "base:runtime"
+import "base:intrinsics"
+import bin "base:builtin"
 import fmty "core:fmt"
 
 FOO_VALUE :: 5
@@ -76,6 +78,10 @@ pants :: enum i32 {
 
 mega_int_slice :: [][][]int
 super_int_slice :: []^^^[5][6][7]mega_int_slice
+
+my_allocator :: runtime.Allocator
+my_obj :: intrinsics.objc_object
+my_great_int :: bin.int
 
 @(export)
 foo :: proc "c" (a, b: int) -> int {
@@ -154,6 +160,11 @@ print_strings :: proc "c" (str: []string) {
     for s, idx in str {
         fmt.printfln("{}: \"{}\"", idx, s)
     }
+}
+
+@(export)
+odin_default_context :: proc "c" () -> runtime.Context {
+    return runtime.default_context()
 }
 
 @(export, link_name = "your_var")

@@ -33,8 +33,10 @@ import om "root:ordered_map"
 import "root:runic"
 
 Import :: struct {
-    abs_path: string,
-    pkg:      ^odina.Package,
+    collection: string,
+    name:       string,
+    abs_path:   string,
+    pkg:        ^odina.Package,
 }
 
 generate_runestone :: proc(
@@ -972,41 +974,33 @@ type_to_type :: proc(
 
         type_name := type_expr.field.name
 
-        if pkg.name == "builtin" {
-            type = type_to_type(
-                plat,
-                &type_expr.field.node,
-                type_name,
-                types,
-                anon_counter,
-                imports,
-                nil,
-                ow,
-                allocator,
-            ) or_return
-            return
-        } else {
-            type = lookup_type_of_import(
-                plat,
-                imports,
-                pkg.name,
-                type_name,
-                types,
-                anon_counter,
-                ow,
-                allocator,
-            ) or_return
-        }
-
-        type_name = fmt.aprintf(
-            "{}_{}",
+        type = lookup_type_of_import(
+            plat,
+            imports,
             pkg.name,
             type_name,
-            allocator = allocator,
-        )
+            types,
+            anon_counter,
+            ow,
+            allocator,
+        ) or_return
 
-        om.insert(types, type_name, type)
-        type.spec = type_name
+        imp, imp_ok := imports^[pkg.name]
+        errors.assert(imp_ok, "import was expected to exist") or_return
+
+        if imp.name != "builtin" {
+            type_name = fmt.aprintf(
+                "{}_{}",
+                imp.name,
+                type_name,
+                allocator = allocator,
+            )
+
+            om.insert(types, type_name, type)
+            type = runic.Type {
+                spec = type_name,
+            }
+        }
     case ^odina.Helper_Type:
         type, err = type_to_type(
             plat,
@@ -1459,6 +1453,8 @@ parse_import :: proc(
     }
 
     imp.abs_path = path
+    imp.name = filepath.base(path)
+    imp.collection = collection
     return
 }
 
@@ -1487,22 +1483,220 @@ lookup_type_of_import :: proc(
     ) or_return
 
     if imp.pkg == nil {
+        if imp.collection == "base" {
+            switch imp.name {
+            case "builtin":
+                // A hack, because the 'builtin' package only has identifiers
+                ident := odina.Ident {
+                    name = type_name,
+                }
+                type_expr := odina.Expr {
+                    derived_expr = &ident,
+                }
+
+                type = type_to_type(
+                    plat,
+                    &type_expr,
+                    type_name,
+                    types,
+                    anon_counter,
+                    imports,
+                    nil,
+                    ow,
+                    allocator,
+                ) or_return
+                return
+            case "runtime":
+                // TODO: Implement more types
+                switch type_name {
+                case "Allocator":
+                    s: runic.Struct = ---
+                    s.members = make(
+                        [dynamic]runic.Member,
+                        len = 2,
+                        cap = 2,
+                        allocator = allocator,
+                    )
+
+                    s.members[0].name = "procedure"
+                    s.members[0].type.spec = runic.Builtin.RawPtr
+
+                    s.members[1].name = "data"
+                    s.members[1].type.spec = runic.Builtin.RawPtr
+
+                    type.spec = s
+                case "Logger":
+                    s: runic.Struct = ---
+                    s.members = make(
+                        [dynamic]runic.Member,
+                        len = 4,
+                        cap = 4,
+                        allocator = allocator,
+                    )
+
+                    s.members[0].name = "procedure"
+                    s.members[0].type.spec = runic.Builtin.RawPtr
+
+                    s.members[1].name = "data"
+                    s.members[1].type.spec = runic.Builtin.RawPtr
+
+                    s.members[2].name = "lowest_level"
+                    switch plat.arch {
+                    case .x86, .arm32:
+                        s.members[2].type.spec = runic.Builtin.UInt32
+                    case .x86_64, .arm64:
+                        s.members[2].type.spec = runic.Builtin.UInt64
+                    case .Any:
+                        s.members[2].type.spec = runic.Builtin.Untyped
+                    }
+
+                    s.members[3].name = "options"
+                    // NOTE: This is a bit_set of which the size depends on the number of enum entries
+                    s.members[3].type.spec = runic.Builtin.UInt16
+
+                    type.spec = s
+                case "Random_Generator":
+                    s: runic.Struct = ---
+                    s.members = make(
+                        [dynamic]runic.Member,
+                        len = 2,
+                        cap = 2,
+                        allocator = allocator,
+                    )
+
+                    s.members[0].name = "procedure"
+                    s.members[0].type.spec = runic.Builtin.RawPtr
+
+                    s.members[1].name = "data"
+                    s.members[1].type.spec = runic.Builtin.RawPtr
+
+                    type.spec = s
+                case "Context":
+                    // NOTE: This structure probably changes sometimes (unstable)
+                    s: runic.Struct = ---
+                    s.members = make(
+                        [dynamic]runic.Member,
+                        len = 8,
+                        cap = 8,
+                        allocator = allocator,
+                    )
+
+                    s.members[0].name = "allocator"
+                    s.members[0].type.spec = string("runtime_Allocator")
+
+                    s.members[1].name = "temp_allocator"
+                    s.members[1].type.spec = string("runtime_Allocator")
+
+                    s.members[2].name = "assertion_failure_proc"
+                    s.members[2].type.spec = runic.Builtin.RawPtr
+
+                    s.members[3].name = "logger"
+                    s.members[3].type.spec = string("runtime_Logger")
+
+                    s.members[4].name = "random_generator"
+                    s.members[4].type.spec = string("runtime_Random_Generator")
+
+                    s.members[5].name = "user_ptr"
+                    s.members[5].type.spec = runic.Builtin.RawPtr
+
+                    s.members[6].name = "user_index"
+                    switch plat.arch {
+                    case .x86, .arm32:
+                        s.members[6].type.spec = runic.Builtin.SInt32
+                    case .x86_64, .arm64:
+                        s.members[6].type.spec = runic.Builtin.SInt64
+                    case .Any:
+                        s.members[6].type.spec = runic.Builtin.Untyped
+                    }
+
+                    s.members[7].name = "_internal"
+                    s.members[7].type.spec = runic.Builtin.RawPtr
+
+                    type.spec = s
+
+                    if !om.contains(types^, "runtime_Allocator") {
+                        allocator_type := lookup_type_of_import(
+                            plat,
+                            imports,
+                            pkg,
+                            "Allocator",
+                            types,
+                            anon_counter,
+                            ow,
+                            allocator,
+                        ) or_return
+                        om.insert(types, "runtime_Allocator", allocator_type)
+                    }
+                    if !om.contains(types^, "runtime_Logger") {
+                        logger_type := lookup_type_of_import(
+                            plat,
+                            imports,
+                            pkg,
+                            "Logger",
+                            types,
+                            anon_counter,
+                            ow,
+                            allocator,
+                        ) or_return
+                        om.insert(types, "runtime_Logger", logger_type)
+                    }
+                    if !om.contains(types^, "runtime_Random_Generator") {
+                        random_generator_type := lookup_type_of_import(
+                            plat,
+                            imports,
+                            pkg,
+                            "Random_Generator",
+                            types,
+                            anon_counter,
+                            ow,
+                            allocator,
+                        ) or_return
+                        om.insert(
+                            types,
+                            "runtime_Random_Generator",
+                            random_generator_type,
+                        )
+                    }
+                case:
+                    type.spec = runic.Builtin.Opaque
+                }
+                return
+            case "intrinsics":
+                type.spec = runic.Builtin.Opaque
+                return
+            }
+        }
+
         context.allocator = allocator
 
         p: odinp.Parser
         p.flags = {.Optional_Semicolons}
+
+        reserved_packages := make([dynamic]string)
+        context.user_ptr = &reserved_packages
         p.err = proc(pos: odint.Pos, msg: string, args: ..any) {
             whole_msg := fmt.aprintf(
                 msg,
                 ..args,
                 allocator = errors.error_allocator,
             )
-            if strings.has_prefix(whole_msg, "use of reserved package name") do return
+            if strings.has_prefix(whole_msg, "use of reserved package name") {
+                when ODIN_DEBUG {
+                    reserved_packages := cast(^[dynamic]string)context.user_ptr
+                    if !slice.contains(reserved_packages^[:], whole_msg) {
+                        fmt.eprintln("debug:", whole_msg)
+                        append(reserved_packages, whole_msg)
+                    }
+                }
+                return
+            }
 
             fmt.eprintln(error_tok(whole_msg, pos))
         }
 
         imp.pkg, ok = odinp.parse_package_from_path(imp.abs_path, &p)
+        delete(reserved_packages)
+
         errors.wrap(
             ok,
             fmt.aprintf(

@@ -87,6 +87,14 @@ mega_int_slice (****data)[5][6][7];
 int64_t length;
 } mega_int_slice_array_7_array_6_array_5_pointer_pointer_pointer_slice;
 typedef struct mega_int_slice_array_7_array_6_array_5_pointer_pointer_pointer_slice super_int_slice;
+typedef struct runtime_Allocator {
+void* procedure;
+void* data;
+} runtime_Allocator;
+typedef struct runtime_Allocator my_allocator;
+typedef void intrinsics_objc_object;
+typedef intrinsics_objc_object my_obj;
+typedef int64_t my_great_int;
 typedef struct multi_foo_result {
 int64_t c;
 int64_t d;
@@ -111,6 +119,26 @@ typedef struct string_slice {
 struct string* data;
 int64_t length;
 } string_slice;
+typedef struct runtime_Logger {
+void* procedure;
+void* data;
+uint64_t lowest_level;
+uint16_t options;
+} runtime_Logger;
+typedef struct runtime_Random_Generator {
+void* procedure;
+void* data;
+} runtime_Random_Generator;
+typedef struct runtime_Context {
+struct runtime_Allocator allocator;
+struct runtime_Allocator temp_allocator;
+void* assertion_failure_proc;
+struct runtime_Logger logger;
+struct runtime_Random_Generator random_generator;
+void* user_ptr;
+int64_t user_index;
+void* _internal;
+} runtime_Context;
 
 extern super_multi your_var;
 extern float* mumu;
@@ -130,6 +158,7 @@ extern void add_slice(struct i64_slice*const s, const int64_t a);
 extern void multi_add_slice(const struct i64_slice (*ss)[5], const int64_t a);
 extern struct string cstring_to_string(const char* str);
 extern void print_strings(const struct string_slice str);
+extern struct runtime_Context odin_default_context();
 
 #define foozy_bar bar
 #define foozy_parse_int parse_int
@@ -145,4 +174,5 @@ extern void print_strings(const struct string_slice str);
 #define foozy_multi_add_slice multi_add_slice
 #define foozy_cstring_to_string cstring_to_string
 #define foozy_print_strings print_strings
+#define foozy_odin_default_context odin_default_context
 

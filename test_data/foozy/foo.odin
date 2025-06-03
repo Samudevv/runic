@@ -18,9 +18,9 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 package foozy
 
 import "../../runic"
-import "base:runtime"
-import "base:intrinsics"
 import bin "base:builtin"
+import "base:intrinsics"
+import "base:runtime"
 import fmty "core:fmt"
 
 FOO_VALUE :: 5
@@ -170,7 +170,7 @@ odin_default_context :: proc "c" () -> runtime.Context {
 
 @(export)
 append_five :: proc "c" (arr: ^[dynamic]int, value: int) {
-    for _ in 0..<5 {
+    for _ in 0 ..< 5 {
         append(arr, value)
     }
 }
@@ -184,3 +184,53 @@ mumu: [^]f32
 @(export)
 error_callback: #type proc "c" (err: int) -> bool
 
+@(export)
+multi_pant: bit_set[pants]
+
+//@(export)
+//polyglot: bit_set[languages]
+//
+languages :: enum {
+    english,
+    german,
+    japanese,
+    chinese,
+    dutch,
+    greek,
+    hindi,
+    urdu,
+    latin,
+    sanskrit,
+}
+
+@(export)
+special_polyglot: bit_set[languages; u64]
+@(export)
+another_special_polyglot: bit_set[languages; u64]
+
+@(export)
+very_polyglot: bit_set[languages; polyglot_int]
+polyglot_int :: i32
+//
+//@(export)
+//numbers: bit_set[enum {
+//    one,
+//    two,
+//    three,
+//}]
+//
+//@(export)
+//underlying_numbers: bit_set[enum {
+//    four,
+//    five,
+//    six,
+//}; i8]
+//
+//@(export)
+//ranged_bitset: bit_set['A'..='Z']
+//
+//NUMBER_RANGE_MIN :: 0
+//NUMBER_RANGE_MAX :: 10
+//
+//@(export)
+//number_range: bit_set[NUMBER_RANGE_MIN..<NUMBER_RANGE_MAX]

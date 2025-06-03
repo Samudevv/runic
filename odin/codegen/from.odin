@@ -1002,7 +1002,11 @@ type_to_type :: proc(
                 om.insert(types, "runtime_Allocator", allocator_type)
             }
 
-            om.insert(types, dynamic_array_name, runic.Type{spec = dynamic_array_type})
+            om.insert(
+                types,
+                dynamic_array_name,
+                runic.Type{spec = dynamic_array_type},
+            )
         }
 
         type = runic.Type {
@@ -1177,6 +1181,106 @@ type_to_type :: proc(
         ) or_return
 
         type.spec = runic.FunctionPointer(new_clone(func, allocator))
+    case ^odina.Bit_Set_Type:
+        // TODO: Handle the case where the enum is defined after the bit_set and such similar cases
+        bit_set_type: Maybe(runic.Type)
+
+        underlying: runic.TypeSpecifier
+        underlying_name: string
+
+        if type_expr.underlying != nil {
+            #partial switch d in type_expr.underlying.derived_expr {
+            case ^odina.Ident:
+                underlying_name = d.name
+                underlying = type_identifier_to_type_specifier(
+                    plat,
+                    d.name,
+                    allocator,
+                ) or_return
+
+                bit_set_type = runic.Type {
+                    spec = underlying,
+                }
+            case:
+                err = error_tok(
+                    "underlying type of bit_set must be Ident",
+                    t.pos,
+                )
+                return
+            }
+        }
+
+        elem_name: string
+
+        #partial switch e in type_expr.elem.derived_expr {
+        case ^odina.Ident:
+            elem_name = e.name
+
+            if underlying == nil {
+                if elem_type, ok := om.get(types^, e.name); ok {
+                    if enum_type, enum_ok := elem_type.spec.(runic.Enum);
+                       enum_ok {
+                        bit_set_type = bit_set_type_from_enum(
+                            enum_type,
+                            allocator,
+                        )
+                    } else {
+                        err = error_tok(
+                            "bit_set does not refer to an enum",
+                            t.pos,
+                        )
+                        return
+                    }
+                }
+            }
+        case ^odina.Binary_Expr:
+            // TODO
+            elem_name = "range"
+            err = errors.not_implemented()
+            return
+        case ^odina.Enum_Type:
+            // TODO
+            elem_name = "anon"
+            err = errors.not_implemented()
+            return
+        case ^odina.Selector_Expr:
+            // TODO
+            err = errors.not_implemented()
+            return
+        case:
+            err = error_tok(
+                fmt.aprintf(
+                    "invalid bit_set elem={}",
+                    reflect.get_union_variant(type_expr.elem.derived_expr).id,
+                    allocator = errors.error_allocator,
+                ),
+                t.pos,
+            )
+            return
+        }
+
+        bit_set_type_name: strings.Builder
+        strings.builder_init(&bit_set_type_name, allocator = allocator)
+
+        strings.write_string(&bit_set_type_name, "bit_set_")
+        strings.write_string(&bit_set_type_name, elem_name)
+        if underlying != nil {
+            strings.write_rune(&bit_set_type_name, '_')
+            strings.write_string(&bit_set_type_name, underlying_name)
+        }
+        // TODO: Handle anon counter
+
+        if bit_set_type != nil {
+            if !om.contains(types^, strings.to_string(bit_set_type_name)) {
+                om.insert(
+                    types,
+                    strings.to_string(bit_set_type_name),
+                    bit_set_type.?,
+                )
+            }
+        }
+
+        type.spec = strings.to_string(bit_set_type_name)
     case:
         fmt.eprintln(
             error_tok(
@@ -1188,7 +1292,7 @@ type_to_type :: proc(
                 t.pos,
             ),
         )
-        type.spec = runic.Builtin.RawPtr
+        type.spec = runic.Builtin.Opaque
     }
     return
 }
@@ -1941,3 +2045,39 @@ lookup_type_in_package :: proc(
     return
 }
 
+bit_set_type_from_enum :: proc(
+    enum_type: runic.Enum,
+    allocator := context.allocator,
+) -> (
+    type: runic.Type,
+) {
+    entry_count := len(enum_type.entries)
+    bit_set_size := entry_count / 8
+    if entry_count % 8 != 0 {
+        bit_set_size += 1
+    }
+
+    switch bit_set_size {
+    case 1:
+        type.spec = runic.Builtin.UInt8
+    case 2:
+        type.spec = runic.Builtin.UInt16
+    case 3 ..= 4:
+        type.spec = runic.Builtin.UInt32
+    case 5 ..= 8:
+        type.spec = runic.Builtin.UInt64
+    case 9 ..= 16:
+        type.spec = runic.Builtin.UInt128
+    case:
+        type.spec = runic.Builtin.UInt8
+        type.array_info = make(
+            [dynamic]runic.Array,
+            len = 1,
+            cap = 1,
+            allocator = allocator,
+        )
+        type.array_info[0].size = u64(bit_set_size)
+    }
+
+    return
+}

@@ -176,10 +176,29 @@ int64_t length;
 int64_t capacity;
 struct runtime_Allocator allocator;
 } int_dynamic_array;
+typedef uint8_t bit_set_pants;
+#define english ((languages)0)
+#define german ((languages)1)
+#define japanese ((languages)2)
+#define chinese ((languages)3)
+#define dutch ((languages)4)
+#define greek ((languages)5)
+#define hindi ((languages)6)
+#define urdu ((languages)7)
+#define latin ((languages)8)
+#define sanskrit ((languages)9)
+typedef int64_t languages;
+typedef uint64_t bit_set_languages_u64;
+typedef int32_t polyglot_int;
+typedef polyglot_int bit_set_languages_polyglot_int;
 
 extern super_multi your_var;
 extern float* mumu;
 extern uint64_t (* error_callback)(const int64_t err);
+extern bit_set_pants multi_pant;
+extern bit_set_languages_u64 special_polyglot;
+extern bit_set_languages_u64 another_special_polyglot;
+extern bit_set_languages_polyglot_int very_polyglot;
 
 extern char* bar(const char* msg, const int64_t result);
 extern char* parse_int(const c_int64_t value);

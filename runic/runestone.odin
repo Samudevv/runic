@@ -1143,7 +1143,6 @@ write_function :: proc(wd: io.Writer, fc: Function) -> io.Error {
 create_anon_type :: proc(
     spec: TypeSpecifier,
     anon_counter: ^int,
-    ow: OverwriteSet,
     allocator := context.allocator,
 ) -> (
     anon_name: string,

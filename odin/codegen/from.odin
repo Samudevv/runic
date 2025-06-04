@@ -458,7 +458,6 @@ proc_type_to_function :: proc(
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             type.spec,
             ctx.anon_counter,
-            ctx.ow,
             ctx.allocator,
         ); is_anon {
             om.insert(ctx.types, anon_name, anon_type)
@@ -514,7 +513,6 @@ proc_type_to_function :: proc(
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             type.spec,
             ctx.anon_counter,
-            ctx.ow,
             ctx.allocator,
         ); is_anon {
             om.insert(ctx.types, anon_name, anon_type)
@@ -1402,7 +1400,6 @@ struct_type_to_struct :: proc(
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             type.spec,
             ctx.anon_counter,
-            ctx.ow,
             ctx.allocator,
         ); is_anon {
             om.insert(ctx.types, anon_name, anon_type)

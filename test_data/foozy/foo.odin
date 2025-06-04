@@ -215,20 +215,20 @@ another_special_polyglot: bit_set[languages; u64]
 @(export)
 very_polyglot: bit_set[languages; polyglot_int]
 polyglot_int :: i32
-//
-//@(export)
-//numbers: bit_set[enum {
-//    one,
-//    two,
-//    three,
-//}]
-//
-//@(export)
-//underlying_numbers: bit_set[enum {
-//    four,
-//    five,
-//    six,
-//}; i8]
+
+@(export)
+numbers: bit_set[enum {
+    one,
+    two,
+    three,
+}]
+
+@(export)
+underlying_numbers: bit_set[enum {
+    four,
+    five,
+    six,
+}; i8]
 //
 //@(export)
 //ranged_bitset: bit_set['A'..='Z']

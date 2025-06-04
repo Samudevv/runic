@@ -192,6 +192,16 @@ typedef int64_t languages;
 typedef uint64_t bit_set_languages_u64;
 typedef int32_t polyglot_int;
 typedef polyglot_int bit_set_languages_polyglot_int;
+#define one ((anon_bit_set_enum_4)0)
+#define two ((anon_bit_set_enum_4)1)
+#define three ((anon_bit_set_enum_4)2)
+typedef int64_t anon_bit_set_enum_4;
+typedef uint8_t bit_set_anon_bit_set_enum_4;
+#define four ((anon_bit_set_enum_5)0)
+#define five ((anon_bit_set_enum_5)1)
+#define six ((anon_bit_set_enum_5)2)
+typedef int64_t anon_bit_set_enum_5;
+typedef uint8_t bit_set_anon_bit_set_enum_5_i8;
 
 extern super_multi your_var;
 extern float* mumu;
@@ -203,6 +213,8 @@ extern bit_set_languages polyglot2;
 extern bit_set_languages_u64 special_polyglot;
 extern bit_set_languages_u64 another_special_polyglot;
 extern bit_set_languages_polyglot_int very_polyglot;
+extern bit_set_anon_bit_set_enum_4 numbers;
+extern bit_set_anon_bit_set_enum_5_i8 underlying_numbers;
 
 extern char* bar(const char* msg, const int64_t result);
 extern char* parse_int(const c_int64_t value);

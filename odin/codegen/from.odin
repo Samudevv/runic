@@ -975,67 +975,7 @@ type_to_type :: proc(
             spec = dynamic_array_name,
         }
     case ^odina.Enum_Type:
-        e: runic.Enum
-        if type_expr.base_type == nil {
-            switch plat.arch {
-            case .Any:
-                panic("invalid arch any")
-            case .x86_64, .arm64:
-                e.type = .SInt64
-            case .x86, .arm32:
-                e.type = .SInt32
-            }
-        } else {
-            et := type_to_type(plat, type_expr.base_type, name, ctx) or_return
-
-            ok: bool = ---
-            e.type, ok = et.spec.(runic.Builtin)
-            errors.wrap(ok) or_return
-        }
-
-        e.entries = make(
-            [dynamic]runic.EnumEntry,
-            len = 0,
-            cap = len(type_expr.fields),
-            allocator = ctx.allocator,
-        )
-
-        counter: i64
-        for field in type_expr.fields {
-            #partial switch f in field.derived_expr {
-            case ^odina.Ident:
-                append(
-                    &e.entries,
-                    runic.EnumEntry {
-                        name = strings.clone(f.name, ctx.allocator),
-                        value = counter,
-                    },
-                )
-            case ^odina.Field_Value:
-                name: string = ---
-                if name_ident, ok := f.field.derived_expr.(^odina.Ident); !ok {
-                    err = error_tok(
-                        "enum entry needs to be an identifier",
-                        f.field.pos,
-                    )
-                    return
-                } else {
-                    name = strings.clone(name_ident.name, ctx.allocator)
-                }
-
-                value := evaluate_expr(i64, f.value) or_return
-                counter = value
-
-                append(&e.entries, runic.EnumEntry{name = name, value = value})
-            case:
-                err = error_tok("invalid enum entry", field.pos)
-                return
-            }
-
-            counter += 1
-        }
-
-        type.spec = e
+        type.spec = enum_type_to_enum(plat, type_expr, name, ctx) or_return
     case ^odina.Struct_Type:
         if type_expr.is_raw_union {
             u := struct_type_to_union(plat, type_expr, ctx) or_return
@@ -1143,10 +1083,18 @@ type_to_type :: proc(
             err = errors.not_implemented()
             return
         case ^odina.Enum_Type:
-            // TODO
-            elem_name = "anon"
-            err = errors.not_implemented()
-            return
+            elem_name = fmt.aprintf(
+                "anon_bit_set_enum_{}",
+                ctx.anon_counter^,
+                allocator = ctx.allocator,
+            )
+            ctx.anon_counter^ += 1
+
+            anon_enum := enum_type_to_enum(plat, e, elem_name, ctx) or_return
+
+            om.insert(ctx.types, elem_name, runic.Type{spec = anon_enum})
+
+            bit_set_type = bit_set_type_from_enum(anon_enum, ctx.allocator)
         case ^odina.Selector_Expr:
             // TODO
             err = errors.not_implemented()
@@ -1172,7 +1120,6 @@ type_to_type :: proc(
             strings.write_rune(&bit_set_type_name, '_')
             strings.write_string(&bit_set_type_name, underlying_name)
         }
-        // TODO: Handle anon counter
 
         if bit_set_type != nil {
             if !om.contains(ctx.types^, strings.to_string(bit_set_type_name)) {
@@ -1388,6 +1335,80 @@ struct_type_to_struct :: proc(
                 },
             )
         }
+    }
+
+    return
+}
+
+enum_type_to_enum :: proc(
+    plat: runic.Platform,
+    et: ^odina.Enum_Type,
+    name: Maybe(string),
+    ctx: ^TypeToTypeContext,
+) -> (
+    e: runic.Enum,
+    err: errors.Error,
+) {
+    if et.base_type == nil {
+        switch plat.arch {
+        case .Any:
+            e.type = .Untyped
+        case .x86_64, .arm64:
+            e.type = .SInt64
+        case .x86, .arm32:
+            e.type = .SInt32
+        }
+    } else {
+        underlying := type_to_type(plat, et.base_type, name, ctx) or_return
+
+        ok: bool = ---
+        e.type, ok = underlying.spec.(runic.Builtin)
+        errors.wrap(ok) or_return
+    }
+
+    e.entries = make(
+        [dynamic]runic.EnumEntry,
+        len = 0,
+        cap = len(et.fields),
+        allocator = ctx.allocator,
+    )
+
+    counter: i64
+    for field in et.fields {
+        #partial switch f in field.derived_expr {
+        case ^odina.Ident:
+            append(
+                &e.entries,
+                runic.EnumEntry {
+                    name = strings.clone(f.name, ctx.allocator),
+                    value = counter,
+                },
+            )
+        case ^odina.Field_Value:
+            field_name: string = ---
+            if name_ident, ok := f.field.derived_expr.(^odina.Ident); !ok {
+                err = error_tok(
+                    "enum entry needs to be an identifier",
+                    f.field.pos,
+                )
+                return
+            } else {
+                field_name = strings.clone(name_ident.name, ctx.allocator)
+            }
+
+            value := evaluate_expr(i64, f.value) or_return
+            counter = value
+
+            append(
+                &e.entries,
+                runic.EnumEntry{name = field_name, value = value},
+            )
+        case:
+            err = error_tok("invalid enum entry", field.pos)
+            return
+        }
+
+        counter += 1
     }
 
     return

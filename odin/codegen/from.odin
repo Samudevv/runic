@@ -32,11 +32,23 @@ import "root:errors"
 import om "root:ordered_map"
 import "root:runic"
 
+@(private)
 Import :: struct {
     collection: string,
     name:       string,
     abs_path:   string,
     pkg:        ^odina.Package,
+}
+
+
+@(private)
+TypeToTypeContext :: struct {
+    types:           ^om.OrderedMap(string, runic.Type),
+    anon_counter:    ^int,
+    imports:         ^map[string]Import,
+    current_package: Maybe(^odina.Package),
+    ow:              runic.OverwriteSet,
+    allocator:       runtime.Allocator,
 }
 
 generate_runestone :: proc(
@@ -65,6 +77,13 @@ generate_runestone :: proc(
 
     anon_counter: int
 
+    ttt_ctx := TypeToTypeContext {
+        types = &rs.types,
+        anon_counter = &anon_counter,
+        ow = overwrite,
+        allocator = rs_arena_alloc,
+    }
+
     for pack in packages {
         pack_name, pack_ok := runic.relative_to_file(
             rune_file_name,
@@ -92,6 +111,8 @@ generate_runestone :: proc(
 
             imports := make(map[string]Import)
             defer delete(imports)
+
+            ttt_ctx.imports = &imports
 
             for decl in file.decls {
                 #partial switch stm in decl.derived_stmt {
@@ -164,12 +185,7 @@ generate_runestone :: proc(
                             plat,
                             stm.type,
                             first_name,
-                            &rs.types,
-                            &anon_counter,
-                            &imports,
-                            nil,
-                            overwrite,
-                            rs_arena_alloc,
+                            &ttt_ctx,
                         )
                         if type_err != nil {
                             fmt.eprintln(type_err)
@@ -230,12 +246,7 @@ generate_runestone :: proc(
                                 plat,
                                 value.type,
                                 name,
-                                &rs.types,
-                                &anon_counter,
-                                &imports,
-                                nil,
-                                overwrite,
-                                rs_arena_alloc,
+                                &ttt_ctx,
                             )
                             if fn_err != nil {
                                 fmt.eprintln(fn_err)
@@ -342,12 +353,7 @@ generate_runestone :: proc(
                                 plat,
                                 value_expr,
                                 name,
-                                &rs.types,
-                                &anon_counter,
-                                &imports,
-                                nil,
-                                overwrite,
-                                rs_arena_alloc,
+                                &ttt_ctx,
                             )
                             if type_err != nil {
                                 fmt.eprintln(type_err)
@@ -417,12 +423,7 @@ proc_type_to_function :: proc(
     plat: runic.Platform,
     p: ^odina.Proc_Type,
     name: Maybe(string),
-    types: ^om.OrderedMap(string, runic.Type),
-    anon_counter: ^int,
-    imports: ^map[string]Import,
-    current_package: Maybe(^odina.Package),
-    ow: runic.OverwriteSet,
-    allocator := context.allocator,
+    ctx: ^TypeToTypeContext,
 ) -> (
     fn: runic.Function,
     err: errors.Error,
@@ -436,7 +437,7 @@ proc_type_to_function :: proc(
 
     fn.parameters = make(
         [dynamic]runic.Member,
-        allocator = allocator,
+        allocator = ctx.allocator,
         len = 0,
         cap = len(p.params.list),
     )
@@ -451,21 +452,16 @@ proc_type_to_function :: proc(
             plat,
             param_field.type,
             first_name,
-            types,
-            anon_counter,
-            imports,
-            current_package,
-            ow,
-            allocator,
+            ctx,
         ) or_return
 
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             type.spec,
-            anon_counter,
-            ow,
-            allocator,
+            ctx.anon_counter,
+            ctx.ow,
+            ctx.allocator,
         ); is_anon {
-            om.insert(types, anon_name, anon_type)
+            om.insert(ctx.types, anon_name, anon_type)
             type.spec = anon_name
         }
 
@@ -481,7 +477,7 @@ proc_type_to_function :: proc(
             append(
                 &fn.parameters,
                 runic.Member {
-                    name = strings.clone(name, allocator),
+                    name = strings.clone(name, ctx.allocator),
                     type = type,
                 },
             )
@@ -496,7 +492,7 @@ proc_type_to_function :: proc(
     result_struct: runic.Struct
     result_struct.members = make(
         [dynamic]runic.Member,
-        allocator = allocator,
+        allocator = ctx.allocator,
         len = 0,
         cap = len(p.results.list),
     )
@@ -512,21 +508,16 @@ proc_type_to_function :: proc(
             plat,
             result_field.type,
             first_name,
-            types,
-            anon_counter,
-            imports,
-            current_package,
-            ow,
-            allocator,
+            ctx,
         ) or_return
 
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             type.spec,
-            anon_counter,
-            ow,
-            allocator,
+            ctx.anon_counter,
+            ctx.ow,
+            ctx.allocator,
         ); is_anon {
-            om.insert(types, anon_name, anon_type)
+            om.insert(ctx.types, anon_name, anon_type)
             type.spec = anon_name
         }
 
@@ -537,7 +528,7 @@ proc_type_to_function :: proc(
                     name = fmt.aprintf(
                         "result{}",
                         result_idx,
-                        allocator = allocator,
+                        allocator = ctx.allocator,
                     ),
                     type = type,
                 },
@@ -554,7 +545,7 @@ proc_type_to_function :: proc(
                 name = fmt.aprintf(
                     "result{}",
                     result_idx,
-                    allocator = allocator,
+                    allocator = ctx.allocator,
                 )
             } else {
                 name = name_to_name(name_expr) or_return
@@ -562,7 +553,7 @@ proc_type_to_function :: proc(
                     name = fmt.aprintf(
                         "result{}",
                         result_idx,
-                        allocator = allocator,
+                        allocator = ctx.allocator,
                     )
                 }
             }
@@ -570,7 +561,7 @@ proc_type_to_function :: proc(
             append(
                 &result_struct.members,
                 runic.Member {
-                    name = strings.clone(name, allocator),
+                    name = strings.clone(name, ctx.allocator),
                     type = type,
                 },
             )
@@ -579,16 +570,16 @@ proc_type_to_function :: proc(
 
     if len(result_struct.members) == 1 {
         fn.return_type = result_struct.members[0].type
-        delete(result_struct.members[0].name, allocator)
+        delete(result_struct.members[0].name, ctx.allocator)
         delete(result_struct.members)
     } else {
         result_type_name := fmt.aprintf(
             "{}_result",
             name.? if name != nil else "proc",
-            allocator = allocator,
+            allocator = ctx.allocator,
         )
         fn.return_type.spec = result_type_name
-        om.insert(types, result_type_name, runic.Type{spec = result_struct})
+        om.insert(ctx.types, result_type_name, runic.Type{spec = result_struct})
     }
 
     return
@@ -608,12 +599,7 @@ type_to_type :: proc(
     plat: runic.Platform,
     t: ^odina.Expr,
     name: Maybe(string),
-    types: ^om.OrderedMap(string, runic.Type),
-    anon_counter: ^int,
-    imports: ^map[string]Import,
-    current_package: Maybe(^odina.Package),
-    ow: runic.OverwriteSet,
-    allocator := context.allocator,
+    ctx: ^TypeToTypeContext,
 ) -> (
     type: runic.Type,
     err: errors.Error,
@@ -622,13 +608,13 @@ type_to_type :: proc(
     case ^odina.Ident:
         switch type_expr.name {
         case "string":
-            if !om.contains(types^, "string") {
+            if !om.contains(ctx.types^, "string") {
                 string_type: runic.Struct = ---
                 string_type.members = make(
                     [dynamic]runic.Member,
                     len = 2,
                     cap = 2,
-                    allocator = allocator,
+                    allocator = ctx.allocator,
                 )
 
                 string_type.members[0].name = "data"
@@ -645,7 +631,7 @@ type_to_type :: proc(
                     string_type.members[1].type.spec = runic.Builtin.Untyped
                 }
 
-                om.insert(types, "string", runic.Type{spec = string_type})
+                om.insert(ctx.types, "string", runic.Type{spec = string_type})
             }
 
             type.spec = string("string")
@@ -653,22 +639,22 @@ type_to_type :: proc(
             type.spec = type_identifier_to_type_specifier(
                 plat,
                 type_expr.name,
-                allocator,
+                ctx.allocator,
             ) or_return
 
             if type_name, ok := type.spec.(string); ok {
                 pkg: ^odina.Package = ---
-                if pkg, ok = current_package.?; ok {
+                if pkg, ok = ctx.current_package.?; ok {
                     prefix_type_name := fmt.aprintf(
                         "{}_{}",
                         pkg.name,
                         type_name,
-                        allocator = allocator,
+                        allocator = ctx.allocator,
                     )
 
-                    if !om.contains(types^, prefix_type_name) {
+                    if !om.contains(ctx.types^, prefix_type_name) {
                         om.insert(
-                            types,
+                            ctx.types,
                             prefix_type_name,
                             runic.Type{spec = runic.Unknown(prefix_type_name)},
                         )
@@ -676,12 +662,9 @@ type_to_type :: proc(
                             plat,
                             type_name,
                             pkg,
-                            types,
-                            anon_counter,
-                            ow,
-                            allocator,
+                            ctx,
                         ) or_return
-                        om.insert(types, prefix_type_name, type)
+                        om.insert(ctx.types, prefix_type_name, type)
                     }
 
                     type.spec = prefix_type_name
@@ -693,12 +676,7 @@ type_to_type :: proc(
             plat,
             type_expr.elem,
             name,
-            types,
-            anon_counter,
-            imports,
-            current_package,
-            ow,
-            allocator,
+            ctx,
         ) or_return
         if len(type.array_info) != 0 {
             type.array_info[len(type.array_info) - 1].pointer_info.count += 1
@@ -710,16 +688,11 @@ type_to_type :: proc(
             plat,
             type_expr.elem,
             name,
-            types,
-            anon_counter,
-            imports,
-            current_package,
-            ow,
-            allocator,
+            ctx,
         ) or_return
 
         if len(type.array_info) == 0 {
-            type.array_info = make([dynamic]runic.Array, allocator)
+            type.array_info = make([dynamic]runic.Array, ctx.allocator)
         }
 
         if type_expr.len != nil {
@@ -792,7 +765,7 @@ type_to_type :: proc(
             }
 
             slice_name_bd: strings.Builder
-            strings.builder_init(&slice_name_bd, allocator = allocator)
+            strings.builder_init(&slice_name_bd, allocator = ctx.allocator)
 
             #reverse for e in slice_name_elements {
                 strings.write_string(&slice_name_bd, e)
@@ -804,19 +777,19 @@ type_to_type :: proc(
 
             if needs_anon {
                 strings.write_rune(&slice_name_bd, '_')
-                strings.write_int(&slice_name_bd, anon_counter^)
-                anon_counter^ += 1
+                strings.write_int(&slice_name_bd, ctx.anon_counter^)
+                ctx.anon_counter^ += 1
             }
 
             slice_name := strings.to_string(slice_name_bd)
 
-            if needs_anon || !om.contains(types^, slice_name) {
+            if needs_anon || !om.contains(ctx.types^, slice_name) {
                 slice_type: runic.Struct = ---
                 slice_type.members = make(
                     [dynamic]runic.Member,
                     len = 2,
                     cap = 2,
-                    allocator = allocator,
+                    allocator = ctx.allocator,
                 )
 
                 slice_type.members[0].name = "data"
@@ -838,7 +811,7 @@ type_to_type :: proc(
                     slice_type.members[1].type.spec = runic.Builtin.Untyped
                 }
 
-                om.insert(types, slice_name, runic.Type{spec = slice_type})
+                om.insert(ctx.types, slice_name, runic.Type{spec = slice_type})
             }
 
             type = runic.Type {
@@ -850,12 +823,7 @@ type_to_type :: proc(
             plat,
             type_expr.elem,
             name,
-            types,
-            anon_counter,
-            imports,
-            current_package,
-            ow,
-            allocator,
+            ctx,
         ) or_return
         if len(type.array_info) != 0 {
             type.array_info[len(type.array_info) - 1].pointer_info.count += 1
@@ -869,12 +837,7 @@ type_to_type :: proc(
             plat,
             type_expr.elem,
             name,
-            types,
-            anon_counter,
-            imports,
-            current_package,
-            ow,
-            allocator,
+            ctx,
         ) or_return
 
         dyn_name_elements := make([dynamic]string, len = 0, cap = 3) // [dynamic]^[5]int
@@ -927,7 +890,7 @@ type_to_type :: proc(
         }
 
         dyn_name_bd: strings.Builder
-        strings.builder_init(&dyn_name_bd, allocator = allocator)
+        strings.builder_init(&dyn_name_bd, allocator = ctx.allocator)
 
         #reverse for e in dyn_name_elements {
             strings.write_string(&dyn_name_bd, e)
@@ -939,19 +902,19 @@ type_to_type :: proc(
 
         if needs_anon {
             strings.write_rune(&dyn_name_bd, '_')
-            strings.write_int(&dyn_name_bd, anon_counter^)
-            anon_counter^ += 1
+            strings.write_int(&dyn_name_bd, ctx.anon_counter^)
+            ctx.anon_counter^ += 1
         }
 
         dynamic_array_name := strings.to_string(dyn_name_bd)
 
-        if needs_anon || !om.contains(types^, dynamic_array_name) {
+        if needs_anon || !om.contains(ctx.types^, dynamic_array_name) {
             dynamic_array_type: runic.Struct = ---
             dynamic_array_type.members = make(
                 [dynamic]runic.Member,
                 len = 4,
                 cap = 4,
-                allocator = allocator,
+                allocator = ctx.allocator,
             )
 
             dynamic_array_type.members[0].name = "data"
@@ -988,22 +951,18 @@ type_to_type :: proc(
                 "runtime_Allocator",
             )
 
-            if !om.contains(types^, "runtime_Allocator") {
+            if !om.contains(ctx.types^, "runtime_Allocator") {
                 allocator_type := lookup_type_of_import(
                     plat,
-                    imports,
                     "runtime",
                     "Allocator",
-                    types,
-                    anon_counter,
-                    ow,
-                    allocator,
+                    ctx,
                 ) or_return
-                om.insert(types, "runtime_Allocator", allocator_type)
+                om.insert(ctx.types, "runtime_Allocator", allocator_type)
             }
 
             om.insert(
-                types,
+                ctx.types,
                 dynamic_array_name,
                 runic.Type{spec = dynamic_array_type},
             )
@@ -1028,12 +987,7 @@ type_to_type :: proc(
                 plat,
                 type_expr.base_type,
                 name,
-                types,
-                anon_counter,
-                imports,
-                current_package,
-                ow,
-                allocator,
+                ctx,
             ) or_return
 
             ok: bool = ---
@@ -1043,9 +997,9 @@ type_to_type :: proc(
 
         e.entries = make(
             [dynamic]runic.EnumEntry,
-            allocator = allocator,
             len = 0,
             cap = len(type_expr.fields),
+            allocator = ctx.allocator,
         )
 
         counter: i64
@@ -1055,7 +1009,7 @@ type_to_type :: proc(
                 append(
                     &e.entries,
                     runic.EnumEntry {
-                        name = strings.clone(f.name, allocator),
+                        name = strings.clone(f.name, ctx.allocator),
                         value = counter,
                     },
                 )
@@ -1068,7 +1022,7 @@ type_to_type :: proc(
                     )
                     return
                 } else {
-                    name = strings.clone(name_ident.name, allocator)
+                    name = strings.clone(name_ident.name, ctx.allocator)
                 }
 
                 value := evaluate_expr(i64, f.value) or_return
@@ -1089,12 +1043,7 @@ type_to_type :: proc(
             u := struct_type_to_union(
                 plat,
                 type_expr,
-                types,
-                anon_counter,
-                imports,
-                current_package,
-                ow,
-                allocator,
+                ctx,
             ) or_return
             type.spec = u
             return
@@ -1102,12 +1051,7 @@ type_to_type :: proc(
         s := struct_type_to_struct(
             plat,
             type_expr,
-            types,
-            anon_counter,
-            imports,
-            current_package,
-            ow,
-            allocator,
+            ctx,
         ) or_return
         type.spec = s
         return
@@ -1130,16 +1074,12 @@ type_to_type :: proc(
 
         type = lookup_type_of_import(
             plat,
-            imports,
             pkg.name,
             type_name,
-            types,
-            anon_counter,
-            ow,
-            allocator,
+            ctx,
         ) or_return
 
-        imp, imp_ok := imports^[pkg.name]
+        imp, imp_ok := ctx.imports^[pkg.name]
         errors.assert(imp_ok, "import was expected to exist") or_return
 
         if imp.name != "builtin" {
@@ -1147,10 +1087,10 @@ type_to_type :: proc(
                 "{}_{}",
                 imp.name,
                 type_name,
-                allocator = allocator,
+                allocator = ctx.allocator,
             )
 
-            om.insert(types, type_name, type)
+            om.insert(ctx.types, type_name, type)
             type = runic.Type {
                 spec = type_name,
             }
@@ -1160,27 +1100,17 @@ type_to_type :: proc(
             plat,
             type_expr.type,
             name,
-            types,
-            anon_counter,
-            imports,
-            current_package,
-            ow,
-            allocator,
+            ctx,
         )
     case ^odina.Proc_Type:
         func := proc_type_to_function(
             plat,
             type_expr,
             name,
-            types,
-            anon_counter,
-            imports,
-            current_package,
-            ow,
-            allocator,
+            ctx,
         ) or_return
 
-        type.spec = runic.FunctionPointer(new_clone(func, allocator))
+        type.spec = runic.FunctionPointer(new_clone(func, ctx.allocator))
     case ^odina.Bit_Set_Type:
         // TODO: Handle the case where the enum is defined after the bit_set and such similar cases
         bit_set_type: Maybe(runic.Type)
@@ -1195,7 +1125,7 @@ type_to_type :: proc(
                 underlying = type_identifier_to_type_specifier(
                     plat,
                     d.name,
-                    allocator,
+                    ctx.allocator,
                 ) or_return
 
                 bit_set_type = runic.Type {
@@ -1217,12 +1147,12 @@ type_to_type :: proc(
             elem_name = e.name
 
             if underlying == nil {
-                if elem_type, ok := om.get(types^, e.name); ok {
+                if elem_type, ok := om.get(ctx.types^, e.name); ok {
                     if enum_type, enum_ok := elem_type.spec.(runic.Enum);
                        enum_ok {
                         bit_set_type = bit_set_type_from_enum(
                             enum_type,
-                            allocator,
+                            ctx.allocator,
                         )
                     } else {
                         err = error_tok(
@@ -1260,7 +1190,7 @@ type_to_type :: proc(
         }
 
         bit_set_type_name: strings.Builder
-        strings.builder_init(&bit_set_type_name, allocator = allocator)
+        strings.builder_init(&bit_set_type_name, allocator = ctx.allocator)
 
         strings.write_string(&bit_set_type_name, "bit_set_")
         strings.write_string(&bit_set_type_name, elem_name)
@@ -1271,9 +1201,9 @@ type_to_type :: proc(
         // TODO: Handle anon counter
 
         if bit_set_type != nil {
-            if !om.contains(types^, strings.to_string(bit_set_type_name)) {
+            if !om.contains(ctx.types^, strings.to_string(bit_set_type_name)) {
                 om.insert(
-                    types,
+                    ctx.types,
                     strings.to_string(bit_set_type_name),
                     bit_set_type.?,
                 )
@@ -1423,12 +1353,7 @@ type_identifier_to_type_specifier :: proc(
 struct_type_to_union :: proc(
     plat: runic.Platform,
     st: ^odina.Struct_Type,
-    types: ^om.OrderedMap(string, runic.Type),
-    anon_counter: ^int,
-    imports: ^map[string]Import,
-    current_package: Maybe(^odina.Package),
-    ow: runic.OverwriteSet,
-    allocator := context.allocator,
+    ctx: ^TypeToTypeContext,
 ) -> (
     u: runic.Union,
     err: errors.Error,
@@ -1436,12 +1361,7 @@ struct_type_to_union :: proc(
     s := struct_type_to_struct(
         plat,
         st,
-        types,
-        anon_counter,
-        imports,
-        current_package,
-        ow,
-        allocator,
+        ctx,
     ) or_return
     u.members = s.members
     return
@@ -1450,12 +1370,7 @@ struct_type_to_union :: proc(
 struct_type_to_struct :: proc(
     plat: runic.Platform,
     st: ^odina.Struct_Type,
-    types: ^om.OrderedMap(string, runic.Type),
-    anon_counter: ^int,
-    imports: ^map[string]Import,
-    current_package: Maybe(^odina.Package),
-    ow: runic.OverwriteSet,
-    allocator := context.allocator,
+    ctx: ^TypeToTypeContext,
 ) -> (
     s: runic.Struct,
     err: errors.Error,
@@ -1466,7 +1381,7 @@ struct_type_to_struct :: proc(
 
     s.members = make(
         [dynamic]runic.Member,
-        allocator = allocator,
+        allocator = ctx.allocator,
         len = 0,
         cap = len(st.fields.list),
     )
@@ -1481,21 +1396,16 @@ struct_type_to_struct :: proc(
             plat,
             field.type,
             first_name,
-            types,
-            anon_counter,
-            imports,
-            current_package,
-            ow,
-            allocator,
+            ctx,
         ) or_return
 
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             type.spec,
-            anon_counter,
-            ow,
-            allocator,
+            ctx.anon_counter,
+            ctx.ow,
+            ctx.allocator,
         ); is_anon {
-            om.insert(types, anon_name, anon_type)
+            om.insert(ctx.types, anon_name, anon_type)
             type.spec = anon_name
         }
 
@@ -1505,7 +1415,7 @@ struct_type_to_struct :: proc(
             append(
                 &s.members,
                 runic.Member {
-                    name = strings.clone(name, allocator),
+                    name = strings.clone(name, ctx.allocator),
                     type = type,
                 },
             )
@@ -1714,17 +1624,13 @@ parse_import :: proc(
 
 lookup_type_of_import :: proc(
     plat: runic.Platform,
-    imports: ^map[string]Import,
     pkg, type_name: string,
-    types: ^om.OrderedMap(string, runic.Type),
-    anon_counter: ^int,
-    ow: runic.OverwriteSet,
-    allocator := context.allocator,
+    ctx: ^TypeToTypeContext,
 ) -> (
     type: runic.Type,
     err: errors.Error,
 ) {
-    imp, ok := imports[pkg]
+    imp, ok := ctx.imports^[pkg]
 
     if !ok || imp.pkg == nil {
         if !ok {
@@ -1757,12 +1663,7 @@ lookup_type_of_import :: proc(
                     plat,
                     &type_expr,
                     type_name,
-                    types,
-                    anon_counter,
-                    imports,
-                    nil,
-                    ow,
-                    allocator,
+                    ctx,
                 ) or_return
                 return
             case "runtime":
@@ -1774,7 +1675,7 @@ lookup_type_of_import :: proc(
                         [dynamic]runic.Member,
                         len = 2,
                         cap = 2,
-                        allocator = allocator,
+                        allocator = ctx.allocator,
                     )
 
                     s.members[0].name = "procedure"
@@ -1790,7 +1691,7 @@ lookup_type_of_import :: proc(
                         [dynamic]runic.Member,
                         len = 4,
                         cap = 4,
-                        allocator = allocator,
+                        allocator = ctx.allocator,
                     )
 
                     s.members[0].name = "procedure"
@@ -1820,7 +1721,7 @@ lookup_type_of_import :: proc(
                         [dynamic]runic.Member,
                         len = 2,
                         cap = 2,
-                        allocator = allocator,
+                        allocator = ctx.allocator,
                     )
 
                     s.members[0].name = "procedure"
@@ -1837,7 +1738,7 @@ lookup_type_of_import :: proc(
                         [dynamic]runic.Member,
                         len = 8,
                         cap = 8,
-                        allocator = allocator,
+                        allocator = ctx.allocator,
                     )
 
                     s.members[0].name = "allocator"
@@ -1873,45 +1774,33 @@ lookup_type_of_import :: proc(
 
                     type.spec = s
 
-                    if !om.contains(types^, "runtime_Allocator") {
+                    if !om.contains(ctx.types^, "runtime_Allocator") {
                         allocator_type := lookup_type_of_import(
                             plat,
-                            imports,
                             pkg,
                             "Allocator",
-                            types,
-                            anon_counter,
-                            ow,
-                            allocator,
+                            ctx,
                         ) or_return
-                        om.insert(types, "runtime_Allocator", allocator_type)
+                        om.insert(ctx.types, "runtime_Allocator", allocator_type)
                     }
-                    if !om.contains(types^, "runtime_Logger") {
+                    if !om.contains(ctx.types^, "runtime_Logger") {
                         logger_type := lookup_type_of_import(
                             plat,
-                            imports,
                             pkg,
                             "Logger",
-                            types,
-                            anon_counter,
-                            ow,
-                            allocator,
+                            ctx,
                         ) or_return
-                        om.insert(types, "runtime_Logger", logger_type)
+                        om.insert(ctx.types, "runtime_Logger", logger_type)
                     }
-                    if !om.contains(types^, "runtime_Random_Generator") {
+                    if !om.contains(ctx.types^, "runtime_Random_Generator") {
                         random_generator_type := lookup_type_of_import(
                             plat,
-                            imports,
                             pkg,
                             "Random_Generator",
-                            types,
-                            anon_counter,
-                            ow,
-                            allocator,
+                            ctx,
                         ) or_return
                         om.insert(
-                            types,
+                            ctx.types,
                             "runtime_Random_Generator",
                             random_generator_type,
                         )
@@ -1932,18 +1821,19 @@ lookup_type_of_import :: proc(
                 "package",
                 pkg,
                 "does not exist in",
-                slice.map_keys(imports^, allocator = errors.error_allocator),
+                slice.map_keys(ctx.imports^, allocator = errors.error_allocator),
                 allocator = errors.error_allocator,
             ),
         ) or_return
 
-        context.allocator = allocator
 
         p: odinp.Parser
         p.flags = {.Optional_Semicolons}
 
         reserved_packages := make([dynamic]string)
+
         context.user_ptr = &reserved_packages
+        context.allocator = ctx.allocator
         p.err = proc(pos: odint.Pos, msg: string, args: ..any) {
             whole_msg := fmt.aprintf(
                 msg,
@@ -1982,10 +1872,7 @@ lookup_type_of_import :: proc(
         plat,
         type_name,
         imp.pkg,
-        types,
-        anon_counter,
-        ow,
-        allocator,
+        ctx,
     )
 
     return
@@ -1995,22 +1882,28 @@ lookup_type_in_package :: proc(
     plat: runic.Platform,
     type_name: string,
     pkg: ^odina.Package,
-    types: ^om.OrderedMap(string, runic.Type),
-    anon_counter: ^int,
-    ow: runic.OverwriteSet,
-    allocator := context.allocator,
+    ctx: ^TypeToTypeContext,
 ) -> (
     type: runic.Type,
     err: errors.Error,
 ) {
+    prev_pkg := ctx.current_package
+    ctx.current_package = pkg
+    defer ctx.current_package = prev_pkg
+
+    prev_imports := ctx.imports
+    defer ctx.imports = prev_imports
+
     for file_name, file in pkg.files {
         local_imports := make(map[string]Import)
         defer delete(local_imports)
 
+        ctx.imports = &local_imports
+
         for decl in file.decls {
             #partial switch stm in decl.derived_stmt {
             case ^odina.Import_Decl:
-                name, impo := parse_import(file_name, stm, allocator) or_return
+                name, impo := parse_import(file_name, stm, ctx.allocator) or_return
                 local_imports[name] = impo
             case ^odina.Value_Decl:
                 for name_expr, idx in stm.names {
@@ -2027,12 +1920,7 @@ lookup_type_in_package :: proc(
                             plat,
                             value_expr,
                             name,
-                            types,
-                            anon_counter,
-                            &local_imports,
-                            pkg,
-                            ow,
-                            allocator,
+                            ctx,
                         )
                         return
                     }

@@ -2052,9 +2052,21 @@ range_info_from_binary_expr :: proc(
             return
         }
     case ^odina.Ident:
+        // TODO
         left_text = left.name
         is_number = false
-        err = errors.not_implemented()
+        err = error_tok(
+            "bit_sets with ranges that use constants are not supported",
+            expr.left.pos,
+        )
+        return
+    case ^odina.Selector_Expr:
+        // TODO
+        is_number = false
+        err = error_tok(
+            "bit_sets with ranges that use constants from other packages are not supported",
+            expr.left.pos,
+        )
         return
     case:
         err = error_tok(
@@ -2113,9 +2125,21 @@ range_info_from_binary_expr :: proc(
             return
         }
     case ^odina.Ident:
+        // TODO
         right_text = right.name
         is_number = false
-        err = errors.not_implemented()
+        err = error_tok(
+            "bit_sets with ranges that use constants are not supported",
+            expr.right.pos,
+        )
+        return
+    case ^odina.Selector_Expr:
+        // TODO
+        is_number = false
+        err = error_tok(
+            "bit_sets with ranges that use constants from other packages are not supported",
+            expr.right.pos,
+        )
         return
     case:
         err = error_tok(

@@ -236,6 +236,8 @@ abc_bitset: bit_set['A'..='Z']
 @(export)
 number_range: bit_set[2..<5]
 
+// TODO: handle bit_sets with ranges that use constants
+// TODO: handle bit_sets with ranges that use constants from other packages
 //NUMBER_RANGE_MIN :: 0
 //NUMBER_RANGE_MAX :: 10
 //

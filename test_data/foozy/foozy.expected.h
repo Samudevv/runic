@@ -177,6 +177,7 @@ int64_t capacity;
 struct runtime_Allocator allocator;
 } int_dynamic_array;
 typedef uint8_t bit_set_pants;
+typedef uint16_t bit_set_languages;
 #define english ((languages)0)
 #define german ((languages)1)
 #define japanese ((languages)2)
@@ -196,6 +197,9 @@ extern super_multi your_var;
 extern float* mumu;
 extern uint64_t (* error_callback)(const int64_t err);
 extern bit_set_pants multi_pant;
+extern bit_set_languages polyglot;
+extern bit_set_languages polyglot1;
+extern bit_set_languages polyglot2;
 extern bit_set_languages_u64 special_polyglot;
 extern bit_set_languages_u64 another_special_polyglot;
 extern bit_set_languages_polyglot_int very_polyglot;

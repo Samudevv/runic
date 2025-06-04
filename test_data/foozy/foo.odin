@@ -187,9 +187,13 @@ error_callback: #type proc "c" (err: int) -> bool
 @(export)
 multi_pant: bit_set[pants]
 
-//@(export)
-//polyglot: bit_set[languages]
-//
+@(export)
+polyglot: bit_set[languages]
+@(export)
+polyglot1: bit_set[languages]
+@(export)
+polyglot2: bit_set[languages]
+
 languages :: enum {
     english,
     german,

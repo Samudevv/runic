@@ -852,7 +852,8 @@ write_type_specifier :: proc(
         case .SInt64:
             io.write_string(wd, "int64_t") or_return
         case .SInt128:
-            io.write_string(wd, "int128_t") or_return
+            // TODO: Support compilers where this type is not present
+            io.write_string(wd, "__int128") or_return
         case .UInt8:
             io.write_string(wd, "uint8_t") or_return
         case .UInt16:
@@ -862,7 +863,8 @@ write_type_specifier :: proc(
         case .UInt64:
             io.write_string(wd, "uint64_t") or_return
         case .UInt128:
-            io.write_string(wd, "uint128_t") or_return
+            // TODO: Support compilers where this type is not present
+            io.write_string(wd, "unsigned __int128") or_return
         case .Float32:
             io.write_string(wd, "float") or_return
         case .Float64:

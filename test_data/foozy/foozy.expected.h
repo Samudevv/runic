@@ -126,7 +126,7 @@ typedef struct runtime_Allocator my_allocator;
 typedef void intrinsics_objc_object;
 typedef intrinsics_objc_object my_obj;
 typedef int64_t my_great_int;
-typedef uint128_t beans[128];
+typedef unsigned __int128 beans[128];
 typedef uint16_t bit_field_u16;
 typedef bit_field_u16 simple_bf;
 typedef int32_t bit_field_i32_array_5[5];

@@ -204,6 +204,12 @@ typedef int64_t anon_bit_set_enum_5;
 typedef uint8_t bit_set_anon_bit_set_enum_5_i8;
 typedef uint32_t bit_set_range_26;
 typedef uint8_t bit_set_range_2_to_5;
+typedef enum booty_boots {
+long_ones = 0,
+small_ones = 1,
+wide_ones = 2,
+} booty_boots;
+typedef uint8_t bit_set_booty_boots;
 
 extern super_multi your_var;
 extern float* mumu;
@@ -219,6 +225,7 @@ extern bit_set_anon_bit_set_enum_4 numbers;
 extern bit_set_anon_bit_set_enum_5_i8 underlying_numbers;
 extern bit_set_range_26 abc_bitset;
 extern bit_set_range_2_to_5 number_range;
+extern bit_set_booty_boots boot_options;
 
 extern char* bar(const char* msg, const int64_t result);
 extern char* parse_int(const c_int64_t value);

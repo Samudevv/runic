@@ -21,6 +21,7 @@ import "../../runic"
 import bin "base:builtin"
 import "base:intrinsics"
 import "base:runtime"
+import "booty"
 import fmty "core:fmt"
 
 FOO_VALUE :: 5
@@ -208,12 +209,12 @@ languages :: enum {
 }
 
 @(export)
-special_polyglot: bit_set[languages; u64]
+special_polyglot: bit_set[languages;u64]
 @(export)
-another_special_polyglot: bit_set[languages; u64]
+another_special_polyglot: bit_set[languages;u64]
 
 @(export)
-very_polyglot: bit_set[languages; polyglot_int]
+very_polyglot: bit_set[languages;polyglot_int]
 polyglot_int :: i32
 
 @(export)
@@ -228,13 +229,16 @@ underlying_numbers: bit_set[enum {
     four,
     five,
     six,
-}; i8]
+};i8]
 
 @(export)
-abc_bitset: bit_set['A'..='Z']
+abc_bitset: bit_set['A' ..= 'Z']
 
 @(export)
-number_range: bit_set[2..<5]
+number_range: bit_set[2 ..< 5]
+
+@(export)
+boot_options: bit_set[booty.boots]
 
 // TODO: handle bit_sets with ranges that use constants
 // TODO: handle bit_sets with ranges that use constants from other packages

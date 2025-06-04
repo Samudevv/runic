@@ -13,7 +13,8 @@
     + [ ] Implement Odin-specific types
       + [x] Slice, dynamic array
       + [ ] Union
-      + [ ] bit_set, bit_field
+      + [x] bit_set
+      + [ ] bit_field
       + [ ] Struct alignment and packing
       + [ ] More complex constants (typed, expressions etc.)
     + [ ] Support extern system

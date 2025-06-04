@@ -1112,9 +1112,39 @@ type_to_type :: proc(
 
             bit_set_type = bit_set_type_from_enum(anon_enum, ctx.allocator)
         case ^odina.Selector_Expr:
-            // TODO
-            err = errors.not_implemented()
-            return
+            errors.assert(e.op.kind == .Period) or_return
+
+            pkg, pkg_ok := e.expr.derived_expr.(^odina.Ident)
+            errors.assert(pkg_ok) or_return
+
+            elem_name = e.field.name
+
+            pkg_type := lookup_type_of_import(
+                plat,
+                pkg.name,
+                elem_name,
+                ctx,
+            ) or_return
+
+            enum_type, enum_ok := pkg_type.spec.(runic.Enum)
+            errors.assert(
+                enum_ok,
+                "bit_set elem type needs to be an enum",
+            ) or_return
+
+            imp, imp_ok := ctx.imports^[pkg.name]
+            errors.assert(imp_ok) or_return
+
+            elem_name = fmt.aprintf(
+                "{}_{}",
+                imp.name,
+                elem_name,
+                allocator = ctx.allocator,
+            )
+
+            om.insert(ctx.types, elem_name, pkg_type)
+
+            bit_set_type = bit_set_type_from_enum(enum_type, ctx.allocator)
         case:
             err = error_tok(
                 fmt.aprintf(

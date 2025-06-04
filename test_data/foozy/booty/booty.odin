@@ -24,3 +24,9 @@ treasure :: struct {
     b:  f64,
     sh: hooty.shmooty,
 }
+
+boots :: enum i32 {
+    long_ones,
+    small_ones,
+    wide_ones,
+}

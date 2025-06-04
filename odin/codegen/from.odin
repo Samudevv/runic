@@ -1182,6 +1182,93 @@ type_to_type :: proc(
         }
 
         type.spec = strings.to_string(bit_set_type_name)
+    case ^odina.Bit_Field_Type:
+        back_type := type_to_type(
+            plat,
+            type_expr.backing_type,
+            name,
+            ctx,
+        ) or_return
+
+        bit_field_type_name: strings.Builder
+        strings.builder_init(&bit_field_type_name, ctx.allocator)
+
+        strings.write_string(&bit_field_type_name, "bit_field_")
+
+        #partial switch e in type_expr.backing_type.derived_expr {
+        case ^odina.Ident:
+            strings.write_string(&bit_field_type_name, e.name)
+        case ^odina.Selector_Expr:
+            errors.assert(e.op.kind == .Period) or_return
+
+            pkg, pkg_ok := e.expr.derived_expr.(^odina.Ident)
+            errors.assert(pkg_ok) or_return
+
+            type_name := e.field.name
+
+            imp, imp_ok := ctx.imports^[pkg.name]
+            errors.assert(imp_ok) or_return
+
+            strings.write_string(&bit_field_type_name, imp.name)
+            strings.write_rune(&bit_field_type_name, '_')
+            strings.write_string(&bit_field_type_name, type_name)
+        case ^odina.Array_Type:
+            #partial switch elem in e.elem.derived_expr {
+            case ^odina.Ident:
+                strings.write_string(&bit_field_type_name, elem.name)
+                strings.write_rune(&bit_field_type_name, '_')
+            case ^odina.Selector_Expr:
+                errors.assert(elem.op.kind == .Period) or_return
+
+                pkg, pkg_ok := elem.expr.derived_expr.(^odina.Ident)
+                errors.assert(pkg_ok) or_return
+
+                type_name := elem.field.name
+
+                imp, imp_ok := ctx.imports^[pkg.name]
+                errors.assert(imp_ok) or_return
+
+                strings.write_string(&bit_field_type_name, imp.name)
+                strings.write_rune(&bit_field_type_name, '_')
+                strings.write_string(&bit_field_type_name, type_name)
+                strings.write_rune(&bit_field_type_name, '_')
+            case:
+                err = error_tok("invalid bit_field backing type", e.elem.pos)
+                return
+            }
+
+            errors.assert(e.len != nil) or_return
+
+            #partial switch length in e.len.derived_expr {
+            case ^odina.Basic_Lit:
+                #partial switch length.tok.kind {
+                case .Integer:
+                    strings.write_string(&bit_field_type_name, "array_")
+                    strings.write_string(&bit_field_type_name, length.tok.text)
+                case:
+                    err = error_tok(
+                        "invalid array length of backing type of bit_field",
+                        length.tok,
+                    )
+                }
+            case:
+                err = error_tok(
+                    "invalid array length of backing type of bit_field",
+                    e.len.pos,
+                )
+                return
+            }
+        }
+
+        if !om.contains(ctx.types^, strings.to_string(bit_field_type_name)) {
+            om.insert(
+                ctx.types,
+                strings.to_string(bit_field_type_name),
+                back_type,
+            )
+        }
+
+        type.spec = strings.to_string(bit_field_type_name)
     case:
         fmt.eprintln(
             error_tok(
@@ -1235,6 +1322,8 @@ type_identifier_to_type_specifier :: proc(
         t = SInt32
     case "i64":
         t = SInt64
+    case "i128":
+        t = SInt128
     case "byte":
         t = UInt8
     case "u8":
@@ -1245,6 +1334,8 @@ type_identifier_to_type_specifier :: proc(
         t = UInt32
     case "u64":
         t = UInt64
+    case "u128":
+        t = UInt128
     case "uintptr":
         t = UInt64
     case "f16":
@@ -1253,6 +1344,8 @@ type_identifier_to_type_specifier :: proc(
         t = Float32
     case "f64":
         t = Float64
+    case "f128":
+        t = Float128
     case "rune":
         t = SInt32
     case "cstring":
@@ -1276,9 +1369,7 @@ type_identifier_to_type_specifier :: proc(
         t = Bool32
     case "b64":
         t = Bool64
-    case "i128",
-         "u128",
-         "i16le",
+    case "i16le",
          "i32le",
          "i64le",
          "i128le",

@@ -30,3 +30,5 @@ boots :: enum i32 {
     small_ones,
     wide_ones,
 }
+
+boot_int :: i32

@@ -14,7 +14,7 @@
       + [x] Slice, dynamic array
       + [ ] Union
       + [x] bit_set
-      + [ ] bit_field
+      + [x] bit_field
       + [ ] Struct alignment and packing
       + [ ] More complex constants (typed, expressions etc.)
     + [ ] Support extern system

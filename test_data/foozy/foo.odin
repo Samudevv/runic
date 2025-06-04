@@ -85,6 +85,15 @@ my_allocator :: runtime.Allocator
 my_obj :: intrinsics.objc_object
 my_great_int :: bin.int
 
+beans :: [128]u128
+
+simple_bf :: bit_field u16 {}
+array_bf :: bit_field [5]i32 {}
+other_array_bf :: bit_field [2]my_great_int {}
+package_bf :: bit_field booty.boot_int {}
+other_package_bf :: bit_field [50]booty.boot_int {}
+bean_plantation :: bit_field beans {}
+
 @(export)
 foo :: proc "c" (a, b: int) -> int {
     return a + b * 2

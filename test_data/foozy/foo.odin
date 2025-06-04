@@ -229,10 +229,13 @@ underlying_numbers: bit_set[enum {
     five,
     six,
 }; i8]
-//
-//@(export)
-//ranged_bitset: bit_set['A'..='Z']
-//
+
+@(export)
+abc_bitset: bit_set['A'..='Z']
+
+@(export)
+number_range: bit_set[2..<5]
+
 //NUMBER_RANGE_MIN :: 0
 //NUMBER_RANGE_MAX :: 10
 //

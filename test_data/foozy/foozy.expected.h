@@ -202,6 +202,8 @@ typedef uint8_t bit_set_anon_bit_set_enum_4;
 #define six ((anon_bit_set_enum_5)2)
 typedef int64_t anon_bit_set_enum_5;
 typedef uint8_t bit_set_anon_bit_set_enum_5_i8;
+typedef uint32_t bit_set_range_26;
+typedef uint8_t bit_set_range_2_to_5;
 
 extern super_multi your_var;
 extern float* mumu;
@@ -215,6 +217,8 @@ extern bit_set_languages_u64 another_special_polyglot;
 extern bit_set_languages_polyglot_int very_polyglot;
 extern bit_set_anon_bit_set_enum_4 numbers;
 extern bit_set_anon_bit_set_enum_5_i8 underlying_numbers;
+extern bit_set_range_26 abc_bitset;
+extern bit_set_range_2_to_5 number_range;
 
 extern char* bar(const char* msg, const int64_t result);
 extern char* parse_int(const c_int64_t value);

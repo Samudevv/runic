@@ -1078,10 +1078,26 @@ type_to_type :: proc(
                 }
             }
         case ^odina.Binary_Expr:
-            // TODO
-            elem_name = "range"
-            err = errors.not_implemented()
-            return
+            range_count, range_left, range_right, range_full, range_is_number :=
+                range_info_from_binary_expr(e) or_return
+            bit_set_type = bit_set_type_from_count(range_count, ctx.allocator)
+
+            if range_is_number {
+                elem_name = fmt.aprintf(
+                    "range_{}_{}_{}",
+                    range_left,
+                    "upto" if range_full else "to",
+                    range_right,
+                    allocator = ctx.allocator,
+                )
+            } else {
+                // NOTE: In this case 'a'..='z' and 'A'..='Z' would be the same bit_set
+                elem_name = fmt.aprintf(
+                    "range_{}",
+                    range_count,
+                    allocator = ctx.allocator,
+                )
+            }
         case ^odina.Enum_Type:
             elem_name = fmt.aprintf(
                 "anon_bit_set_enum_{}",
@@ -1918,15 +1934,14 @@ lookup_type_in_package :: proc(
     return
 }
 
-bit_set_type_from_enum :: proc(
-    enum_type: runic.Enum,
+bit_set_type_from_count :: proc(
+    count: int,
     allocator := context.allocator,
 ) -> (
     type: runic.Type,
 ) {
-    entry_count := len(enum_type.entries)
-    bit_set_size := entry_count / 8
-    if entry_count % 8 != 0 {
+    bit_set_size := count / 8
+    if count % 8 != 0 {
         bit_set_size += 1
     }
 
@@ -1950,6 +1965,177 @@ bit_set_type_from_enum :: proc(
             allocator = allocator,
         )
         type.array_info[0].size = u64(bit_set_size)
+    }
+
+    return
+}
+
+bit_set_type_from_enum :: proc(
+    enum_type: runic.Enum,
+    allocator := context.allocator,
+) -> runic.Type {
+    entry_count := len(enum_type.entries)
+    return bit_set_type_from_count(entry_count)
+}
+
+range_info_from_binary_expr :: proc(
+    expr: ^odina.Binary_Expr,
+) -> (
+    count: int,
+    left_text: string,
+    right_text: string,
+    full: bool,
+    is_number: bool,
+    err: errors.Error,
+) {
+    #partial switch expr.op.kind {
+    case .Range_Half:
+    case .Range_Full:
+        full = true
+    case:
+        err = error_tok(
+            fmt.aprintf(
+                "invalid range operator {}",
+                expr.op.kind,
+                allocator = errors.error_allocator,
+            ),
+            expr.op.pos,
+        )
+        return
+    }
+
+    start, end: int
+
+    #partial switch left in expr.left.derived_expr {
+    case ^odina.Basic_Lit:
+        #partial switch left.tok.kind {
+        case .Integer:
+            ok: bool = ---
+            start, ok = strconv.parse_int(left.tok.text)
+            if !ok {
+                err = error_tok(
+                    fmt.aprintf(
+                        "invalid integer at left of range: \"{}\"",
+                        left.tok.text,
+                        allocator = errors.error_allocator,
+                    ),
+                    left.tok,
+                )
+                return
+            }
+
+            left_text = left.tok.text
+            is_number = true
+        case .Rune:
+            left_text = strings.trim_suffix(
+                strings.trim_prefix(left.tok.text, "'"),
+                "'",
+            )
+
+            start_rune: rune = ---
+            for r in left_text {
+                start_rune = r
+                break
+            }
+
+            start = int(start_rune)
+            is_number = false
+        case:
+            err = error_tok(
+                fmt.aprintf(
+                    "invalid basic literal at left of range: {}",
+                    left.tok.kind,
+                    allocator = errors.error_allocator,
+                ),
+                left.tok.pos,
+            )
+            return
+        }
+    case ^odina.Ident:
+        left_text = left.name
+        is_number = false
+        err = errors.not_implemented()
+        return
+    case:
+        err = error_tok(
+            fmt.aprintf(
+                "invalid left of range: {}",
+                reflect.get_union_variant(expr.left.derived_expr).id,
+                allocator = errors.error_allocator,
+            ),
+            expr.left.pos,
+        )
+    }
+
+    #partial switch right in expr.right.derived_expr {
+    case ^odina.Basic_Lit:
+        #partial switch right.tok.kind {
+        case .Integer:
+            ok: bool = ---
+            end, ok = strconv.parse_int(right.tok.text)
+            if !ok {
+                err = error_tok(
+                    fmt.aprintf(
+                        "invalid integer at right of range: \"{}\"",
+                        right.tok.text,
+                        allocator = errors.error_allocator,
+                    ),
+                    right.tok,
+                )
+                return
+            }
+
+            right_text = right.tok.text
+            is_number = true
+        case .Rune:
+            right_text = strings.trim_suffix(
+                strings.trim_prefix(right.tok.text, "'"),
+                "'",
+            )
+
+            end_rune: rune = ---
+            for r in right_text {
+                end_rune = r
+                break
+            }
+
+            end = int(end_rune)
+            is_number = false
+        case:
+            err = error_tok(
+                fmt.aprintf(
+                    "invalid basic literal at right of range: {}",
+                    right.tok.kind,
+                    allocator = errors.error_allocator,
+                ),
+                right.tok.pos,
+            )
+            return
+        }
+    case ^odina.Ident:
+        right_text = right.name
+        is_number = false
+        err = errors.not_implemented()
+        return
+    case:
+        err = error_tok(
+            fmt.aprintf(
+                "invalid right of range: {}",
+                reflect.get_union_variant(expr.right.derived_expr).id,
+                allocator = errors.error_allocator,
+            ),
+            expr.right.pos,
+        )
+    }
+
+    if end < start {
+        err = error_tok("end of range is less than start of range", expr.pos)
+        return
+    }
+
+    count = end - start
+    if full {
+        count += 1
     }
 
     return

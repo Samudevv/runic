@@ -21,6 +21,7 @@ package c_codegen
 import "core:os"
 import "core:strings"
 import "core:testing"
+import "root:diff"
 import "root:errors"
 import "root:runic"
 
@@ -270,7 +271,5 @@ extern struct Array create_array(my_size_type size);
 `
 
 
-    expect_value(t, len(string(data)), len(EXPECTED_HEADER))
-    expect_value(t, string(data), EXPECTED_HEADER)
+    diff.expect_diff_strings(t, EXPECTED_HEADER, string(data))
 }
-

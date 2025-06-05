@@ -25,6 +25,7 @@ import "core:path/filepath"
 import "core:strings"
 import "core:testing"
 import cppcdg "root:cpp/codegen"
+import "root:diff"
 import "root:errors"
 import om "root:ordered_map"
 import "root:runic"
@@ -380,9 +381,7 @@ main :: proc() {}`
     contents, os_err := os.read_entire_file(abs_file_name)
     if !expect(t, os_err) do return
 
-    bindings := string(contents)
-    expect_value(t, len(bindings), len(ODIN_EXPECTED))
-    expect_value(t, bindings, ODIN_EXPECTED)
+    diff.expect_diff_strings(t, ODIN_EXPECTED, string(contents), ".odin")
 }
 
 @(test)
@@ -518,8 +517,7 @@ foreign import extern_test_runic "system:system_include"
     if !expect(t, ok) do return
     defer delete(data)
 
-    expect_value(t, len(string(data)), len(EXPECT_BINDINGS))
-    expect_value(t, string(data), EXPECT_BINDINGS)
+    diff.expect_diff_strings(t, EXPECT_BINDINGS, string(data), ".odin")
 }
 
 @(test)
@@ -805,17 +803,8 @@ foreign import multi_runic "system:multi"
     if !expect(t, macos_data_ok) do return
     defer delete(macos_data)
 
-    if expect_value(t, len(any_data), len(ANY_EXPECTED)) {
-        expect_value(t, string(any_data), ANY_EXPECTED)
-    }
-    if expect_value(t, len(linux_data), len(LINUX_EXPECTED)) {
-        expect_value(t, string(linux_data), LINUX_EXPECTED)
-    }
-    if expect_value(t, len(windows_data), len(WINDOWS_EXPECTED)) {
-        expect_value(t, string(windows_data), WINDOWS_EXPECTED)
-    }
-    if expect_value(t, len(macos_data), len(MACOS_EXPECTED)) {
-        expect_value(t, string(macos_data), MACOS_EXPECTED)
-    }
+    diff.expect_diff_strings(t, ANY_EXPECTED, string(any_data))
+    diff.expect_diff_strings(t, LINUX_EXPECTED, string(linux_data))
+    diff.expect_diff_strings(t, WINDOWS_EXPECTED, string(windows_data))
+    diff.expect_diff_strings(t, MACOS_EXPECTED, string(macos_data))
 }
-

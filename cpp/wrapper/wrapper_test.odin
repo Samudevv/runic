@@ -22,6 +22,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 import "core:testing"
+import "root:diff"
 import "root:runic"
 
 @(test)
@@ -148,30 +149,28 @@ int beans_wrapper(int a) {
     defer delete(source_expected_windows)
 
 
-    if expect_value(t, len(string(header_data_linux)), len(HEADER_EXPECTED)) {
-        expect_value(t, string(header_data_linux), HEADER_EXPECTED)
-    }
-    if expect_value(
+    diff.expect_diff_strings(
         t,
-        len(string(header_data_windows)),
-        len(HEADER_EXPECTED),
-    ) {
-        expect_value(t, string(header_data_windows), HEADER_EXPECTED)
-    }
-
-    if expect_value(
+        HEADER_EXPECTED,
+        string(header_data_linux),
+        ".h",
+    )
+    diff.expect_diff_strings(
         t,
-        len(string(source_data_linux)),
-        len(source_expected_linux),
-    ) {
-        expect_value(t, string(source_data_linux), source_expected_linux)
-    }
-    if expect_value(
+        HEADER_EXPECTED,
+        string(header_data_windows),
+        ".h",
+    )
+    diff.expect_diff_strings(
         t,
-        len(string(source_data_windows)),
-        len(source_expected_windows),
-    ) {
-        expect_value(t, string(source_data_windows), source_expected_windows)
-    }
+        source_expected_linux,
+        string(source_data_linux),
+        ".h",
+    )
+    diff.expect_diff_strings(
+        t,
+        source_expected_windows,
+        string(source_data_windows),
+        ".h",
+    )
 }
-

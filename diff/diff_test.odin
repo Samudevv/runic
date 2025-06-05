@@ -37,4 +37,28 @@ test_diff :: proc(t: ^testing.T) {
     }
 
     expect_value(t, rs, false)
+
+    {
+        OLD_TEXT :: `#pragma once
+
+#include <stdio.h>
+
+static void hello_world() { printf("Hello World\n"); }
+
+`
+
+        NEW_TEXT :: `#pragma once
+
+#include <stdio.h>
+
+static void hello_world() { printf("こんにちは世界！"); }
+
+`
+
+        context.logger = runtime.default_logger()
+
+        rs = expect_diff_strings(t, OLD_TEXT, NEW_TEXT, ".c")
+    }
+
+    expect_value(t, rs, false)
 }

@@ -17,6 +17,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package diff
 
+import "core:fmt"
 import "core:log"
 import os "core:os/os2"
 import "core:testing"
@@ -94,6 +95,93 @@ expect_diff_files :: proc(
     }
 
     return true
+}
+
+expect_diff_strings :: proc(
+    t: ^testing.T,
+    old_string, new_string: string,
+    file_ext: string = ".txt",
+    loc := #caller_location,
+) -> bool {
+    tmp, tmp_err := os.temp_directory(context.allocator)
+    if !testing.expect_value(t, tmp_err, nil) do return false
+
+    old_file, new_file: ^os.File
+    old_file_name, new_file_name: string
+    for i := 0;; i += 1 {
+        old_file_base := fmt.aprintf("test_old_diff_%3v%v", i, file_ext)
+        new_file_base := fmt.aprintf("test_new_diff_%3v%v", i, file_ext)
+        defer delete(old_file_base)
+        defer delete(new_file_base)
+
+        join_err: os.Error = ---
+        old_file_name, join_err = os.join_path(
+            {tmp, old_file_base},
+            context.allocator,
+        )
+        if join_err != nil do continue
+
+        new_file_name, join_err = os.join_path(
+            {tmp, new_file_base},
+            context.allocator,
+        )
+        if join_err != nil {
+            delete(old_file_name)
+            continue
+        }
+
+        file_err: os.Error = ---
+        old_file, file_err = os.open(
+            old_file_name,
+            {.Write, .Create, .Trunc, .Excl},
+            0o644,
+        )
+        if file_err != nil {
+            delete(old_file_name)
+            delete(new_file_name)
+            continue
+        }
+
+        new_file, file_err = os.open(
+            new_file_name,
+            {.Write, .Create, .Trunc, .Excl},
+            0o644,
+        )
+        if file_err != nil {
+            delete(old_file_name)
+            delete(new_file_name)
+            continue
+        }
+
+        break
+    }
+
+    delete(tmp)
+
+    defer delete(old_file_name)
+    defer delete(new_file_name)
+
+    _, write_err := os.write_string(old_file, old_string)
+    if !testing.expect_value(t, write_err, nil) {
+        os.close(old_file)
+        os.close(new_file)
+        return false
+    }
+
+    _, write_err = os.write_string(new_file, new_string)
+    if !testing.expect_value(t, write_err, nil) {
+        os.close(old_file)
+        os.close(new_file)
+        return false
+    }
+
+    os.close(old_file)
+    os.close(new_file)
+
+    defer os.remove(old_file_name)
+    defer os.remove(new_file_name)
+
+    return expect_diff_files(t, old_file_name, new_file_name, loc)
 }
 
 @(private)

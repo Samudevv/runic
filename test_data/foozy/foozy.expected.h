@@ -253,6 +253,23 @@ typedef struct int_dynamic_array {
     struct runtime_Allocator allocator;
 } int_dynamic_array;
 
+typedef struct booty_boot_int_dynamic_array {
+    booty_boot_int*          data;
+    int64_t                  length;
+    int64_t                  capacity;
+    struct runtime_Allocator allocator;
+} booty_boot_int_dynamic_array;
+
+typedef struct booty_boot_int_dynamic_array booty_small_array;
+
+typedef struct f32_dynamic_array {
+    float*                   data;
+    int64_t                  length;
+    int64_t                  capacity;
+    struct runtime_Allocator allocator;
+} f32_dynamic_array;
+
+typedef struct f32_dynamic_array booty_large_array;
 typedef uint8_t bit_set_pants;
 typedef uint16_t bit_set_languages;
 
@@ -321,6 +338,7 @@ extern struct string cstring_to_string(const char* str);
 extern void print_strings(const struct string_slice str);
 extern struct runtime_Context odin_default_context();
 extern void append_five(struct int_dynamic_array*const arr, const int64_t value);
+extern booty_large_array make_large_array(const booty_small_array s);
 
 #define foozy_bar bar
 #define foozy_parse_int parse_int
@@ -338,4 +356,5 @@ extern void append_five(struct int_dynamic_array*const arr, const int64_t value)
 #define foozy_print_strings print_strings
 #define foozy_odin_default_context odin_default_context
 #define foozy_append_five append_five
+#define foozy_make_large_array make_large_array
 

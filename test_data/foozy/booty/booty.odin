@@ -32,3 +32,6 @@ boots :: enum i32 {
 }
 
 boot_int :: i32
+
+large_array :: [dynamic]f32
+small_array :: [dynamic]boot_int

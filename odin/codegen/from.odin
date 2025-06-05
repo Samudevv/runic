@@ -895,6 +895,23 @@ type_to_type :: proc(
         dyn_name_bd: strings.Builder
         strings.builder_init(&dyn_name_bd, allocator = ctx.allocator)
 
+        if ctx.current_package != nil {
+            needs_prefix: bool
+
+            if elem_ident, ident_ok := type_expr.elem.derived_expr.(^odina.Ident);
+               ident_ok && !is_odin_builtin_type_identifier(elem_ident.name) {
+                needs_prefix = true
+            } else if _, selector_ok := type_expr.elem.derived_expr.(^odina.Selector_Expr);
+               !ident_ok && !selector_ok {
+                needs_prefix = true
+            }
+
+            if needs_prefix {
+                strings.write_string(&dyn_name_bd, ctx.current_package.?.name)
+                strings.write_rune(&dyn_name_bd, '_')
+            }
+        }
+
         #reverse for e in dyn_name_elements {
             strings.write_string(&dyn_name_bd, e)
             strings.write_rune(&dyn_name_bd, '_')
@@ -2371,3 +2388,67 @@ range_info_from_binary_expr :: proc(
 
     return
 }
+
+is_odin_builtin_type_identifier :: proc(ident: string) -> bool {
+    switch ident {
+    case "int",
+         "uint",
+         "i8",
+         "i16",
+         "i32",
+         "i64",
+         "i128",
+         "byte",
+         "u8",
+         "u16",
+         "u32",
+         "u64",
+         "u128",
+         "uintptr",
+         "f16",
+         "f32",
+         "f64",
+         "rune",
+         "rawptr",
+         "bool",
+         "b8",
+         "b16",
+         "b32",
+         "b64",
+         "i16le",
+         "i32le",
+         "i64le",
+         "i128le",
+         "u16le",
+         "u32le",
+         "u64le",
+         "u128le",
+         "i16be",
+         "i32be",
+         "i64be",
+         "i128be",
+         "u16be",
+         "u32be",
+         "u64be",
+         "u128be",
+         "f16le",
+         "f32le",
+         "f64le",
+         "f16be",
+         "f32be",
+         "f64be",
+         "complex32",
+         "complex64",
+         "complex128",
+         "quaternion64",
+         "quaternion128",
+         "quaternion256",
+         "typeid",
+         "any",
+         "string":
+        return true
+    }
+
+    return false
+}
+

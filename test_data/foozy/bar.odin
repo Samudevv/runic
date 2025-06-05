@@ -32,6 +32,17 @@ super_multi :: [10][20][30][40][50]^^f64
 arr_ptr :: ^[14]int
 complex_ptr :: ^^^[13][14]^[15]^[18]^^^[17]^^^int
 
+bar_union :: union {
+    int_ptr,
+    multi_int,
+    multi_int_ptr,
+    int_multi_ptr,
+    super_multi,
+    arr_ptr,
+    complex_ptr,
+    booty.boots,
+}
+
 @(export, link_name = "bar")
 foozy_bar :: proc "c" (msg: cstring, result: int) -> cstring {
     context = runtime.default_context()

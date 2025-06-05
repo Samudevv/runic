@@ -985,6 +985,92 @@ type_to_type :: proc(
         s := struct_type_to_struct(plat, type_expr, ctx) or_return
         type.spec = s
         return
+    case ^odina.Union_Type:
+        if type_expr.poly_params != nil do return type, error_tok("unions with poly_params are not supported", type_expr.poly_params.pos)
+        if type_expr.align != nil do return type, error_tok("unions with alignment are not supported", type_expr.align.pos)
+
+        if len(type_expr.variants) == 0 {
+            type.spec = runic.Builtin.Opaque
+            return
+        }
+
+        tag_type: runic.TypeSpecifier = ---
+        switch len(type_expr.variants) {
+        case 1 ..= int(max(u8)):
+            tag_type = runic.Builtin.UInt8
+        case int(max(u8)) + 1 ..= int(max(u16)):
+            tag_type = runic.Builtin.UInt16
+        case:
+            err = error_tok(
+                fmt.aprintf(
+                    "unions with more than {} variants are not supported. len(variants)={}",
+                    max(u16),
+                    len(type_expr.variants),
+                ),
+                type_expr.pos,
+            )
+            return
+        }
+
+        values_union: runic.Union
+        values_union.members = make(
+            [dynamic]runic.Member,
+            len = 0,
+            cap = len(type_expr.variants),
+            allocator = ctx.allocator,
+        )
+
+        for var, idx in type_expr.variants {
+            var_name := fmt.aprintf("v{}", idx, allocator = ctx.allocator)
+            var_type := type_to_type(plat, var, var_name, ctx) or_return
+
+            append(
+                &values_union.members,
+                runic.Member{name = var_name, type = var_type},
+            )
+        }
+
+        values_union_type_name: string = ---
+        if type_name, type_name_ok := name.?; type_name_ok {
+            values_union_type_name = fmt.aprintf(
+                "{}_values",
+                type_name,
+                allocator = ctx.allocator,
+            )
+        } else {
+            values_union_type_name = fmt.aprintf(
+                "anon_values_union_{}",
+                ctx.anon_counter^,
+                allocator = ctx.allocator,
+            )
+            ctx.anon_counter^ += 1
+        }
+
+        om.insert(
+            ctx.types,
+            values_union_type_name,
+            runic.Type{spec = values_union},
+        )
+
+        u: runic.Struct
+        u.members = make(
+            [dynamic]runic.Member,
+            len = 2,
+            cap = 2,
+            allocator = ctx.allocator,
+        )
+
+        u.members[0].name = "tag"
+        u.members[0].type = runic.Type {
+            spec = tag_type,
+        }
+
+        u.members[1].name = "values"
+        u.members[1].type = runic.Type {
+            spec = values_union_type_name,
+        }
+
+        type.spec = u
     case ^odina.Selector_Expr:
         errors.assert(
             type_expr.op.kind == .Period,

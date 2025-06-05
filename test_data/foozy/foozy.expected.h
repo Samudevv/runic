@@ -16,6 +16,25 @@ typedef int64_t* int_multi_ptr[10];
 typedef double** super_multi[10][20][30][40][50];
 typedef int64_t (*arr_ptr)[14];
 typedef int64_t*** (***(*(*(***complex_ptr)[13][14])[15])[18])[17];
+typedef enum booty_boots {
+long_ones = 0,
+small_ones = 1,
+wide_ones = 2,
+} booty_boots;
+typedef union bar_union_values {
+int_ptr v0;
+multi_int v1;
+multi_int_ptr v2;
+int_multi_ptr v3;
+super_multi v4;
+arr_ptr v5;
+complex_ptr v6;
+enum booty_boots v7;
+} bar_union_values;
+typedef struct bar_union {
+uint8_t tag;
+union bar_union_values values;
+} bar_union;
 typedef int64_t c_int64_t;
 typedef struct hooty_tooty {
 struct hooty_tooty* child;
@@ -218,11 +237,6 @@ typedef int64_t anon_bit_set_enum_5;
 typedef uint8_t bit_set_anon_bit_set_enum_5_i8;
 typedef uint32_t bit_set_range_26;
 typedef uint8_t bit_set_range_2_to_5;
-typedef enum booty_boots {
-long_ones = 0,
-small_ones = 1,
-wide_ones = 2,
-} booty_boots;
 typedef uint8_t bit_set_booty_boots;
 
 extern super_multi your_var;

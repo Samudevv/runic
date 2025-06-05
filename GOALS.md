@@ -12,7 +12,7 @@
   + From
     + [ ] Implement Odin-specific types
       + [x] Slice, dynamic array
-      + [ ] Union
+      + [x] Union
       + [x] bit_set
       + [x] bit_field
       + [ ] Struct alignment and packing

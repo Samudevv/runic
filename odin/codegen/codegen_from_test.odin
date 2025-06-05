@@ -1,3 +1,4 @@
+#+build linux, darwin
 /*
 This file is part of runic.
 
@@ -15,13 +16,12 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#+build linux, darwin
 package odin_codegen
 
 import "core:os"
-import "core:strings"
 import "core:testing"
 import ccdg "root:c/codegen"
+import "root:diff"
 import "root:runic"
 
 @(test)
@@ -67,20 +67,9 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
     )
     if !expect_value(t, ccdg_err, nil) do return
 
-    real_data, expected_data: []u8 = ---, ---
-    ok: bool = ---
-
-    real_data, ok = os.read_entire_file("test_data/foozy/foozy.h")
-    if !expect(t, ok) do return
-    defer delete(real_data)
-    expected_data, ok = os.read_entire_file("test_data/foozy/foozy.expected.h")
-    if !expect(t, ok) do return
-    defer delete(expected_data)
-
-    real_string, _ := strings.replace(string(real_data), "\r", "", -1)
-    expected_string, _ := strings.replace(string(expected_data), "\r", "", -1)
-
-    expect_value(t, len(real_string), len(expected_string))
-    expect_value(t, real_string, expected_string)
+    diff.expect_diff_files(
+        t,
+        "test_data/foozy/foozy.expected.h",
+        "test_data/foozy/foozy.h",
+    )
 }
-

@@ -222,8 +222,9 @@ var.macos_globals = Array
 #define MAX_ARRAY_CAP 4096
 
 typedef struct SDL_Event {
-int32_t event_type;
+    int32_t event_type;
 } SDL_Event;
+
 
 #if (OS_MACOS && ARCH_ARM64)
 typedef int64_t my_size_type;
@@ -238,15 +239,17 @@ typedef uint64_t my_size_type;
 
 #endif
 typedef struct Window {
-char* name;
-uint32_t width;
-uint32_t height;
+    char*    name;
+    uint32_t width;
+    uint32_t height;
 } Window;
+
 typedef struct Array {
-my_size_type len;
-my_size_type cap;
-uint32_t* els;
+    my_size_type len;
+    my_size_type cap;
+    uint32_t*    els;
 } Array;
+
 
 #if (OS_MACOS && ARCH_ARM64)
 extern Array macos_globals;

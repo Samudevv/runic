@@ -16,130 +16,163 @@ typedef int64_t* int_multi_ptr[10];
 typedef double** super_multi[10][20][30][40][50];
 typedef int64_t (*arr_ptr)[14];
 typedef int64_t*** (***(*(*(***complex_ptr)[13][14])[15])[18])[17];
+
 typedef enum booty_boots {
-long_ones = 0,
-small_ones = 1,
-wide_ones = 2,
+    long_ones  =   0,
+    small_ones =   1,
+    wide_ones  =   2,
 } booty_boots;
+
 typedef union bar_union_values {
-int_ptr v0;
-multi_int v1;
-multi_int_ptr v2;
-int_multi_ptr v3;
-super_multi v4;
-arr_ptr v5;
-complex_ptr v6;
-enum booty_boots v7;
+    int_ptr          v0;
+    multi_int        v1;
+    multi_int_ptr    v2;
+    int_multi_ptr    v3;
+    super_multi      v4;
+    arr_ptr          v5;
+    complex_ptr      v6;
+    enum booty_boots v7;
 } bar_union_values;
+
 typedef struct bar_union {
-uint8_t tag;
-union bar_union_values values;
+    uint8_t                tag;
+    union bar_union_values values;
 } bar_union;
+
 typedef int64_t c_int64_t;
+
 typedef struct hooty_tooty {
-struct hooty_tooty* child;
+    struct hooty_tooty* child;
 } hooty_tooty;
+
 typedef struct hooty_shmooty {
-char* b;
-struct hooty_tooty c;
+    char*              b;
+    struct hooty_tooty c;
 } hooty_shmooty;
+
 typedef struct booty_treasure {
-float a;
-double b;
-struct hooty_shmooty sh;
+    float                a;
+    double               b;
+    struct hooty_shmooty sh;
 } booty_treasure;
+
 typedef struct pointed_cycle* cycle_pointer;
+
 typedef struct pointed_cycle {
-cycle_pointer* data;
+    cycle_pointer* data;
 } pointed_cycle;
+
 typedef int32_t sausage;
-#define Weißwurst ((sausages)0)
-#define Bratwurst ((sausages)1)
-#define Käsekrainer ((sausages)69)
-#define Frankfurter ((sausages)5)
-#define Räucherwurst ((sausages)6)
+
+#define Weißwurst    ((sausages)  0)
+#define Bratwurst    ((sausages)  1)
+#define Käsekrainer  ((sausages) 69)
+#define Frankfurter  ((sausages)  5)
+#define Räucherwurst ((sausages)  6)
 typedef int64_t sausages;
+
 typedef struct sausage_foo {
-sausage s;
-sausages type;
+    sausage  s;
+    sausages type;
 } sausage_foo;
+
 typedef struct sausage_foo foo_sausage;
+
 typedef struct my_foo {
-int8_t x;
-uint64_t y;
+    int8_t   x;
+    uint64_t y;
 } my_foo;
+
 typedef union your_foo {
-uint32_t x;
-int32_t y;
+    uint32_t x;
+    int32_t  y;
 } your_foo;
+
 typedef struct anon_0 {
-int64_t z;
+    int64_t z;
 } anon_0;
+
 typedef struct anon_1 {
-int64_t y;
-struct anon_0 cba;
+    int64_t       y;
+    struct anon_0 cba;
 } anon_1;
+
 typedef struct nested {
-int64_t x;
-struct anon_1 abc;
+    int64_t       x;
+    struct anon_1 abc;
 } nested;
+
 typedef enum pants {
-trousers = 0,
-skirt = 1,
-pantalones = 2,
+    trousers   =   0,
+    skirt      =   1,
+    pantalones =   2,
 } pants;
+
 typedef struct int_slice {
-int64_t* data;
-int64_t length;
+    int64_t* data;
+    int64_t  length;
 } int_slice;
+
 typedef struct int_slice_slice {
-struct int_slice* data;
-int64_t length;
+    struct int_slice* data;
+    int64_t           length;
 } int_slice_slice;
+
 typedef struct int_slice_slice_slice {
-struct int_slice_slice* data;
-int64_t length;
+    struct int_slice_slice* data;
+    int64_t                 length;
 } int_slice_slice_slice;
+
 typedef struct int_slice_slice_slice mega_int_slice;
+
 typedef struct mega_int_slice_array_7_array_6_array_5_pointer_pointer_pointer_slice {
-mega_int_slice (****data)[5][6][7];
-int64_t length;
+    mega_int_slice (****data)[5][6][7];
+    int64_t        length;
 } mega_int_slice_array_7_array_6_array_5_pointer_pointer_pointer_slice;
+
 typedef struct mega_int_slice_array_7_array_6_array_5_pointer_pointer_pointer_slice super_int_slice;
+
 typedef struct u8_pointer_pointer_pointer_array_5_slice {
-uint8_t*** (*data)[5];
-int64_t length;
+    uint8_t*** (*data)[5];
+    int64_t    length;
 } u8_pointer_pointer_pointer_array_5_slice;
+
 typedef struct u8_pointer_pointer_pointer_array_5_slice_slice {
-struct u8_pointer_pointer_pointer_array_5_slice* data;
-int64_t length;
+    struct u8_pointer_pointer_pointer_array_5_slice* data;
+    int64_t                                          length;
 } u8_pointer_pointer_pointer_array_5_slice_slice;
+
 typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice {
-struct u8_pointer_pointer_pointer_array_5_slice_slice* data;
-int64_t length;
+    struct u8_pointer_pointer_pointer_array_5_slice_slice* data;
+    int64_t                                                length;
 } u8_pointer_pointer_pointer_array_5_slice_slice_slice;
+
 typedef struct runtime_Allocator {
-void* procedure;
-void* data;
+    void* procedure;
+    void* data;
 } runtime_Allocator;
+
 typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array {
-struct u8_pointer_pointer_pointer_array_5_slice_slice_slice* data;
-int64_t length;
-int64_t capacity;
-struct runtime_Allocator allocator;
+    struct u8_pointer_pointer_pointer_array_5_slice_slice_slice* data;
+    int64_t                                                      length;
+    int64_t                                                      capacity;
+    struct runtime_Allocator                                     allocator;
 } u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array;
+
 typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array {
-struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array* data;
-int64_t length;
-int64_t capacity;
-struct runtime_Allocator allocator;
+    struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array* data;
+    int64_t                                                                    length;
+    int64_t                                                                    capacity;
+    struct runtime_Allocator                                                   allocator;
 } u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array;
+
 typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array_dynamic_array {
-struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array* data;
-int64_t length;
-int64_t capacity;
-struct runtime_Allocator allocator;
+    struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array* data;
+    int64_t                                                                                  length;
+    int64_t                                                                                  capacity;
+    struct runtime_Allocator                                                                 allocator;
 } u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array_dynamic_array;
+
 typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array_dynamic_array confusing_type;
 typedef struct runtime_Allocator my_allocator;
 typedef void intrinsics_objc_object;
@@ -159,81 +192,98 @@ typedef booty_boot_int bit_field_booty_boot_int_array_50[50];
 typedef bit_field_booty_boot_int_array_50 other_package_bf;
 typedef beans bit_field_beans;
 typedef bit_field_beans bean_plantation;
+
 typedef struct multi_foo_result {
-int64_t c;
-int64_t d;
+    int64_t c;
+    int64_t d;
 } multi_foo_result;
+
 typedef struct anon_2 {
-int64_t a;
-int64_t b;
+    int64_t a;
+    int64_t b;
 } anon_2;
+
 typedef union anon_3 {
-uint32_t x;
-int32_t y;
+    uint32_t x;
+    int32_t  y;
 } anon_3;
+
 typedef struct i64_slice {
-int64_t* data;
-int64_t length;
+    int64_t* data;
+    int64_t  length;
 } i64_slice;
+
 typedef struct string {
-uint8_t* data;
-int64_t length;
+    uint8_t* data;
+    int64_t  length;
 } string;
+
 typedef struct string_slice {
-struct string* data;
-int64_t length;
+    struct string* data;
+    int64_t        length;
 } string_slice;
+
 typedef struct runtime_Logger {
-void* procedure;
-void* data;
-uint64_t lowest_level;
-uint16_t options;
+    void*    procedure;
+    void*    data;
+    uint64_t lowest_level;
+    uint16_t options;
 } runtime_Logger;
+
 typedef struct runtime_Random_Generator {
-void* procedure;
-void* data;
+    void* procedure;
+    void* data;
 } runtime_Random_Generator;
+
 typedef struct runtime_Context {
-struct runtime_Allocator allocator;
-struct runtime_Allocator temp_allocator;
-void* assertion_failure_proc;
-struct runtime_Logger logger;
-struct runtime_Random_Generator random_generator;
-void* user_ptr;
-int64_t user_index;
-void* _internal;
+    struct runtime_Allocator        allocator;
+    struct runtime_Allocator        temp_allocator;
+    void*                           assertion_failure_proc;
+    struct runtime_Logger           logger;
+    struct runtime_Random_Generator random_generator;
+    void*                           user_ptr;
+    int64_t                         user_index;
+    void*                           _internal;
 } runtime_Context;
+
 typedef struct int_dynamic_array {
-int64_t* data;
-int64_t length;
-int64_t capacity;
-struct runtime_Allocator allocator;
+    int64_t*                 data;
+    int64_t                  length;
+    int64_t                  capacity;
+    struct runtime_Allocator allocator;
 } int_dynamic_array;
+
 typedef uint8_t bit_set_pants;
 typedef uint16_t bit_set_languages;
-#define english ((languages)0)
-#define german ((languages)1)
-#define japanese ((languages)2)
-#define chinese ((languages)3)
-#define dutch ((languages)4)
-#define greek ((languages)5)
-#define hindi ((languages)6)
-#define urdu ((languages)7)
-#define latin ((languages)8)
-#define sanskrit ((languages)9)
+
+#define english  ((languages)  0)
+#define german   ((languages)  1)
+#define japanese ((languages)  2)
+#define chinese  ((languages)  3)
+#define dutch    ((languages)  4)
+#define greek    ((languages)  5)
+#define hindi    ((languages)  6)
+#define urdu     ((languages)  7)
+#define latin    ((languages)  8)
+#define sanskrit ((languages)  9)
 typedef int64_t languages;
+
 typedef uint64_t bit_set_languages_u64;
 typedef int32_t polyglot_int;
 typedef polyglot_int bit_set_languages_polyglot_int;
-#define one ((anon_bit_set_enum_4)0)
-#define two ((anon_bit_set_enum_4)1)
-#define three ((anon_bit_set_enum_4)2)
+
+#define one   ((anon_bit_set_enum_4)  0)
+#define two   ((anon_bit_set_enum_4)  1)
+#define three ((anon_bit_set_enum_4)  2)
 typedef int64_t anon_bit_set_enum_4;
+
 typedef uint8_t bit_set_anon_bit_set_enum_4;
-#define four ((anon_bit_set_enum_5)0)
-#define five ((anon_bit_set_enum_5)1)
-#define six ((anon_bit_set_enum_5)2)
+
+#define four ((anon_bit_set_enum_5)  0)
+#define five ((anon_bit_set_enum_5)  1)
+#define six  ((anon_bit_set_enum_5)  2)
 typedef int64_t anon_bit_set_enum_5;
+
 typedef uint8_t bit_set_anon_bit_set_enum_5_i8;
 typedef uint32_t bit_set_range_26;
 typedef uint8_t bit_set_range_2_to_5;

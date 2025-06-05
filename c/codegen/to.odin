@@ -392,6 +392,7 @@ generate_bindings_for_externs :: proc(
     context.allocator = runtime.arena_allocator(&arena)
 
     externs_written: bool
+    prev_space := true
 
     for entry in rs.externs.data {
         name, extern := entry.key, entry.value
@@ -417,7 +418,14 @@ generate_bindings_for_externs :: proc(
                 }
             }
 
-            write_typedef(wd, rn, name, extern, rs.types) or_return
+            prev_space = write_typedef(
+                wd,
+                rn,
+                name,
+                extern,
+                rs.types,
+                prev_space,
+            ) or_return
             io.write_rune(wd, '\n') or_return
 
             externs_written = true
@@ -488,9 +496,17 @@ generate_bindings_for_types :: proc(
     defer runtime.arena_destroy(&arena)
     context.allocator = runtime.arena_allocator(&arena)
 
+    prev_space := true
     for entry in rs.types.data {
         name, type := entry.key, entry.value
-        write_typedef(wd, rn, name, type, rs.types) or_return
+        prev_space = write_typedef(
+            wd,
+            rn,
+            name,
+            type,
+            rs.types,
+            prev_space,
+        ) or_return
         io.write_rune(wd, '\n') or_return
     }
 
@@ -675,29 +691,56 @@ write_typedef :: proc(
     name: string,
     type: runic.Type,
     types: om.OrderedMap(string, runic.Type),
-) -> union {
+    prev_space := false,
+) -> (
+    needs_space: bool,
+    err: union {
         io.Error,
         errors.Error,
-    } {
+    },
+) {
 
     if e, ok := type.spec.(runic.Enum); ok {
         if e.type != .SInt32 {
+            needs_space = true
+            io.write_rune(wd, '\n') or_return
+
             write_type_specifier(wd, rn, e, types, name) or_return
             io.write_rune(wd, '\n') or_return
+
             io.write_string(wd, "typedef ") or_return
             write_type_specifier(wd, rn, e.type, types) or_return
             io.write_rune(wd, ' ') or_return
             io.write_string(wd, name) or_return
-            io.write_rune(wd, ';') or_return
-            return nil
+
+            io.write_string(wd, ";\n") or_return
+            return
         }
+    }
+
+    #partial switch spec in type.spec {
+    case runic.Struct:
+        needs_space = true
+    case runic.Union:
+        needs_space = true
+    case runic.Enum:
+        needs_space = true
+    }
+
+    if needs_space && !prev_space {
+        io.write_rune(wd, '\n') or_return
     }
 
     io.write_string(wd, "typedef ") or_return
     errors.wrap(write_variable(wd, rn, name, type, types)) or_return
 
     io.write_rune(wd, ';') or_return
-    return nil
+
+    if needs_space {
+        io.write_rune(wd, '\n') or_return
+    }
+
+    return
 }
 
 write_variable :: proc(
@@ -886,25 +929,35 @@ write_type_specifier :: proc(
         io.write_string(wd, "struct ") or_return
         if len(name) != 0 do io.write_string(wd, name) or_return
         io.write_string(wd, " {\n") or_return
-        for m in s.members {
-            errors.wrap(
-                write_variable(wd, rn, m.name, m.type, types),
-            ) or_return
-            io.write_string(wd, ";\n") or_return
-        }
+
+        write_members(wd, s.members, rn, types) or_return
+
         io.write_rune(wd, '}') or_return
     case runic.Enum:
         if s.type == .SInt32 {
             io.write_string(wd, "enum ") or_return
             if len(name) != 0 do io.write_string(wd, name) or_return
             io.write_string(wd, " {\n") or_return
+
+            longest_name: int
             for e in s.entries {
+                if rc := strings.rune_count(e.name); rc > longest_name {
+                    longest_name = rc
+                }
+            }
+
+            for e in s.entries {
+                io.write_string(wd, "    ") or_return
                 io.write_string(wd, e.name) or_return
+                for _ in 0 ..< (longest_name - strings.rune_count(e.name)) {
+                    io.write_rune(wd, ' ') or_return
+                }
+
                 if e.value != nil {
                     io.write_string(wd, " = ") or_return
                     switch ev in e.value {
                     case i64:
-                        io.write_i64(wd, ev) or_return
+                        fmt.wprintf(wd, "% 3v", ev)
                     case string:
                         io.write_string(wd, ev) or_return
                     }
@@ -913,9 +966,22 @@ write_type_specifier :: proc(
             }
             io.write_rune(wd, '}') or_return
         } else {
+            longest_name: int
+
+            for e in s.entries {
+                if rc := strings.rune_count(e.name); rc > longest_name {
+                    longest_name = rc
+                }
+            }
+
             for e, idx in s.entries {
                 io.write_string(wd, "#define ") or_return
+
                 io.write_string(wd, e.name) or_return
+                for _ in 0 ..< (longest_name - strings.rune_count(e.name)) {
+                    io.write_rune(wd, ' ') or_return
+                }
+
                 io.write_string(wd, " ((") or_return
                 if len(name) != 0 {
                     io.write_string(wd, name) or_return
@@ -925,7 +991,7 @@ write_type_specifier :: proc(
                 io.write_rune(wd, ')') or_return
                 switch ev in e.value {
                 case i64:
-                    io.write_i64(wd, ev) or_return
+                    fmt.wprintf(wd, "% 3v", ev)
                 case string:
                     io.write_rune(wd, '(') or_return
                     io.write_string(wd, ev) or_return
@@ -941,12 +1007,9 @@ write_type_specifier :: proc(
         io.write_string(wd, "union ") or_return
         if len(name) != 0 do io.write_string(wd, name) or_return
         io.write_string(wd, " {\n") or_return
-        for m in s.members {
-            errors.wrap(
-                write_variable(wd, rn, m.name, m.type, types),
-            ) or_return
-            io.write_string(wd, ";\n") or_return
-        }
+
+        write_members(wd, s.members, rn, types) or_return
+
         io.write_rune(wd, '}') or_return
     case string:
         if type, ok := om.get(types, s); ok {
@@ -1002,3 +1065,55 @@ write_function_parameters :: proc(
     return nil
 }
 
+write_members :: proc(
+    wd: io.Writer,
+    members: [dynamic]runic.Member,
+    rn: runic.To,
+    types: om.OrderedMap(string, runic.Type),
+) -> union {
+        io.Error,
+        errors.Error,
+    } {
+    member_lines := make([dynamic]string, len = 0, cap = len(members))
+
+    for m in members {
+        bf: strings.Builder
+
+        errors.wrap(
+            write_variable(strings.to_stream(&bf), rn, m.name, m.type, types),
+        ) or_return
+
+        append(&member_lines, strings.to_string(bf))
+    }
+
+    longest_spec: int
+    for l in member_lines {
+        idx := strings.last_index_any(l, " ")
+        if idx > longest_spec {
+            longest_spec = idx
+        }
+    }
+
+    for l in member_lines {
+        io.write_string(wd, "    ") or_return
+
+        idx := strings.last_index_any(l, " ")
+        if idx == -1 {
+            io.write_string(wd, l) or_return
+        } else {
+            spaces, spaces_err := strings.repeat(" ", longest_spec - idx + 1)
+            errors.wrap(spaces_err) or_return
+
+            fmt.wprintf(wd, "{}{}{}", l[:idx], spaces, l[idx + 1:])
+            delete(spaces)
+        }
+
+        io.write_string(wd, ";\n") or_return
+
+        delete(l)
+    }
+
+    delete(member_lines)
+
+    return nil
+}

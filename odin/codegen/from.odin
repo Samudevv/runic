@@ -1329,6 +1329,14 @@ type_to_type :: proc(
         bit_field_type_name: strings.Builder
         strings.builder_init(&bit_field_type_name, ctx.allocator)
 
+        if ctx.current_package != nil {
+            strings.write_string(
+                &bit_field_type_name,
+                ctx.current_package.?.name,
+            )
+            strings.write_rune(&bit_field_type_name, '_')
+        }
+
         strings.write_string(&bit_field_type_name, "bit_field_")
 
         #partial switch e in type_expr.backing_type.derived_expr {

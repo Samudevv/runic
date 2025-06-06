@@ -45,3 +45,4 @@ large_union :: union {
 }
 
 small_bit_set :: bit_set[boots]
+large_bit_field :: bit_field u32 {}

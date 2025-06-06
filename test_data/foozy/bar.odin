@@ -46,6 +46,9 @@ bar_union :: union {
 @(export)
 bar_value: booty.small_bit_set
 
+@(export)
+baz_value: booty.large_bit_field
+
 @(export, link_name = "bar")
 foozy_bar :: proc "c" (msg: cstring, result: int) -> cstring {
     context = runtime.default_context()

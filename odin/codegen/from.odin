@@ -1149,7 +1149,7 @@ type_to_type :: proc(
             }
         }
     case ^odina.Helper_Type:
-        type, err = type_to_type(plat, type_expr.type, name, ctx)
+        type = type_to_type(plat, type_expr.type, name, ctx) or_return
     case ^odina.Proc_Type:
         func := proc_type_to_function(plat, type_expr, name, ctx) or_return
 
@@ -1287,6 +1287,14 @@ type_to_type :: proc(
 
         bit_set_type_name: strings.Builder
         strings.builder_init(&bit_set_type_name, allocator = ctx.allocator)
+
+        if ctx.current_package != nil {
+            strings.write_string(
+                &bit_set_type_name,
+                ctx.current_package.?.name,
+            )
+            strings.write_rune(&bit_set_type_name, '_')
+        }
 
         strings.write_string(&bit_set_type_name, "bit_set_")
         strings.write_string(&bit_set_type_name, elem_name)

@@ -43,3 +43,5 @@ large_union :: union {
     u32,
     boot_int,
 }
+
+small_bit_set :: bit_set[boots]

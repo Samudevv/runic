@@ -39,6 +39,7 @@ typedef struct bar_union {
     union bar_union_values values;
 } bar_union;
 
+typedef booty_bit_set_boots booty_small_bit_set;
 typedef int64_t c_int64_t;
 typedef int32_t booty_boot_int;
 
@@ -331,6 +332,7 @@ typedef uint32_t bit_set_range_26;
 typedef uint8_t bit_set_range_2_to_5;
 typedef uint8_t bit_set_booty_boots;
 
+extern booty_small_bit_set bar_value;
 extern super_multi your_var;
 extern float* mumu;
 extern uint64_t (* error_callback)(const int64_t err);

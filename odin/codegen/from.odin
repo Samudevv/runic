@@ -1164,18 +1164,74 @@ type_to_type :: proc(
             #partial switch d in type_expr.underlying.derived_expr {
             case ^odina.Ident:
                 underlying_name = d.name
-                underlying = type_identifier_to_type_specifier(
+
+                if ctx.current_package != nil &&
+                   !is_odin_builtin_type_identifier(underlying_name) {
+                    pkg_type := lookup_type_in_package(
+                        plat,
+                        underlying_name,
+                        ctx.current_package.?,
+                        ctx,
+                    ) or_return
+
+                    pkg_type_name := strings.concatenate(
+                        {ctx.current_package.?.name, "_", underlying_name},
+                        ctx.allocator,
+                    )
+
+                    om.insert(ctx.types, pkg_type_name, pkg_type)
+
+                    underlying = pkg_type_name
+                } else {
+                    underlying = type_identifier_to_type_specifier(
+                        plat,
+                        d.name,
+                        ctx.allocator,
+                    ) or_return
+                }
+
+                bit_set_type = runic.Type {
+                    spec = underlying,
+                }
+            case ^odina.Selector_Expr:
+                errors.assert(d.expr != nil) or_return
+
+                underlying_name = d.field.name
+
+                pkg_name: string = ---
+
+                #partial switch pkg in d.expr.derived_expr {
+                case ^odina.Ident:
+                    pkg_name = pkg.name
+                case:
+                    err = error_tok("invalid Selector_Expr", d.expr.pos)
+                    return
+                }
+
+                pkg_type := lookup_type_of_import(
                     plat,
-                    d.name,
-                    ctx.allocator,
+                    pkg_name,
+                    underlying_name,
+                    ctx,
                 ) or_return
+
+                imp, imp_ok := ctx.imports^[pkg_name]
+                errors.assert(imp_ok) or_return
+
+                underlying_name = strings.concatenate(
+                    {imp.name, "_", underlying_name},
+                    ctx.allocator,
+                )
+                underlying = underlying_name
+
+                om.insert(ctx.types, underlying_name, pkg_type)
 
                 bit_set_type = runic.Type {
                     spec = underlying,
                 }
             case:
                 err = error_tok(
-                    "underlying type of bit_set must be Ident",
+                    "underlying type of bit_set must be Ident or Selector_Expr",
                     t.pos,
                 )
                 return
@@ -1189,9 +1245,23 @@ type_to_type :: proc(
             elem_name = e.name
 
             if underlying == nil {
-                if elem_type, ok := om.get(ctx.types^, e.name); ok {
+                if ctx.current_package != nil {
+                    elem_type := lookup_type_in_package(
+                        plat,
+                        elem_name,
+                        ctx.current_package.?,
+                        ctx,
+                    ) or_return
+
                     if enum_type, enum_ok := elem_type.spec.(runic.Enum);
                        enum_ok {
+                        enum_type_name := strings.concatenate(
+                            {ctx.current_package.?.name, "_", elem_name},
+                            ctx.allocator,
+                        )
+
+                        om.insert(ctx.types, enum_type_name, elem_type)
+
                         bit_set_type = bit_set_type_from_enum(
                             enum_type,
                             ctx.allocator,
@@ -1199,16 +1269,31 @@ type_to_type :: proc(
                     } else {
                         err = error_tok(
                             "bit_set does not refer to an enum",
-                            t.pos,
+                            e.pos,
                         )
                         return
+                    }
+                } else {
+                    if elem_type, ok := om.get(ctx.types^, e.name); ok {
+                        if enum_type, enum_ok := elem_type.spec.(runic.Enum);
+                           enum_ok {
+                            bit_set_type = bit_set_type_from_enum(
+                                enum_type,
+                                ctx.allocator,
+                            )
+                        } else {
+                            err = error_tok(
+                                "bit_set does not refer to an enum",
+                                t.pos,
+                            )
+                            return
+                        }
                     }
                 }
             }
         case ^odina.Binary_Expr:
             range_count, range_left, range_right, range_full, range_is_number :=
                 range_info_from_binary_expr(e) or_return
-            bit_set_type = bit_set_type_from_count(range_count, ctx.allocator)
 
             if range_is_number {
                 elem_name = fmt.aprintf(
@@ -1226,6 +1311,13 @@ type_to_type :: proc(
                     allocator = ctx.allocator,
                 )
             }
+
+            if underlying == nil {
+                bit_set_type = bit_set_type_from_count(
+                    range_count,
+                    ctx.allocator,
+                )
+            }
         case ^odina.Enum_Type:
             elem_name = fmt.aprintf(
                 "anon_bit_set_enum_{}",
@@ -1238,7 +1330,9 @@ type_to_type :: proc(
 
             om.insert(ctx.types, elem_name, runic.Type{spec = anon_enum})
 
-            bit_set_type = bit_set_type_from_enum(anon_enum, ctx.allocator)
+            if underlying == nil {
+                bit_set_type = bit_set_type_from_enum(anon_enum, ctx.allocator)
+            }
         case ^odina.Selector_Expr:
             errors.assert(e.op.kind == .Period) or_return
 
@@ -1272,7 +1366,9 @@ type_to_type :: proc(
 
             om.insert(ctx.types, elem_name, pkg_type)
 
-            bit_set_type = bit_set_type_from_enum(enum_type, ctx.allocator)
+            if underlying == nil {
+                bit_set_type = bit_set_type_from_enum(enum_type, ctx.allocator)
+            }
         case:
             err = error_tok(
                 fmt.aprintf(

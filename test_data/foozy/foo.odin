@@ -255,6 +255,9 @@ number_range: bit_set[2 ..< 5]
 @(export)
 boot_options: bit_set[booty.boots]
 
+@(export)
+foo_booties: bit_set[booty.boots;booty.boot_int]
+
 // TODO: handle bit_sets with ranges that use constants
 // TODO: handle bit_sets with ranges that use constants from other packages
 //NUMBER_RANGE_MIN :: 0
@@ -262,4 +265,3 @@ boot_options: bit_set[booty.boots]
 //
 //@(export)
 //number_range: bit_set[NUMBER_RANGE_MIN..<NUMBER_RANGE_MAX]
-

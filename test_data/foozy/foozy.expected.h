@@ -39,11 +39,14 @@ typedef struct bar_union {
     union bar_union_values values;
 } bar_union;
 
+typedef uint8_t booty_bit_set_boots;
 typedef booty_bit_set_boots booty_small_bit_set;
 typedef uint32_t booty_bit_field_u32;
 typedef booty_bit_field_u32 booty_large_bit_field;
-typedef int64_t c_int64_t;
 typedef int32_t booty_boot_int;
+typedef booty_boot_int booty_bit_set_boots_boot_int;
+typedef booty_bit_set_boots_boot_int booty_booties;
+typedef int64_t c_int64_t;
 
 typedef struct booty_boot_int_slice {
     booty_boot_int* data;
@@ -329,13 +332,15 @@ typedef uint8_t bit_set_anon_bit_set_enum_4;
 #define six  ((anon_bit_set_enum_5)  2)
 typedef int64_t anon_bit_set_enum_5;
 
-typedef uint8_t bit_set_anon_bit_set_enum_5_i8;
+typedef int8_t bit_set_anon_bit_set_enum_5_i8;
 typedef uint32_t bit_set_range_26;
 typedef uint8_t bit_set_range_2_to_5;
 typedef uint8_t bit_set_booty_boots;
+typedef booty_boot_int bit_set_booty_boots_booty_boot_int;
 
 extern booty_small_bit_set bar_value;
 extern booty_large_bit_field baz_value;
+extern booty_booties faz_value;
 extern super_multi your_var;
 extern float* mumu;
 extern uint64_t (* error_callback)(const int64_t err);
@@ -351,6 +356,7 @@ extern bit_set_anon_bit_set_enum_5_i8 underlying_numbers;
 extern bit_set_range_26 abc_bitset;
 extern bit_set_range_2_to_5 number_range;
 extern bit_set_booty_boots boot_options;
+extern bit_set_booty_boots_booty_boot_int foo_booties;
 
 extern char* bar(const char* msg, const int64_t result);
 extern char* parse_int(const c_int64_t value, const booty_large_slice v1, const booty_small_slice v2);

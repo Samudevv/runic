@@ -45,5 +45,11 @@ large_union :: union {
 }
 
 small_bit_set :: bit_set[boots]
-booties :: bit_set[boots; boot_int]
+booties :: bit_set[boots;boot_int]
 large_bit_field :: bit_field u32 {}
+
+callback :: #type proc "c" (order: struct {
+        id:                    int,
+        first_name, last_name: string,
+        shoe:                  boots,
+    }) -> boot_int

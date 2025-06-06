@@ -89,3 +89,8 @@ print_result :: proc(msg: cstring, result: int) -> string {
     text := fmt.aprintf("{}: result={}", msg, result)
     return text
 }
+
+@(export)
+process_orders :: proc "c" (orders: []i32, cb: booty.callback) -> bool {
+    return false
+}

@@ -88,6 +88,24 @@ typedef struct booty_large_union {
     union booty_large_union_values values;
 } booty_large_union;
 
+typedef struct i32_slice {
+    int32_t* data;
+    int64_t  length;
+} i32_slice;
+
+typedef struct string {
+    uint8_t* data;
+    int64_t  length;
+} string;
+
+typedef struct booty_anon_0 {
+    int64_t          id;
+    struct string    first_name;
+    struct string    last_name;
+    enum booty_boots shoe;
+} booty_anon_0;
+
+typedef booty_boot_int (* booty_callback)(const struct booty_anon_0 order);
 typedef struct pointed_cycle* cycle_pointer;
 
 typedef struct pointed_cycle {
@@ -120,18 +138,18 @@ typedef union your_foo {
     int32_t  y;
 } your_foo;
 
-typedef struct anon_0 {
-    int64_t z;
-} anon_0;
-
 typedef struct anon_1 {
-    int64_t       y;
-    struct anon_0 cba;
+    int64_t z;
 } anon_1;
+
+typedef struct anon_2 {
+    int64_t       y;
+    struct anon_1 cba;
+} anon_2;
 
 typedef struct nested {
     int64_t       x;
-    struct anon_1 abc;
+    struct anon_2 abc;
 } nested;
 
 typedef enum pants {
@@ -229,25 +247,20 @@ typedef struct multi_foo_result {
     int64_t d;
 } multi_foo_result;
 
-typedef struct anon_2 {
+typedef struct anon_3 {
     int64_t a;
     int64_t b;
-} anon_2;
+} anon_3;
 
-typedef union anon_3 {
+typedef union anon_4 {
     uint32_t x;
     int32_t  y;
-} anon_3;
+} anon_4;
 
 typedef struct i64_slice {
     int64_t* data;
     int64_t  length;
 } i64_slice;
-
-typedef struct string {
-    uint8_t* data;
-    int64_t  length;
-} string;
 
 typedef struct string_slice {
     struct string* data;
@@ -320,19 +333,19 @@ typedef uint64_t bit_set_languages_u64;
 typedef int32_t polyglot_int;
 typedef polyglot_int bit_set_languages_polyglot_int;
 
-#define one   ((anon_bit_set_enum_4)  0)
-#define two   ((anon_bit_set_enum_4)  1)
-#define three ((anon_bit_set_enum_4)  2)
-typedef int64_t anon_bit_set_enum_4;
-
-typedef uint8_t bit_set_anon_bit_set_enum_4;
-
-#define four ((anon_bit_set_enum_5)  0)
-#define five ((anon_bit_set_enum_5)  1)
-#define six  ((anon_bit_set_enum_5)  2)
+#define one   ((anon_bit_set_enum_5)  0)
+#define two   ((anon_bit_set_enum_5)  1)
+#define three ((anon_bit_set_enum_5)  2)
 typedef int64_t anon_bit_set_enum_5;
 
-typedef int8_t bit_set_anon_bit_set_enum_5_i8;
+typedef uint8_t bit_set_anon_bit_set_enum_5;
+
+#define four ((anon_bit_set_enum_6)  0)
+#define five ((anon_bit_set_enum_6)  1)
+#define six  ((anon_bit_set_enum_6)  2)
+typedef int64_t anon_bit_set_enum_6;
+
+typedef int8_t bit_set_anon_bit_set_enum_6_i8;
 typedef uint32_t bit_set_range_26;
 typedef uint8_t bit_set_range_2_to_5;
 typedef uint8_t bit_set_booty_boots;
@@ -351,8 +364,8 @@ extern bit_set_languages polyglot2;
 extern bit_set_languages_u64 special_polyglot;
 extern bit_set_languages_u64 another_special_polyglot;
 extern bit_set_languages_polyglot_int very_polyglot;
-extern bit_set_anon_bit_set_enum_4 numbers;
-extern bit_set_anon_bit_set_enum_5_i8 underlying_numbers;
+extern bit_set_anon_bit_set_enum_5 numbers;
+extern bit_set_anon_bit_set_enum_6_i8 underlying_numbers;
 extern bit_set_range_26 abc_bitset;
 extern bit_set_range_2_to_5 number_range;
 extern bit_set_booty_boots boot_options;
@@ -361,12 +374,13 @@ extern bit_set_booty_boots_booty_boot_int foo_booties;
 extern char* bar(const char* msg, const int64_t result);
 extern char* parse_int(const c_int64_t value, const booty_large_slice v1, const booty_small_slice v2);
 extern void do_alloc(const struct booty_treasure ctx, const struct booty_large_union types);
+extern uint64_t process_orders(const struct i32_slice orders, const booty_callback cb);
 extern int64_t foo(const int64_t a, const int64_t b);
 extern struct multi_foo_result multi_foo(const int64_t a, const int64_t b);
 extern uint32_t super_foo(const struct my_foo a);
 extern void print_pants(const enum pants a);
 extern void print_sausages(const sausages b);
-extern union anon_3 multi_sausage(struct anon_2**const over);
+extern union anon_4 multi_sausage(struct anon_3**const over);
 extern void print_slice(const struct i64_slice s);
 extern void add_slice(struct i64_slice*const s, const int64_t a);
 extern void multi_add_slice(const struct i64_slice (*ss)[5], const int64_t a);
@@ -379,6 +393,7 @@ extern booty_large_array make_large_array(const booty_small_array s);
 #define foozy_bar bar
 #define foozy_parse_int parse_int
 #define foozy_do_alloc do_alloc
+#define foozy_process_orders process_orders
 #define foozy_foo foo
 #define foozy_multi_foo multi_foo
 #define foozy_super_foo super_foo

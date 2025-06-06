@@ -481,6 +481,13 @@ proc_type_to_function :: proc(
             ctx.anon_counter,
             ctx.allocator,
         ); is_anon {
+            if ctx.current_package != nil {
+                anon_name = strings.concatenate(
+                    {ctx.current_package.?.name, "_", anon_name},
+                    ctx.allocator,
+                )
+            }
+
             om.insert(ctx.types, anon_name, anon_type)
             type.spec = anon_name
         }
@@ -536,6 +543,13 @@ proc_type_to_function :: proc(
             ctx.anon_counter,
             ctx.allocator,
         ); is_anon {
+            if ctx.current_package != nil {
+                anon_name = strings.concatenate(
+                    {ctx.current_package.?.name, "_", anon_name},
+                    ctx.allocator,
+                )
+            }
+
             om.insert(ctx.types, anon_name, anon_type)
             type.spec = anon_name
         }
@@ -1697,6 +1711,13 @@ struct_type_to_struct :: proc(
             ctx.anon_counter,
             ctx.allocator,
         ); is_anon {
+            if ctx.current_package != nil {
+                anon_name = strings.concatenate(
+                    {ctx.current_package.?.name, "_", anon_name},
+                    ctx.allocator,
+                )
+            }
+
             om.insert(ctx.types, anon_name, anon_type)
             type.spec = anon_name
         }

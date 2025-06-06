@@ -35,3 +35,5 @@ boot_int :: i32
 
 large_array :: [dynamic]f32
 small_array :: [dynamic]boot_int
+large_slice :: []boot_int
+small_slice :: []f64

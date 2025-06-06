@@ -736,6 +736,7 @@ type_to_type :: proc(
                 case ^odina.Ident:
                     append(&slice_name_elements, de.name)
                     break slice_name_loop
+                // TODO: ^odina.Selector_Expr
                 case ^odina.Array_Type:
                     if de.len != nil {
                         #partial switch l in de.len.derived_expr {
@@ -779,6 +780,27 @@ type_to_type :: proc(
 
             slice_name_bd: strings.Builder
             strings.builder_init(&slice_name_bd, allocator = ctx.allocator)
+
+            if ctx.current_package != nil {
+                needs_prefix: bool
+
+                if elem_ident, ident_ok := type_expr.elem.derived_expr.(^odina.Ident);
+                   ident_ok &&
+                   !is_odin_builtin_type_identifier(elem_ident.name) {
+                    needs_prefix = true
+                } else if _, selector_ok := type_expr.elem.derived_expr.(^odina.Selector_Expr);
+                   !ident_ok && !selector_ok {
+                    needs_prefix = true
+                }
+
+                if needs_prefix {
+                    strings.write_string(
+                        &slice_name_bd,
+                        ctx.current_package.?.name,
+                    )
+                    strings.write_rune(&slice_name_bd, '_')
+                }
+            }
 
             #reverse for e in slice_name_elements {
                 strings.write_string(&slice_name_bd, e)
@@ -2099,6 +2121,8 @@ lookup_type_of_import :: proc(
         ) or_return
     }
 
+    // TODO: Maybe hardcode some types of "core:c"
+
     type, err = lookup_type_in_package(plat, type_name, imp.pkg, ctx)
 
     return
@@ -2451,4 +2475,3 @@ is_odin_builtin_type_identifier :: proc(ident: string) -> bool {
 
     return false
 }
-

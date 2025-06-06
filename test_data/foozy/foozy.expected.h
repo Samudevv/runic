@@ -40,6 +40,21 @@ typedef struct bar_union {
 } bar_union;
 
 typedef int64_t c_int64_t;
+typedef int32_t booty_boot_int;
+
+typedef struct booty_boot_int_slice {
+    booty_boot_int* data;
+    int64_t         length;
+} booty_boot_int_slice;
+
+typedef struct booty_boot_int_slice booty_large_slice;
+
+typedef struct f64_slice {
+    double* data;
+    int64_t length;
+} f64_slice;
+
+typedef struct f64_slice booty_small_slice;
 
 typedef struct hooty_tooty {
     struct hooty_tooty* child;
@@ -185,7 +200,6 @@ typedef int32_t bit_field_i32_array_5[5];
 typedef bit_field_i32_array_5 array_bf;
 typedef my_great_int bit_field_my_great_int_array_2[2];
 typedef bit_field_my_great_int_array_2 other_array_bf;
-typedef int32_t booty_boot_int;
 typedef booty_boot_int bit_field_booty_boot_int;
 typedef bit_field_booty_boot_int package_bf;
 typedef booty_boot_int bit_field_booty_boot_int_array_50[50];
@@ -323,7 +337,7 @@ extern bit_set_range_2_to_5 number_range;
 extern bit_set_booty_boots boot_options;
 
 extern char* bar(const char* msg, const int64_t result);
-extern char* parse_int(const c_int64_t value);
+extern char* parse_int(const c_int64_t value, const booty_large_slice v1, const booty_small_slice v2);
 extern void do_alloc(const struct booty_treasure ctx);
 extern int64_t foo(const int64_t a, const int64_t b);
 extern struct multi_foo_result multi_foo(const int64_t a, const int64_t b);

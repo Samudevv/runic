@@ -60,7 +60,11 @@ foozy_bar :: proc "c" (msg: cstring, result: int) -> cstring {
 }
 
 @(export)
-parse_int :: proc "c" (value: c.int64_t) -> cstring {
+parse_int :: proc "c" (
+    value: c.int64_t,
+    v1: booty.large_slice,
+    v2: booty.small_slice,
+) -> cstring {
     context = runtime.default_context()
     str := fmt.aprint(value)
     return strings.clone_to_cstring(str)

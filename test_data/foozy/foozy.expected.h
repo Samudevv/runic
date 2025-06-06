@@ -71,6 +71,17 @@ typedef struct booty_treasure {
     struct hooty_shmooty sh;
 } booty_treasure;
 
+typedef union booty_large_union_values {
+    int64_t        v0;
+    uint32_t       v1;
+    booty_boot_int v2;
+} booty_large_union_values;
+
+typedef struct booty_large_union {
+    uint8_t                        tag;
+    union booty_large_union_values values;
+} booty_large_union;
+
 typedef struct pointed_cycle* cycle_pointer;
 
 typedef struct pointed_cycle {
@@ -338,7 +349,7 @@ extern bit_set_booty_boots boot_options;
 
 extern char* bar(const char* msg, const int64_t result);
 extern char* parse_int(const c_int64_t value, const booty_large_slice v1, const booty_small_slice v2);
-extern void do_alloc(const struct booty_treasure ctx);
+extern void do_alloc(const struct booty_treasure ctx, const struct booty_large_union types);
 extern int64_t foo(const int64_t a, const int64_t b);
 extern struct multi_foo_result multi_foo(const int64_t a, const int64_t b);
 extern uint32_t super_foo(const struct my_foo a);

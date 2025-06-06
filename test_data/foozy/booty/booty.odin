@@ -37,3 +37,9 @@ large_array :: [dynamic]f32
 small_array :: [dynamic]boot_int
 large_slice :: []boot_int
 small_slice :: []f64
+
+large_union :: union {
+    i64,
+    u32,
+    boot_int,
+}

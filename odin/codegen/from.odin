@@ -724,7 +724,6 @@ type_to_type :: proc(
             append(&type.array_info, runic.Array{size = size})
         } else {
             // Slice
-            // TODO: are slices from different packages working?
             // TODO: output the name in different casing (camelCase, PascalCase etc.)
             // TODO: add prefix/suffix to name maybe?
 
@@ -1069,25 +1068,29 @@ type_to_type :: proc(
             )
         }
 
-        values_union_type_name: string = ---
+        values_union_type_name: strings.Builder
+        strings.builder_init(&values_union_type_name, ctx.allocator)
+
+        if ctx.current_package != nil {
+            strings.write_string(
+                &values_union_type_name,
+                ctx.current_package.?.name,
+            )
+            strings.write_rune(&values_union_type_name, '_')
+        }
+
         if type_name, type_name_ok := name.?; type_name_ok {
-            values_union_type_name = fmt.aprintf(
-                "{}_values",
-                type_name,
-                allocator = ctx.allocator,
-            )
+            strings.write_string(&values_union_type_name, type_name)
+            strings.write_string(&values_union_type_name, "_values")
         } else {
-            values_union_type_name = fmt.aprintf(
-                "anon_values_union_{}",
-                ctx.anon_counter^,
-                allocator = ctx.allocator,
-            )
+            strings.write_string(&values_union_type_name, "anon_values_union_")
+            strings.write_int(&values_union_type_name, ctx.anon_counter^)
             ctx.anon_counter^ += 1
         }
 
         om.insert(
             ctx.types,
-            values_union_type_name,
+            strings.to_string(values_union_type_name),
             runic.Type{spec = values_union},
         )
 
@@ -1106,7 +1109,7 @@ type_to_type :: proc(
 
         u.members[1].name = "values"
         u.members[1].type = runic.Type {
-            spec = values_union_type_name,
+            spec = strings.to_string(values_union_type_name),
         }
 
         type.spec = u

@@ -71,7 +71,7 @@ parse_int :: proc "c" (
 }
 
 @(export)
-do_alloc :: proc "c" (ctx: booty.treasure) {
+do_alloc :: proc "c" (ctx: booty.treasure, types: booty.large_union) {
     context = runtime.default_context()
     fmt.print(ctx)
 }

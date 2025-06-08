@@ -672,6 +672,36 @@ type_to_type :: proc(
             }
 
             type.spec = string("string")
+        case "any":
+            if !om.contains(ctx.types^, "any") {
+                any_spec: runic.Struct
+
+                any_spec.members = make(
+                    [dynamic]runic.Member,
+                    len = 2,
+                    cap = 2,
+                    allocator = ctx.allocator,
+                )
+
+                any_spec.members[0].name = "data"
+                any_spec.members[0].type.spec = runic.Builtin.RawPtr
+
+                any_spec.members[1].name = "id"
+                any_spec.members[1].type.spec = string("typeid")
+
+                if !om.contains(ctx.types^, "typeid") {
+                    typeid_type: odina.Typeid_Type
+                    typeid_expr := odina.Expr {
+                        derived_expr = &typeid_type,
+                    }
+
+                    type_to_type(plat, &typeid_expr, nil, ctx) or_return
+                }
+
+                om.insert(ctx.types, "any", runic.Type{spec = any_spec})
+            }
+
+            type.spec = string("any")
         case:
             type.spec = type_identifier_to_type_specifier(
                 plat,
@@ -708,6 +738,30 @@ type_to_type :: proc(
                 }
             }
         }
+    case ^odina.Typeid_Type:
+        if type_expr.specialization != nil {
+            err = error_tok(
+                "specialization of typeid is not supported",
+                type_expr.specialization.pos,
+            )
+            return
+        }
+
+        if !om.contains(ctx.types^, "typeid") {
+            typeid_spec: runic.Builtin = ---
+            switch plat.arch {
+            case .x86_64, .arm64:
+                typeid_spec = .SInt64
+            case .x86, .arm32:
+                typeid_spec = .SInt32
+            case .Any:
+                typeid_spec = .Untyped
+            }
+
+            om.insert(ctx.types, "typeid", runic.Type{spec = typeid_spec})
+        }
+
+        type.spec = string("typeid")
     case ^odina.Pointer_Type:
         type = type_to_type(plat, type_expr.elem, name, ctx) or_return
         if len(type.array_info) != 0 {
@@ -1609,7 +1663,7 @@ type_identifier_to_type_specifier :: proc(
     case "bool":
         switch plat.arch {
         case .Any:
-            panic("invalid arch Any")
+            t = Untyped
         case .x86_64, .arm64:
             t = Bool64
         case .x86, .arm32:
@@ -1650,11 +1704,9 @@ type_identifier_to_type_specifier :: proc(
          "complex128",
          "quaternion64",
          "quaternion128",
-         "quaternion256",
-         "typeid",
-         "any":
+         "quaternion256":
         err = errors.message("{} is not supported", ident)
-    case "string":
+    case "string", "typeid", "any":
         err = errors.message(
             "{} should not be used with this procedure",
             ident,
@@ -2611,3 +2663,4 @@ is_odin_builtin_type_identifier :: proc(ident: string) -> bool {
 
     return false
 }
+

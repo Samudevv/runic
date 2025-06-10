@@ -34,6 +34,8 @@ complex_ptr :: ^^^[13][14]^[15]^[18]^^^[17]^^^int
 
 typey_type :: []booty.treasure
 type_typey :: []typeid
+tüp_töp :: [dynamic]booty.treasure
+töp_tüp :: [dynamic]typeid
 
 bar_union :: union {
     int_ptr,

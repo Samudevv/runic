@@ -862,12 +862,14 @@ type_to_type :: proc(
             if ctx.current_package != nil {
                 needs_prefix: bool
 
-                if elem_ident, ident_ok := type_expr.elem.derived_expr.(^odina.Ident);
-                   ident_ok &&
-                   !is_odin_builtin_type_identifier(elem_ident.name) {
-                    needs_prefix = true
-                } else if _, selector_ok := type_expr.elem.derived_expr.(^odina.Selector_Expr);
-                   !ident_ok && !selector_ok {
+                #partial switch e in type_expr.elem.derived_expr {
+                case ^odina.Ident:
+                    needs_prefix = !is_odin_builtin_type_identifier(e.name)
+                case ^odina.Selector_Expr:
+                    needs_prefix = false
+                case ^odina.Typeid_Type:
+                    needs_prefix = false
+                case:
                     needs_prefix = true
                 }
 
@@ -950,7 +952,6 @@ type_to_type :: proc(
             #partial switch de in expr.derived_expr {
             case ^odina.Ident:
                 append(&dyn_name_elements, de.name)
-                break dyn_name_loop
             case ^odina.Array_Type:
                 if de.len != nil {
                     #partial switch l in de.len.derived_expr {
@@ -983,10 +984,23 @@ type_to_type :: proc(
                 append(&dyn_name_elements, "pointer")
                 expr = de.elem
                 continue
+            case ^odina.Selector_Expr:
+                errors.assert(de.expr != nil) or_return
+
+                append(&dyn_name_elements, de.field.name)
+
+                #partial switch e in de.expr.derived_expr {
+                case ^odina.Ident:
+                    append(&dyn_name_elements, e.name)
+                case:
+                    err = error_tok("invalid selector", de.expr.pos)
+                    return
+                }
+            case ^odina.Typeid_Type:
+                append(&dyn_name_elements, "typeid")
             case:
                 append(&dyn_name_elements, "unknown")
                 needs_anon = true
-                break dyn_name_loop
             }
 
             break
@@ -998,11 +1012,14 @@ type_to_type :: proc(
         if ctx.current_package != nil {
             needs_prefix: bool
 
-            if elem_ident, ident_ok := type_expr.elem.derived_expr.(^odina.Ident);
-               ident_ok && !is_odin_builtin_type_identifier(elem_ident.name) {
-                needs_prefix = true
-            } else if _, selector_ok := type_expr.elem.derived_expr.(^odina.Selector_Expr);
-               !ident_ok && !selector_ok {
+            #partial switch e in type_expr.elem.derived_expr {
+            case ^odina.Ident:
+                needs_prefix = !is_odin_builtin_type_identifier(e.name)
+            case ^odina.Selector_Expr:
+                needs_prefix = false
+            case ^odina.Typeid_Type:
+                needs_prefix = false
+            case:
                 needs_prefix = true
             }
 
@@ -2674,4 +2691,3 @@ is_odin_builtin_type_identifier :: proc(ident: string) -> bool {
 
     return false
 }
-

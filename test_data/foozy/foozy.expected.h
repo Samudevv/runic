@@ -17,6 +17,59 @@ typedef double** super_multi[10][20][30][40][50];
 typedef int64_t (*arr_ptr)[14];
 typedef int64_t*** (***(*(*(***complex_ptr)[13][14])[15])[18])[17];
 
+typedef struct hooty_tooty {
+    struct hooty_tooty* child;
+} hooty_tooty;
+
+typedef struct hooty_shmooty {
+    char*              b;
+    struct hooty_tooty c;
+} hooty_shmooty;
+
+typedef struct booty_treasure {
+    float                a;
+    double               b;
+    struct hooty_shmooty sh;
+} booty_treasure;
+
+typedef struct booty_treasure_slice {
+    struct booty_treasure* data;
+    int64_t                length;
+} booty_treasure_slice;
+
+typedef struct booty_treasure_slice typey_type;
+typedef int64_t typeid;
+
+typedef struct typeid_slice {
+    typeid* data;
+    int64_t length;
+} typeid_slice;
+
+typedef struct typeid_slice type_typey;
+
+typedef struct runtime_Allocator {
+    void* procedure;
+    void* data;
+} runtime_Allocator;
+
+typedef struct booty_treasure_dynamic_array {
+    struct booty_treasure*   data;
+    int64_t                  length;
+    int64_t                  capacity;
+    struct runtime_Allocator allocator;
+} booty_treasure_dynamic_array;
+
+typedef struct booty_treasure_dynamic_array tüp_töp;
+
+typedef struct typeid_dynamic_array {
+    typeid*                  data;
+    int64_t                  length;
+    int64_t                  capacity;
+    struct runtime_Allocator allocator;
+} typeid_dynamic_array;
+
+typedef struct typeid_dynamic_array töp_tüp;
+
 typedef enum booty_boots {
     long_ones  =   0,
     small_ones =   1,
@@ -61,21 +114,6 @@ typedef struct f64_slice {
 } f64_slice;
 
 typedef struct f64_slice booty_small_slice;
-
-typedef struct hooty_tooty {
-    struct hooty_tooty* child;
-} hooty_tooty;
-
-typedef struct hooty_shmooty {
-    char*              b;
-    struct hooty_tooty c;
-} hooty_shmooty;
-
-typedef struct booty_treasure {
-    float                a;
-    double               b;
-    struct hooty_shmooty sh;
-} booty_treasure;
 
 typedef union booty_large_union_values {
     int64_t        v0;
@@ -197,11 +235,6 @@ typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice {
     int64_t                                                length;
 } u8_pointer_pointer_pointer_array_5_slice_slice_slice;
 
-typedef struct runtime_Allocator {
-    void* procedure;
-    void* data;
-} runtime_Allocator;
-
 typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array {
     struct u8_pointer_pointer_pointer_array_5_slice_slice_slice* data;
     int64_t                                                      length;
@@ -305,7 +338,6 @@ typedef struct booty_boot_int_dynamic_array {
 } booty_boot_int_dynamic_array;
 
 typedef struct booty_boot_int_dynamic_array booty_small_array;
-typedef int64_t typeid;
 
 typedef struct any {
     void*  data;

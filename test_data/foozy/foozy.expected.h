@@ -305,6 +305,12 @@ typedef struct booty_boot_int_dynamic_array {
 } booty_boot_int_dynamic_array;
 
 typedef struct booty_boot_int_dynamic_array booty_small_array;
+typedef int64_t typeid;
+
+typedef struct any {
+    void*  data;
+    typeid id;
+} any;
 
 typedef struct f32_dynamic_array {
     float*                   data;
@@ -388,7 +394,7 @@ extern struct string cstring_to_string(const char* str);
 extern void print_strings(const struct string_slice str);
 extern struct runtime_Context odin_default_context();
 extern void append_five(struct int_dynamic_array*const arr, const int64_t value);
-extern booty_large_array make_large_array(const booty_small_array s);
+extern booty_large_array make_large_array(const booty_small_array s, const typeid t, const struct any a);
 
 #define foozy_bar bar
 #define foozy_parse_int parse_int

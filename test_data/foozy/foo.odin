@@ -186,7 +186,11 @@ append_five :: proc "c" (arr: ^[dynamic]int, value: int) {
 }
 
 @(export)
-make_large_array :: proc "c" (s: booty.small_array) -> booty.large_array {
+make_large_array :: proc "c" (
+    s: booty.small_array,
+    t: typeid,
+    a: any,
+) -> booty.large_array {
     context = runtime.default_context()
     return make(booty.large_array)
 }
@@ -265,3 +269,4 @@ foo_booties: bit_set[booty.boots;booty.boot_int]
 //
 //@(export)
 //number_range: bit_set[NUMBER_RANGE_MIN..<NUMBER_RANGE_MAX]
+

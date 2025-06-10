@@ -1605,6 +1605,133 @@ type_to_type :: proc(
         }
 
         type.spec = strings.to_string(bit_field_type_name)
+    case ^odina.Call_Expr:
+        #partial switch e in type_expr.expr.derived_expr {
+        case ^odina.Ident:
+            if e.name != "Maybe" {
+                err = error_tok(
+                    "\"Maybe\" expected, but got Call_Expr",
+                    type_expr.expr.pos,
+                )
+                return
+            }
+        case:
+            err = error_tok("invalid call expr", type_expr.expr.pos)
+            return
+        }
+
+        errors.assert(
+            len(type_expr.args) == 1,
+            "invalid number of arguments of Maybe expression",
+        ) or_return
+
+        underlying := type_to_type(
+            plat,
+            type_expr.args[0],
+            name,
+            ctx,
+        ) or_return
+
+        underlying_anon_name, underlying_anon_type, underlying_is_anon :=
+            runic.create_anon_type(
+                underlying.spec,
+                ctx.anon_counter,
+                ctx.allocator,
+            )
+
+        if underlying_is_anon {
+            om.insert(ctx.types, underlying_anon_name, underlying_anon_type)
+            underlying.spec = underlying_anon_name
+        }
+
+        maybe_type: runic.Struct
+        maybe_type.members = make(
+            [dynamic]runic.Member,
+            len = 2,
+            cap = 2,
+            allocator = ctx.allocator,
+        )
+
+        maybe_type.members[0].name = "ok"
+        maybe_type.members[0].type = runic.Type {
+            spec = runic.Builtin.Bool8,
+        }
+
+        maybe_type.members[1].name = "value"
+        maybe_type.members[1].type = underlying
+
+        maybe_type_name: strings.Builder
+        strings.builder_init(&maybe_type_name, ctx.allocator)
+
+        if ctx.current_package != nil {
+            needs_prefix: bool
+
+            #partial switch e in type_expr.args[0].derived_expr {
+            case ^odina.Ident:
+                needs_prefix = !is_odin_builtin_type_identifier(e.name)
+            case ^odina.Selector_Expr:
+                needs_prefix = false
+            case ^odina.Typeid_Type:
+                needs_prefix = false
+            case:
+                needs_prefix = true
+            }
+
+            if needs_prefix {
+                strings.write_string(
+                    &maybe_type_name,
+                    ctx.current_package.?.name,
+                )
+                strings.write_rune(&maybe_type_name, '_')
+            }
+        }
+
+        strings.write_string(&maybe_type_name, "maybe_")
+
+        needs_anon: bool
+
+        #partial switch spec in underlying.spec {
+        case string:
+            strings.write_string(&maybe_type_name, spec)
+        case runic.ExternType:
+            strings.write_string(&maybe_type_name, string(spec))
+        case runic.Unknown:
+            strings.write_string(&maybe_type_name, string(spec))
+        case runic.Builtin:
+            #partial switch e in type_expr.args[0].derived_expr {
+            case ^odina.Ident:
+                strings.write_string(&maybe_type_name, e.name)
+            case:
+                strings.write_string(&maybe_type_name, "unknown")
+                needs_anon = true
+            }
+        case runic.Struct:
+            err = errors.unknown()
+            return
+        case runic.Enum:
+            err = errors.unknown()
+            return
+        case runic.Union:
+            err = errors.unknown()
+            return
+        case runic.FunctionPointer:
+            err = errors.unknown()
+            return
+        }
+
+        if needs_anon {
+            strings.write_rune(&maybe_type_name, '_')
+            strings.write_int(&maybe_type_name, ctx.anon_counter^)
+            ctx.anon_counter^ += 1
+        }
+
+        om.insert(
+            ctx.types,
+            strings.to_string(maybe_type_name),
+            runic.Type{spec = maybe_type},
+        )
+
+        type.spec = strings.to_string(maybe_type_name)
     case:
         fmt.eprintln(
             error_tok(

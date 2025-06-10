@@ -70,6 +70,32 @@ typedef struct typeid_dynamic_array {
 
 typedef struct typeid_dynamic_array töp_tüp;
 
+typedef struct maybe_int {
+    _Bool   ok;
+    int64_t value;
+} maybe_int;
+
+typedef struct maybe_int mäybe;
+
+typedef struct anon_0 {
+    int64_t           x;
+    unsigned __int128 y;
+} anon_0;
+
+typedef struct maybe_anon_0 {
+    _Bool         ok;
+    struct anon_0 value;
+} maybe_anon_0;
+
+typedef struct maybe_anon_0 möybe;
+
+typedef struct maybe_booty_treasure {
+    _Bool                 ok;
+    struct booty_treasure value;
+} maybe_booty_treasure;
+
+typedef struct maybe_booty_treasure müybe;
+
 typedef enum booty_boots {
     long_ones  =   0,
     small_ones =   1,
@@ -136,14 +162,14 @@ typedef struct string {
     int64_t  length;
 } string;
 
-typedef struct booty_anon_0 {
+typedef struct booty_anon_1 {
     int64_t          id;
     struct string    first_name;
     struct string    last_name;
     enum booty_boots shoe;
-} booty_anon_0;
+} booty_anon_1;
 
-typedef booty_boot_int (* booty_callback)(const struct booty_anon_0 order);
+typedef booty_boot_int (* booty_callback)(const struct booty_anon_1 order);
 typedef struct pointed_cycle* cycle_pointer;
 
 typedef struct pointed_cycle {
@@ -176,18 +202,18 @@ typedef union your_foo {
     int32_t  y;
 } your_foo;
 
-typedef struct anon_1 {
-    int64_t z;
-} anon_1;
-
 typedef struct anon_2 {
-    int64_t       y;
-    struct anon_1 cba;
+    int64_t z;
 } anon_2;
+
+typedef struct anon_3 {
+    int64_t       y;
+    struct anon_2 cba;
+} anon_3;
 
 typedef struct nested {
     int64_t       x;
-    struct anon_2 abc;
+    struct anon_3 abc;
 } nested;
 
 typedef enum pants {
@@ -280,15 +306,15 @@ typedef struct multi_foo_result {
     int64_t d;
 } multi_foo_result;
 
-typedef struct anon_3 {
+typedef struct anon_4 {
     int64_t a;
     int64_t b;
-} anon_3;
+} anon_4;
 
-typedef union anon_4 {
+typedef union anon_5 {
     uint32_t x;
     int32_t  y;
-} anon_4;
+} anon_5;
 
 typedef struct i64_slice {
     int64_t* data;
@@ -371,19 +397,19 @@ typedef uint64_t bit_set_languages_u64;
 typedef int32_t polyglot_int;
 typedef polyglot_int bit_set_languages_polyglot_int;
 
-#define one   ((anon_bit_set_enum_5)  0)
-#define two   ((anon_bit_set_enum_5)  1)
-#define three ((anon_bit_set_enum_5)  2)
-typedef int64_t anon_bit_set_enum_5;
-
-typedef uint8_t bit_set_anon_bit_set_enum_5;
-
-#define four ((anon_bit_set_enum_6)  0)
-#define five ((anon_bit_set_enum_6)  1)
-#define six  ((anon_bit_set_enum_6)  2)
+#define one   ((anon_bit_set_enum_6)  0)
+#define two   ((anon_bit_set_enum_6)  1)
+#define three ((anon_bit_set_enum_6)  2)
 typedef int64_t anon_bit_set_enum_6;
 
-typedef int8_t bit_set_anon_bit_set_enum_6_i8;
+typedef uint8_t bit_set_anon_bit_set_enum_6;
+
+#define four ((anon_bit_set_enum_7)  0)
+#define five ((anon_bit_set_enum_7)  1)
+#define six  ((anon_bit_set_enum_7)  2)
+typedef int64_t anon_bit_set_enum_7;
+
+typedef int8_t bit_set_anon_bit_set_enum_7_i8;
 typedef uint32_t bit_set_range_26;
 typedef uint8_t bit_set_range_2_to_5;
 typedef uint8_t bit_set_booty_boots;
@@ -402,8 +428,8 @@ extern bit_set_languages polyglot2;
 extern bit_set_languages_u64 special_polyglot;
 extern bit_set_languages_u64 another_special_polyglot;
 extern bit_set_languages_polyglot_int very_polyglot;
-extern bit_set_anon_bit_set_enum_5 numbers;
-extern bit_set_anon_bit_set_enum_6_i8 underlying_numbers;
+extern bit_set_anon_bit_set_enum_6 numbers;
+extern bit_set_anon_bit_set_enum_7_i8 underlying_numbers;
 extern bit_set_range_26 abc_bitset;
 extern bit_set_range_2_to_5 number_range;
 extern bit_set_booty_boots boot_options;
@@ -418,7 +444,7 @@ extern struct multi_foo_result multi_foo(const int64_t a, const int64_t b);
 extern uint32_t super_foo(const struct my_foo a);
 extern void print_pants(const enum pants a);
 extern void print_sausages(const sausages b);
-extern union anon_4 multi_sausage(struct anon_3**const over);
+extern union anon_5 multi_sausage(struct anon_4**const over);
 extern void print_slice(const struct i64_slice s);
 extern void add_slice(struct i64_slice*const s, const int64_t a);
 extern void multi_add_slice(const struct i64_slice (*ss)[5], const int64_t a);

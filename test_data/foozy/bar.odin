@@ -36,6 +36,12 @@ typey_type :: []booty.treasure
 type_typey :: []typeid
 tüp_töp :: [dynamic]booty.treasure
 töp_tüp :: [dynamic]typeid
+mäybe :: Maybe(int)
+möybe :: Maybe(struct {
+        x: int,
+        y: u128,
+    })
+müybe :: Maybe(booty.treasure)
 
 bar_union :: union {
     int_ptr,

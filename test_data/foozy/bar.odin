@@ -32,6 +32,9 @@ super_multi :: [10][20][30][40][50]^^f64
 arr_ptr :: ^[14]int
 complex_ptr :: ^^^[13][14]^[15]^[18]^^^[17]^^^int
 
+typey_type :: []booty.treasure
+type_typey :: []typeid
+
 bar_union :: union {
     int_ptr,
     multi_int,

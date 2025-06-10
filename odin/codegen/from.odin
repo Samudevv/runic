@@ -748,8 +748,20 @@ type_to_type :: proc(
                 #partial switch de in expr.derived_expr {
                 case ^odina.Ident:
                     append(&slice_name_elements, de.name)
-                    break slice_name_loop
-                // TODO: ^odina.Selector_Expr
+                case ^odina.Selector_Expr:
+                    errors.assert(de.expr != nil) or_return
+
+                    append(&slice_name_elements, de.field.name)
+
+                    #partial switch e in de.expr.derived_expr {
+                    case ^odina.Ident:
+                        append(&slice_name_elements, e.name)
+                    case:
+                        err = error_tok("invalid selector", de.expr.pos)
+                        return
+                    }
+                case ^odina.Typeid_Type:
+                    append(&slice_name_elements, "typeid")
                 case ^odina.Array_Type:
                     if de.len != nil {
                         #partial switch l in de.len.derived_expr {
@@ -785,7 +797,6 @@ type_to_type :: proc(
                 case:
                     append(&slice_name_elements, "unknown")
                     needs_anon = true
-                    break slice_name_loop
                 }
 
                 break

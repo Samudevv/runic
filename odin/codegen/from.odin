@@ -175,9 +175,9 @@ generate_runestone :: proc(
                         type_err: errors.Error = ---
                         decl_type, type_err = type_to_type(
                             plat,
-                            stm.type,
-                            first_name,
                             &ttt_ctx,
+                            first_name,
+                            stm.type,
                         )
                         if type_err != nil {
                             fmt.eprintln(type_err)
@@ -343,9 +343,9 @@ generate_runestone :: proc(
                         case:
                             type, type_err := type_to_type(
                                 plat,
-                                value_expr,
-                                name,
                                 &ttt_ctx,
+                                name,
+                                value_expr,
                             )
                             if type_err != nil {
                                 fmt.eprintln(type_err)
@@ -660,16 +660,7 @@ lookup_type_of_import :: proc(
         if imp.collection == "base" {
             switch imp.name {
             case "builtin":
-                // A hack, because the 'builtin' package only has identifiers
-                ident := odina.Ident {
-                    name = type_name,
-                }
-                type_expr := odina.Expr {
-                    derived_expr = &ident,
-                }
-
-                type = type_to_type(plat, &type_expr, type_name, ctx) or_return
-                return
+                return ident_to_type(plat, ctx, type_name)
             case "runtime":
                 // TODO: Implement more types
                 switch type_name {
@@ -928,8 +919,7 @@ lookup_type_in_package :: proc(
                     if name == type_name {
                         value_expr := stm.values[idx]
 
-                        type, err = type_to_type(plat, value_expr, name, ctx)
-                        return
+                        return type_to_type(plat, ctx, name, value_expr)
                     }
                 }
             }

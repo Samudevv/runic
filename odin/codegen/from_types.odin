@@ -40,9 +40,9 @@ TypeToTypeContext :: struct {
 
 type_to_type :: proc(
     plat: runic.Platform,
-    t: ^odina.Expr,
-    name: Maybe(string),
     ctx: ^TypeToTypeContext,
+    name: Maybe(string),
+    t: ^odina.Expr,
 ) -> (
     type: runic.Type,
     err: errors.Error,
@@ -75,7 +75,7 @@ type_to_type :: proc(
     case ^odina.Selector_Expr:
         return selector_to_type(plat, ctx, type_expr)
     case ^odina.Helper_Type:
-        return type_to_type(plat, type_expr.type, name, ctx)
+        return type_to_type(plat, ctx, name, type_expr.type)
     case ^odina.Proc_Type:
         func := proc_to_function(plat, type_expr, name, ctx) or_return
         type.spec = runic.FunctionPointer(new_clone(func, ctx.allocator))
@@ -213,7 +213,7 @@ pointer_to_type :: proc(
     type: runic.Type,
     err: errors.Error,
 ) {
-    type = type_to_type(plat, elem, name, ctx) or_return
+    type = type_to_type(plat, ctx, name, elem) or_return
     if len(type.array_info) != 0 {
         type.array_info[len(type.array_info) - 1].pointer_info.count += 1
     } else {
@@ -247,7 +247,7 @@ array_to_type :: proc(
     type: runic.Type,
     err: errors.Error,
 ) {
-    type = type_to_type(plat, elem, name, ctx) or_return
+    type = type_to_type(plat, ctx, name, elem) or_return
     if len(type.array_info) == 0 {
         type.array_info = make([dynamic]runic.Array, ctx.allocator)
     }
@@ -393,9 +393,9 @@ slice_to_type :: proc(
         slice_type.members[0].name = "data"
         slice_type.members[0].type = type_to_type(
             plat,
-            elem,
-            name,
             ctx,
+            name,
+            elem,
         ) or_return
         if len(slice_type.members[0].type.array_info) != 0 {
             slice_type.members[0].type.array_info[len(slice_type.members[0].type.array_info) - 1].pointer_info.count +=
@@ -432,7 +432,7 @@ dynamic_array_to_type :: proc(
 ) {
     // TODO: find out what 'tag' does
 
-    type = type_to_type(plat, elem, name, ctx) or_return
+    type = type_to_type(plat, ctx, name, elem) or_return
 
     dyn_name_elements := make([dynamic]string, len = 0, cap = 3) // [dynamic]^[5]int
 
@@ -658,7 +658,7 @@ union_to_type :: proc(
 
     for var, idx in u.variants {
         var_name := fmt.aprintf("v{}", idx, allocator = ctx.allocator)
-        var_type := type_to_type(plat, var, var_name, ctx) or_return
+        var_type := type_to_type(plat, ctx, var_name, var) or_return
 
         append(
             &values_union.members,
@@ -1025,7 +1025,7 @@ bit_field_to_type :: proc(
     type: runic.Type,
     err: errors.Error,
 ) {
-    back_type := type_to_type(plat, bf.backing_type, name, ctx) or_return
+    back_type := type_to_type(plat, ctx, name, bf.backing_type) or_return
 
     bit_field_type_name: strings.Builder
     strings.builder_init(&bit_field_type_name, ctx.allocator)
@@ -1139,7 +1139,7 @@ maybe_to_type :: proc(
         "invalid number of arguments of Maybe expression",
     ) or_return
 
-    underlying := type_to_type(plat, ce.args[0], name, ctx) or_return
+    underlying := type_to_type(plat, ctx, name, ce.args[0]) or_return
 
     underlying_anon_name, underlying_anon_type, underlying_is_anon :=
         runic.create_anon_type(
@@ -1251,8 +1251,8 @@ map_to_type :: proc(
     type: runic.Type,
     err: errors.Error,
 ) {
-    key_type := type_to_type(plat, mt.key, name, ctx) or_return
-    value_type := type_to_type(plat, mt.value, name, ctx) or_return
+    key_type := type_to_type(plat, ctx, name, mt.key) or_return
+    value_type := type_to_type(plat, ctx, name, mt.value) or_return
 
     key_anon_name, key_anon_type, key_is_anon := runic.create_anon_type(
         key_type.spec,
@@ -1600,7 +1600,7 @@ proc_to_function :: proc(
             first_name = name_to_name(param_field.names[0]) or_return
         }
 
-        type := type_to_type(plat, param_field.type, first_name, ctx) or_return
+        type := type_to_type(plat, ctx, first_name, param_field.type) or_return
 
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             type.spec,
@@ -1659,9 +1659,9 @@ proc_to_function :: proc(
 
         type := type_to_type(
             plat,
-            result_field.type,
-            first_name,
             ctx,
+            first_name,
+            result_field.type,
         ) or_return
 
         if anon_name, anon_type, is_anon := runic.create_anon_type(
@@ -1800,7 +1800,7 @@ struct_to_type :: proc(
             first_name = name_to_name(field.names[0]) or_return
         }
 
-        field_type := type_to_type(plat, field.type, first_name, ctx) or_return
+        field_type := type_to_type(plat, ctx, first_name, field.type) or_return
 
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             field_type.spec,
@@ -1857,7 +1857,7 @@ enum_to_type :: proc(
             e.type = .SInt32
         }
     } else {
-        underlying := type_to_type(plat, et.base_type, name, ctx) or_return
+        underlying := type_to_type(plat, ctx, name, et.base_type) or_return
 
         ok: bool = ---
         e.type, ok = underlying.spec.(runic.Builtin)

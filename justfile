@@ -54,11 +54,11 @@ debug ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
   odin build . {{ ODIN_FLAGS }} -out:"{{ BUILD_DIR / 'runic_debug' + EXE_EXT }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }}
 
 test PACKAGE='.' ODIN_TESTS='' ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
-  odin test {{ PACKAGE }} {{ ODIN_FLAGS }} {{ if PACKAGE == '.' { '-all-packages' } else { '' } }} -out:"{{ BUILD_DIR / 'runic_test' + EXE_EXT }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }} {{ if ODIN_TESTS == '' {''} else {'-define:ODIN_TEST_NAMES=' + ODIN_TESTS} }} -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false
+  odin test {{ PACKAGE }} {{ ODIN_FLAGS }} -keep-executable {{ if PACKAGE == '.' { '-all-packages' } else { '' } }} -out:"{{ BUILD_DIR / 'runic_test' + EXE_EXT }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }} {{ if ODIN_TESTS == '' {''} else {'-define:ODIN_TEST_NAMES=' + ODIN_TESTS} }} -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false
 
 [linux]
 test_windows_obj PACKAGE='.' ODIN_TESTS='' ODIN_JOBS=num_cpus(): (make-directory BUILD_DIR)
-  -odin test {{ PACKAGE }} {{ ODIN_FLAGS }} -target:windows_amd64 {{ if PACKAGE == '.' { '-all-packages' } else { '' } }} -out:"{{ BUILD_DIR / 'runic_test.exe' }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }} {{ if ODIN_TESTS == '' {''} else {'-define:ODIN_TEST_NAMES=' + ODIN_TESTS} }} -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false
+  -odin test {{ PACKAGE }} {{ ODIN_FLAGS }} -keep-executable -target:windows_amd64 {{ if PACKAGE == '.' { '-all-packages' } else { '' } }} -out:"{{ BUILD_DIR / 'runic_test.exe' }}" {{ ODIN_DEBUG_FLAGS }} -thread-count:{{ ODIN_JOBS }} {{ if ODIN_TESTS == '' {''} else {'-define:ODIN_TEST_NAMES=' + ODIN_TESTS} }} -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false
 
 [linux]
 test_windows_link:

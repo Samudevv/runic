@@ -55,6 +55,20 @@ bar_union :: union {
 }
 
 @(export)
+bad_data: map[int]string
+
+@(export)
+good_data: map[enum {
+    beans,
+    toast,
+}]struct {
+    x, y, z: f32,
+}
+
+@(export)
+better_data: map[booty.boot_int]booty.treasure
+
+@(export)
 bar_value: booty.small_bit_set
 
 @(export)

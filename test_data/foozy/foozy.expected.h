@@ -118,11 +118,46 @@ typedef struct bar_union {
     union bar_union_values values;
 } bar_union;
 
+typedef struct string {
+    uint8_t* data;
+    int64_t  length;
+} string;
+
+typedef struct map_int_string {
+    uint64_t                 data;
+    uint64_t                 length;
+    struct runtime_Allocator allocator;
+} map_int_string;
+
+
+#define beans ((anon_1)  0)
+#define toast ((anon_1)  1)
+typedef int64_t anon_1;
+
+typedef struct anon_2 {
+    float x;
+    float y;
+    float z;
+} anon_2;
+
+typedef struct map_anon_1_anon_2 {
+    uint64_t                 data;
+    uint64_t                 length;
+    struct runtime_Allocator allocator;
+} map_anon_1_anon_2;
+
+typedef int32_t booty_boot_int;
+
+typedef struct map_booty_boot_int_booty_treasure {
+    uint64_t                 data;
+    uint64_t                 length;
+    struct runtime_Allocator allocator;
+} map_booty_boot_int_booty_treasure;
+
 typedef uint8_t booty_bit_set_boots;
 typedef booty_bit_set_boots booty_small_bit_set;
 typedef uint32_t booty_bit_field_u32;
 typedef booty_bit_field_u32 booty_large_bit_field;
-typedef int32_t booty_boot_int;
 typedef booty_boot_int booty_bit_set_boots_boot_int;
 typedef booty_bit_set_boots_boot_int booty_booties;
 typedef int64_t c_int64_t;
@@ -157,19 +192,14 @@ typedef struct i32_slice {
     int64_t  length;
 } i32_slice;
 
-typedef struct string {
-    uint8_t* data;
-    int64_t  length;
-} string;
-
-typedef struct booty_anon_1 {
+typedef struct booty_anon_3 {
     int64_t          id;
     struct string    first_name;
     struct string    last_name;
     enum booty_boots shoe;
-} booty_anon_1;
+} booty_anon_3;
 
-typedef booty_boot_int (* booty_callback)(const struct booty_anon_1 order);
+typedef booty_boot_int (* booty_callback)(const struct booty_anon_3 order);
 typedef struct pointed_cycle* cycle_pointer;
 
 typedef struct pointed_cycle {
@@ -202,18 +232,18 @@ typedef union your_foo {
     int32_t  y;
 } your_foo;
 
-typedef struct anon_2 {
+typedef struct anon_4 {
     int64_t z;
-} anon_2;
+} anon_4;
 
-typedef struct anon_3 {
+typedef struct anon_5 {
     int64_t       y;
-    struct anon_2 cba;
-} anon_3;
+    struct anon_4 cba;
+} anon_5;
 
 typedef struct nested {
     int64_t       x;
-    struct anon_3 abc;
+    struct anon_5 abc;
 } nested;
 
 typedef enum pants {
@@ -306,15 +336,15 @@ typedef struct multi_foo_result {
     int64_t d;
 } multi_foo_result;
 
-typedef struct anon_4 {
+typedef struct anon_6 {
     int64_t a;
     int64_t b;
-} anon_4;
+} anon_6;
 
-typedef union anon_5 {
+typedef union anon_7 {
     uint32_t x;
     int32_t  y;
-} anon_5;
+} anon_7;
 
 typedef struct i64_slice {
     int64_t* data;
@@ -397,24 +427,27 @@ typedef uint64_t bit_set_languages_u64;
 typedef int32_t polyglot_int;
 typedef polyglot_int bit_set_languages_polyglot_int;
 
-#define one   ((anon_bit_set_enum_6)  0)
-#define two   ((anon_bit_set_enum_6)  1)
-#define three ((anon_bit_set_enum_6)  2)
-typedef int64_t anon_bit_set_enum_6;
+#define one   ((anon_bit_set_enum_8)  0)
+#define two   ((anon_bit_set_enum_8)  1)
+#define three ((anon_bit_set_enum_8)  2)
+typedef int64_t anon_bit_set_enum_8;
 
-typedef uint8_t bit_set_anon_bit_set_enum_6;
+typedef uint8_t bit_set_anon_bit_set_enum_8;
 
-#define four ((anon_bit_set_enum_7)  0)
-#define five ((anon_bit_set_enum_7)  1)
-#define six  ((anon_bit_set_enum_7)  2)
-typedef int64_t anon_bit_set_enum_7;
+#define four ((anon_bit_set_enum_9)  0)
+#define five ((anon_bit_set_enum_9)  1)
+#define six  ((anon_bit_set_enum_9)  2)
+typedef int64_t anon_bit_set_enum_9;
 
-typedef int8_t bit_set_anon_bit_set_enum_7_i8;
+typedef int8_t bit_set_anon_bit_set_enum_9_i8;
 typedef uint32_t bit_set_range_26;
 typedef uint8_t bit_set_range_2_to_5;
 typedef uint8_t bit_set_booty_boots;
 typedef booty_boot_int bit_set_booty_boots_booty_boot_int;
 
+extern struct map_int_string bad_data;
+extern struct map_anon_1_anon_2 good_data;
+extern struct map_booty_boot_int_booty_treasure better_data;
 extern booty_small_bit_set bar_value;
 extern booty_large_bit_field baz_value;
 extern booty_booties faz_value;
@@ -428,8 +461,8 @@ extern bit_set_languages polyglot2;
 extern bit_set_languages_u64 special_polyglot;
 extern bit_set_languages_u64 another_special_polyglot;
 extern bit_set_languages_polyglot_int very_polyglot;
-extern bit_set_anon_bit_set_enum_6 numbers;
-extern bit_set_anon_bit_set_enum_7_i8 underlying_numbers;
+extern bit_set_anon_bit_set_enum_8 numbers;
+extern bit_set_anon_bit_set_enum_9_i8 underlying_numbers;
 extern bit_set_range_26 abc_bitset;
 extern bit_set_range_2_to_5 number_range;
 extern bit_set_booty_boots boot_options;
@@ -444,7 +477,7 @@ extern struct multi_foo_result multi_foo(const int64_t a, const int64_t b);
 extern uint32_t super_foo(const struct my_foo a);
 extern void print_pants(const enum pants a);
 extern void print_sausages(const sausages b);
-extern union anon_5 multi_sausage(struct anon_4**const over);
+extern union anon_7 multi_sausage(struct anon_6**const over);
 extern void print_slice(const struct i64_slice s);
 extern void add_slice(struct i64_slice*const s, const int64_t a);
 extern void multi_add_slice(const struct i64_slice (*ss)[5], const int64_t a);

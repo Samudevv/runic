@@ -1732,6 +1732,171 @@ type_to_type :: proc(
         )
 
         type.spec = strings.to_string(maybe_type_name)
+    case ^odina.Map_Type:
+        key_type := type_to_type(plat, type_expr.key, name, ctx) or_return
+        value_type := type_to_type(plat, type_expr.value, name, ctx) or_return
+
+        key_anon_name, key_anon_type, key_is_anon := runic.create_anon_type(
+            key_type.spec,
+            ctx.anon_counter,
+            ctx.allocator,
+        )
+        value_anon_name, value_anon_type, value_is_anon :=
+            runic.create_anon_type(
+                value_type.spec,
+                ctx.anon_counter,
+                ctx.allocator,
+            )
+
+        if key_is_anon {
+            key_type.spec = key_anon_name
+            om.insert(ctx.types, key_anon_name, key_anon_type)
+        }
+
+        if value_is_anon {
+            value_type.spec = value_anon_name
+            om.insert(ctx.types, value_anon_name, value_anon_type)
+        }
+
+        map_type_name: strings.Builder
+        strings.builder_init(&map_type_name, ctx.allocator)
+
+        if ctx.current_package != nil {
+            strings.write_string(&map_type_name, ctx.current_package.?.name)
+            strings.write_rune(&map_type_name, '_')
+        }
+
+        strings.write_string(&map_type_name, "map_")
+
+        switch spec in key_type.spec {
+        case string:
+            strings.write_string(&map_type_name, spec)
+        case runic.Unknown:
+            strings.write_string(&map_type_name, string(spec))
+        case runic.ExternType:
+            strings.write_string(&map_type_name, string(spec))
+        case runic.Builtin:
+            #partial switch de in type_expr.key.derived_expr {
+            case ^odina.Ident:
+                strings.write_string(&map_type_name, de.name)
+            case ^odina.Typeid_Type:
+                strings.write_string(&map_type_name, "typeid")
+            case:
+                err = error_tok("invalid key type", type_expr.key.pos)
+                return
+            }
+        case runic.Struct:
+            err = errors.unknown()
+            return
+        case runic.Enum:
+            err = errors.unknown()
+            return
+        case runic.Union:
+            err = errors.unknown()
+            return
+        case runic.FunctionPointer:
+            err = errors.unknown()
+            return
+        }
+
+        strings.write_rune(&map_type_name, '_')
+
+        switch spec in value_type.spec {
+        case string:
+            strings.write_string(&map_type_name, spec)
+        case runic.Unknown:
+            strings.write_string(&map_type_name, string(spec))
+        case runic.ExternType:
+            strings.write_string(&map_type_name, string(spec))
+        case runic.Builtin:
+            #partial switch de in type_expr.value.derived_expr {
+            case ^odina.Ident:
+                strings.write_string(&map_type_name, de.name)
+            case ^odina.Typeid_Type:
+                strings.write_string(&map_type_name, "typeid")
+            case:
+                err = error_tok("invalid value type", type_expr.value.pos)
+                return
+            }
+        case runic.Struct:
+            err = errors.unknown()
+            return
+        case runic.Enum:
+            err = errors.unknown()
+            return
+        case runic.Union:
+            err = errors.unknown()
+            return
+        case runic.FunctionPointer:
+            err = errors.unknown()
+            return
+        }
+
+        if !om.contains(ctx.types^, strings.to_string(map_type_name)) {
+            map_type: runic.Struct
+            map_type.members = make(
+                [dynamic]runic.Member,
+                len = 3,
+                cap = 3,
+                allocator = ctx.allocator,
+            )
+
+            map_type.members[0].name = "data"
+            switch plat.arch {
+            case .x86_64, .arm64:
+                map_type.members[0].type = runic.Type {
+                    spec = runic.Builtin.UInt64,
+                }
+            case .x86, .arm32:
+                map_type.members[0].type = runic.Type {
+                    spec = runic.Builtin.UInt32,
+                }
+            case .Any:
+                map_type.members[0].type = runic.Type {
+                    spec = runic.Builtin.Untyped,
+                }
+            }
+
+            map_type.members[1].name = "length"
+            switch plat.arch {
+            case .x86_64, .arm64:
+                map_type.members[1].type = runic.Type {
+                    spec = runic.Builtin.UInt64,
+                }
+            case .x86, .arm32:
+                map_type.members[1].type = runic.Type {
+                    spec = runic.Builtin.UInt32,
+                }
+            case .Any:
+                map_type.members[1].type = runic.Type {
+                    spec = runic.Builtin.Untyped,
+                }
+            }
+
+            map_type.members[2].name = "allocator"
+            map_type.members[2].type = runic.Type {
+                spec = string("runtime_Allocator"),
+            }
+
+            if !om.contains(ctx.types^, "runtime_Allocator") {
+                allocator_type := lookup_type_of_import(
+                    plat,
+                    "runtime",
+                    "Allocator",
+                    ctx,
+                ) or_return
+
+                om.insert(ctx.types, "runtime_Allocator", allocator_type)
+            }
+
+            om.insert(
+                ctx.types,
+                strings.to_string(map_type_name),
+                runic.Type{spec = map_type},
+            )
+        }
+
+        type.spec = strings.to_string(map_type_name)
     case:
         fmt.eprintln(
             error_tok(

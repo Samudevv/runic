@@ -156,7 +156,6 @@ int main(int args, char *argv[]) {
     for (int32_t x = 0; x < window_height; x++) {
       fwrite(&pixels[4 * window_width * y + x * 4 + 1], 3, 1, ppm_file);
     }
-    printf("\n");
   }
 
   fclose(ppm_file);

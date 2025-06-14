@@ -1484,14 +1484,7 @@ ident_to_type :: proc(
     case "rawptr":
         type.spec = runic.Builtin.RawPtr
     case "bool":
-        switch plat.arch {
-        case .Any:
-            type.spec = runic.Builtin.Untyped
-        case .x86_64, .arm64:
-            type.spec = runic.Builtin.Bool64
-        case .x86, .arm32:
-            type.spec = runic.Builtin.Bool32
-        }
+        type.spec = runic.Builtin.Bool8
     case "b8":
         type.spec = runic.Builtin.Bool8
     case "b16":

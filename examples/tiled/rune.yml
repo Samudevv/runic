@@ -1,0 +1,11 @@
+version: 0
+platforms: Linux x86_64
+
+from:
+  language: odin
+  static: ../../build/libtiled.a
+  packages: .
+to:
+  language: c
+  out: tiled.h
+  add_prefix: "tiled_"

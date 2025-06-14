@@ -80,6 +80,16 @@ This repository contains some examples which show how the tool can be used.
   just example olivec
   ```
 
+- [tiled](examples/tiled) <br> This example creates c bindings to [odin-tiled](https://https://github.com/SabeDoesThings/odin-tiled) and renders a tile map to a window and a ppm file. Build and run it using:
+  ```console
+  # This creates a image file test_data/tiled.ppm
+  just example tiled
+  ```
+To render to a window run:
+  ```console
+  just --justfile examples/tiled/justfile run
+  ```
+
 ## Runestone
 
 [Runestone Documentation](https://github.com/Samudevv/runic/wiki/Runestone)

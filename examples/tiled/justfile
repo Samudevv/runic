@@ -1,0 +1,43 @@
+set windows-shell := ['powershell.exe']
+
+BUILD_DIR := justfile_directory() / '..' / '..' / 'build'
+
+example: run-headless
+
+run: build
+  {{ BUILD_DIR / 'tiled_example' }}
+run-headless: build
+  {{ BUILD_DIR / 'tiled_example' }} --headless
+
+[unix]
+build: bindings tiled
+  cc --std=c99 -Wall -Wextra -Werror -O3 -o "{{ BUILD_DIR / 'tiled_example' }}" 'tiled_example.c' -L"{{ BUILD_DIR }}" -ltiled -lSDL2 -lSDL2_image
+
+STDOUT_TO := if os_family() == 'unix' {
+  '>'
+} else {
+  '| Set-Content -Encoding String -Path'
+}
+
+bindings:
+  {{ BUILD_DIR / 'runic_debug' }}
+
+[unix]
+tiled:
+  odin build tiled.odin -file -build-mode:obj -reloc-mode:pic -out:"{{ BUILD_DIR / 'tiled.o' }}" -vet -warnings-as-errors -debug -use-single-module -no-entry-point
+  ar r "{{ BUILD_DIR / 'libtiled.a' }}"  "{{ BUILD_DIR / 'tiled.o' }}"
+
+[windows]
+tiled:
+  odin build tiled.odin -file -build-mode:obj -reloc-mode:pic -out:"{{ BUILD_DIR / 'tiled.obj' }}" -vet -warnings-as-errors -debug -use-single-module -no-entry-point
+  lib /out:"{{ BUILD_DIR / 'tiled.lib' }}" "{{ BUILD_DIR / 'tiled.obj' }}"
+
+[unix]
+clean:
+  rm -rf tiled/ "{{ BUILD_DIR / 'libtiled.a' }}" "{{ BUILD_DIR / 'tiled.o' }}"
+
+[windows]
+clean:
+  if (Test-Path -Path tiled) { Remove-Item -Path tiled -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path "{{ BUILD_DIR / 'tiled.lib' }}") { Remove-Item -Path "{{ BUILD_DIR / 'tiled.lib' }}" -Force -ErrorAction SilentlyContinue }
+  if (Test-Path -Path "{{ BUILD_DIR / 'tiled.obj' }}") { Remove-Item -Path "{{ BUILD_DIR / 'tiled.obj' }}" -Force -ErrorAction SilentlyContinue }

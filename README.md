@@ -80,13 +80,11 @@ This repository contains some examples which show how the tool can be used.
   just example olivec
   ```
 
-- [tiled](examples/tiled) <br> This example creates c bindings to [odin-tiled](https://https://github.com/SabeDoesThings/odin-tiled) and renders a tile map to a window and a ppm file. Build and run it using:
+- [tiled](examples/tiled) <br> This example creates c bindings to [odin-tiled](https://github.com/SabeDoesThings/odin-tiled) and renders a tile map to a window and a ppm file. It depends on [SDL2](https://libsdl.org) and [SDL2_image](https://github.com/libsdl-org/SDL_image/tree/SDL2). Build and run it using:
   ```console
-  # This creates a image file test_data/tiled.ppm
+  # This creates an image file test_data/tiled.ppm
   just example tiled
-  ```
-To render to a window run:
-  ```console
+  # To render to a window run
   just --justfile examples/tiled/justfile run
   ```
 

@@ -5,6 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Linked from stb_image.a etc.
+extern uint8_t *stbi_load(const char *filename, int *x, int *y,
+                          int *channels_in_file, int desired_channels);
+
 struct tiled_string cstr_to_tiled_string(const char *str) {
   struct tiled_string s = {
       .data = (uint8_t *)(str),
@@ -32,9 +36,6 @@ int main(int args, char *argv[]) {
       headless = 1;
     }
   }
-
-  printf("Layer = %zu\nMap = %zu\nTileset = %zu\n", sizeof(tiled_Layer),
-         sizeof(tiled_Map), sizeof(tiled_Tileset));
 
   const struct tiled_string map_file_name =
       cstr_to_tiled_string("tilemap.json");
@@ -178,6 +179,51 @@ int main(int args, char *argv[]) {
   SDL_DestroyWindow(w);
   IMG_Quit();
   SDL_Quit();
+
+  // Check for correctness of image
+  printf("Checking correctness ...\n");
+
+  int expected_width, expected_height, expected_channels;
+  uint8_t *expected_pixels =
+      stbi_load("../../test_data/tiled.expected.png", &expected_width,
+                &expected_height, &expected_channels, 4);
+  if (expected_pixels == NULL) {
+    fprintf(stderr, "failed to load tiled.expected.png\n");
+    return 1;
+  }
+
+  if (expected_width != window_width) {
+    fprintf(stderr, "width: %d != %d\n", window_width, expected_width);
+    return 1;
+  }
+  if (expected_height != window_height) {
+    fprintf(stderr, "height: %d != %d\n", window_height, expected_height);
+    return 1;
+  }
+
+  for (int32_t x = 0; x < window_width; x++) {
+    for (int32_t y = 0; y < window_height; y++) {
+      const uint8_t p_r = pixels[y * window_width * 4 + x * 4 + 1];
+      const uint8_t p_g = pixels[y * window_width * 4 + x * 4 + 2];
+      const uint8_t p_b = pixels[y * window_width * 4 + x * 4 + 3];
+      const uint8_t p_a = pixels[y * window_width * 4 + x * 4 + 0];
+
+      const uint8_t ex_r = expected_pixels[y * window_width * 4 + x * 4 + 0];
+      const uint8_t ex_g = expected_pixels[y * window_width * 4 + x * 4 + 1];
+      const uint8_t ex_b = expected_pixels[y * window_width * 4 + x * 4 + 2];
+      const uint8_t ex_a = expected_pixels[y * window_width * 4 + x * 4 + 3];
+
+      if (p_r != ex_r || p_g != ex_g || p_b != ex_b || p_a != ex_a) {
+        fprintf(stderr, "Pixel[%d][%d] 0x%X%X%X%X != 0x%X%X%X%X\n", x, y, p_r,
+                p_g, p_b, p_a, ex_r, ex_g, ex_b, ex_a);
+        return 1;
+      }
+    }
+  }
+
+  // Here we care about deallocating, I guess.
+  free(expected_pixels);
+  free(pixels);
 
   return 0;
 }

@@ -1,6 +1,8 @@
 set windows-shell := ['powershell.exe']
 
 BUILD_DIR := justfile_directory() / '..' / '..' / 'build'
+ODIN_ROOT := if os_family() == 'unix' { shell('dirname ' + shell('which odin')) } else { '' }
+MAKE := if os() == 'linux' {'make'} else {'gmake'}
 
 example: run-headless
 
@@ -9,9 +11,9 @@ run: build
 run-headless: build
   {{ BUILD_DIR / 'tiled_example' }} --headless
 
-[unix]
-build: bindings tiled
-  cc --std=c99 -Wall -Wextra -Werror -O3 -o "{{ BUILD_DIR / 'tiled_example' }}" 'tiled_example.c' -L"{{ BUILD_DIR }}" -ltiled -lSDL2 -lSDL2_image
+[linux]
+build: bindings tiled stb_image
+  cc --std=c99 -Wall -Wextra -Werror -O3 -o "{{ BUILD_DIR / 'tiled_example' }}" 'tiled_example.c' -L"{{ BUILD_DIR }}" -L"{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' }}" -ltiled -lSDL2 -lSDL2_image -l:stb_image.a -lm
 
 STDOUT_TO := if os_family() == 'unix' {
   '>'
@@ -31,6 +33,24 @@ tiled:
 tiled:
   odin build tiled.odin -file -build-mode:obj -reloc-mode:pic -out:"{{ BUILD_DIR / 'tiled.obj' }}" -vet -warnings-as-errors -debug -use-single-module -no-entry-point
   lib /out:"{{ BUILD_DIR / 'tiled.lib' }}" "{{ BUILD_DIR / 'tiled.obj' }}"
+
+STBIMAGE_MAKE := if os_family() == 'unix' {
+if os() != 'macos' {
+  MAKE + ' -C ' + '"' + ODIN_ROOT / 'vendor' / 'stb' / 'src' + '"'
+} else {
+  'echo Nothing do to for MacOS'
+}
+} else { 'echo Nothing to do for Windows' }
+[unix]
+stb_image:
+  #! /bin/sh
+  set -ex
+  if [ ! -e "{{ ODIN_ROOT }}/vendor/stb/lib/stb_image.a" ]; then
+    {{ STBIMAGE_MAKE }}
+  fi
+
+[windows]
+stb_image:
 
 [unix]
 clean:

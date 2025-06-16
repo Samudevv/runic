@@ -47,9 +47,10 @@ jobs:
           submodules: recursive
       - uses: extractions/setup-just@v3
         name: Install just
-      - name: Install libclang, llvm
+      - name: Install libclang, llvm, sdl2, sdl2_image
         run: |
-          sudo apt -y install libclang-18-dev libllvm18
+          sudo apt update
+          sudo apt -y install libclang-18-dev libllvm18 libsdl2-dev libsdl2-image-dev
           sudo ln -rfs /usr/lib/${{ env.arch }}-linux-gnu/libclang-18.so /usr/lib/${{ env.arch }}-linux-gnu/libclang.so
           sudo ln -rfs /usr/lib/llvm-18/lib/libLLVM.so.1 /usr/lib/libLLVM-18.so.18.1
         if: env.os == 'linux'
@@ -83,6 +84,9 @@ jobs:
 
       - name: example/olivec
         run: just example olivec
+      - name: example/tiled
+        run: just example tiled
+        if: env.os == 'linux'
 
       - name: Build runic release
         run: just

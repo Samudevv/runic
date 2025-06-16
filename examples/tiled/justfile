@@ -16,9 +16,9 @@ build: bindings tiled stb_image
   cc --std=c99 -Wall -Wextra -Werror -O3 \
     -o "{{ BUILD_DIR / 'tiled_example' }}" \
     'tiled_example.c' \
+    "{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' / 'stb_image.a' }}" \
     -L"{{ BUILD_DIR }}" \
-    -L"{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' }}" \
-    -ltiled -lSDL2 -lSDL2_image -l:stb_image.a -lm
+    -ltiled -lSDL2 -lSDL2_image -lm
 
 [macos]
 build: bindings tiled
@@ -28,11 +28,11 @@ build: bindings tiled
     -I"{{ shell('brew --prefix sdl2_image') / 'include' }}" \
     -o "{{ BUILD_DIR / 'tiled_example' }}" \
     'tiled_example.c' \
+    "{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' / 'darwin' / 'stb_image.a' }}" \
     -L"{{ BUILD_DIR }}" \
-    -L"{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' / 'darwin' }}" \
     -L"{{ shell('brew --prefix sdl2') / 'lib' }}" \
     -L"{{ shell('brew --prefix sdl2_image') / 'lib' }}" \
-    -ltiled -lSDL2 -lSDL2_image -lstb_image
+    -ltiled -lSDL2 -lSDL2_image
 
 [windows]
 build: bindings tiled sdl2-headers

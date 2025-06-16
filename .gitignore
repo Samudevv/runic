@@ -6,6 +6,10 @@
 *.o
 *.obj
 *.core
+*.dll
+*.lib
+*.exe
+*.exp
 !test_data/foozy/foozy.expected.h
 !test_data/the_system/my_system.h
 test_data/*.ppp.*

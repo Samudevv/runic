@@ -1,7 +1,7 @@
 set windows-shell := ['powershell.exe']
 
 BUILD_DIR := justfile_directory() / '..' / '..' / 'build'
-ODIN_ROOT := if os_family() == 'unix' { shell('dirname ' + shell('which odin')) } else { '' }
+ODIN_ROOT := if os_family() == 'unix' { shell('dirname ' + shell('which odin')) } else { env('ODIN_ROOT') }
 MAKE := if os() == 'linux' {'make'} else {'gmake'}
 
 example: run-headless
@@ -14,6 +14,40 @@ run-headless: build
 [linux]
 build: bindings tiled stb_image
   cc --std=c99 -Wall -Wextra -Werror -O3 -o "{{ BUILD_DIR / 'tiled_example' }}" 'tiled_example.c' -L"{{ BUILD_DIR }}" -L"{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' }}" -ltiled -lSDL2 -lSDL2_image -l:stb_image.a -lm
+
+[windows]
+build: bindings tiled sdl2-headers
+  cl /std:c11 /utf-8 /O2 /Fe"{{ BUILD_DIR / 'tiled_example.exe' }}" /I"{{ BUILD_DIR }}" 'tiled_example.c' /link /LIBPATH:"{{ BUILD_DIR }}" /LIBPATH:"{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' }}" /LIBPATH:"{{ ODIN_ROOT / 'vendor' / 'sdl2' }}" /LIBPATH:"{{ ODIN_ROOT / 'vendor' / 'sdl2' / 'image' }}" tiled.lib SDL2.lib SDL2_image.lib stb_image.lib
+
+[windows]
+sdl2-headers:
+  #! pwsh.exe
+
+  $SDL2_URL = "https://github.com/libsdl-org/SDL/releases/download/release-2.32.8/SDL2-devel-2.32.8-VC.zip"
+  $SDL2_image_URL = "https://github.com/libsdl-org/SDL_image/releases/download/release-2.8.8/SDL2_image-devel-2.8.8-VC.zip"
+  $SDL2_ZIP = "{{ BUILD_DIR / 'SDL2.zip' }}"
+  $SDL2_image_ZIP = "{{ BUILD_DIR / 'SDL2_image.zip' }}"
+
+  if (!(Test-Path $SDL2_ZIP)) {
+  	Invoke-WebRequest -Uri $SDL2_URL -OutFile $SDL2_ZIP
+  }
+  if (!(Test-Path $SDL2_image_ZIP)) {
+  	Invoke-WebRequest -Uri $SDL2_image_URL -OutFile $SDL2_image_ZIP
+  }
+
+  if (!(Test-Path "{{ BUILD_DIR / 'SDL2' / 'SDL.h' }}")) {
+  	Expand-Archive -Path $SDL2_ZIP -DestinationPath "{{ BUILD_DIR / 'SDL2' }}" -Force
+  	Move-Item -Path "{{ BUILD_DIR / 'SDL2' / 'SDL2-2.32.8' / 'include' / '*' }}" -Destination "{{ BUILD_DIR / 'SDL2' }}"
+  }
+  if (!(Test-Path "{{ BUILD_DIR / 'SDL2' / 'SDL_image.h' }}")) {
+  	Expand-Archive -Path $SDL2_image_ZIP -DestinationPath "{{ BUILD_DIR / 'SDL2_image' }}" -Force
+  	Move-Item -Path "{{ BUILD_DIR / 'SDL2_image' / 'SDL2_image-2.8.8' / 'include' / '*' }}" -Destination "{{ BUILD_DIR / 'SDL2' }}"
+  }
+
+  Copy-Item -Path "{{ ODIN_ROOT / 'vendor' / 'sdl2' / 'SDL2.dll' }}" -Destination "{{ BUILD_DIR / 'SDL2.dll' }}"
+  Copy-Item -Path "{{ ODIN_ROOT / 'vendor' / 'sdl2' / 'image' / 'SDL2_image.dll' }}" -Destination "{{ BUILD_DIR / 'SDL2_image.dll' }}"
+  Copy-Item -Path "{{ ODIN_ROOT / 'vendor' / 'sdl2' / 'image' / 'libpng16-16.dll' }}" -Destination "{{ BUILD_DIR / 'libpng16-16.dll' }}"
+  Copy-Item -Path "{{ ODIN_ROOT / 'vendor' / 'sdl2' / 'image' / 'zlib1.dll' }}" -Destination "{{ BUILD_DIR / 'zlib1.dll' }}"
 
 STDOUT_TO := if os_family() == 'unix' {
   '>'

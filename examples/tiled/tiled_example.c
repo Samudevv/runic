@@ -1,9 +1,13 @@
-#include "tiled.h"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define SDL_MAIN_HANDLED
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+
+#include "tiled.h"
+
 
 // Linked from stb_image.a etc.
 extern uint8_t *stbi_load(const char *filename, int *x, int *y,

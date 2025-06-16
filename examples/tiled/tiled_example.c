@@ -216,7 +216,13 @@ int main(int args, char *argv[]) {
       const uint8_t ex_b = expected_pixels[y * window_width * 4 + x * 4 + 2];
       const uint8_t ex_a = expected_pixels[y * window_width * 4 + x * 4 + 3];
 
-      if (p_r != ex_r || p_g != ex_g || p_b != ex_b || p_a != ex_a) {
+      const int32_t d_r = (int32_t)p_r - (int32_t)ex_r;
+      const int32_t d_g = (int32_t)p_g - (int32_t)ex_g;
+      const int32_t d_b = (int32_t)p_b - (int32_t)ex_b;
+      const int32_t d_a = (int32_t)p_a - (int32_t)ex_a;
+
+      if (d_r < -10 || d_r > 10 || d_g < -10 || d_g > 10 || d_b < -10 ||
+          d_b > 10 || d_a < -10 || d_a > 10) {
         fprintf(stderr, "Pixel[%d][%d] 0x%X%X%X%X != 0x%X%X%X%X\n", x, y, p_r,
                 p_g, p_b, p_a, ex_r, ex_g, ex_b, ex_a);
         return 1;

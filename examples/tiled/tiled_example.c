@@ -8,7 +8,6 @@
 
 #include "tiled.h"
 
-
 // Linked from stb_image.a etc.
 extern uint8_t *stbi_load(const char *filename, int *x, int *y,
                           int *channels_in_file, int desired_channels);

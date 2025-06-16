@@ -84,9 +84,15 @@ jobs:
 
       - name: example/olivec
         run: just example olivec
-      - name: example/tiled
+
+      - name: example/tiled Linux
         run: just example tiled
         if: env.os == 'linux'
+      - name: example/tiled Windows
+        run: |
+          $Env:ODIN_ROOT = Split-Path -Path (Get-Command odin).Path -Parent
+          just example tiled
+        if: env.os == 'windows'
 
       - name: Build runic release
         run: just

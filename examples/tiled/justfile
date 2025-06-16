@@ -13,15 +13,36 @@ run-headless: build
 
 [linux]
 build: bindings tiled stb_image
-  cc --std=c99 -Wall -Wextra -Werror -O3 -o "{{ BUILD_DIR / 'tiled_example' }}" 'tiled_example.c' -L"{{ BUILD_DIR }}" -L"{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' }}" -ltiled -lSDL2 -lSDL2_image -l:stb_image.a -lm
+  cc --std=c99 -Wall -Wextra -Werror -O3 \
+    -o "{{ BUILD_DIR / 'tiled_example' }}" \
+    'tiled_example.c' \
+    -L"{{ BUILD_DIR }}" \
+    -L"{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' }}" \
+    -ltiled -lSDL2 -lSDL2_image -l:stb_image.a -lm
 
 [macos]
 build: bindings tiled
-  cc --std=c99 -Wall -Wextra -Werror -O3 -o "{{ BUILD_DIR / 'tiled_example' }}" 'tiled_example.c' -L"{{ BUILD_DIR }}" -L"{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' / 'darwin' }}" -ltiled -lSDL2 -lSDL2_image -lstb_image -lm
+  cc --std=c99 -Wall -Wextra -Werror -O3 \
+    -I"{{ shell('brew --prefix sdl2') / 'include' }}" \
+    -I"{{ shell('brew --prefix sdl2_image') / 'include' }}" \
+    -o "{{ BUILD_DIR / 'tiled_example' }}" \
+    'tiled_example.c' \
+    -L"{{ BUILD_DIR }}" \
+    -L"{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' / 'darwin' }}" \
+    -ltiled -lSDL2 -lSDL2_image -lstb_image
 
 [windows]
 build: bindings tiled sdl2-headers
-  cl /std:c11 /utf-8 /O2 /Fe"{{ BUILD_DIR / 'tiled_example.exe' }}" /I"{{ BUILD_DIR }}" 'tiled_example.c' /link /LIBPATH:"{{ BUILD_DIR }}" /LIBPATH:"{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' }}" /LIBPATH:"{{ ODIN_ROOT / 'vendor' / 'sdl2' }}" /LIBPATH:"{{ ODIN_ROOT / 'vendor' / 'sdl2' / 'image' }}" tiled.lib SDL2.lib SDL2_image.lib stb_image.lib
+  cl /std:c11 /utf-8 /O2 \
+    /Fe"{{ BUILD_DIR / 'tiled_example.exe' }}" \
+    /I"{{ BUILD_DIR }}" \
+    'tiled_example.c' \
+    /link \
+    /LIBPATH:"{{ BUILD_DIR }}" \
+    /LIBPATH:"{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' }}" \
+    /LIBPATH:"{{ ODIN_ROOT / 'vendor' / 'sdl2' }}" \
+    /LIBPATH:"{{ ODIN_ROOT / 'vendor' / 'sdl2' / 'image' }}" \
+    tiled.lib SDL2.lib SDL2_image.lib stb_image.lib
 
 [windows]
 sdl2-headers:

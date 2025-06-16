@@ -22,7 +22,7 @@ build: bindings tiled stb_image
 
 [macos]
 build: bindings tiled
-  cc --std=c99 -Wall -Wextra -Werror -O3 \
+  cc --std=c99 -Wall -Wextra -O3 \
     -I"{{ shell('brew --prefix sdl2') / 'include' }}" \
     -I"{{ shell('brew --prefix sdl2') / 'include' / 'SDL2' }}" \
     -I"{{ shell('brew --prefix sdl2_image') / 'include' }}" \

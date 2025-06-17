@@ -1,6 +1,7 @@
 set windows-shell := ['powershell.exe']
 
 BUILD_DIR := justfile_directory() / '..' / '..' / 'build'
+ODIN_ROOT := shell('odin root')
 ODIN_FLAGS := (
   '-debug ' +
   '-error-pos-style:unix ' +
@@ -38,7 +39,7 @@ olivec:
 
 STBIMAGE_MAKE := if os_family() == 'unix' {
 if os() != 'macos' {
-  MAKE + ' -C ' + '"' + `dirname $(which odin)` / 'vendor' / 'stb' / 'src' + '"'
+  MAKE + ' -C ' + '"' + ' ' + ODIN_ROOT / 'vendor' / 'stb' / 'src' + '"'
 } else {
   'echo Nothing do to for MacOS'
 }
@@ -47,7 +48,7 @@ if os() != 'macos' {
 stb_image:
   #! /bin/sh
   set -ex
-  if [ ! -e "$(dirname $(which odin))/vendor/stb/lib/stb_image.a" ]; then
+  if [ ! -e "{{ ODIN_ROOT }}/vendor/stb/lib/stb_image.a" ]; then
     {{ STBIMAGE_MAKE }}
   fi
 

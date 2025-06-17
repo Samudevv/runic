@@ -1,7 +1,7 @@
 set windows-shell := ['powershell.exe']
 
 BUILD_DIR := justfile_directory() / '..' / '..' / 'build'
-ODIN_ROOT := if os_family() == 'unix' { shell('dirname ' + shell('which odin')) } else { env('ODIN_ROOT') }
+ODIN_ROOT := shell('odin root')
 MAKE := if os() == 'linux' {'make'} else {'gmake'}
 
 example: run-headless

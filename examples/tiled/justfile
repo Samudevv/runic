@@ -1,7 +1,7 @@
 set windows-shell := ['powershell.exe']
 
 BUILD_DIR := justfile_directory() / '..' / '..' / 'build'
-ODIN_ROOT := shell('odin root')
+ODIN_ROOT := `odin root`
 MAKE := if os() == 'linux' {'make'} else {'gmake'}
 
 example: run-headless
@@ -98,7 +98,7 @@ tiled:
 
 STBIMAGE_MAKE := if os_family() == 'unix' {
 if os() != 'macos' {
-  MAKE + ' -C ' + '"' + ODIN_ROOT / 'vendor' / 'stb' / 'src' + '"'
+  MAKE + ' -C "' + ODIN_ROOT / 'vendor' / 'stb' / 'src' + '"'
 } else {
   'echo Nothing do to for MacOS'
 }

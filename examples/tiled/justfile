@@ -2,7 +2,7 @@ set windows-shell := ['powershell.exe']
 
 BUILD_DIR := justfile_directory() / '..' / '..' / 'build'
 ODIN_ROOT := `odin root`
-MAKE := if os() == 'linux' {'make'} else {'gmake'}
+MAKE := if os() == 'linux' {'make'} else { if os() == 'macos' {'make'} else {'gmake'}}
 
 example: run-headless
 
@@ -21,7 +21,7 @@ build: bindings tiled stb_image
     -ltiled -lSDL2 -lSDL2_image -lm
 
 [macos]
-build: bindings tiled
+build: bindings tiled stb_image
   cc --std=c99 -Wall -Wextra -O3 \
     -I"{{ shell('brew --prefix sdl2') / 'include' }}" \
     -I"{{ shell('brew --prefix sdl2') / 'include' / 'SDL2' }}" \
@@ -97,17 +97,18 @@ tiled:
   lib /out:"{{ BUILD_DIR / 'tiled.lib' }}" "{{ BUILD_DIR / 'tiled.obj' }}"
 
 STBIMAGE_MAKE := if os_family() == 'unix' {
-if os() != 'macos' {
-  MAKE + ' -C "' + ODIN_ROOT / 'vendor' / 'stb' / 'src' + '"'
-} else {
-  'echo Nothing do to for MacOS'
-}
+    MAKE + ' -C "' + ODIN_ROOT / 'vendor' / 'stb' / 'src' + '"'
 } else { 'echo Nothing to do for Windows' }
+STBIMAGE_LIB := if os() == 'macos' {
+    ODIN_ROOT / "vendor/stb/lib/darwin/stb_image.a"
+} else {
+    ODIN_ROOT / "vendor/stb/lib/stb_image.a"
+}
 [unix]
 stb_image:
   #! /bin/sh
   set -ex
-  if [ ! -e "{{ ODIN_ROOT }}/vendor/stb/lib/stb_image.a" ]; then
+  if [ ! -e "{{ STBIMAGE_LIB }}" ]; then
     {{ STBIMAGE_MAKE }}
   fi
 

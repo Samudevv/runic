@@ -88,7 +88,7 @@ expect_diff_files :: proc(
         return false
     }
 
-    if !state.success {
+    if !state.success || state.exit_code != 0 {
         if len(stderr) != 0 do log.errorf("{}\n{}\n\n", loc, string(stderr))
         if len(stdout) != 0 do log.errorf("{}\n{}\n\n", loc, string(stdout))
         return false

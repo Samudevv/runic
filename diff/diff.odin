@@ -186,6 +186,12 @@ expect_diff_strings :: proc(
 
 @(private)
 program_installed :: proc(prog_name: string) -> bool {
+    when ODIN_OS == .Windows {
+        prog_name := prog_name
+        prog_name = fmt.aprintf("{}.exe", prog_name)
+        defer delete(prog_name)
+    }
+
     PATH, found := os.lookup_env("PATH", context.allocator)
     if !found do return false
     defer delete(PATH)

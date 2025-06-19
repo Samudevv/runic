@@ -11,6 +11,8 @@
 *.exe
 *.exp
 !test_data/foozy/foozy.expected.h
+!test_data/foozy/foozy-windows.expected.h
+!test_data/foozy/foozy-macos.expected.h
 !test_data/the_system/my_system.h
 test_data/*.ppp.*
 test_data/*.pp.*

@@ -18,6 +18,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import ccdg "c/codegen"
+import "core:flags"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
@@ -42,12 +43,71 @@ main :: proc() {
     defer free_all(context.temp_allocator)
     defer free_all(errors.error_allocator)
 
-    rune_file_name := "./rune.yml"
-    host_plat := runic.platform_from_host()
-
-    if len(os.args) > 1 {
-        rune_file_name = os.args[1]
+    args: struct {
+        version:
+        bool `args:"name=version" usage:"Print version and license information"`,
+        credits:
+        bool `args:"name=credits" usage:"Print credits to dependencies"`,
+        rune_file_name:
+        string `args:"pos=0,name=rune" usage:"The rune configuration file to load"`,
     }
+
+    if flags_err := flags.parse(&args, os.args[1:], .Unix); flags_err != nil {
+        switch e in flags_err {
+        case flags.Parse_Error:
+            fmt.eprintfln("{}: {}", e.reason, e.message)
+            os.exit(1)
+        case flags.Open_File_Error:
+            fmt.eprintfln("open file \"{}\": {}", e.filename, e.errno)
+            os.exit(1)
+        case flags.Help_Request:
+            flags.write_usage(
+                os.stream_from_handle(os.stderr),
+                any(args).id,
+                os.args[0],
+                .Unix,
+            )
+            os.exit(0)
+        case flags.Validation_Error:
+            fmt.eprintfln("validate flags: {}", e.message)
+            os.exit(1)
+        }
+
+        panic("unreachable")
+    }
+
+    if args.version {
+        print_version()
+        os.exit(0)
+    } else if args.credits {
+        print_credits()
+        os.exit(0)
+    }
+
+    rune_file_name := args.rune_file_name
+    if len(rune_file_name) == 0 {
+        canditates := [?]string{"rune.yml", "rune.yaml", "rune.json"}
+
+        for c in canditates {
+            if os.is_file(c) {
+                rune_file_name = c
+            }
+        }
+
+        if len(rune_file_name) == 0 {
+            fmt.eprintfln(
+                "no rune file has been specified and no rune file has been found in the current working directory\ncandiates are {}",
+                strings.join(
+                    canditates[:],
+                    ", ",
+                    allocator = context.temp_allocator,
+                ),
+            )
+            os.exit(1)
+        }
+    }
+
+    host_plat := runic.platform_from_host()
 
     if !filepath.is_abs(rune_file_name) {
         cwd := os.get_current_directory()
@@ -468,4 +528,3 @@ main :: proc() {
         }
     }
 }
-

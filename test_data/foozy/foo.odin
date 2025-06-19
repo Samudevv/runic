@@ -29,13 +29,17 @@ FOO_VALUE_STR :: "5"
 FOO_VALUE_LONG_STR :: `five`
 FOO_FLOAT :: 5.6
 
-when ODIN_OS == .Linux {
-    FOO_BANANA :: "banana"
-} else when ODIN_OS == .Windows {
+when ODIN_OS == .Linux == true && ODIN_ARCH == .amd64 && FOO_VALUE == 5 {
+    FOO_BANANA :: "bananax86_64"
+} else when ODIN_OS == .Linux && ODIN_ARCH == .arm64 && FOO_FLOAT == 5.6 {
+    FOO_BANANA :: "bananaaarch64"
+} else when ODIN_OS == .Windows != false && FOO_FLOAT > 5.0 {
     FOO_BANANA :: "bana"
 } else {
     FOO_BANANA :: "banananana"
 }
+
+when ODIN_OS == .Linux do FOO_APPLE :: "apple"
 
 cycle_pointer :: ^pointed_cycle
 pointed_cycle :: struct {

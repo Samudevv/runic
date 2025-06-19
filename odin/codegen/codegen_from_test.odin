@@ -1,4 +1,3 @@
-#+build linux, darwin
 /*
 This file is part of runic.
 
@@ -28,7 +27,16 @@ import "root:runic"
 test_from_odin_codegen :: proc(t: ^testing.T) {
     using testing
 
-    plat := runic.platform_from_host()
+    plats := [?]runic.Platform {
+        {os = .Linux, arch = .x86_64},
+        {os = .Windows, arch = .x86_64},
+        {os = .Macos, arch = .arm64},
+    }
+    file_names := [?]string {
+        "test_data/foozy/foozy.h",
+        "test_data/foozy/foozy-windows.h",
+        "test_data/foozy/foozy-macos.h",
+    }
 
     rune_file, os_err := os.open("test_data/foozy/rune.yml")
     if !expect_value(t, os_err, nil) do return
@@ -40,36 +48,48 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
     )
     if !expect_value(t, rn_err, nil) do return
 
-    rs, rs_err := generate_runestone(
-        plat,
-        "test_data/foozy/rune.yml",
-        rn.from.(runic.From),
-    )
-    if !expect_value(t, rs_err, nil) do return
-    defer runic.runestone_destroy(&rs)
-    runic.from_postprocess_runestone(&rs, rn.from.(runic.From))
+    for plat, idx in plats {
+        rs, rs_err := generate_runestone(
+            plat,
+            "test_data/foozy/rune.yml",
+            rn.from.(runic.From),
+        )
+        if !expect_value(t, rs_err, nil) do return
+        defer runic.runestone_destroy(&rs)
+        runic.from_postprocess_runestone(&rs, rn.from.(runic.From))
 
-    out_file: os.Handle = ---
-    out_file, os_err = os.open(
-        "test_data/foozy/foozy.h",
-        os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
-        0o644,
-    )
-    if !expect_value(t, os_err, nil) do return
-    defer os.close(out_file)
+        out_file: os.Handle = ---
+        out_file, os_err = os.open(
+            file_names[idx],
+            os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
+            0o644,
+        )
+        if !expect_value(t, os_err, nil) do return
+        defer os.close(out_file)
 
-    runic.to_preprocess_runestone(&rs, rn.to.(runic.To), ccdg.C_RESERVED)
+        runic.to_preprocess_runestone(&rs, rn.to.(runic.To), ccdg.C_RESERVED)
 
-    ccdg_err := ccdg.generate_bindings(
-        rs,
-        rn.to.(runic.To),
-        os.stream_from_handle(out_file),
-    )
-    if !expect_value(t, ccdg_err, nil) do return
+        ccdg_err := ccdg.generate_bindings(
+            rs,
+            rn.to.(runic.To),
+            os.stream_from_handle(out_file),
+        )
+        if !expect_value(t, ccdg_err, nil) do return
+    }
 
     diff.expect_diff_files(
         t,
         "test_data/foozy/foozy.expected.h",
         "test_data/foozy/foozy.h",
+    )
+    diff.expect_diff_files(
+        t,
+        "test_data/foozy/foozy-windows.expected.h",
+        "test_data/foozy/foozy-windows.h",
+    )
+    diff.expect_diff_files(
+        t,
+        "test_data/foozy/foozy-macos.expected.h",
+        "test_data/foozy/foozy-macos.h",
     )
 }

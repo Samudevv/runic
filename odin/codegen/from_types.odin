@@ -1889,7 +1889,10 @@ enum_to_type :: proc(
                 field_name = strings.clone(name_ident.name, ctx.allocator)
             }
 
-            value := evaluate_expr(i64, f.value) or_return
+            value_any := evaluate_expr(plat, ctx, f.value) or_return
+            value, value_ok := value_any.(i64)
+            errors.wrap(value_ok, "enum field value is not integer") or_return
+
             counter = value
 
             append(

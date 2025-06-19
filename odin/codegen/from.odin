@@ -108,24 +108,7 @@ generate_runestone :: proc(
 
             ttt_ctx.imports = &imports
 
-            for decl in file.decls {
-                #partial switch stm in decl.derived_stmt {
-                case ^odina.Value_Decl:
-                    parse_value_decl(plat, &ttt_ctx, stm) or_return
-                case ^odina.Import_Decl:
-                    parse_import_decl(&ttt_ctx, file_name, stm) or_return
-                case:
-                    fmt.println(
-                        error_tok(
-                            fmt.aprint(
-                                reflect.get_union_variant(decl.derived_stmt).id,
-                                allocator = errors.error_allocator,
-                            ),
-                            decl.pos,
-                        ),
-                    )
-                }
-            }
+            parse_decls(plat, &ttt_ctx, file_name, file.decls[:]) or_return
         }
     }
 
@@ -160,17 +143,31 @@ error_tok :: proc(msg: string, tok: union #no_nil {
     return errors.empty(loc = loc)
 }
 
+EvalImplicitSelector :: distinct string
+EvalType :: union #no_nil {
+    i64,
+    f64,
+    string,
+    rune,
+    bool,
+    runtime.Odin_OS_Type,
+    runtime.Odin_Arch_Type,
+    EvalImplicitSelector,
+}
+
 evaluate_expr :: proc(
-    $T: typeid,
+    plat: runic.Platform,
+    ctx: ^TypeToTypeContext,
     expr: ^odina.Expr,
     loc := #caller_location,
 ) -> (
-    rs: T,
+    rs: EvalType,
     err: errors.Error,
 ) {
     #partial switch e in expr.derived_expr {
     case ^odina.Basic_Lit:
-        if reflect.is_integer(type_info_of(T)) {
+        #partial switch e.tok.kind {
+        case .Integer:
             value, ok := strconv.parse_i64(e.tok.text)
             errors.wrap(
                 ok,
@@ -183,9 +180,10 @@ evaluate_expr :: proc(
                 ),
                 loc = loc,
             ) or_return
-            rs = T(value)
+            rs = value
+
             return
-        } else if reflect.is_float(type_info_of(T)) {
+        case .Float:
             value, ok := strconv.parse_f64(e.tok.text)
             errors.wrap(
                 ok,
@@ -198,70 +196,335 @@ evaluate_expr :: proc(
                 ),
                 loc = loc,
             ) or_return
-            rs = T(value)
+            rs = value
             return
-        } else {
-            err = error_tok("not a number", expr.pos)
+        case .String:
+            rs = strings.trim_prefix(
+                strings.trim_suffix(e.tok.text, "\""),
+                "\"",
+            )
             return
-        }
-    case ^odina.Binary_Expr:
-        left := evaluate_expr(T, e.left, loc) or_return
-        right := evaluate_expr(T, e.right, loc) or_return
-
-        #partial switch e.op.kind {
-        case .Add:
-            rs = left + right
-            return
-        case .Sub:
-            rs = left - right
-            return
-        case .Mul:
-            rs = left * right
-            return
-        case .Quo:
-            rs = left / right
-            return
-        case .Mod:
-            rs = left % right
-            return
-        case .And:
-            rs = left & right
-            return
-        case .Or:
-            rs = left | right
-            return
-        case .Xor:
-            rs = left ~ right
-            return
-        case .And_Not:
-            rs = left &~ right
-            return
-        case .Shl:
-            rs = left << u64(right)
-            return
-        case .Shr:
-            rs = left >> u64(right)
-            return
-        case .Cmp_And:
-            rs = T(b64(left) && b64(right))
-            return
-        case .Cmp_Or:
-            rs = T(b64(left) && b64(right))
+        case .Rune:
+            rune_str := strings.trim_prefix(
+                strings.trim_suffix(e.tok.text, "'"),
+                "'",
+            )
+            for r in rune_str {
+                rs = r
+                break
+            }
             return
         case:
             err = error_tok(
                 fmt.aprintf(
-                    "unsupported operator {}",
-                    e.op.kind,
+                    "unsupported basic literal: {}",
+                    e.tok.kind,
+                    allocator = errors.error_allocator,
+                ),
+                e.tok,
+                loc = loc,
+            )
+            return
+        }
+    case ^odina.Binary_Expr:
+        left := evaluate_expr(plat, ctx, e.left, loc) or_return
+        right := evaluate_expr(plat, ctx, e.right, loc) or_return
+
+        left_id := reflect.union_variant_typeid(left)
+        right_id := reflect.union_variant_typeid(right)
+
+        errors.assert(
+            !(left_id == EvalImplicitSelector &&
+                right_id == EvalImplicitSelector),
+        ) or_return
+
+        if left_id == EvalImplicitSelector {
+            left = evaluate_implicit_selector(right, left) or_return
+            left_id = reflect.union_variant_typeid(left)
+        } else if right_id == EvalImplicitSelector {
+            right = evaluate_implicit_selector(left, right) or_return
+            right_id = reflect.union_variant_typeid(right)
+        }
+
+        if left_id != right_id {
+            err = error_tok(
+                fmt.aprintf(
+                    "left and right operand do not have the same type: {} and {}",
+                    left_id,
+                    right_id,
                     allocator = errors.error_allocator,
                 ),
                 e.pos,
                 loc = loc,
             )
-            return
+        }
+
+
+        if left_id == i64 {
+            #partial switch e.op.kind {
+            case .Add:
+                rs = left.(i64) + right.(i64)
+                return
+            case .Sub:
+                rs = left.(i64) - right.(i64)
+                return
+            case .Mul:
+                rs = left.(i64) * right.(i64)
+                return
+            case .Quo:
+                rs = left.(i64) / right.(i64)
+                return
+            case .Mod:
+                rs = left.(i64) % right.(i64)
+                return
+            case .And:
+                rs = left.(i64) & right.(i64)
+                return
+            case .Or:
+                rs = left.(i64) | right.(i64)
+                return
+            case .Xor:
+                rs = left.(i64) ~ right.(i64)
+                return
+            case .And_Not:
+                rs = left.(i64) &~ right.(i64)
+                return
+            case .Shl:
+                rs = left.(i64) << u64(right.(i64))
+                return
+            case .Shr:
+                rs = left.(i64) >> u64(right.(i64))
+                return
+            case .Cmp_Eq:
+                rs = left.(i64) == right.(i64)
+                return
+            case .Not_Eq:
+                rs = left.(i64) != right.(i64)
+                return
+            case .Lt:
+                rs = left.(i64) < right.(i64)
+                return
+            case .Gt:
+                rs = left.(i64) > right.(i64)
+                return
+            case:
+                err = error_tok(
+                    fmt.aprintf(
+                        "unsupported operator for integer {}",
+                        e.op.kind,
+                        allocator = errors.error_allocator,
+                    ),
+                    e.pos,
+                    loc = loc,
+                )
+                return
+            }
+        } else if left_id == bool {
+            #partial switch e.op.kind {
+            case .Cmp_And:
+                rs = left.(bool) && right.(bool)
+                return
+            case .Cmp_Or:
+                rs = left.(bool) || right.(bool)
+                return
+            case .And:
+                rs = left.(bool) & right.(bool)
+                return
+            case .Or:
+                rs = left.(bool) | right.(bool)
+                return
+            case .Xor:
+                rs = left.(bool) ~ right.(bool)
+                return
+            case .Cmp_Eq:
+                rs = left.(bool) == right.(bool)
+                return
+            case .Not_Eq:
+                rs = left.(bool) != right.(bool)
+                return
+            case:
+                err = error_tok(
+                    fmt.aprintf(
+                        "unsupported operator for bool {}",
+                        e.op.kind,
+                        allocator = errors.error_allocator,
+                    ),
+                    e.pos,
+                    loc = loc,
+                )
+                return
+            }
+        } else if left_id == f64 {
+            #partial switch e.op.kind {
+            case .Add:
+                rs = left.(f64) + right.(f64)
+                return
+            case .Sub:
+                rs = left.(f64) - right.(f64)
+                return
+            case .Mul:
+                rs = left.(f64) * right.(f64)
+                return
+            case .Quo:
+                rs = left.(f64) / right.(f64)
+                return
+            case .Cmp_Eq:
+                rs = left.(f64) == right.(f64)
+                return
+            case .Not_Eq:
+                rs = left.(f64) != right.(f64)
+                return
+            case .Lt:
+                rs = left.(f64) < right.(f64)
+                return
+            case .Gt:
+                rs = left.(f64) > right.(f64)
+                return
+            case:
+                err = error_tok(
+                    fmt.aprintf(
+                        "unsupported operator for float {}",
+                        e.op.kind,
+                        allocator = errors.error_allocator,
+                    ),
+                    e.pos,
+                    loc = loc,
+                )
+                return
+            }
+        } else if left_id == runtime.Odin_OS_Type {
+            #partial switch e.op.kind {
+            case .Cmp_Eq:
+                rs =
+                    left.(runtime.Odin_OS_Type) == right.(runtime.Odin_OS_Type)
+                return
+            case .Not_Eq:
+                rs =
+                    left.(runtime.Odin_OS_Type) != right.(runtime.Odin_OS_Type)
+                return
+            case .Lt:
+                rs = left.(runtime.Odin_OS_Type) < right.(runtime.Odin_OS_Type)
+                return
+            case .Gt:
+                rs = left.(runtime.Odin_OS_Type) > right.(runtime.Odin_OS_Type)
+                return
+            case:
+                err = error_tok(
+                    fmt.aprintf(
+                        "unsupported operator for enum {}",
+                        e.op.kind,
+                        allocator = errors.error_allocator,
+                    ),
+                    e.pos,
+                    loc = loc,
+                )
+                return
+            }
+        } else if left_id == runtime.Odin_Arch_Type {
+            #partial switch e.op.kind {
+            case .Cmp_Eq:
+                rs =
+                    left.(runtime.Odin_Arch_Type) ==
+                    right.(runtime.Odin_Arch_Type)
+                return
+            case .Not_Eq:
+                rs =
+                    left.(runtime.Odin_Arch_Type) !=
+                    right.(runtime.Odin_Arch_Type)
+                return
+            case .Lt:
+                rs =
+                    left.(runtime.Odin_Arch_Type) <
+                    right.(runtime.Odin_Arch_Type)
+                return
+            case .Gt:
+                rs =
+                    left.(runtime.Odin_Arch_Type) >
+                    right.(runtime.Odin_Arch_Type)
+                return
+            case:
+                err = error_tok(
+                    fmt.aprintf(
+                        "unsupported operator for enum {}",
+                        e.op.kind,
+                        allocator = errors.error_allocator,
+                    ),
+                    e.pos,
+                    loc = loc,
+                )
+                return
+            }
         }
     case ^odina.Paren_Expr:
-        rs, err = evaluate_expr(T, e.expr, loc)
+        rs, err = evaluate_expr(plat, ctx, e.expr, loc)
+        return
+    case ^odina.Ident:
+        switch e.name {
+        case "true":
+            rs = true
+        case "false":
+            rs = false
+        case "ODIN_OS":
+            switch plat.os {
+            case .Linux:
+                rs = runtime.Odin_OS_Type.Linux
+            case .Windows:
+                rs = runtime.Odin_OS_Type.Windows
+            case .Macos:
+                rs = runtime.Odin_OS_Type.Darwin
+            case .BSD:
+                rs = runtime.Odin_OS_Type.FreeBSD
+            case .Any:
+                rs = runtime.Odin_OS_Type.Unknown
+            }
+        case "ODIN_ARCH":
+            switch plat.arch {
+            case .x86:
+                rs = runtime.Odin_Arch_Type.i386
+            case .arm32:
+                rs = runtime.Odin_Arch_Type.arm32
+            case .x86_64:
+                rs = runtime.Odin_Arch_Type.amd64
+            case .arm64:
+                rs = runtime.Odin_Arch_Type.arm64
+            case .Any:
+                rs = runtime.Odin_Arch_Type.Unknown
+            }
+        case:
+            if c, c_ok := om.get(ctx.constants^, e.name); c_ok {
+                #partial switch c_v in c.value {
+                case i64:
+                    rs = c_v
+                case f64:
+                    rs = c_v
+                case:
+                    err = error_tok(
+                        fmt.aprintf(
+                            "constant {} has unsupported value for expression",
+                            e.name,
+                            allocator = errors.error_allocator,
+                        ),
+                        e.pos,
+                    )
+                    return
+                }
+
+                return
+            } else {
+                err = error_tok(
+                    fmt.aprintf(
+                        "constant {} is not declared before this statement",
+                        e.name,
+                        allocator = errors.error_allocator,
+                    ),
+                    e.pos,
+                )
+                return
+            }
+        }
+        return
+    case ^odina.Implicit_Selector_Expr:
+        rs = EvalImplicitSelector(e.field.name)
         return
     case:
         err = error_tok(
@@ -1124,6 +1387,200 @@ parse_value_decl :: proc(
             }
 
             om.insert(ctx.types, strings.clone(name, ctx.allocator), type)
+        }
+    }
+
+    return
+}
+
+parse_when_stmt :: proc(
+    plat: runic.Platform,
+    ctx: ^TypeToTypeContext,
+    file_name: string,
+    stm: ^odina.When_Stmt,
+) -> (
+    err: errors.Error,
+) {
+    stm := stm
+    body: ^odina.Stmt
+
+    for body == nil {
+        if stm.cond == nil {
+            body = stm.body
+            break
+        }
+
+        is_cond_true_any, eval_err := evaluate_expr(plat, ctx, stm.cond)
+        if eval_err != nil {
+            fmt.eprintln(
+                error_tok(
+                    fmt.aprintf(
+                        "failed to evaluate condition of when: {}",
+                        eval_err,
+                        allocator = errors.error_allocator,
+                    ),
+                    stm.cond.pos,
+                ),
+            )
+
+            is_cond_true_any = false
+        }
+
+        is_cond_true, ok := is_cond_true_any.(bool)
+        if !ok {
+            fmt.eprintln(
+                error_tok(
+                    fmt.aprintf(
+                        "condition of when does not evaluate to boolean: {}",
+                        reflect.union_variant_typeid(is_cond_true_any),
+                        errors.error_allocator,
+                    ),
+                    stm.cond.pos,
+                ),
+            )
+            return
+        }
+
+        if is_cond_true {
+            body = stm.body
+            break
+        }
+
+        if stm.else_stmt == nil do return
+
+        #partial switch els in stm.else_stmt.derived_stmt {
+        case ^odina.When_Stmt:
+            stm = els
+        case:
+            body = stm.else_stmt
+        }
+    }
+
+    #partial switch decl in body.derived_stmt {
+    case ^odina.Block_Stmt:
+        parse_decls(plat, ctx, file_name, decl.stmts) or_return
+    case:
+        err = error_tok(
+            fmt.aprintf(
+                "when statment unsupported body decl: {}",
+                reflect.get_union_variant(stm.body.derived_stmt).id,
+                allocator = errors.error_allocator,
+            ),
+            stm.body.pos,
+        )
+        return
+    }
+
+    return
+}
+
+evaluate_implicit_selector :: proc(
+    left_type: EvalType,
+    impl: EvalType,
+) -> (
+    rs: EvalType,
+    err: errors.Error,
+) {
+    field_name := string(impl.(EvalImplicitSelector))
+
+    #partial switch lt in left_type {
+    case runtime.Odin_OS_Type:
+        switch field_name {
+        case "Unknown":
+            rs = runtime.Odin_OS_Type.Unknown
+        case "Windows":
+            rs = runtime.Odin_OS_Type.Windows
+        case "Darwin":
+            rs = runtime.Odin_OS_Type.Darwin
+        case "Linux":
+            rs = runtime.Odin_OS_Type.Linux
+        case "Essence":
+            rs = runtime.Odin_OS_Type.Essence
+        case "FreeBSD":
+            rs = runtime.Odin_OS_Type.FreeBSD
+        case "OpenBSD":
+            rs = runtime.Odin_OS_Type.OpenBSD
+        case "NetBSD":
+            rs = runtime.Odin_OS_Type.NetBSD
+        case "Haiku":
+            rs = runtime.Odin_OS_Type.Haiku
+        case "WASI":
+            rs = runtime.Odin_OS_Type.WASI
+        case "JS":
+            rs = runtime.Odin_OS_Type.JS
+        case "Orca":
+            rs = runtime.Odin_OS_Type.Orca
+        case "Freestanding":
+            rs = runtime.Odin_OS_Type.Freestanding
+        case:
+            err = errors.message(
+                "invalid os of implicit selector: {}",
+                field_name,
+            )
+            return
+        }
+    case runtime.Odin_Arch_Type:
+        switch field_name {
+        case "Unknown":
+            rs = runtime.Odin_Arch_Type.Unknown
+        case "amd64":
+            rs = runtime.Odin_Arch_Type.amd64
+        case "i386":
+            rs = runtime.Odin_Arch_Type.i386
+        case "arm32":
+            rs = runtime.Odin_Arch_Type.arm32
+        case "arm64":
+            rs = runtime.Odin_Arch_Type.arm64
+        case "wasm32":
+            rs = runtime.Odin_Arch_Type.wasm32
+        case "wasm64p32":
+            rs = runtime.Odin_Arch_Type.wasm64p32
+        case "riscv64":
+            rs = runtime.Odin_Arch_Type.riscv64
+        case:
+            err = errors.message(
+                "invalid arch of implicit selector: {}",
+                field_name,
+            )
+            return
+        }
+    case:
+        err = errors.message(
+            "invalid type for implicit selector: {}",
+            reflect.union_variant_typeid(left_type),
+        )
+        return
+    }
+
+    return
+}
+
+parse_decls :: proc(
+    plat: runic.Platform,
+    ctx: ^TypeToTypeContext,
+    file_name: string,
+    stmts: []^odina.Stmt,
+) -> (
+    err: errors.Error,
+) {
+    for decl in stmts {
+        #partial switch stm in decl.derived_stmt {
+        case ^odina.Value_Decl:
+            parse_value_decl(plat, ctx, stm) or_return
+        case ^odina.Import_Decl:
+            parse_import_decl(ctx, file_name, stm) or_return
+        case ^odina.When_Stmt:
+            parse_when_stmt(plat, ctx, file_name, stm) or_return
+        case:
+            fmt.println(
+                error_tok(
+                    fmt.aprint(
+                        reflect.get_union_variant(decl.derived_stmt).id,
+                        allocator = errors.error_allocator,
+                    ),
+                    decl.pos,
+                ),
+            )
         }
     }
 

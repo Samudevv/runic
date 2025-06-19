@@ -29,15 +29,17 @@ import "root:runic"
 
 @(private)
 TypeToTypeContext :: struct {
-    constants:        ^om.OrderedMap(string, runic.Constant),
-    symbols:          ^om.OrderedMap(string, runic.Symbol),
-    types:            ^om.OrderedMap(string, runic.Type),
-    anon_counter:     ^int,
-    imports:          ^map[string]Import,
-    current_package:  Maybe(^odina.Package),
-    ow:               runic.OverwriteSet,
-    pending_bit_sets: ^map[string]string,
-    allocator:        runtime.Allocator,
+    constants:           ^om.OrderedMap(string, runic.Constant),
+    symbols:             ^om.OrderedMap(string, runic.Symbol),
+    types:               ^om.OrderedMap(string, runic.Type),
+    externs:             ^om.OrderedMap(string, runic.Extern),
+    anon_counter:        ^int,
+    imports:             ^map[string]Import,
+    current_package:     Maybe(^odina.Package),
+    current_import_path: Maybe(string),
+    ow:                  runic.OverwriteSet,
+    pending_bit_sets:    ^map[string]string,
+    allocator:           runtime.Allocator,
 }
 
 type_to_type :: proc(
@@ -111,7 +113,7 @@ string_to_type :: proc(
 ) -> (
     type: runic.Type,
 ) {
-    if !om.contains(ctx.types^, "string") {
+    if !om.contains(ctx.externs^, "string") {
         string_type: runic.Struct = ---
         string_type.members = make(
             [dynamic]runic.Member,
@@ -134,10 +136,14 @@ string_to_type :: proc(
             string_type.members[1].type.spec = runic.Builtin.Untyped
         }
 
-        om.insert(ctx.types, "string", runic.Type{spec = string_type})
+        om.insert(
+            ctx.externs,
+            "string",
+            runic.Extern{type = {spec = string_type}, source = "base:builtin"},
+        )
     }
 
-    type.spec = string("string")
+    type.spec = runic.ExternType("string")
     return
 }
 
@@ -147,7 +153,7 @@ any_to_type :: proc(
 ) -> (
     type: runic.Type,
 ) {
-    if !om.contains(ctx.types^, "any") {
+    if !om.contains(ctx.externs^, "any") {
         any_spec: runic.Struct
 
         any_spec.members = make(
@@ -161,14 +167,18 @@ any_to_type :: proc(
         any_spec.members[0].type.spec = runic.Builtin.RawPtr
 
         any_spec.members[1].name = "id"
-        any_spec.members[1].type.spec = string("typeid")
+        any_spec.members[1].type.spec = runic.ExternType("typeid")
 
         typeid_to_type(plat, ctx)
 
-        om.insert(ctx.types, "any", runic.Type{spec = any_spec})
+        om.insert(
+            ctx.externs,
+            "any",
+            runic.Extern{type = {spec = any_spec}, source = "base:builtin"},
+        )
     }
 
-    type.spec = string("any")
+    type.spec = runic.ExternType("any")
     return
 }
 
@@ -188,7 +198,7 @@ typeid_to_type :: proc(
         return
     }
 
-    if !om.contains(ctx.types^, "typeid") {
+    if !om.contains(ctx.externs^, "typeid") {
         typeid_spec: runic.Builtin = ---
         switch plat.arch {
         case .x86_64, .arm64:
@@ -199,10 +209,14 @@ typeid_to_type :: proc(
             typeid_spec = .Untyped
         }
 
-        om.insert(ctx.types, "typeid", runic.Type{spec = typeid_spec})
+        om.insert(
+            ctx.externs,
+            "typeid",
+            runic.Extern{type = {spec = typeid_spec}, source = "base:builtin"},
+        )
     }
 
-    type.spec = string("typeid")
+    type.spec = runic.ExternType("typeid")
     return
 }
 
@@ -348,23 +362,8 @@ slice_to_type :: proc(
     strings.builder_init(&slice_name_bd, allocator = ctx.allocator)
 
     if ctx.current_package != nil {
-        needs_prefix: bool
-
-        #partial switch e in elem.derived_expr {
-        case ^odina.Ident:
-            needs_prefix = !is_odin_builtin_type_identifier(e.name)
-        case ^odina.Selector_Expr:
-            needs_prefix = false
-        case ^odina.Typeid_Type:
-            needs_prefix = false
-        case:
-            needs_prefix = true
-        }
-
-        if needs_prefix {
-            strings.write_string(&slice_name_bd, ctx.current_package.?.name)
-            strings.write_rune(&slice_name_bd, '_')
-        }
+        strings.write_string(&slice_name_bd, ctx.current_package.?.name)
+        strings.write_rune(&slice_name_bd, '_')
     }
 
     #reverse for e in slice_name_elements {
@@ -383,43 +382,48 @@ slice_to_type :: proc(
 
     slice_name := strings.to_string(slice_name_bd)
 
-    if needs_anon || !om.contains(ctx.types^, slice_name) {
-        slice_type: runic.Struct = ---
-        slice_type.members = make(
-            [dynamic]runic.Member,
-            len = 2,
-            cap = 2,
-            allocator = ctx.allocator,
-        )
+    slice_type: runic.Struct = ---
+    slice_type.members = make(
+        [dynamic]runic.Member,
+        len = 2,
+        cap = 2,
+        allocator = ctx.allocator,
+    )
 
-        slice_type.members[0].name = "data"
-        slice_type.members[0].type = type_to_type(
-            plat,
-            ctx,
-            name,
-            elem,
-        ) or_return
-        if len(slice_type.members[0].type.array_info) != 0 {
-            slice_type.members[0].type.array_info[len(slice_type.members[0].type.array_info) - 1].pointer_info.count +=
-            1
-        } else {
-            slice_type.members[0].type.pointer_info.count += 1
-        }
-
-        slice_type.members[1].name = "length"
-        switch plat.arch {
-        case .x86, .arm32:
-            slice_type.members[1].type.spec = runic.Builtin.SInt32
-        case .x86_64, .arm64:
-            slice_type.members[1].type.spec = runic.Builtin.SInt64
-        case .Any:
-            slice_type.members[1].type.spec = runic.Builtin.Untyped
-        }
-
-        om.insert(ctx.types, slice_name, runic.Type{spec = slice_type})
+    slice_type.members[0].name = "data"
+    slice_type.members[0].type = type_to_type(plat, ctx, name, elem) or_return
+    if len(slice_type.members[0].type.array_info) != 0 {
+        slice_type.members[0].type.array_info[len(slice_type.members[0].type.array_info) - 1].pointer_info.count +=
+        1
+    } else {
+        slice_type.members[0].type.pointer_info.count += 1
     }
 
-    type.spec = slice_name
+    slice_type.members[1].name = "length"
+    switch plat.arch {
+    case .x86, .arm32:
+        slice_type.members[1].type.spec = runic.Builtin.SInt32
+    case .x86_64, .arm64:
+        slice_type.members[1].type.spec = runic.Builtin.SInt64
+    case .Any:
+        slice_type.members[1].type.spec = runic.Builtin.Untyped
+    }
+
+    if ctx.current_package != nil {
+        om.insert(
+            ctx.externs,
+            slice_name,
+            runic.Extern {
+                type = {spec = slice_type},
+                source = ctx.current_import_path.?,
+            },
+        )
+        type.spec = runic.ExternType(slice_name)
+    } else {
+        om.insert(ctx.types, slice_name, runic.Type{spec = slice_type})
+        type.spec = slice_name
+    }
+
     return
 }
 
@@ -501,23 +505,8 @@ dynamic_array_to_type :: proc(
     strings.builder_init(&dyn_name_bd, allocator = ctx.allocator)
 
     if ctx.current_package != nil {
-        needs_prefix: bool
-
-        #partial switch e in elem.derived_expr {
-        case ^odina.Ident:
-            needs_prefix = !is_odin_builtin_type_identifier(e.name)
-        case ^odina.Selector_Expr:
-            needs_prefix = false
-        case ^odina.Typeid_Type:
-            needs_prefix = false
-        case:
-            needs_prefix = true
-        }
-
-        if needs_prefix {
-            strings.write_string(&dyn_name_bd, ctx.current_package.?.name)
-            strings.write_rune(&dyn_name_bd, '_')
-        }
+        strings.write_string(&dyn_name_bd, ctx.current_package.?.name)
+        strings.write_rune(&dyn_name_bd, '_')
     }
 
     #reverse for e in dyn_name_elements {
@@ -536,67 +525,73 @@ dynamic_array_to_type :: proc(
 
     dynamic_array_name := strings.to_string(dyn_name_bd)
 
-    if needs_anon || !om.contains(ctx.types^, dynamic_array_name) {
-        dynamic_array_type: runic.Struct = ---
-        dynamic_array_type.members = make(
-            [dynamic]runic.Member,
-            len = 4,
-            cap = 4,
-            allocator = ctx.allocator,
+    dynamic_array_type: runic.Struct = ---
+    dynamic_array_type.members = make(
+        [dynamic]runic.Member,
+        len = 4,
+        cap = 4,
+        allocator = ctx.allocator,
+    )
+
+    dynamic_array_type.members[0].name = "data"
+    dynamic_array_type.members[0].type = type
+    if len(dynamic_array_type.members[0].type.array_info) != 0 {
+        dynamic_array_type.members[0].type.array_info[len(dynamic_array_type.members[0].type.array_info) - 1].pointer_info.count +=
+        1
+    } else {
+        dynamic_array_type.members[0].type.pointer_info.count += 1
+    }
+
+    dynamic_array_type.members[1].name = "length"
+    switch plat.arch {
+    case .x86, .arm32:
+        dynamic_array_type.members[1].type.spec = runic.Builtin.SInt32
+    case .x86_64, .arm64:
+        dynamic_array_type.members[1].type.spec = runic.Builtin.SInt64
+    case .Any:
+        dynamic_array_type.members[1].type.spec = runic.Builtin.Untyped
+    }
+
+    dynamic_array_type.members[2].name = "capacity"
+    switch plat.arch {
+    case .x86, .arm32:
+        dynamic_array_type.members[2].type.spec = runic.Builtin.SInt32
+    case .x86_64, .arm64:
+        dynamic_array_type.members[2].type.spec = runic.Builtin.SInt64
+    case .Any:
+        dynamic_array_type.members[2].type.spec = runic.Builtin.Untyped
+    }
+
+    dynamic_array_type.members[3].name = "allocator"
+    dynamic_array_type.members[3].type.spec = runic.ExternType(
+        "runtime_Allocator",
+    )
+
+    maybe_add_runtime_extern(plat, ctx, "Allocator") or_return
+
+    if ctx.current_package != nil {
+        om.insert(
+            ctx.externs,
+            dynamic_array_name,
+            runic.Extern {
+                type = {spec = dynamic_array_type},
+                source = ctx.current_import_path.?,
+            },
         )
-
-        dynamic_array_type.members[0].name = "data"
-        dynamic_array_type.members[0].type = type
-        if len(dynamic_array_type.members[0].type.array_info) != 0 {
-            dynamic_array_type.members[0].type.array_info[len(dynamic_array_type.members[0].type.array_info) - 1].pointer_info.count +=
-            1
-        } else {
-            dynamic_array_type.members[0].type.pointer_info.count += 1
+        type = runic.Type {
+            spec = dynamic_array_name,
         }
-
-        dynamic_array_type.members[1].name = "length"
-        switch plat.arch {
-        case .x86, .arm32:
-            dynamic_array_type.members[1].type.spec = runic.Builtin.SInt32
-        case .x86_64, .arm64:
-            dynamic_array_type.members[1].type.spec = runic.Builtin.SInt64
-        case .Any:
-            dynamic_array_type.members[1].type.spec = runic.Builtin.Untyped
-        }
-
-        dynamic_array_type.members[2].name = "capacity"
-        switch plat.arch {
-        case .x86, .arm32:
-            dynamic_array_type.members[2].type.spec = runic.Builtin.SInt32
-        case .x86_64, .arm64:
-            dynamic_array_type.members[2].type.spec = runic.Builtin.SInt64
-        case .Any:
-            dynamic_array_type.members[2].type.spec = runic.Builtin.Untyped
-        }
-
-        dynamic_array_type.members[3].name = "allocator"
-        dynamic_array_type.members[3].type.spec = string("runtime_Allocator")
-
-        if !om.contains(ctx.types^, "runtime_Allocator") {
-            allocator_type := lookup_type_of_import(
-                plat,
-                "runtime",
-                "Allocator",
-                ctx,
-            ) or_return
-            om.insert(ctx.types, "runtime_Allocator", allocator_type)
-        }
-
+    } else {
         om.insert(
             ctx.types,
             dynamic_array_name,
             runic.Type{spec = dynamic_array_type},
         )
+        type = runic.Type {
+            spec = dynamic_array_name,
+        }
     }
 
-    type = runic.Type {
-        spec = dynamic_array_name,
-    }
     return
 }
 
@@ -688,12 +683,6 @@ union_to_type :: proc(
         ctx.anon_counter^ += 1
     }
 
-    om.insert(
-        ctx.types,
-        strings.to_string(values_union_type_name),
-        runic.Type{spec = values_union},
-    )
-
     union_type: runic.Struct
     union_type.members = make(
         [dynamic]runic.Member,
@@ -703,17 +692,35 @@ union_to_type :: proc(
     )
 
     union_type.members[0].name = "tag"
-    union_type.members[0].type = runic.Type {
-        spec = tag_type,
-    }
-
+    union_type.members[0].type.spec = tag_type
     union_type.members[1].name = "values"
-    union_type.members[1].type = runic.Type {
-        spec = strings.to_string(values_union_type_name),
+
+    if ctx.current_package != nil {
+        om.insert(
+            ctx.externs,
+            strings.to_string(values_union_type_name),
+            runic.Extern {
+                type = {spec = values_union},
+                source = ctx.current_import_path.?,
+            },
+        )
+
+        union_type.members[1].type.spec = runic.ExternType(
+            strings.to_string(values_union_type_name),
+        )
+    } else {
+        om.insert(
+            ctx.types,
+            strings.to_string(values_union_type_name),
+            runic.Type{spec = values_union},
+        )
+
+        union_type.members[1].type.spec = strings.to_string(
+            values_union_type_name,
+        )
     }
 
     type.spec = union_type
-
     return
 }
 
@@ -751,9 +758,13 @@ selector_to_type :: proc(
             allocator = ctx.allocator,
         )
 
-        om.insert(ctx.types, type_name, type)
+        om.insert(
+            ctx.externs,
+            type_name,
+            runic.Extern{type = type, source = imp.imp_path},
+        )
         type = runic.Type {
-            spec = type_name,
+            spec = runic.ExternType(type_name),
         }
     }
 
@@ -783,6 +794,7 @@ bit_set_to_type :: proc(
                 pkg_type := lookup_type_in_package(
                     plat,
                     underlying_name,
+                    ctx.current_import_path.?,
                     ctx.current_package.?,
                     ctx,
                 ) or_return
@@ -792,9 +804,16 @@ bit_set_to_type :: proc(
                     ctx.allocator,
                 )
 
-                om.insert(ctx.types, pkg_type_name, pkg_type)
+                om.insert(
+                    ctx.externs,
+                    pkg_type_name,
+                    runic.Extern {
+                        type = pkg_type,
+                        source = ctx.current_import_path.?,
+                    },
+                )
 
-                underlying = pkg_type_name
+                underlying = runic.ExternType(pkg_type_name)
             } else {
                 under_type := ident_to_type(plat, ctx, d.name) or_return
                 underlying = under_type.spec
@@ -832,9 +851,13 @@ bit_set_to_type :: proc(
                 {imp.name, "_", underlying_name},
                 ctx.allocator,
             )
-            underlying = underlying_name
+            underlying = runic.ExternType(underlying_name)
 
-            om.insert(ctx.types, underlying_name, pkg_type)
+            om.insert(
+                ctx.externs,
+                underlying_name,
+                runic.Extern{type = pkg_type, source = imp.imp_path},
+            )
 
             bit_set_type = runic.Type {
                 spec = underlying,
@@ -859,6 +882,7 @@ bit_set_to_type :: proc(
                 elem_type := lookup_type_in_package(
                     plat,
                     elem_name,
+                    ctx.current_import_path.?,
                     ctx.current_package.?,
                     ctx,
                 ) or_return
@@ -869,7 +893,14 @@ bit_set_to_type :: proc(
                         ctx.allocator,
                     )
 
-                    om.insert(ctx.types, enum_type_name, elem_type)
+                    om.insert(
+                        ctx.externs,
+                        enum_type_name,
+                        runic.Extern {
+                            type = elem_type,
+                            source = ctx.current_import_path.?,
+                        },
+                    )
 
                     bit_set_type = bit_set_type_from_enum(
                         enum_type,
@@ -931,7 +962,18 @@ bit_set_to_type :: proc(
 
         anon_enum := enum_to_type(plat, e, elem_name, ctx) or_return
 
-        om.insert(ctx.types, elem_name, anon_enum)
+        if ctx.current_package != nil {
+            om.insert(
+                ctx.externs,
+                elem_name,
+                runic.Extern {
+                    type = anon_enum,
+                    source = ctx.current_import_path.?,
+                },
+            )
+        } else {
+            om.insert(ctx.types, elem_name, anon_enum)
+        }
 
         if underlying == nil {
             bit_set_type = bit_set_type_from_enum(
@@ -970,7 +1012,11 @@ bit_set_to_type :: proc(
             allocator = ctx.allocator,
         )
 
-        om.insert(ctx.types, elem_name, pkg_type)
+        om.insert(
+            ctx.externs,
+            elem_name,
+            runic.Extern{type = pkg_type, source = imp.imp_path},
+        )
 
         if underlying == nil {
             bit_set_type = bit_set_type_from_enum(enum_type, ctx.allocator)
@@ -1003,18 +1049,32 @@ bit_set_to_type :: proc(
     }
 
     if bit_set_type != nil {
-        if !om.contains(ctx.types^, strings.to_string(bit_set_type_name)) {
+        if ctx.current_package != nil {
+            om.insert(
+                ctx.externs,
+                strings.to_string(bit_set_type_name),
+                runic.Extern {
+                    type = bit_set_type.?,
+                    source = ctx.current_import_path.?,
+                },
+            )
+
+            type.spec = runic.ExternType(strings.to_string(bit_set_type_name))
+        } else {
             om.insert(
                 ctx.types,
                 strings.to_string(bit_set_type_name),
                 bit_set_type.?,
             )
+
+            type.spec = strings.to_string(bit_set_type_name)
         }
     } else {
         ctx.pending_bit_sets^[elem_name] = strings.to_string(bit_set_type_name)
+
+        type.spec = strings.to_string(bit_set_type_name)
     }
 
-    type.spec = strings.to_string(bit_set_type_name)
     return
 }
 
@@ -1104,11 +1164,17 @@ bit_field_to_type :: proc(
         }
     }
 
-    if !om.contains(ctx.types^, strings.to_string(bit_field_type_name)) {
+    if ctx.current_package != nil {
+        om.insert(
+            ctx.externs,
+            strings.to_string(bit_field_type_name),
+            runic.Extern{type = back_type, source = ctx.current_import_path.?},
+        )
+        type.spec = runic.ExternType(strings.to_string(bit_field_type_name))
+    } else {
         om.insert(ctx.types, strings.to_string(bit_field_type_name), back_type)
+        type.spec = strings.to_string(bit_field_type_name)
     }
-
-    type.spec = strings.to_string(bit_field_type_name)
 
     return
 }
@@ -1175,23 +1241,8 @@ maybe_to_type :: proc(
     strings.builder_init(&maybe_type_name, ctx.allocator)
 
     if ctx.current_package != nil {
-        needs_prefix: bool
-
-        #partial switch e in ce.args[0].derived_expr {
-        case ^odina.Ident:
-            needs_prefix = !is_odin_builtin_type_identifier(e.name)
-        case ^odina.Selector_Expr:
-            needs_prefix = false
-        case ^odina.Typeid_Type:
-            needs_prefix = false
-        case:
-            needs_prefix = true
-        }
-
-        if needs_prefix {
-            strings.write_string(&maybe_type_name, ctx.current_package.?.name)
-            strings.write_rune(&maybe_type_name, '_')
-        }
+        strings.write_string(&maybe_type_name, ctx.current_package.?.name)
+        strings.write_rune(&maybe_type_name, '_')
     }
 
     strings.write_string(&maybe_type_name, "maybe_")
@@ -1233,13 +1284,24 @@ maybe_to_type :: proc(
         ctx.anon_counter^ += 1
     }
 
-    om.insert(
-        ctx.types,
-        strings.to_string(maybe_type_name),
-        runic.Type{spec = maybe_type},
-    )
-
-    type.spec = strings.to_string(maybe_type_name)
+    if ctx.current_package != nil {
+        om.insert(
+            ctx.externs,
+            strings.to_string(maybe_type_name),
+            runic.Extern {
+                type = {spec = maybe_type},
+                source = ctx.current_import_path.?,
+            },
+        )
+        type.spec = runic.ExternType(strings.to_string(maybe_type_name))
+    } else {
+        om.insert(
+            ctx.types,
+            strings.to_string(maybe_type_name),
+            runic.Type{spec = maybe_type},
+        )
+        type.spec = strings.to_string(maybe_type_name)
+    }
 
     return
 }
@@ -1351,71 +1413,71 @@ map_to_type :: proc(
         return
     }
 
-    if !om.contains(ctx.types^, strings.to_string(map_type_name)) {
-        map_type: runic.Struct
-        map_type.members = make(
-            [dynamic]runic.Member,
-            len = 3,
-            cap = 3,
-            allocator = ctx.allocator,
+    map_type: runic.Struct
+    map_type.members = make(
+        [dynamic]runic.Member,
+        len = 3,
+        cap = 3,
+        allocator = ctx.allocator,
+    )
+
+    map_type.members[0].name = "data"
+    switch plat.arch {
+    case .x86_64, .arm64:
+        map_type.members[0].type = runic.Type {
+            spec = runic.Builtin.UInt64,
+        }
+    case .x86, .arm32:
+        map_type.members[0].type = runic.Type {
+            spec = runic.Builtin.UInt32,
+        }
+    case .Any:
+        map_type.members[0].type = runic.Type {
+            spec = runic.Builtin.Untyped,
+        }
+    }
+
+    map_type.members[1].name = "length"
+    switch plat.arch {
+    case .x86_64, .arm64:
+        map_type.members[1].type = runic.Type {
+            spec = runic.Builtin.UInt64,
+        }
+    case .x86, .arm32:
+        map_type.members[1].type = runic.Type {
+            spec = runic.Builtin.UInt32,
+        }
+    case .Any:
+        map_type.members[1].type = runic.Type {
+            spec = runic.Builtin.Untyped,
+        }
+    }
+
+    map_type.members[2].name = "allocator"
+    map_type.members[2].type = runic.Type {
+        spec = runic.ExternType("runtime_Allocator"),
+    }
+
+    maybe_add_runtime_extern(plat, ctx, "Allocator") or_return
+
+    if ctx.current_package != nil {
+        om.insert(
+            ctx.externs,
+            strings.to_string(map_type_name),
+            runic.Extern {
+                type = {spec = map_type},
+                source = ctx.current_import_path.?,
+            },
         )
-
-        map_type.members[0].name = "data"
-        switch plat.arch {
-        case .x86_64, .arm64:
-            map_type.members[0].type = runic.Type {
-                spec = runic.Builtin.UInt64,
-            }
-        case .x86, .arm32:
-            map_type.members[0].type = runic.Type {
-                spec = runic.Builtin.UInt32,
-            }
-        case .Any:
-            map_type.members[0].type = runic.Type {
-                spec = runic.Builtin.Untyped,
-            }
-        }
-
-        map_type.members[1].name = "length"
-        switch plat.arch {
-        case .x86_64, .arm64:
-            map_type.members[1].type = runic.Type {
-                spec = runic.Builtin.UInt64,
-            }
-        case .x86, .arm32:
-            map_type.members[1].type = runic.Type {
-                spec = runic.Builtin.UInt32,
-            }
-        case .Any:
-            map_type.members[1].type = runic.Type {
-                spec = runic.Builtin.Untyped,
-            }
-        }
-
-        map_type.members[2].name = "allocator"
-        map_type.members[2].type = runic.Type {
-            spec = string("runtime_Allocator"),
-        }
-
-        if !om.contains(ctx.types^, "runtime_Allocator") {
-            allocator_type := lookup_type_of_import(
-                plat,
-                "runtime",
-                "Allocator",
-                ctx,
-            ) or_return
-
-            om.insert(ctx.types, "runtime_Allocator", allocator_type)
-        }
-
+        type.spec = runic.ExternType(strings.to_string(map_type_name))
+    } else {
         om.insert(
             ctx.types,
             strings.to_string(map_type_name),
             runic.Type{spec = map_type},
         )
+        type.spec = strings.to_string(map_type_name)
     }
-
-    type.spec = strings.to_string(map_type_name)
 
     return
 }
@@ -1542,22 +1604,33 @@ ident_to_type :: proc(
                 allocator = ctx.allocator,
             )
 
-            if !om.contains(ctx.types^, prefix_type_name) {
+            if !om.contains(ctx.externs^, prefix_type_name) {
                 om.insert(
-                    ctx.types,
+                    ctx.externs,
                     prefix_type_name,
-                    runic.Type{spec = runic.Unknown(prefix_type_name)},
+                    runic.Extern {
+                        type = {spec = runic.Unknown(prefix_type_name)},
+                        source = ctx.current_import_path.?,
+                    },
                 )
                 type = lookup_type_in_package(
                     plat,
                     ident,
+                    ctx.current_import_path.?,
                     ctx.current_package.?,
                     ctx,
                 ) or_return
-                om.insert(ctx.types, prefix_type_name, type)
+                om.insert(
+                    ctx.externs,
+                    prefix_type_name,
+                    runic.Extern {
+                        type = type,
+                        source = ctx.current_import_path.?,
+                    },
+                )
             }
 
-            type.spec = prefix_type_name
+            type.spec = runic.ExternType(prefix_type_name)
         } else {
             type.spec = strings.clone(ident, ctx.allocator)
         }
@@ -1607,10 +1680,19 @@ proc_to_function :: proc(
                     {ctx.current_package.?.name, "_", anon_name},
                     ctx.allocator,
                 )
+                om.insert(
+                    ctx.externs,
+                    anon_name,
+                    runic.Extern {
+                        type = anon_type,
+                        source = ctx.current_import_path.?,
+                    },
+                )
+                type.spec = runic.ExternType(anon_name)
+            } else {
+                om.insert(ctx.types, anon_name, anon_type)
+                type.spec = anon_name
             }
-
-            om.insert(ctx.types, anon_name, anon_type)
-            type.spec = anon_name
         }
 
         if type.pointer_info.count != 0 {
@@ -1669,10 +1751,21 @@ proc_to_function :: proc(
                     {ctx.current_package.?.name, "_", anon_name},
                     ctx.allocator,
                 )
-            }
 
-            om.insert(ctx.types, anon_name, anon_type)
-            type.spec = anon_name
+                om.insert(
+                    ctx.externs,
+                    anon_name,
+                    runic.Extern {
+                        type = anon_type,
+                        source = ctx.current_import_path.?,
+                    },
+                )
+
+                type.spec = runic.ExternType(anon_name)
+            } else {
+                om.insert(ctx.types, anon_name, anon_type)
+                type.spec = anon_name
+            }
         }
 
         if len(result_field.names) == 0 {
@@ -1727,17 +1820,35 @@ proc_to_function :: proc(
         delete(result_struct.members[0].name, ctx.allocator)
         delete(result_struct.members)
     } else {
-        result_type_name := fmt.aprintf(
-            "{}_result",
-            name.? if name != nil else "proc",
-            allocator = ctx.allocator,
-        )
-        fn.return_type.spec = result_type_name
-        om.insert(
-            ctx.types,
-            result_type_name,
-            runic.Type{spec = result_struct},
-        )
+        if ctx.current_package != nil {
+            result_type_name := fmt.aprintf(
+                "{}_{}_result",
+                ctx.current_package.?.name,
+                name.? if name != nil else "proc",
+                allocator = ctx.allocator,
+            )
+            fn.return_type.spec = runic.ExternType(result_type_name)
+            om.insert(
+                ctx.externs,
+                result_type_name,
+                runic.Extern {
+                    type = {spec = result_struct},
+                    source = ctx.current_import_path.?,
+                },
+            )
+        } else {
+            result_type_name := fmt.aprintf(
+                "{}_result",
+                name.? if name != nil else "proc",
+                allocator = ctx.allocator,
+            )
+            fn.return_type.spec = result_type_name
+            om.insert(
+                ctx.types,
+                result_type_name,
+                runic.Type{spec = result_struct},
+            )
+        }
     }
 
     return
@@ -1807,10 +1918,19 @@ struct_to_type :: proc(
                     {ctx.current_package.?.name, "_", anon_name},
                     ctx.allocator,
                 )
+                om.insert(
+                    ctx.externs,
+                    anon_name,
+                    runic.Extern {
+                        type = anon_type,
+                        source = ctx.current_import_path.?,
+                    },
+                )
+                field_type.spec = runic.ExternType(anon_name)
+            } else {
+                om.insert(ctx.types, anon_name, anon_type)
+                field_type.spec = anon_name
             }
-
-            om.insert(ctx.types, anon_name, anon_type)
-            field_type.spec = anon_name
         }
 
         for name_expr in field.names {

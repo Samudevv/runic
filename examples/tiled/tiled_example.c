@@ -12,15 +12,15 @@
 extern uint8_t *stbi_load(const char *filename, int *x, int *y,
                           int *channels_in_file, int desired_channels);
 
-struct tiled_string cstr_to_tiled_string(const char *str) {
-  struct tiled_string s = {
+struct string cstr_to_string(const char *str) {
+  struct string s = {
       .data = (uint8_t *)(str),
       .length = (int64_t)strlen(str),
   };
   return s;
 }
 
-char *tiled_string_to_cstr(const struct tiled_string str) {
+char *string_to_cstr(const struct string str) {
   if (str.length == 0) {
     return "null";
   }
@@ -40,8 +40,7 @@ int main(int args, char *argv[]) {
     }
   }
 
-  const struct tiled_string map_file_name =
-      cstr_to_tiled_string("tilemap.json");
+  const struct string map_file_name = cstr_to_string("tilemap.json");
 
   const struct tiled_Map map = tiled_parse_tilemap(map_file_name);
 
@@ -57,9 +56,8 @@ int main(int args, char *argv[]) {
     struct tiled_Tileset tileset = tiled_parse_tileset(tilesets.data[i].source);
     printf("Tileset %ld name=\"%s\" image=\"%s\" tilewidth=%d tileheight=%d "
            "firstgid=%d\n",
-           i, tiled_string_to_cstr(tileset.name),
-           tiled_string_to_cstr(tileset.image), tileset.tilewidth,
-           tileset.tileheight, firstgid);
+           i, string_to_cstr(tileset.name), string_to_cstr(tileset.image),
+           tileset.tilewidth, tileset.tileheight, firstgid);
 
     tileset.firstgid = firstgid;
     tilesets.data[i] = tileset;
@@ -78,8 +76,7 @@ int main(int args, char *argv[]) {
   SDL_Renderer *r = SDL_CreateRenderer(w, -1, SDL_RENDERER_ACCELERATED);
 
   for (int64_t i = 0; i < tilesets.length; i++) {
-    SDL_Surface *surface =
-        IMG_Load(tiled_string_to_cstr(tilesets.data[i].image));
+    SDL_Surface *surface = IMG_Load(string_to_cstr(tilesets.data[i].image));
     SDL_Texture *texture = SDL_CreateTextureFromSurface(r, surface);
     SDL_FreeSurface(surface);
     tileset_textures[i] = texture;

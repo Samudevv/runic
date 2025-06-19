@@ -37,6 +37,7 @@ Import :: struct {
     collection: string,
     name:       string,
     abs_path:   string,
+    imp_path:   string,
     pkg:        ^odina.Package,
 }
 
@@ -72,6 +73,7 @@ generate_runestone :: proc(
         constants        = &rs.constants,
         symbols          = &rs.symbols,
         types            = &rs.types,
+        externs          = &rs.externs,
         anon_counter     = &anon_counter,
         ow               = overwrite,
         pending_bit_sets = &pending_bit_sets,
@@ -551,12 +553,11 @@ parse_import_decl :: proc(
 ) -> (
     err: errors.Error,
 ) {
-    col_path, a_err := strings.split_n(
-        strings.trim_suffix(strings.trim_prefix(stm.fullpath, `"`), `"`),
-        ":",
-        2,
-        ctx.allocator,
+    imp_path := strings.trim_suffix(
+        strings.trim_prefix(stm.fullpath, `"`),
+        `"`,
     )
+    col_path, a_err := strings.split_n(imp_path, ":", 2, ctx.allocator)
     errors.wrap(a_err, "import") or_return
 
     collection, path: string = ---, ---
@@ -590,6 +591,7 @@ parse_import_decl :: proc(
     }
 
     imp := Import {
+        imp_path   = imp_path,
         abs_path   = path,
         name       = filepath.base(path),
         collection = collection,
@@ -705,19 +707,25 @@ lookup_type_of_import :: proc(
                     )
 
                     s.members[0].name = "allocator"
-                    s.members[0].type.spec = string("runtime_Allocator")
+                    s.members[0].type.spec = runic.ExternType(
+                        "runtime_Allocator",
+                    )
 
                     s.members[1].name = "temp_allocator"
-                    s.members[1].type.spec = string("runtime_Allocator")
+                    s.members[1].type.spec = runic.ExternType(
+                        "runtime_Allocator",
+                    )
 
                     s.members[2].name = "assertion_failure_proc"
                     s.members[2].type.spec = runic.Builtin.RawPtr
 
                     s.members[3].name = "logger"
-                    s.members[3].type.spec = string("runtime_Logger")
+                    s.members[3].type.spec = runic.ExternType("runtime_Logger")
 
                     s.members[4].name = "random_generator"
-                    s.members[4].type.spec = string("runtime_Random_Generator")
+                    s.members[4].type.spec = runic.ExternType(
+                        "runtime_Random_Generator",
+                    )
 
                     s.members[5].name = "user_ptr"
                     s.members[5].type.spec = runic.Builtin.RawPtr
@@ -737,41 +745,13 @@ lookup_type_of_import :: proc(
 
                     type.spec = s
 
-                    if !om.contains(ctx.types^, "runtime_Allocator") {
-                        allocator_type := lookup_type_of_import(
-                            plat,
-                            pkg,
-                            "Allocator",
-                            ctx,
-                        ) or_return
-                        om.insert(
-                            ctx.types,
-                            "runtime_Allocator",
-                            allocator_type,
-                        )
-                    }
-                    if !om.contains(ctx.types^, "runtime_Logger") {
-                        logger_type := lookup_type_of_import(
-                            plat,
-                            pkg,
-                            "Logger",
-                            ctx,
-                        ) or_return
-                        om.insert(ctx.types, "runtime_Logger", logger_type)
-                    }
-                    if !om.contains(ctx.types^, "runtime_Random_Generator") {
-                        random_generator_type := lookup_type_of_import(
-                            plat,
-                            pkg,
-                            "Random_Generator",
-                            ctx,
-                        ) or_return
-                        om.insert(
-                            ctx.types,
-                            "runtime_Random_Generator",
-                            random_generator_type,
-                        )
-                    }
+                    maybe_add_runtime_extern(plat, ctx, "Allocator") or_return
+                    maybe_add_runtime_extern(plat, ctx, "Logger") or_return
+                    maybe_add_runtime_extern(
+                        plat,
+                        ctx,
+                        "Random_Generator",
+                    ) or_return
                 case:
                     type.spec = runic.Builtin.Opaque
                 }
@@ -840,7 +820,13 @@ lookup_type_of_import :: proc(
 
     // TODO: Maybe hardcode some types of "core:c"
 
-    type, err = lookup_type_in_package(plat, type_name, imp.pkg, ctx)
+    type, err = lookup_type_in_package(
+        plat,
+        type_name,
+        imp.imp_path,
+        imp.pkg,
+        ctx,
+    )
 
     return
 }
@@ -848,15 +834,19 @@ lookup_type_of_import :: proc(
 lookup_type_in_package :: proc(
     plat: runic.Platform,
     type_name: string,
+    imp_path: string,
     pkg: ^odina.Package,
     ctx: ^TypeToTypeContext,
 ) -> (
     type: runic.Type,
     err: errors.Error,
 ) {
+    prev_imp_path := ctx.current_import_path
     prev_pkg := ctx.current_package
     ctx.current_package = pkg
+    ctx.current_import_path = imp_path
     defer ctx.current_package = prev_pkg
+    defer ctx.current_import_path = prev_imp_path
 
     prev_imports := ctx.imports
     defer ctx.imports = prev_imports
@@ -1603,4 +1593,30 @@ odin_root :: proc(allocator := context.allocator) -> string {
     }
 
     return value
+}
+
+maybe_add_runtime_extern :: proc(
+    plat: runic.Platform,
+    ctx: ^TypeToTypeContext,
+    type_name: string,
+) -> (
+    err: errors.Error,
+) {
+    extern_name := strings.concatenate({"runtime_", type_name}, ctx.allocator)
+
+    if !om.contains(ctx.externs^, extern_name) {
+        type := lookup_type_of_import(
+            plat,
+            "runtime",
+            type_name,
+            ctx,
+        ) or_return
+        om.insert(
+            ctx.externs,
+            extern_name,
+            runic.Extern{type = type, source = "base:runtime"},
+        )
+    }
+
+    return
 }

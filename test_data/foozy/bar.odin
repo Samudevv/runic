@@ -59,7 +59,7 @@ bad_data: map[int]string
 
 @(export)
 good_data: map[enum {
-    beans,
+    baked_beans,
     toast,
 }]struct {
     x, y, z: f32,

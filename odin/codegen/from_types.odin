@@ -29,6 +29,8 @@ import "root:runic"
 
 @(private)
 TypeToTypeContext :: struct {
+    constants:        ^om.OrderedMap(string, runic.Constant),
+    symbols:          ^om.OrderedMap(string, runic.Symbol),
     types:            ^om.OrderedMap(string, runic.Type),
     anon_counter:     ^int,
     imports:          ^map[string]Import,
@@ -77,7 +79,7 @@ type_to_type :: proc(
     case ^odina.Helper_Type:
         return type_to_type(plat, ctx, name, type_expr.type)
     case ^odina.Proc_Type:
-        func := proc_to_function(plat, type_expr, name, ctx) or_return
+        func := proc_to_function(plat, ctx, type_expr, name) or_return
         type.spec = runic.FunctionPointer(new_clone(func, ctx.allocator))
     case ^odina.Bit_Set_Type:
         return bit_set_to_type(plat, ctx, type_expr)
@@ -1566,9 +1568,9 @@ ident_to_type :: proc(
 
 proc_to_function :: proc(
     plat: runic.Platform,
+    ctx: ^TypeToTypeContext,
     p: ^odina.Proc_Type,
     name: Maybe(string),
-    ctx: ^TypeToTypeContext,
 ) -> (
     fn: runic.Function,
     err: errors.Error,

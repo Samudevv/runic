@@ -29,6 +29,14 @@ FOO_VALUE_STR :: "5"
 FOO_VALUE_LONG_STR :: `five`
 FOO_FLOAT :: 5.6
 
+when ODIN_OS == .Linux {
+    FOO_BANANA :: "banana"
+} else when ODIN_OS == .Windows {
+    FOO_BANANA :: "bana"
+} else {
+    FOO_BANANA :: "banananana"
+}
+
 cycle_pointer :: ^pointed_cycle
 pointed_cycle :: struct {
     data: ^cycle_pointer,
@@ -269,4 +277,3 @@ foo_booties: bit_set[booty.boots;booty.boot_int]
 //
 //@(export)
 //number_range: bit_set[NUMBER_RANGE_MIN..<NUMBER_RANGE_MAX]
-

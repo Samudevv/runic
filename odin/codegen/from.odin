@@ -69,6 +69,8 @@ generate_runestone :: proc(
     defer delete(pending_bit_sets)
 
     ttt_ctx := TypeToTypeContext {
+        constants        = &rs.constants,
+        symbols          = &rs.symbols,
         types            = &rs.types,
         anon_counter     = &anon_counter,
         ow               = overwrite,
@@ -109,313 +111,9 @@ generate_runestone :: proc(
             for decl in file.decls {
                 #partial switch stm in decl.derived_stmt {
                 case ^odina.Value_Decl:
-                    link_name: Maybe(string)
-                    exported: bool
-
-                    for attr in stm.attributes {
-                        for elem_expr in attr.elems {
-                            #partial switch elem in elem_expr.derived_expr {
-                            case ^odina.Ident:
-                                switch elem.name {
-                                case "export":
-                                    exported = true
-                                }
-                            case ^odina.Field_Value:
-                                #partial switch field in
-                                    elem.field.derived_expr {
-                                case ^odina.Ident:
-                                    switch field.name {
-                                    case "export":
-                                        #partial switch value in
-                                            elem.value.derived_expr {
-                                        case ^odina.Ident:
-                                            switch value.name {
-                                            case "true":
-                                                exported = true
-                                            case "false":
-                                            case:
-                                                err = error_tok(
-                                                    "export needs to be an boolean",
-                                                    elem.value.pos,
-                                                )
-                                                return
-                                            }
-                                        case:
-                                            err = error_tok(
-                                                "export needs to be set to an identifier",
-                                                elem.value.pos,
-                                            )
-                                            return
-                                        }
-                                    case "link_name":
-                                        #partial switch value in
-                                            elem.value.derived_expr {
-                                        case ^odina.Basic_Lit:
-                                            link_name = strings.trim_suffix(
-                                                strings.trim_prefix(
-                                                    value.tok.text,
-                                                    `"`,
-                                                ),
-                                                `"`,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    first_name: Maybe(string)
-                    if len(stm.names) != 0 {
-                        first_name = name_to_name(stm.names[0]) or_return
-                    }
-
-                    decl_type: Maybe(runic.Type)
-                    if stm.type != nil {
-                        type_err: errors.Error = ---
-                        decl_type, type_err = type_to_type(
-                            plat,
-                            &ttt_ctx,
-                            first_name,
-                            stm.type,
-                        )
-                        if type_err != nil {
-                            fmt.eprintln(type_err)
-                            continue
-                        }
-                    }
-
-                    for name_expr, idx in stm.names {
-                        name := name_to_name(name_expr) or_return
-
-                        if len(stm.values) <= idx {
-                            if !exported do continue
-
-                            if type, ok := decl_type.?; ok {
-                                if link_name != nil {
-                                    name = link_name.?
-                                }
-
-                                if om.contains(rs.symbols, name) {
-                                    fmt.eprintf("{} is defined as \"", name)
-                                    sym := om.get(rs.symbols, name)
-                                    switch v in sym.value {
-                                    case runic.Type:
-                                        runic.write_type(
-                                            os.stream_from_handle(os.stderr),
-                                            v,
-                                        )
-                                    case runic.Function:
-                                        runic.write_function(
-                                            os.stream_from_handle(os.stderr),
-                                            v,
-                                        )
-                                    }
-                                    fmt.eprintln("\" and \"")
-                                    runic.write_type(
-                                        os.stream_from_handle(os.stderr),
-                                        type,
-                                    )
-                                    fmt.eprintln('"')
-                                }
-
-                                om.insert(
-                                    &rs.symbols,
-                                    strings.clone(name, rs_arena_alloc),
-                                    runic.Symbol{value = type},
-                                )
-                            }
-                            continue
-                        }
-
-                        value_expr := stm.values[idx]
-
-                        #partial switch value in value_expr.derived_expr {
-                        case ^odina.Proc_Lit:
-                            if !exported do continue
-
-                            fn, fn_err := proc_to_function(
-                                plat,
-                                value.type,
-                                name,
-                                &ttt_ctx,
-                            )
-                            if fn_err != nil {
-                                fmt.eprintln(fn_err)
-                                continue
-                            }
-
-                            if link_name != nil {
-                                name = link_name.?
-                            }
-
-                            if om.contains(rs.symbols, name) {
-                                fmt.eprintf("{} is defined as \"", name)
-                                sym := om.get(rs.symbols, name)
-                                switch v in sym.value {
-                                case runic.Type:
-                                    runic.write_type(
-                                        os.stream_from_handle(os.stderr),
-                                        v,
-                                    )
-                                case runic.Function:
-                                    runic.write_function(
-                                        os.stream_from_handle(os.stderr),
-                                        v,
-                                    )
-                                }
-                                fmt.eprintln("\" and \"")
-                                runic.write_function(
-                                    os.stream_from_handle(os.stderr),
-                                    fn,
-                                )
-                                fmt.eprintln('"')
-                            }
-
-                            om.insert(
-                                &rs.symbols,
-                                strings.clone(name, rs_arena_alloc),
-                                runic.Symbol{value = fn},
-                            )
-                        case ^odina.Basic_Lit:
-                            const_val: union {
-                                i64,
-                                f64,
-                                string,
-                            }
-                            const_spec := runic.Builtin.Untyped
-
-                            #partial switch value.tok.kind {
-                            case .Integer:
-                                if ival, ok := strconv.parse_i64(
-                                    value.tok.text,
-                                ); !ok {
-                                    fmt.eprintfln(
-                                        "Failed to parse constant value \"{}\" to integer",
-                                        value.tok.text,
-                                    )
-                                    continue
-                                } else {
-                                    const_val = ival
-                                }
-                            case .Float:
-                                if fval, ok := strconv.parse_f64(
-                                    value.tok.text,
-                                ); !ok {
-                                    fmt.eprintfln(
-                                        "Failed to parse constant value \"{}\" as float",
-                                        value.tok.text,
-                                    )
-                                    continue
-                                } else {
-                                    const_val = fval
-                                }
-                            case .String:
-                                const_val = strings.clone(
-                                    value.tok.text[1:len(value.tok.text) - 1],
-                                    rs_arena_alloc,
-                                )
-                                const_spec = .String
-                            case:
-                                fmt.eprintfln(
-                                    "Constants with token kind {} are not supported",
-                                    value.tok.kind,
-                                )
-                                continue
-                            }
-
-                            if om.contains(rs.constants, name) {
-                                fmt.eprintfln(
-                                    "Constant {} is defined as \"{}\" and \"{}\"",
-                                    om.get(rs.constants, name),
-                                    const_val,
-                                )
-                            }
-
-                            om.insert(
-                                &rs.constants,
-                                strings.clone(name, rs_arena_alloc),
-                                runic.Constant {
-                                    value = const_val,
-                                    type = {spec = const_spec},
-                                },
-                            )
-                        case:
-                            type, type_err := type_to_type(
-                                plat,
-                                &ttt_ctx,
-                                name,
-                                value_expr,
-                            )
-                            if type_err != nil {
-                                fmt.eprintln(type_err)
-                                continue
-                            }
-
-                            if om.contains(rs.symbols, name) {
-                                fmt.eprintf("{} is defined as \"", name)
-                                sym := om.get(rs.symbols, name)
-                                switch v in sym.value {
-                                case runic.Type:
-                                    runic.write_type(
-                                        os.stream_from_handle(os.stderr),
-                                        v,
-                                    )
-                                case runic.Function:
-                                    runic.write_function(
-                                        os.stream_from_handle(os.stderr),
-                                        v,
-                                    )
-                                }
-                                fmt.eprintln("\" and \"")
-                                runic.write_type(
-                                    os.stream_from_handle(os.stderr),
-                                    type,
-                                )
-                                fmt.eprintln('"')
-                            }
-
-                            #partial switch enum_type in type.spec {
-                            case runic.Enum:
-                                if bit_set_type_name, bit_set_ok :=
-                                       pending_bit_sets[name]; bit_set_ok {
-                                    if !om.contains(
-                                        rs.types,
-                                        bit_set_type_name,
-                                    ) {
-                                        bit_set_type := bit_set_type_from_enum(
-                                            enum_type,
-                                            rs_arena_alloc,
-                                        )
-                                        om.insert(
-                                            &rs.types,
-                                            bit_set_type_name,
-                                            bit_set_type,
-                                        )
-                                    }
-
-                                    delete_key(&pending_bit_sets, name)
-                                }
-                            }
-
-                            om.insert(
-                                &rs.types,
-                                strings.clone(name, rs_arena_alloc),
-                                type,
-                            )
-                        }
-                    }
+                    parse_value_decl(plat, &ttt_ctx, stm) or_return
                 case ^odina.Import_Decl:
-                    name, imp, imp_err := parse_import(
-                        file_name,
-                        stm,
-                        arena_alloc,
-                    )
-                    if imp_err != nil {
-                        fmt.eprintln(imp_err)
-                        continue
-                    }
-                    imports[name] = imp
+                    parse_import_decl(&ttt_ctx, file_name, stm) or_return
                 case:
                     fmt.println(
                         error_tok(
@@ -582,20 +280,18 @@ evaluate_expr :: proc(
     return
 }
 
-parse_import :: proc(
+parse_import_decl :: proc(
+    ctx: ^TypeToTypeContext,
     file_name: string,
     stm: ^odina.Import_Decl,
-    allocator := context.allocator,
 ) -> (
-    name: string,
-    imp: Import,
     err: errors.Error,
 ) {
     col_path, a_err := strings.split_n(
         strings.trim_suffix(strings.trim_prefix(stm.fullpath, `"`), `"`),
         ":",
         2,
-        allocator,
+        ctx.allocator,
     )
     errors.wrap(a_err, "import") or_return
 
@@ -609,25 +305,31 @@ parse_import :: proc(
 
     switch collection {
     case "core", "base", "vendor":
-        path = filepath.join({ODIN_ROOT, collection, path}, allocator)
+        // TODO: dynamically load ODIN_ROOT
+        path = filepath.join({ODIN_ROOT, collection, path}, ctx.allocator)
     case "":
         ok: bool = ---
-        path, ok = runic.relative_to_file(file_name, path, allocator)
+        path, ok = runic.relative_to_file(file_name, path, ctx.allocator)
         errors.wrap(ok, "import relative") or_return
     case:
         err = error_tok("unknown collection", stm.relpath)
         return
     }
 
+    name: string = ---
     if len(stm.name.text) != 0 {
         name = stm.name.text
     } else {
         name = filepath.base(path)
     }
 
-    imp.abs_path = path
-    imp.name = filepath.base(path)
-    imp.collection = collection
+    imp := Import {
+        abs_path   = path,
+        name       = filepath.base(path),
+        collection = collection,
+    }
+
+    ctx.imports^[name] = imp
     return
 }
 
@@ -902,12 +604,7 @@ lookup_type_in_package :: proc(
         for decl in file.decls {
             #partial switch stm in decl.derived_stmt {
             case ^odina.Import_Decl:
-                name, impo := parse_import(
-                    file_name,
-                    stm,
-                    ctx.allocator,
-                ) or_return
-                local_imports[name] = impo
+                parse_import_decl(ctx, file_name, stm) or_return
             case ^odina.Value_Decl:
                 for name_expr, idx in stm.names {
                     if len(stm.values) <= idx {
@@ -1178,4 +875,257 @@ is_odin_builtin_type_identifier :: proc(ident: string) -> bool {
     }
 
     return false
+}
+
+extract_attributes :: proc(
+    stm: ^odina.Value_Decl,
+) -> (
+    link_name: Maybe(string),
+    exported: bool,
+    err: errors.Error,
+) {
+    for attr in stm.attributes {
+        for elem_expr in attr.elems {
+            #partial switch elem in elem_expr.derived_expr {
+            case ^odina.Ident:
+                switch elem.name {
+                case "export":
+                    exported = true
+                }
+            case ^odina.Field_Value:
+                #partial switch field in elem.field.derived_expr {
+                case ^odina.Ident:
+                    switch field.name {
+                    case "export":
+                        #partial switch value in elem.value.derived_expr {
+                        case ^odina.Ident:
+                            switch value.name {
+                            case "true":
+                                exported = true
+                            case "false":
+                            case:
+                                err = error_tok(
+                                    "export needs to be an boolean",
+                                    elem.value.pos,
+                                )
+                                return
+                            }
+                        case:
+                            err = error_tok(
+                                "export needs to be set to an identifier",
+                                elem.value.pos,
+                            )
+                            return
+                        }
+                    case "link_name":
+                        #partial switch value in elem.value.derived_expr {
+                        case ^odina.Basic_Lit:
+                            link_name = strings.trim_suffix(
+                                strings.trim_prefix(value.tok.text, `"`),
+                                `"`,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return
+}
+
+parse_value_decl :: proc(
+    plat: runic.Platform,
+    ctx: ^TypeToTypeContext,
+    stm: ^odina.Value_Decl,
+) -> (
+    err: errors.Error,
+) {
+    link_name, exported := extract_attributes(stm) or_return
+
+    first_name: Maybe(string)
+    if len(stm.names) != 0 {
+        first_name = name_to_name(stm.names[0]) or_return
+    }
+
+    decl_type: Maybe(runic.Type)
+    if stm.type != nil {
+        type_err: errors.Error = ---
+        decl_type, type_err = type_to_type(plat, ctx, first_name, stm.type)
+        if type_err != nil {
+            fmt.eprintln(type_err)
+            return
+        }
+    }
+
+    for name_expr, idx in stm.names {
+        name := name_to_name(name_expr) or_return
+
+        if len(stm.values) <= idx {
+            if !exported do continue
+
+            if type, ok := decl_type.?; ok {
+                if link_name != nil {
+                    name = link_name.?
+                }
+
+                if om.contains(ctx.symbols^, name) {
+                    fmt.eprintf("{} is defined as \"", name)
+                    sym := om.get(ctx.symbols^, name)
+                    switch v in sym.value {
+                    case runic.Type:
+                        runic.write_type(os.stream_from_handle(os.stderr), v)
+                    case runic.Function:
+                        runic.write_function(
+                            os.stream_from_handle(os.stderr),
+                            v,
+                        )
+                    }
+                    fmt.eprintln("\" and \"")
+                    runic.write_type(os.stream_from_handle(os.stderr), type)
+                    fmt.eprintln('"')
+                }
+
+                om.insert(
+                    ctx.symbols,
+                    strings.clone(name, ctx.allocator),
+                    runic.Symbol{value = type},
+                )
+            }
+            continue
+        }
+
+        value_expr := stm.values[idx]
+
+        #partial switch value in value_expr.derived_expr {
+        case ^odina.Proc_Lit:
+            if !exported do continue
+
+            fn, fn_err := proc_to_function(plat, ctx, value.type, name)
+            if fn_err != nil {
+                fmt.eprintln(fn_err)
+                continue
+            }
+
+            if link_name != nil {
+                name = link_name.?
+            }
+
+            if om.contains(ctx.symbols^, name) {
+                fmt.eprintf("{} is defined as \"", name)
+                sym := om.get(ctx.symbols^, name)
+                switch v in sym.value {
+                case runic.Type:
+                    runic.write_type(os.stream_from_handle(os.stderr), v)
+                case runic.Function:
+                    runic.write_function(os.stream_from_handle(os.stderr), v)
+                }
+                fmt.eprintln("\" and \"")
+                runic.write_function(os.stream_from_handle(os.stderr), fn)
+                fmt.eprintln('"')
+            }
+
+            om.insert(
+                ctx.symbols,
+                strings.clone(name, ctx.allocator),
+                runic.Symbol{value = fn},
+            )
+        case ^odina.Basic_Lit:
+            const_val: union {
+                i64,
+                f64,
+                string,
+            }
+            const_spec := runic.Builtin.Untyped
+
+            #partial switch value.tok.kind {
+            case .Integer:
+                if ival, ok := strconv.parse_i64(value.tok.text); !ok {
+                    fmt.eprintfln(
+                        "Failed to parse constant value \"{}\" to integer",
+                        value.tok.text,
+                    )
+                    continue
+                } else {
+                    const_val = ival
+                }
+            case .Float:
+                if fval, ok := strconv.parse_f64(value.tok.text); !ok {
+                    fmt.eprintfln(
+                        "Failed to parse constant value \"{}\" as float",
+                        value.tok.text,
+                    )
+                    continue
+                } else {
+                    const_val = fval
+                }
+            case .String:
+                const_val = strings.clone(
+                    value.tok.text[1:len(value.tok.text) - 1],
+                    ctx.allocator,
+                )
+                const_spec = .String
+            case:
+                fmt.eprintfln(
+                    "Constants with token kind {} are not supported",
+                    value.tok.kind,
+                )
+                continue
+            }
+
+            if om.contains(ctx.constants^, name) {
+                fmt.eprintfln(
+                    "Constant {} is defined as \"{}\" and \"{}\"",
+                    om.get(ctx.constants^, name),
+                    const_val,
+                )
+            }
+
+            om.insert(
+                ctx.constants,
+                strings.clone(name, ctx.allocator),
+                runic.Constant{value = const_val, type = {spec = const_spec}},
+            )
+        case:
+            type, type_err := type_to_type(plat, ctx, name, value_expr)
+            if type_err != nil {
+                fmt.eprintln(type_err)
+                continue
+            }
+
+            if om.contains(ctx.symbols^, name) {
+                fmt.eprintf("{} is defined as \"", name)
+                sym := om.get(ctx.symbols^, name)
+                switch v in sym.value {
+                case runic.Type:
+                    runic.write_type(os.stream_from_handle(os.stderr), v)
+                case runic.Function:
+                    runic.write_function(os.stream_from_handle(os.stderr), v)
+                }
+                fmt.eprintln("\" and \"")
+                runic.write_type(os.stream_from_handle(os.stderr), type)
+                fmt.eprintln('"')
+            }
+
+            #partial switch enum_type in type.spec {
+            case runic.Enum:
+                if bit_set_type_name, bit_set_ok :=
+                       ctx.pending_bit_sets^[name]; bit_set_ok {
+                    if !om.contains(ctx.types^, bit_set_type_name) {
+                        bit_set_type := bit_set_type_from_enum(
+                            enum_type,
+                            ctx.allocator,
+                        )
+                        om.insert(ctx.types, bit_set_type_name, bit_set_type)
+                    }
+
+                    delete_key(ctx.pending_bit_sets, name)
+                }
+            }
+
+            om.insert(ctx.types, strings.clone(name, ctx.allocator), type)
+        }
+    }
+
+    return
 }

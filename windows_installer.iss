@@ -10,4 +10,4 @@ Source: "build\runic.exe";    DestDir: {app}
 Source: "build\libclang.dll"; DestDir: {app}
 
 [Registry]
-Root: HKA; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{reg:HKA\Environment,Path};{app}"; Flags: preservestringtype
+Root: HKA; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{reg:HKA\SYSTEM\CurrentControlSet\Control\Session Manager\Environment,Path};{app}"; Flags: preservestringtype

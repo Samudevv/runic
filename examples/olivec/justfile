@@ -8,7 +8,7 @@ ODIN_FLAGS := (
   '-extra-linker-flags:' + if os_family() == 'unix' {'-L' + BUILD_DIR} else {'/LIBPATH:' + BUILD_DIR}
 )
 EXE_EXT := if os_family() == 'unix' {''} else {'.exe'}
-MAKE := if os() == 'linux' {'make'} else {'gmake'}
+MAKE := if os() == 'linux' {'make'} else { if os() == 'macos' {'make'} else {'gmake'}}
 
 example: run
 
@@ -38,17 +38,18 @@ olivec:
   lib /out:"{{ BUILD_DIR / 'olivec.lib' }}" "{{ BUILD_DIR / 'olivec_impl.c.obj' }}"
 
 STBIMAGE_MAKE := if os_family() == 'unix' {
-if os() != 'macos' {
-  MAKE + ' -C "' + ODIN_ROOT / 'vendor' / 'stb' / 'src' + '"'
-} else {
-  'echo Nothing do to for MacOS'
-}
+    MAKE + ' -C "' + ODIN_ROOT / 'vendor' / 'stb' / 'src' + '"'
 } else { 'echo Nothing to do for Windows' }
+STBIMAGE_LIB := if os() == 'macos' {
+    ODIN_ROOT / "vendor/stb/lib/darwin/stb_image.a"
+} else {
+    ODIN_ROOT / "vendor/stb/lib/stb_image.a"
+}
 [unix]
 stb_image:
   #! /bin/sh
   set -ex
-  if [ ! -e "{{ ODIN_ROOT }}/vendor/stb/lib/stb_image.a" ]; then
+  if [ ! -e "{{ STBIMAGE_LIB }}" ]; then
     {{ STBIMAGE_MAKE }}
   fi
 

@@ -6,6 +6,8 @@
 static const char* FOO_VALUE_STR = "5";
 static const char* FOO_VALUE_LONG_STR = "five";
 #define FOO_FLOAT 5.5999999999999996
+static const char* FOO_BANANA = "bananax86_64";
+static const char* FOO_APPLE = "apple";
 
 struct pointed_cycle;
 

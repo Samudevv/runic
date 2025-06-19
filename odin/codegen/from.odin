@@ -490,6 +490,7 @@ evaluate_expr :: proc(
             case .Any:
                 rs = runtime.Odin_Arch_Type.Unknown
             }
+        // TODO: add more builtin constants
         case:
             if c, c_ok := om.get(ctx.constants^, e.name); c_ok {
                 #partial switch c_v in c.value {
@@ -568,8 +569,10 @@ parse_import_decl :: proc(
 
     switch collection {
     case "core", "base", "vendor":
-        // TODO: dynamically load ODIN_ROOT
-        path = filepath.join({ODIN_ROOT, collection, path}, ctx.allocator)
+        path = filepath.join(
+            {odin_root(ctx.allocator), collection, path},
+            ctx.allocator,
+        )
     case "":
         ok: bool = ---
         path, ok = runic.relative_to_file(file_name, path, ctx.allocator)
@@ -1585,4 +1588,19 @@ parse_decls :: proc(
     }
 
     return
+}
+
+odin_root :: proc(allocator := context.allocator) -> string {
+    value := os.get_env("ODIN_ROOT", allocator)
+    if len(value) == 0 {
+        when ODIN_DEBUG {
+            fmt.eprintfln(
+                "ODIN_ROOT is not defined. using builtin value \"{}\" instead",
+                ODIN_ROOT,
+            )
+        }
+        return ODIN_ROOT
+    }
+
+    return value
 }

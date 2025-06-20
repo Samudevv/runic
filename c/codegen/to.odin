@@ -34,7 +34,7 @@ generate_bindings_from_runestone :: proc(
         io.Error,
         errors.Error,
     } {
-    generate_includes(wd, rn) or_return
+    generate_includes({rs.platform}, wd, rn) or_return
 
     generate_bindings_for_constants(wd, rs, rn) or_return
     generate_forward_declarations_for_externs(wd, rs, rn) or_return
@@ -56,7 +56,9 @@ generate_bindings_from_runecross :: proc(
         errors.Error,
     },
 ) {
-    generate_includes(wd, rn) or_return
+    all_plats := runic.all_platforms_of_runecross(rc)
+    generate_includes(all_plats, wd, rn) or_return
+    delete(all_plats)
 
     // Generate macros for platforms
     oses: [dynamic]runic.OS
@@ -220,9 +222,32 @@ generate_bindings :: proc {
     generate_bindings_from_runecross,
 }
 
-generate_includes :: proc(wd: io.Writer, rn: runic.To) -> io.Error {
+generate_includes :: proc(
+    plats: []runic.Platform,
+    wd: io.Writer,
+    rn: runic.To,
+) -> io.Error {
     io.write_string(wd, "#pragma once\n\n") or_return
-    io.write_string(wd, "#include <stddef.h>\n#include <stdint.h>\n\n") or_return
+
+    for plat in plats {
+        if plat.os == .Any || plat.os == .Windows {
+            io.write_string(
+                wd,
+                `#ifdef _MSC_VER
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
+`,
+            ) or_return
+            break
+        }
+    }
+
+    io.write_string(
+        wd,
+        "#include <stddef.h>\n#include <stdint.h>\n\n",
+    ) or_return
 
     include_paths: [dynamic]string
     defer delete(include_paths)

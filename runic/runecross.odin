@@ -749,3 +749,18 @@ source_of_extern_type_from_runecross :: proc(
     return "", false
 }
 
+all_platforms_of_runecross :: proc(
+    rc: Runecross,
+    allocator := context.allocator,
+) -> []Platform {
+    plats := make(
+        [dynamic]Platform,
+        len = 0,
+        cap = len(rc.cross),
+        allocator = allocator,
+    )
+
+    for c in rc.cross do append(&plats, ..c.plats)
+
+    return plats[:]
+}

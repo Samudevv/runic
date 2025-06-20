@@ -23,3 +23,9 @@ struct apple {
   enum { left, right } direction;
   int a;
 };
+
+typedef enum : long long {
+  ADV_ONE,
+  ADV_TWO,
+  ADV_THREE,
+} advanced;

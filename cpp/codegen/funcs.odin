@@ -394,31 +394,6 @@ clang_type_to_runic_type :: proc(
     case .Enum:
         e: runic.Enum
 
-
-        enum_int_type := clang.getEnumDeclIntegerType(cursor)
-
-        enum_type := clang_type_to_runic_type(
-            enum_int_type,
-            clang.getTypeDeclaration(enum_int_type),
-            ctx,
-            name_hint = name_hint,
-        ) or_return
-
-        // TODO: handle elaborated enum types
-        #partial switch et in enum_type.spec {
-        case runic.Builtin:
-            e.type = et
-        case:
-            spel := clang.getTypeSpelling(enum_int_type)
-            defer clang.disposeString(spel)
-
-            err = errors.message(
-                "invalid enum type: {}",
-                clang.getCString(spel),
-            )
-            return
-        }
-
         e.entries = make([dynamic]runic.EnumEntry, ctx.allocator)
 
         clang.visitChildren(
@@ -450,6 +425,43 @@ clang_type_to_runic_type :: proc(
             },
             &e,
         )
+
+        enum_int_type := clang.getEnumDeclIntegerType(cursor)
+
+        enum_type := clang_type_to_runic_type(
+            enum_int_type,
+            clang.getTypeDeclaration(enum_int_type),
+            ctx,
+            name_hint = name_hint,
+        ) or_return
+
+        // TODO: handle elaborated enum types
+        #partial switch et in enum_type.spec {
+        case runic.Builtin:
+            // Make sure that enums were the underlying type is not specified is the same across platforms
+            // On windows it defaults to SInt32 while on other systems it defaults to UInt32
+            uniform_enum_type: if et == .SInt32 {
+                for entry in e.entries {
+                    if v_i64, is_i64 := entry.value.(i64); is_i64 {
+                        if v_i64 < 0 do break uniform_enum_type
+                    }
+                }
+
+                e.type = .UInt32
+                break
+            }
+
+            e.type = et
+        case:
+            spel := clang.getTypeSpelling(enum_int_type)
+            defer clang.disposeString(spel)
+
+            err = errors.message(
+                "invalid enum type: {}",
+                clang.getCString(spel),
+            )
+            return
+        }
 
         tp.spec = e
     case .FunctionNoProto, .FunctionProto:
@@ -1179,4 +1191,3 @@ parse_macro_definition :: proc(
 
     return
 }
-

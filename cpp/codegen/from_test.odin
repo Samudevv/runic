@@ -244,7 +244,7 @@ test_cpp_enum :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 6)
+    expect_value(t, om.length(rs.types), 7)
     expect_value(t, om.length(rs.symbols), 1)
 
     abc := om.get(rs.types, "abc_enum")
@@ -302,6 +302,11 @@ test_cpp_enum :: proc(t: ^testing.T) {
     expect_value(t, con_enum.entries[4].value.(i64), 789)
     expect_value(t, con_enum.entries[5].value.(i64), 90)
     expect_value(t, con_enum.entries[6].value.(i64), (70 * 4 + 9) / 6 % 7)
+
+    adv := om.get(rs.types, "advanced").spec.(runic.Enum)
+
+    expect_value(t, len(adv.entries), 3)
+    expect_value(t, adv.type, runic.Builtin.SInt64)
 }
 
 @(test)
@@ -674,7 +679,11 @@ test_cpp_function :: proc(t: ^testing.T) {
     foo := om.get(rs.symbols, "foo")
     fooo := foo.value.(runic.Function)
 
-    expect_value(t, fooo.return_type.spec.(runic.Builtin), runic.Builtin.Untyped)
+    expect_value(
+        t,
+        fooo.return_type.spec.(runic.Builtin),
+        runic.Builtin.Untyped,
+    )
     expect_value(t, len(fooo.parameters), 3)
     expect_value(t, fooo.parameters[1].name, "b")
 
@@ -731,7 +740,11 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     hell := hello.value.(runic.Type).spec.(runic.FunctionPointer)
 
     expect_value(t, len(hell.parameters), 0)
-    expect_value(t, hell.return_type.spec.(runic.Builtin), runic.Builtin.Untyped)
+    expect_value(
+        t,
+        hell.return_type.spec.(runic.Builtin),
+        runic.Builtin.Untyped,
+    )
 
     bye := om.get(rs.symbols, "bye")
     by := bye.value.(runic.Type).spec.(runic.FunctionPointer)
@@ -908,4 +921,3 @@ test_cpp_unknown_int :: proc(t: ^testing.T) {
 
     expect_value(t, fp.return_type.spec.(runic.Builtin), runic.Builtin.SInt8)
 }
-

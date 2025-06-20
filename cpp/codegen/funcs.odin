@@ -726,6 +726,8 @@ handle_builtin_int_string :: proc(
         return runic.Builtin.UIntX
     case "ptrdiff_t":
         return runic.Builtin.SIntX
+    case "bool":
+        return bool_type(isz._Bool)
     case:
         return strings.clone(type_name, allocator)
     }

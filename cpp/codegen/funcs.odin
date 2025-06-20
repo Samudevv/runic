@@ -722,6 +722,10 @@ handle_builtin_int_string :: proc(
         return runic.Builtin.SInt32
     case "int64_t":
         return runic.Builtin.SInt64
+    case "__int128":
+        return runic.Builtin.SInt128
+    case "ssize_t":
+        return runic.Builtin.SIntX
     case "uint8_t":
         return runic.Builtin.UInt8
     case "uint16_t":
@@ -962,67 +966,20 @@ generate_clang_flags :: proc(
     append(&clang_flags, ..platform_defines)
 
     if !disable_stdint_macros {
-        // Macros for stdint (+ size_t) types
-        stdint_macros: []cstring
-        switch plat.os {
-        case .Windows:
-            switch plat.arch {
-            case .x86_64, .arm64:
-                stdint_macros = []cstring {
-                    "-Dint8_t=signed char",
-                    "-Dint16_t=signed short",
-                    "-Dint32_t=signed int",
-                    "-Dint64_t=signed long long",
-                    "-Duint8_t=unsigned char",
-                    "-Duint16_t=unsigned short",
-                    "-Duint32_t=unsigned int",
-                    "-Duint64_t=unsigned long long",
-                    "-Dbool=_Bool",
-                    "-Dsize_t=unsigned long long",
-                    "-Dintptr_t=signed long long",
-                    "-Duintptr_t=unsigned long long",
-                    "-Dptrdiff_t=signed long long",
-                }
-            case .x86, .arm32:
-                stdint_macros = []cstring {
-                    "-Dint8_t=signed char",
-                    "-Dint16_t=signed short",
-                    "-Dint32_t=signed int",
-                    "-Dint64_t=signed long long",
-                    "-Duint8_t=unsigned char",
-                    "-Duint16_t=unsigned short",
-                    "-Duint32_t=unsigned int",
-                    "-Duint64_t=unsigned long long",
-                    "-Dbool=_Bool",
-                    "-Dsize_t=unsigned long",
-                    "-Dintptr_t=signed long",
-                    "-Duintptr_t=unsigned long",
-                    "-Dptrdiff_t=signed long",
-                }
-            case .Any:
-            // Leave it empty, but should be unreachable
-            }
-        case .Linux, .BSD, .Macos:
-            stdint_macros = []cstring {
-                "-Dint8_t=signed char",
-                "-Dint16_t=signed short",
-                "-Dint32_t=signed int",
-                "-Dint64_t=signed long long",
-                "-Duint8_t=unsigned char",
-                "-Duint16_t=unsigned short",
-                "-Duint32_t=unsigned int",
-                "-Duint64_t=unsigned long long",
-                "-Dbool=_Bool",
-                "-Dsize_t=unsigned long",
-                "-Dintptr_t=signed long",
-                "-Duintptr_t=unsigned long",
-                "-Dptrdiff_t=signed long",
-            }
-        case .Any:
-        // Leave it empty, but should be unreachable
+        // Macros for stdint (+ stdbool) types
+        stdint_macros := [?]cstring {
+            "-Dint8_t=signed char",
+            "-Dint16_t=signed short",
+            "-Dint32_t=signed int",
+            "-Dint64_t=signed long long",
+            "-Duint8_t=unsigned char",
+            "-Duint16_t=unsigned short",
+            "-Duint32_t=unsigned int",
+            "-Duint64_t=unsigned long long",
+            "-Dbool=_Bool",
         }
 
-        append(&clang_flags, ..stdint_macros)
+        append(&clang_flags, ..stdint_macros[:])
     }
 
     target_flag: cstring = ---

@@ -405,7 +405,47 @@ system_includes_contents :: proc(
 
     switch file_name {
     case "stdarg.h":
-        contents = "typedef long double va_list;"
+        contents = `#pragma once
+typedef long double va_list;
+`
+    case "stddef.h":
+        contents = `#pragma once
+typedef unsigned long long size_t;
+typedef signed long long ptrdiff_t;
+`
+    case "stdio.h":
+        contents = `#pragma once
+#include <stddef.h>
+`
+    case "stdlib.h":
+        contents = `#pragma once
+#include <stddef.h>
+`
+    case "stdint.h":
+        contents = `#pragma once
+typedef signed long long intptr_t;
+typedef unsigned long long uintptr_t;
+`
+    case "string.h":
+        contents = `#pragma once
+#include <stddef.h>
+`
+    case "time.h":
+        contents = `#pragma once
+#include <stddef.h>
+`
+    case "uchar.h":
+        contents = `#pragma once
+#include <stddef.h>
+`
+    case "wchar.h":
+        contents = `#pragma once
+#include <stddef.h>
+`
+    case "sys/types.h":
+        contents = `#pragma once
+typedef signed long long ssize_t;
+`
     case:
         ok = false
     }

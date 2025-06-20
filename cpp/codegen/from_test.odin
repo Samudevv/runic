@@ -869,11 +869,11 @@ test_cpp_unknown_int :: proc(t: ^testing.T) {
     if !expect_value(t, err, nil) do return
     defer runic.runestone_destroy(&rs)
 
-    expect_value(t, om.length(rs.types), 3)
+    expect_value(t, om.length(rs.types), 4)
     expect_value(t, om.length(rs.symbols), 1)
 
     pointy := om.get(rs.types, "pointy")
-    expect_value(t, pointy.spec.(runic.Builtin), runic.Builtin.SInt64)
+    expect_value(t, pointy.spec.(runic.Builtin), runic.Builtin.SIntX)
 
     structy_t := om.get(rs.types, "structy")
     strc := structy_t.spec.(runic.Struct)
@@ -890,6 +890,9 @@ test_cpp_unknown_int :: proc(t: ^testing.T) {
         strc.members[2].type.spec.(runic.Builtin),
         runic.Builtin.SInt64,
     )
+
+    super_size := om.get(rs.types, "super_size")
+    expect_value(t, super_size.spec.(runic.Builtin), runic.Builtin.SIntX)
 
     funcy := om.get(rs.symbols, "funcy")
     fy := funcy.value.(runic.Function)

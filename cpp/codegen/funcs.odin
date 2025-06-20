@@ -394,7 +394,9 @@ clang_type_to_runic_type :: proc(
     case .Enum:
         e: runic.Enum
 
+
         enum_int_type := clang.getEnumDeclIntegerType(cursor)
+
         enum_type := clang_type_to_runic_type(
             enum_int_type,
             clang.getTypeDeclaration(enum_int_type),
@@ -717,13 +719,13 @@ handle_builtin_int_string :: proc(
     case "uint64_t":
         return runic.Builtin.UInt64
     case "size_t":
-        return int_type(isz.size_t, false)
+        return runic.Builtin.UIntX
     case "intptr_t":
-        return int_type(isz.intptr_t, true)
+        return runic.Builtin.SIntX
     case "uintptr_t":
-        return int_type(isz.intptr_t, false)
+        return runic.Builtin.UIntX
     case "ptrdiff_t":
-        return int_type(isz.intptr_t, true)
+        return runic.Builtin.SIntX
     case:
         return strings.clone(type_name, allocator)
     }

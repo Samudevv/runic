@@ -1260,6 +1260,8 @@ write_builtin_type :: proc(wd: io.Writer, ty: runic.Builtin) -> io.Error {
         io.write_string(wd, "i64") or_return
     case .SInt128:
         io.write_string(wd, "i128") or_return
+    case .SIntX:
+        io.write_string(wd, "int") or_return
     case .UInt8:
         io.write_string(wd, "u8") or_return
     case .UInt16:
@@ -1270,6 +1272,8 @@ write_builtin_type :: proc(wd: io.Writer, ty: runic.Builtin) -> io.Error {
         io.write_string(wd, "u64") or_return
     case .UInt128:
         io.write_string(wd, "u128") or_return
+    case .UIntX:
+        io.write_string(wd, "uint") or_return
     case .Float32:
         io.write_string(wd, "f32") or_return
     case .Float64:
@@ -1839,4 +1843,3 @@ write_complete_foreign_import :: proc(
 
     return .None
 }
-

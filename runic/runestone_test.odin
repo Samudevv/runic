@@ -67,6 +67,8 @@ times = #SInt32 #Attr Arr "5*6/3*(8%9)" #AttrEnd
 anon_1 = #Struct x #SInt32 y #SInt32
 super_ptr = anon_1 #Attr Ptr 1 #AttrEnd
 Events = #Extern SDL_Event #Attr Arr 0 #AttrEnd
+DynInt = #SIntX
+DynUInt = #UIntX
 
 [methods]
 output.print_name = output_print_name
@@ -152,7 +154,7 @@ test_example_runestone :: proc(t: ^testing.T) {
         Builtin.UInt8,
     )
 
-    expect_value(t, om.length(types), 12)
+    expect_value(t, om.length(types), 14)
     expect_value(t, om.get(types, "super_ptr").pointer_info.count, 1)
     expect_value(t, len(om.get(types, "numbers").array_info), 1)
     expect_value(t, om.get(types, "numbers").array_info[0].size.(u64), 5)
@@ -164,6 +166,8 @@ test_example_runestone :: proc(t: ^testing.T) {
     expect_value(t, om.get(types, "transform").array_info[0].size.(u64), 4)
     expect_value(t, om.get(types, "transform").array_info[1].size.(u64), 4)
     expect_value(t, om.get(types, "Events").spec.(ExternType), "SDL_Event")
+    expect_value(t, om.get(types, "DynInt").spec.(Builtin), Builtin.SIntX)
+    expect_value(t, om.get(types, "DynUInt").spec.(Builtin), Builtin.UIntX)
 
     expect_value(t, om.length(externs), 1)
     expect_value(t, om.get(externs, "SDL_Event").source, "SDL2/SDL_Event.h")
@@ -410,4 +414,3 @@ test_trim_enum_type_names :: proc(t: ^testing.T) {
         expect_value(t, e.entries[3].name, "right")
     }
 }
-

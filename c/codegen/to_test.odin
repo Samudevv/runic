@@ -202,6 +202,7 @@ var.macos_globals = Array
 
     EXPECTED_HEADER :: `#pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include <wayland/wayland-client.h>

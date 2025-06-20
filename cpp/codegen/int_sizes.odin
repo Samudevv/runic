@@ -149,7 +149,7 @@ int_type :: proc(sz: uint, signed: bool) -> (t: runic.Builtin) {
 
     if !signed {
         val := transmute(int)t
-        val += 5
+        val += 6
         t = transmute(runic.Builtin)val
     }
     return

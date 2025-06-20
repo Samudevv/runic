@@ -604,6 +604,8 @@ parse_type_token :: proc(
             type.spec = Builtin.SInt64
         case "SInt128":
             type.spec = Builtin.SInt128
+        case "SIntX":
+            type.spec = Builtin.SIntX
         case "UInt8":
             type.spec = Builtin.UInt8
         case "UInt16":
@@ -614,6 +616,8 @@ parse_type_token :: proc(
             type.spec = Builtin.UInt64
         case "UInt128":
             type.spec = Builtin.UInt128
+        case "UIntX":
+            type.spec = Builtin.UIntX
         case "Float32":
             type.spec = Builtin.Float32
         case "Float64":
@@ -870,6 +874,8 @@ parse_enum_token :: proc(
         e.type = .SInt64
     case "SInt128":
         e.type = .SInt128
+    case "SIntX":
+        e.type = .SIntX
     case "UInt8":
         e.type = .UInt8
     case "UInt16":
@@ -880,6 +886,8 @@ parse_enum_token :: proc(
         e.type = .UInt64
     case "UInt128":
         e.type = .UInt128
+    case "UIntX":
+        e.type = .UIntX
     case:
         err = errors.message("invalid enum type {}", token.text)
         return

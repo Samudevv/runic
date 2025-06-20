@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 #define FOO_VALUE 5
@@ -23,7 +24,7 @@ typedef struct booty_treasure {
     hooty_shmooty sh;
 } booty_treasure;
 
-typedef int64_t typeid;
+typedef ssize_t typeid;
 
 typedef struct runtime_Allocator {
     void* procedure;
@@ -38,7 +39,7 @@ typedef enum booty_boots {
 
 typedef struct string {
     uint8_t* data;
-    int64_t  length;
+    ssize_t  length;
 } string;
 
 typedef int32_t booty_boot_int;
@@ -52,14 +53,14 @@ typedef int64_t c_int64_t;
 
 typedef struct booty_boot_int_slice {
     booty_boot_int* data;
-    int64_t         length;
+    ssize_t         length;
 } booty_boot_int_slice;
 
 typedef booty_boot_int_slice booty_large_slice;
 
 typedef struct booty_f64_slice {
     double* data;
-    int64_t length;
+    ssize_t length;
 } booty_f64_slice;
 
 typedef booty_f64_slice booty_small_slice;
@@ -76,7 +77,7 @@ typedef struct booty_large_union {
 } booty_large_union;
 
 typedef struct booty_anon_3 {
-    int64_t     id;
+    ssize_t     id;
     string      first_name;
     string      last_name;
     booty_boots shoe;
@@ -104,14 +105,14 @@ typedef struct runtime_Context {
     runtime_Logger           logger;
     runtime_Random_Generator random_generator;
     void*                    user_ptr;
-    int64_t                  user_index;
+    ssize_t                  user_index;
     void*                    _internal;
 } runtime_Context;
 
 typedef struct booty_boot_int_dynamic_array {
     booty_boot_int*   data;
-    int64_t           length;
-    int64_t           capacity;
+    ssize_t           length;
+    ssize_t           capacity;
     runtime_Allocator allocator;
 } booty_boot_int_dynamic_array;
 
@@ -124,8 +125,8 @@ typedef struct any {
 
 typedef struct booty_f32_dynamic_array {
     float*            data;
-    int64_t           length;
-    int64_t           capacity;
+    ssize_t           length;
+    ssize_t           capacity;
     runtime_Allocator allocator;
 } booty_f32_dynamic_array;
 
@@ -133,32 +134,32 @@ typedef booty_f32_dynamic_array booty_large_array;
 
 struct pointed_cycle;
 
-typedef int64_t* int_ptr;
-typedef int64_t multi_int[10];
-typedef int64_t (*multi_int_ptr)[10];
-typedef int64_t* int_multi_ptr[10];
+typedef ssize_t* int_ptr;
+typedef ssize_t multi_int[10];
+typedef ssize_t (*multi_int_ptr)[10];
+typedef ssize_t* int_multi_ptr[10];
 typedef double** super_multi[10][20][30][40][50];
-typedef int64_t (*arr_ptr)[14];
-typedef int64_t*** (***(*(*(***complex_ptr)[13][14])[15])[18])[17];
+typedef ssize_t (*arr_ptr)[14];
+typedef ssize_t*** (***(*(*(***complex_ptr)[13][14])[15])[18])[17];
 
 typedef struct booty_treasure_slice {
     booty_treasure* data;
-    int64_t         length;
+    ssize_t         length;
 } booty_treasure_slice;
 
 typedef struct booty_treasure_slice typey_type;
 
 typedef struct typeid_slice {
     typeid* data;
-    int64_t length;
+    ssize_t length;
 } typeid_slice;
 
 typedef struct typeid_slice type_typey;
 
 typedef struct booty_treasure_dynamic_array {
     booty_treasure*   data;
-    int64_t           length;
-    int64_t           capacity;
+    ssize_t           length;
+    ssize_t           capacity;
     runtime_Allocator allocator;
 } booty_treasure_dynamic_array;
 
@@ -166,8 +167,8 @@ typedef struct booty_treasure_dynamic_array tüp_töp;
 
 typedef struct typeid_dynamic_array {
     typeid*           data;
-    int64_t           length;
-    int64_t           capacity;
+    ssize_t           length;
+    ssize_t           capacity;
     runtime_Allocator allocator;
 } typeid_dynamic_array;
 
@@ -175,13 +176,13 @@ typedef struct typeid_dynamic_array töp_tüp;
 
 typedef struct maybe_int {
     _Bool   ok;
-    int64_t value;
+    ssize_t value;
 } maybe_int;
 
 typedef struct maybe_int mäybe;
 
 typedef struct anon_0 {
-    int64_t           x;
+    ssize_t           x;
     unsigned __int128 y;
 } anon_0;
 
@@ -224,7 +225,7 @@ typedef struct map_int_string {
 
 #define baked_beans ((anon_1)  0)
 #define toast       ((anon_1)  1)
-typedef int64_t anon_1;
+typedef ssize_t anon_1;
 
 typedef struct anon_2 {
     float x;
@@ -246,7 +247,7 @@ typedef struct map_booty_boot_int_booty_treasure {
 
 typedef struct i32_slice {
     int32_t* data;
-    int64_t  length;
+    ssize_t  length;
 } i32_slice;
 
 typedef struct pointed_cycle* cycle_pointer;
@@ -262,7 +263,7 @@ typedef int32_t sausage;
 #define Käsekrainer  ((sausages) 69)
 #define Frankfurter  ((sausages)  5)
 #define Räucherwurst ((sausages)  6)
-typedef int64_t sausages;
+typedef ssize_t sausages;
 
 typedef struct sausage_foo {
     sausage  s;
@@ -282,16 +283,16 @@ typedef union your_foo {
 } your_foo;
 
 typedef struct anon_4 {
-    int64_t z;
+    ssize_t z;
 } anon_4;
 
 typedef struct anon_5 {
-    int64_t       y;
+    ssize_t       y;
     struct anon_4 cba;
 } anon_5;
 
 typedef struct nested {
-    int64_t       x;
+    ssize_t       x;
     struct anon_5 abc;
 } nested;
 
@@ -302,69 +303,69 @@ typedef enum pants {
 } pants;
 
 typedef struct int_slice {
-    int64_t* data;
-    int64_t  length;
+    ssize_t* data;
+    ssize_t  length;
 } int_slice;
 
 typedef struct int_slice_slice {
     struct int_slice* data;
-    int64_t           length;
+    ssize_t           length;
 } int_slice_slice;
 
 typedef struct int_slice_slice_slice {
     struct int_slice_slice* data;
-    int64_t                 length;
+    ssize_t                 length;
 } int_slice_slice_slice;
 
 typedef struct int_slice_slice_slice mega_int_slice;
 
 typedef struct mega_int_slice_array_7_array_6_array_5_pointer_pointer_pointer_slice {
     mega_int_slice (****data)[5][6][7];
-    int64_t        length;
+    ssize_t        length;
 } mega_int_slice_array_7_array_6_array_5_pointer_pointer_pointer_slice;
 
 typedef struct mega_int_slice_array_7_array_6_array_5_pointer_pointer_pointer_slice super_int_slice;
 
 typedef struct u8_pointer_pointer_pointer_array_5_slice {
     uint8_t*** (*data)[5];
-    int64_t    length;
+    ssize_t    length;
 } u8_pointer_pointer_pointer_array_5_slice;
 
 typedef struct u8_pointer_pointer_pointer_array_5_slice_slice {
     struct u8_pointer_pointer_pointer_array_5_slice* data;
-    int64_t                                          length;
+    ssize_t                                          length;
 } u8_pointer_pointer_pointer_array_5_slice_slice;
 
 typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice {
     struct u8_pointer_pointer_pointer_array_5_slice_slice* data;
-    int64_t                                                length;
+    ssize_t                                                length;
 } u8_pointer_pointer_pointer_array_5_slice_slice_slice;
 
 typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array {
     struct u8_pointer_pointer_pointer_array_5_slice_slice_slice* data;
-    int64_t                                                      length;
-    int64_t                                                      capacity;
+    ssize_t                                                      length;
+    ssize_t                                                      capacity;
     runtime_Allocator                                            allocator;
 } u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array;
 
 typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array {
     struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array* data;
-    int64_t                                                                    length;
-    int64_t                                                                    capacity;
+    ssize_t                                                                    length;
+    ssize_t                                                                    capacity;
     runtime_Allocator                                                          allocator;
 } u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array;
 
 typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array_dynamic_array {
     struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array* data;
-    int64_t                                                                                  length;
-    int64_t                                                                                  capacity;
+    ssize_t                                                                                  length;
+    ssize_t                                                                                  capacity;
     runtime_Allocator                                                                        allocator;
 } u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array_dynamic_array;
 
 typedef struct u8_pointer_pointer_pointer_array_5_slice_slice_slice_dynamic_array_dynamic_array_dynamic_array confusing_type;
 typedef runtime_Allocator my_allocator;
 typedef intrinsics_objc_object my_obj;
-typedef int64_t my_great_int;
+typedef ssize_t my_great_int;
 typedef unsigned __int128 beans[128];
 typedef uint16_t bit_field_u16;
 typedef bit_field_u16 simple_bf;
@@ -380,13 +381,13 @@ typedef beans bit_field_beans;
 typedef bit_field_beans bean_plantation;
 
 typedef struct multi_foo_result {
-    int64_t c;
-    int64_t d;
+    ssize_t c;
+    ssize_t d;
 } multi_foo_result;
 
 typedef struct anon_6 {
-    int64_t a;
-    int64_t b;
+    ssize_t a;
+    ssize_t b;
 } anon_6;
 
 typedef union anon_7 {
@@ -396,18 +397,18 @@ typedef union anon_7 {
 
 typedef struct i64_slice {
     int64_t* data;
-    int64_t  length;
+    ssize_t  length;
 } i64_slice;
 
 typedef struct string_slice {
     string* data;
-    int64_t length;
+    ssize_t length;
 } string_slice;
 
 typedef struct int_dynamic_array {
-    int64_t*          data;
-    int64_t           length;
-    int64_t           capacity;
+    ssize_t*          data;
+    ssize_t           length;
+    ssize_t           capacity;
     runtime_Allocator allocator;
 } int_dynamic_array;
 
@@ -424,7 +425,7 @@ typedef uint16_t bit_set_languages;
 #define urdu     ((languages)  7)
 #define latin    ((languages)  8)
 #define sanskrit ((languages)  9)
-typedef int64_t languages;
+typedef ssize_t languages;
 
 typedef uint64_t bit_set_languages_u64;
 typedef int32_t polyglot_int;
@@ -433,14 +434,14 @@ typedef polyglot_int bit_set_languages_polyglot_int;
 #define one   ((anon_bit_set_enum_8)  0)
 #define two   ((anon_bit_set_enum_8)  1)
 #define three ((anon_bit_set_enum_8)  2)
-typedef int64_t anon_bit_set_enum_8;
+typedef ssize_t anon_bit_set_enum_8;
 
 typedef uint8_t bit_set_anon_bit_set_enum_8;
 
 #define four ((anon_bit_set_enum_9)  0)
 #define five ((anon_bit_set_enum_9)  1)
 #define six  ((anon_bit_set_enum_9)  2)
-typedef int64_t anon_bit_set_enum_9;
+typedef ssize_t anon_bit_set_enum_9;
 
 typedef int8_t bit_set_anon_bit_set_enum_9_i8;
 typedef uint32_t bit_set_range_26;
@@ -456,7 +457,7 @@ extern booty_large_bit_field baz_value;
 extern booty_booties faz_value;
 extern super_multi your_var;
 extern float* mumu;
-extern _Bool (* error_callback)(const int64_t err);
+extern _Bool (* error_callback)(const ssize_t err);
 extern bit_set_pants multi_pant;
 extern bit_set_languages polyglot;
 extern bit_set_languages polyglot1;
@@ -471,12 +472,12 @@ extern bit_set_range_2_to_5 number_range;
 extern bit_set_booty_boots boot_options;
 extern bit_set_booty_boots_booty_boot_int foo_booties;
 
-extern char* bar(const char* msg, const int64_t result);
+extern char* bar(const char* msg, const ssize_t result);
 extern char* parse_int(const c_int64_t value, const booty_large_slice v1, const booty_small_slice v2);
 extern void do_alloc(const booty_treasure ctx, const booty_large_union types);
 extern _Bool process_orders(const struct i32_slice orders, const booty_callback cb);
-extern int64_t foo(const int64_t a, const int64_t b);
-extern struct multi_foo_result multi_foo(const int64_t a, const int64_t b);
+extern ssize_t foo(const ssize_t a, const ssize_t b);
+extern struct multi_foo_result multi_foo(const ssize_t a, const ssize_t b);
 extern uint32_t super_foo(const struct my_foo a);
 extern void print_pants(const enum pants a);
 extern void print_sausages(const sausages b);
@@ -487,7 +488,7 @@ extern void multi_add_slice(const struct i64_slice (*ss)[5], const int64_t a);
 extern string cstring_to_string(const char* str);
 extern void print_strings(const struct string_slice str);
 extern runtime_Context odin_default_context();
-extern void append_five(struct int_dynamic_array*const arr, const int64_t value);
+extern void append_five(struct int_dynamic_array*const arr, const ssize_t value);
 extern booty_large_array make_large_array(const booty_small_array s, const typeid t, const any a);
 
 #define foozy_bar bar

@@ -731,14 +731,7 @@ lookup_type_of_import :: proc(
                     s.members[5].type.spec = runic.Builtin.RawPtr
 
                     s.members[6].name = "user_index"
-                    switch plat.arch {
-                    case .x86, .arm32:
-                        s.members[6].type.spec = runic.Builtin.SInt32
-                    case .x86_64, .arm64:
-                        s.members[6].type.spec = runic.Builtin.SInt64
-                    case .Any:
-                        s.members[6].type.spec = runic.Builtin.Untyped
-                    }
+                    s.members[6].type.spec = runic.Builtin.SIntX
 
                     s.members[7].name = "_internal"
                     s.members[7].type.spec = runic.Builtin.RawPtr

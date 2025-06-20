@@ -222,7 +222,7 @@ generate_bindings :: proc {
 
 generate_includes :: proc(wd: io.Writer, rn: runic.To) -> io.Error {
     io.write_string(wd, "#pragma once\n\n") or_return
-    io.write_string(wd, "#include <stdint.h>\n\n") or_return
+    io.write_string(wd, "#include <stddef.h>\n#include <stdint.h>\n\n") or_return
 
     include_paths: [dynamic]string
     defer delete(include_paths)
@@ -897,6 +897,8 @@ write_type_specifier :: proc(
         case .SInt128:
             // TODO: Support compilers where this type is not present
             io.write_string(wd, "__int128") or_return
+        case .SIntX:
+            io.write_string(wd, "ssize_t") or_return
         case .UInt8:
             io.write_string(wd, "uint8_t") or_return
         case .UInt16:
@@ -908,6 +910,8 @@ write_type_specifier :: proc(
         case .UInt128:
             // TODO: Support compilers where this type is not present
             io.write_string(wd, "unsigned __int128") or_return
+        case .UIntX:
+            io.write_string(wd, "size_t") or_return
         case .Float32:
             io.write_string(wd, "float") or_return
         case .Float64:

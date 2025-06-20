@@ -127,14 +127,7 @@ string_to_type :: proc(
         string_type.members[0].type.pointer_info.count = 1
 
         string_type.members[1].name = "length"
-        switch plat.arch {
-        case .x86, .arm32:
-            string_type.members[1].type.spec = runic.Builtin.SInt32
-        case .x86_64, .arm64:
-            string_type.members[1].type.spec = runic.Builtin.SInt64
-        case .Any:
-            string_type.members[1].type.spec = runic.Builtin.Untyped
-        }
+        string_type.members[1].type.spec = runic.Builtin.SIntX
 
         om.insert(
             ctx.externs,
@@ -199,15 +192,7 @@ typeid_to_type :: proc(
     }
 
     if !om.contains(ctx.externs^, "typeid") {
-        typeid_spec: runic.Builtin = ---
-        switch plat.arch {
-        case .x86_64, .arm64:
-            typeid_spec = .SInt64
-        case .x86, .arm32:
-            typeid_spec = .SInt32
-        case .Any:
-            typeid_spec = .Untyped
-        }
+        typeid_spec := runic.Builtin.SIntX
 
         om.insert(
             ctx.externs,
@@ -400,14 +385,7 @@ slice_to_type :: proc(
     }
 
     slice_type.members[1].name = "length"
-    switch plat.arch {
-    case .x86, .arm32:
-        slice_type.members[1].type.spec = runic.Builtin.SInt32
-    case .x86_64, .arm64:
-        slice_type.members[1].type.spec = runic.Builtin.SInt64
-    case .Any:
-        slice_type.members[1].type.spec = runic.Builtin.Untyped
-    }
+    slice_type.members[1].type.spec = runic.Builtin.SIntX
 
     if ctx.current_package != nil {
         om.insert(
@@ -543,24 +521,10 @@ dynamic_array_to_type :: proc(
     }
 
     dynamic_array_type.members[1].name = "length"
-    switch plat.arch {
-    case .x86, .arm32:
-        dynamic_array_type.members[1].type.spec = runic.Builtin.SInt32
-    case .x86_64, .arm64:
-        dynamic_array_type.members[1].type.spec = runic.Builtin.SInt64
-    case .Any:
-        dynamic_array_type.members[1].type.spec = runic.Builtin.Untyped
-    }
+    dynamic_array_type.members[1].type.spec = runic.Builtin.SIntX
 
     dynamic_array_type.members[2].name = "capacity"
-    switch plat.arch {
-    case .x86, .arm32:
-        dynamic_array_type.members[2].type.spec = runic.Builtin.SInt32
-    case .x86_64, .arm64:
-        dynamic_array_type.members[2].type.spec = runic.Builtin.SInt64
-    case .Any:
-        dynamic_array_type.members[2].type.spec = runic.Builtin.Untyped
-    }
+    dynamic_array_type.members[2].type.spec = runic.Builtin.SIntX
 
     dynamic_array_type.members[3].name = "allocator"
     dynamic_array_type.members[3].type.spec = runic.ExternType(
@@ -1492,23 +1456,9 @@ ident_to_type :: proc(
 ) {
     switch ident {
     case "int":
-        switch plat.arch {
-        case .Any:
-            type.spec = runic.Builtin.Untyped
-        case .x86_64, .arm64:
-            type.spec = runic.Builtin.SInt64
-        case .x86, .arm32:
-            type.spec = runic.Builtin.SInt32
-        }
+        type.spec = runic.Builtin.SIntX
     case "uint":
-        switch plat.arch {
-        case .Any:
-            type.spec = runic.Builtin.Untyped
-        case .x86_64, .arm64:
-            type.spec = runic.Builtin.UInt64
-        case .x86, .arm32:
-            type.spec = runic.Builtin.UInt32
-        }
+        type.spec = runic.Builtin.UIntX
     case "i8":
         type.spec = runic.Builtin.SInt8
     case "i16":
@@ -1963,14 +1913,7 @@ enum_to_type :: proc(
     e: runic.Enum
 
     if et.base_type == nil {
-        switch plat.arch {
-        case .Any:
-            e.type = .Untyped
-        case .x86_64, .arm64:
-            e.type = .SInt64
-        case .x86, .arm32:
-            e.type = .SInt32
-        }
+        e.type = .SIntX
     } else {
         underlying := type_to_type(plat, ctx, name, et.base_type) or_return
 

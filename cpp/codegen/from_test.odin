@@ -226,8 +226,6 @@ test_cpp_struct :: proc(t: ^testing.T) {
 test_cpp_enum :: proc(t: ^testing.T) {
     using testing
 
-    host := runic.platform_from_host()
-
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libenum.so"}},

@@ -922,7 +922,7 @@ parse_var_decl :: proc(cursor: clang.Cursor) {
     var_name := strings.clone(display_name, ctx.allocator)
 
     if _, ok := type.spec.(runic.FunctionPointer); !ok {
-        handle_anon_type(&type, ctx, var_name)
+        handle_anon_type(&type, var_name)
     }
 
     om.insert(&ctx.rs.symbols, var_name, runic.Symbol{value = type})
@@ -1076,7 +1076,7 @@ parse_function_decl :: proc(cursor: clang.Cursor) {
     )
     if ctx.err != nil do return
 
-    handle_anon_type(&func.return_type, ctx, func_name)
+    handle_anon_type(&func.return_type, func_name)
 
     func.parameters = make(
         [dynamic]runic.Member,
@@ -1122,7 +1122,7 @@ parse_function_decl :: proc(cursor: clang.Cursor) {
         )
         if ctx.err != nil do return
 
-        handle_anon_type(&type, ctx, param_name_str)
+        handle_anon_type(&type, param_name_str)
 
         append(
             &func.parameters,

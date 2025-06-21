@@ -146,7 +146,7 @@ clang_type_to_runic_type :: proc(
         ) or_return
 
         if _, ok := tp.spec.(runic.FunctionPointer); !ok {
-            handle_anon_type(&tp, ctx, "pointer")
+            handle_anon_type(&tp, "pointer")
         }
 
         if pointee.kind == .Void {
@@ -179,7 +179,7 @@ clang_type_to_runic_type :: proc(
             name_hint,
         ) or_return
 
-        handle_anon_type(&tp, ctx, "array")
+        handle_anon_type(&tp, "array")
 
         arr_size := clang.getArraySize(type)
 
@@ -203,7 +203,7 @@ clang_type_to_runic_type :: proc(
             name_hint,
         ) or_return
 
-        handle_anon_type(&tp, ctx, "array")
+        handle_anon_type(&tp, "array")
 
         if len(tp.array_info) == 0 {
             tp.array_info = make([dynamic]runic.Array, ctx.allocator)
@@ -292,7 +292,7 @@ clang_type_to_runic_type :: proc(
 
                 #partial switch cursor_kind {
                 case .FieldDecl:
-                    handle_anon_type(&type, data.ctx, member_name)
+                    handle_anon_type(&type, member_name)
 
                     append(data.members, runic.Member{name = member_name, type = type})
                 case:
@@ -424,7 +424,7 @@ clang_type_to_runic_type :: proc(
             name_hint = name_hint,
         ) or_return
 
-        handle_anon_type(&func.return_type, ctx, "func")
+        handle_anon_type(&func.return_type, "func")
 
         func.parameters = make(
             [dynamic]runic.Member,
@@ -475,7 +475,7 @@ clang_type_to_runic_type :: proc(
                 type, data.err = clang_type_to_runic_type(param_type, cursor, param_hint, param_name)
                 if data.err != nil do return .Break
 
-                handle_anon_type(&type, data.ctx, param_name)
+                handle_anon_type(&type, param_name)
 
                 append(&data.func.parameters, runic.Member{name = param_name, type = type})
 
@@ -539,9 +539,10 @@ clang_type_to_runic_type :: proc(
 @(private)
 handle_anon_type :: #force_inline proc(
     tp: ^runic.Type,
-    ctx: ^ParseContext,
     prefix: string = "",
 ) {
+    ctx := ps()
+
     type_name: string = ---
 
     #partial switch _ in tp.spec {

@@ -719,7 +719,7 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
                     }
 
                     ctx.included_types[type_name] = IncludedType {
-                        file_name = file_name if rel_ok else strings.clone(file_name, ctx.allocator),
+                        file_name = strings.clone(file_name, ctx.allocator),
                         type      = type,
                         system    = bool(
                             clang.Location_isInSystemHeader(cursor_location),
@@ -730,7 +730,7 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
             }
 
             ctx.included_types[type_name] = IncludedType {
-                file_name = file_name if rel_ok else strings.clone(file_name, ctx.allocator),
+                file_name = strings.clone(file_name, ctx.allocator),
                 type      = typedef,
                 system    = bool(
                     clang.Location_isInSystemHeader(cursor_location),
@@ -744,7 +744,7 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
         // TODO: if a forward declaration is declared in one included file (included by header A), but the implementation is defined in a file included by header B. This leads to the forward declaration being added instead of the implementation, maybe changing included_types to a map of arrays and then add every declaration found could solve this.
         if !(display_name in ctx.included_types) {
             ctx.included_types[display_name] = IncludedType {
-                file_name = file_name if rel_ok else strings.clone(file_name, ctx.allocator),
+                file_name = strings.clone(file_name, ctx.allocator),
                 type      = cursor_type,
                 system    = bool(
                     clang.Location_isInSystemHeader(cursor_location),
@@ -757,7 +757,7 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
 
         if !(display_name in ctx.included_types) {
             ctx.included_types[display_name] = IncludedType {
-                file_name = file_name if rel_ok else strings.clone(file_name, ctx.allocator),
+                file_name = strings.clone(file_name, ctx.allocator),
                 type      = cursor_type,
                 system    = bool(
                     clang.Location_isInSystemHeader(cursor_location),
@@ -770,7 +770,7 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
 
         if !(display_name in ctx.included_types) {
             ctx.included_types[display_name] = IncludedType {
-                file_name = file_name if rel_ok else strings.clone(file_name, ctx.allocator),
+                file_name = strings.clone(file_name, ctx.allocator),
                 type      = cursor_type,
                 system    = bool(
                     clang.Location_isInSystemHeader(cursor_location),

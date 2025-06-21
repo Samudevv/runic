@@ -94,7 +94,7 @@ typedef void intrinsics_objc_object;
 typedef struct runtime_Logger {
     void*    procedure;
     void*    data;
-    uint64_t lowest_level;
+    size_t   lowest_level;
     uint16_t options;
 } runtime_Logger;
 
@@ -222,8 +222,8 @@ typedef struct bar_union {
 } bar_union;
 
 typedef struct map_int_string {
-    uint64_t          data;
-    uint64_t          length;
+    size_t            data;
+    size_t            length;
     runtime_Allocator allocator;
 } map_int_string;
 
@@ -239,14 +239,14 @@ typedef struct anon_2 {
 } anon_2;
 
 typedef struct map_anon_1_anon_2 {
-    uint64_t          data;
-    uint64_t          length;
+    size_t            data;
+    size_t            length;
     runtime_Allocator allocator;
 } map_anon_1_anon_2;
 
 typedef struct map_booty_boot_int_booty_treasure {
-    uint64_t          data;
-    uint64_t          length;
+    size_t            data;
+    size_t            length;
     runtime_Allocator allocator;
 } map_booty_boot_int_booty_treasure;
 

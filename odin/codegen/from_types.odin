@@ -29,6 +29,7 @@ import "root:runic"
 
 @(private)
 ParseContext :: struct {
+    plat:                runic.Platform,
     constants:           ^om.OrderedMap(string, runic.Constant),
     symbols:             ^om.OrderedMap(string, runic.Symbol),
     types:               ^om.OrderedMap(string, runic.Type),
@@ -51,7 +52,6 @@ ps :: #force_inline proc() -> ^ParseContext {
 }
 
 type_to_type :: proc(
-    plat: runic.Platform,
     name: Maybe(string),
     t: ^odina.Expr,
 ) -> (
@@ -62,43 +62,38 @@ type_to_type :: proc(
 
     #partial switch type_expr in t.derived_expr {
     case ^odina.Ident:
-        return ident_to_type(plat, type_expr.name)
+        return ident_to_type(type_expr.name)
     case ^odina.Typeid_Type:
-        return typeid_to_type(plat)
+        return typeid_to_type()
     case ^odina.Pointer_Type:
-        return pointer_to_type(plat, name, type_expr.elem)
+        return pointer_to_type(name, type_expr.elem)
     case ^odina.Array_Type:
-        return array_or_slice_to_type(
-            plat,
-            name,
-            type_expr.elem,
-            type_expr.len,
-        )
+        return array_or_slice_to_type(name, type_expr.elem, type_expr.len)
     case ^odina.Multi_Pointer_Type:
-        return pointer_to_type(plat, name, type_expr.elem)
+        return pointer_to_type(name, type_expr.elem)
     case ^odina.Dynamic_Array_Type:
-        return dynamic_array_to_type(plat, name, type_expr.elem)
+        return dynamic_array_to_type(name, type_expr.elem)
     case ^odina.Enum_Type:
-        return enum_to_type(plat, type_expr, name)
+        return enum_to_type(type_expr, name)
     case ^odina.Struct_Type:
-        return struct_or_raw_union_to_type(plat, name, type_expr)
+        return struct_or_raw_union_to_type(name, type_expr)
     case ^odina.Union_Type:
-        return union_to_type(plat, name, type_expr)
+        return union_to_type(name, type_expr)
     case ^odina.Selector_Expr:
-        return selector_to_type(plat, type_expr)
+        return selector_to_type(type_expr)
     case ^odina.Helper_Type:
-        return type_to_type(plat, name, type_expr.type)
+        return type_to_type(name, type_expr.type)
     case ^odina.Proc_Type:
-        func := proc_to_function(plat, type_expr, name) or_return
+        func := proc_to_function(type_expr, name) or_return
         type.spec = runic.FunctionPointer(new_clone(func, ctx.allocator))
     case ^odina.Bit_Set_Type:
-        return bit_set_to_type(plat, type_expr)
+        return bit_set_to_type(type_expr)
     case ^odina.Bit_Field_Type:
-        return bit_field_to_type(plat, name, type_expr)
+        return bit_field_to_type(name, type_expr)
     case ^odina.Call_Expr:
-        return maybe_to_type(plat, name, type_expr)
+        return maybe_to_type(name, type_expr)
     case ^odina.Map_Type:
-        return map_to_type(plat, name, type_expr)
+        return map_to_type(name, type_expr)
     case:
         fmt.eprintln(
             error_tok(
@@ -115,7 +110,7 @@ type_to_type :: proc(
     return
 }
 
-string_to_type :: proc(plat: runic.Platform) -> (type: runic.Type) {
+string_to_type :: proc() -> (type: runic.Type) {
     ctx := ps()
 
     if !om.contains(ctx.externs^, "string") {
@@ -145,7 +140,7 @@ string_to_type :: proc(plat: runic.Platform) -> (type: runic.Type) {
     return
 }
 
-any_to_type :: proc(plat: runic.Platform) -> (type: runic.Type) {
+any_to_type :: proc() -> (type: runic.Type) {
     ctx := ps()
 
     if !om.contains(ctx.externs^, "any") {
@@ -164,7 +159,7 @@ any_to_type :: proc(plat: runic.Platform) -> (type: runic.Type) {
         any_spec.members[1].name = "id"
         any_spec.members[1].type.spec = runic.ExternType("typeid")
 
-        typeid_to_type(plat)
+        typeid_to_type()
 
         om.insert(
             ctx.externs,
@@ -178,7 +173,6 @@ any_to_type :: proc(plat: runic.Platform) -> (type: runic.Type) {
 }
 
 typeid_to_type :: proc(
-    plat: runic.Platform,
     specialization: ^odina.Expr = nil,
 ) -> (
     type: runic.Type,
@@ -209,14 +203,13 @@ typeid_to_type :: proc(
 }
 
 pointer_to_type :: proc(
-    plat: runic.Platform,
     name: Maybe(string),
     elem: ^odina.Expr,
 ) -> (
     type: runic.Type,
     err: errors.Error,
 ) {
-    type = type_to_type(plat, name, elem) or_return
+    type = type_to_type(name, elem) or_return
     if len(type.array_info) != 0 {
         type.array_info[len(type.array_info) - 1].pointer_info.count += 1
     } else {
@@ -227,7 +220,6 @@ pointer_to_type :: proc(
 }
 
 array_or_slice_to_type :: proc(
-    plat: runic.Platform,
     name: Maybe(string),
     elem, len: ^odina.Expr,
 ) -> (
@@ -235,13 +227,12 @@ array_or_slice_to_type :: proc(
     errors.Error,
 ) {
     if len != nil {
-        return array_to_type(plat, name, elem, len)
+        return array_to_type(name, elem, len)
     }
-    return slice_to_type(plat, name, elem)
+    return slice_to_type(name, elem)
 }
 
 array_to_type :: proc(
-    plat: runic.Platform,
     name: Maybe(string),
     elem, length: ^odina.Expr,
 ) -> (
@@ -250,7 +241,7 @@ array_to_type :: proc(
 ) {
     ctx := ps()
 
-    type = type_to_type(plat, name, elem) or_return
+    type = type_to_type(name, elem) or_return
     if len(type.array_info) == 0 {
         type.array_info = make([dynamic]runic.Array, ctx.allocator)
     }
@@ -273,7 +264,6 @@ array_to_type :: proc(
 }
 
 slice_to_type :: proc(
-    plat: runic.Platform,
     name: Maybe(string),
     elem: ^odina.Expr,
 ) -> (
@@ -379,7 +369,7 @@ slice_to_type :: proc(
     )
 
     slice_type.members[0].name = "data"
-    slice_type.members[0].type = type_to_type(plat, name, elem) or_return
+    slice_type.members[0].type = type_to_type(name, elem) or_return
     if len(slice_type.members[0].type.array_info) != 0 {
         slice_type.members[0].type.array_info[len(slice_type.members[0].type.array_info) - 1].pointer_info.count +=
         1
@@ -409,7 +399,6 @@ slice_to_type :: proc(
 }
 
 dynamic_array_to_type :: proc(
-    plat: runic.Platform,
     name: Maybe(string),
     elem: ^odina.Expr,
 ) -> (
@@ -420,7 +409,7 @@ dynamic_array_to_type :: proc(
 
     // TODO: find out what 'tag' does
 
-    type = type_to_type(plat, name, elem) or_return
+    type = type_to_type(name, elem) or_return
 
     dyn_name_elements := make([dynamic]string, len = 0, cap = 3) // [dynamic]^[5]int
 
@@ -535,7 +524,7 @@ dynamic_array_to_type :: proc(
         "runtime_Allocator",
     )
 
-    maybe_add_runtime_extern(plat, "Allocator") or_return
+    maybe_add_runtime_extern("Allocator") or_return
 
     if ctx.current_package != nil {
         om.insert(
@@ -564,7 +553,6 @@ dynamic_array_to_type :: proc(
 }
 
 struct_or_raw_union_to_type :: proc(
-    plat: runic.Platform,
     name: Maybe(string),
     s: ^odina.Struct_Type,
 ) -> (
@@ -572,13 +560,12 @@ struct_or_raw_union_to_type :: proc(
     err: errors.Error,
 ) {
     if s.is_raw_union {
-        return raw_union_to_type(plat, s)
+        return raw_union_to_type(s)
     }
-    return struct_to_type(plat, s)
+    return struct_to_type(s)
 }
 
 union_to_type :: proc(
-    plat: runic.Platform,
     name: Maybe(string),
     u: ^odina.Union_Type,
 ) -> (
@@ -623,7 +610,7 @@ union_to_type :: proc(
 
     for var, idx in u.variants {
         var_name := fmt.aprintf("v{}", idx, allocator = ctx.allocator)
-        var_type := type_to_type(plat, var_name, var) or_return
+        var_type := type_to_type(var_name, var) or_return
 
         append(
             &values_union.members,
@@ -693,7 +680,6 @@ union_to_type :: proc(
 }
 
 selector_to_type :: proc(
-    plat: runic.Platform,
     sel: ^odina.Selector_Expr,
 ) -> (
     type: runic.Type,
@@ -714,7 +700,7 @@ selector_to_type :: proc(
 
     type_name := sel.field.name
 
-    type = lookup_type_of_import(plat, pkg.name, type_name) or_return
+    type = lookup_type_of_import(pkg.name, type_name) or_return
 
     imp, imp_ok := ctx.imports^[pkg.name]
     errors.assert(imp_ok, "import was expected to exist") or_return
@@ -741,7 +727,6 @@ selector_to_type :: proc(
 }
 
 bit_set_to_type :: proc(
-    plat: runic.Platform,
     bs: ^odina.Bit_Set_Type,
 ) -> (
     type: runic.Type,
@@ -762,7 +747,6 @@ bit_set_to_type :: proc(
             if ctx.current_package != nil &&
                !is_odin_builtin_type_identifier(underlying_name) {
                 pkg_type := lookup_type_in_package(
-                    plat,
                     underlying_name,
                     ctx.current_import_path.?,
                     ctx.current_package.?,
@@ -784,7 +768,7 @@ bit_set_to_type :: proc(
 
                 underlying = runic.ExternType(pkg_type_name)
             } else {
-                under_type := ident_to_type(plat, d.name) or_return
+                under_type := ident_to_type(d.name) or_return
                 underlying = under_type.spec
             }
 
@@ -807,7 +791,6 @@ bit_set_to_type :: proc(
             }
 
             pkg_type := lookup_type_of_import(
-                plat,
                 pkg_name,
                 underlying_name,
             ) or_return
@@ -848,7 +831,6 @@ bit_set_to_type :: proc(
         if underlying == nil {
             if ctx.current_package != nil {
                 elem_type := lookup_type_in_package(
-                    plat,
                     elem_name,
                     ctx.current_import_path.?,
                     ctx.current_package.?,
@@ -927,7 +909,7 @@ bit_set_to_type :: proc(
         )
         ctx.anon_counter^ += 1
 
-        anon_enum := enum_to_type(plat, e, elem_name) or_return
+        anon_enum := enum_to_type(e, elem_name) or_return
 
         if ctx.current_package != nil {
             om.insert(
@@ -956,7 +938,7 @@ bit_set_to_type :: proc(
 
         elem_name = e.field.name
 
-        pkg_type := lookup_type_of_import(plat, pkg.name, elem_name) or_return
+        pkg_type := lookup_type_of_import(pkg.name, elem_name) or_return
 
         enum_type, enum_ok := pkg_type.spec.(runic.Enum)
         errors.assert(
@@ -1041,7 +1023,6 @@ bit_set_to_type :: proc(
 }
 
 bit_field_to_type :: proc(
-    plat: runic.Platform,
     name: Maybe(string),
     bf: ^odina.Bit_Field_Type,
 ) -> (
@@ -1050,7 +1031,7 @@ bit_field_to_type :: proc(
 ) {
     ctx := ps()
 
-    back_type := type_to_type(plat, name, bf.backing_type) or_return
+    back_type := type_to_type(name, bf.backing_type) or_return
 
     bit_field_type_name: strings.Builder
     strings.builder_init(&bit_field_type_name, ctx.allocator)
@@ -1143,7 +1124,6 @@ bit_field_to_type :: proc(
 }
 
 maybe_to_type :: proc(
-    plat: runic.Platform,
     name: Maybe(string),
     ce: ^odina.Call_Expr,
 ) -> (
@@ -1171,7 +1151,7 @@ maybe_to_type :: proc(
         "invalid number of arguments of Maybe expression",
     ) or_return
 
-    underlying := type_to_type(plat, name, ce.args[0]) or_return
+    underlying := type_to_type(name, ce.args[0]) or_return
 
     underlying_anon_name, underlying_anon_type, underlying_is_anon :=
         runic.create_anon_type(
@@ -1271,7 +1251,6 @@ maybe_to_type :: proc(
 }
 
 map_to_type :: proc(
-    plat: runic.Platform,
     name: Maybe(string),
     mt: ^odina.Map_Type,
 ) -> (
@@ -1280,8 +1259,8 @@ map_to_type :: proc(
 ) {
     ctx := ps()
 
-    key_type := type_to_type(plat, name, mt.key) or_return
-    value_type := type_to_type(plat, name, mt.value) or_return
+    key_type := type_to_type(name, mt.key) or_return
+    value_type := type_to_type(name, mt.value) or_return
 
     key_anon_name, key_anon_type, key_is_anon := runic.create_anon_type(
         key_type.spec,
@@ -1387,43 +1366,17 @@ map_to_type :: proc(
     )
 
     map_type.members[0].name = "data"
-    switch plat.arch {
-    case .x86_64, .arm64:
-        map_type.members[0].type = runic.Type {
-            spec = runic.Builtin.UInt64,
-        }
-    case .x86, .arm32:
-        map_type.members[0].type = runic.Type {
-            spec = runic.Builtin.UInt32,
-        }
-    case .Any:
-        map_type.members[0].type = runic.Type {
-            spec = runic.Builtin.Untyped,
-        }
-    }
+    map_type.members[0].type.spec = runic.Builtin.UIntX
 
     map_type.members[1].name = "length"
-    switch plat.arch {
-    case .x86_64, .arm64:
-        map_type.members[1].type = runic.Type {
-            spec = runic.Builtin.UInt64,
-        }
-    case .x86, .arm32:
-        map_type.members[1].type = runic.Type {
-            spec = runic.Builtin.UInt32,
-        }
-    case .Any:
-        map_type.members[1].type = runic.Type {
-            spec = runic.Builtin.Untyped,
-        }
-    }
+    map_type.members[1].type.spec = runic.Builtin.UIntX
 
     map_type.members[2].name = "allocator"
     map_type.members[2].type = runic.Type {
         spec = runic.ExternType("runtime_Allocator"),
     }
 
-    maybe_add_runtime_extern(plat, "Allocator") or_return
+    maybe_add_runtime_extern("Allocator") or_return
 
     if ctx.current_package != nil {
         om.insert(
@@ -1447,13 +1400,7 @@ map_to_type :: proc(
     return
 }
 
-ident_to_type :: proc(
-    plat: runic.Platform,
-    ident: string,
-) -> (
-    type: runic.Type,
-    err: errors.Error,
-) {
+ident_to_type :: proc(ident: string) -> (type: runic.Type, err: errors.Error) {
     ctx := ps()
 
     switch ident {
@@ -1510,9 +1457,9 @@ ident_to_type :: proc(
     case "b64":
         type.spec = runic.Builtin.Bool64
     case "string":
-        type = string_to_type(plat)
+        type = string_to_type()
     case "any":
-        type = any_to_type(plat)
+        type = any_to_type()
     case "i16le",
          "i32le",
          "i64le",
@@ -1566,7 +1513,6 @@ ident_to_type :: proc(
                     },
                 )
                 type = lookup_type_in_package(
-                    plat,
                     ident,
                     ctx.current_import_path.?,
                     ctx.current_package.?,
@@ -1591,7 +1537,6 @@ ident_to_type :: proc(
 }
 
 proc_to_function :: proc(
-    plat: runic.Platform,
     p: ^odina.Proc_Type,
     name: Maybe(string),
 ) -> (
@@ -1620,7 +1565,7 @@ proc_to_function :: proc(
             first_name = name_to_name(param_field.names[0]) or_return
         }
 
-        type := type_to_type(plat, first_name, param_field.type) or_return
+        type := type_to_type(first_name, param_field.type) or_return
 
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             type.spec,
@@ -1686,7 +1631,7 @@ proc_to_function :: proc(
             first_name = name_to_name(result_field.names[0]) or_return
         }
 
-        type := type_to_type(plat, first_name, result_field.type) or_return
+        type := type_to_type(first_name, result_field.type) or_return
 
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             type.spec,
@@ -1812,13 +1757,12 @@ name_to_name :: proc(name: ^odina.Expr) -> (nm: string, err: errors.Error) {
 }
 
 raw_union_to_type :: proc(
-    plat: runic.Platform,
     st: ^odina.Struct_Type,
 ) -> (
     type: runic.Type,
     err: errors.Error,
 ) {
-    s := struct_to_type(plat, st) or_return
+    s := struct_to_type(st) or_return
     type.spec = runic.Union {
         members = s.spec.(runic.Struct).members,
     }
@@ -1826,7 +1770,6 @@ raw_union_to_type :: proc(
 }
 
 struct_to_type :: proc(
-    plat: runic.Platform,
     st: ^odina.Struct_Type,
 ) -> (
     type: runic.Type,
@@ -1853,7 +1796,7 @@ struct_to_type :: proc(
             first_name = name_to_name(field.names[0]) or_return
         }
 
-        field_type := type_to_type(plat, first_name, field.type) or_return
+        field_type := type_to_type(first_name, field.type) or_return
 
         if anon_name, anon_type, is_anon := runic.create_anon_type(
             field_type.spec,
@@ -1899,7 +1842,6 @@ struct_to_type :: proc(
 }
 
 enum_to_type :: proc(
-    plat: runic.Platform,
     et: ^odina.Enum_Type,
     name: Maybe(string),
 ) -> (
@@ -1913,7 +1855,7 @@ enum_to_type :: proc(
     if et.base_type == nil {
         e.type = .SIntX
     } else {
-        underlying := type_to_type(plat, name, et.base_type) or_return
+        underlying := type_to_type(name, et.base_type) or_return
 
         ok: bool = ---
         e.type, ok = underlying.spec.(runic.Builtin)
@@ -1950,7 +1892,7 @@ enum_to_type :: proc(
                 field_name = strings.clone(name_ident.name, ctx.allocator)
             }
 
-            value_any := evaluate_expr(plat, f.value) or_return
+            value_any := evaluate_expr(f.value) or_return
             value, value_ok := value_any.(i64)
             errors.wrap(value_ok, "enum field value is not integer") or_return
 

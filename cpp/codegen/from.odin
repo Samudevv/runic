@@ -762,7 +762,7 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
 
                     // TODO: handle forward declarations
                     type: runic.Type = ---
-                    type, ctx.err = clang_type_to_runic_type(
+                    type, ctx.err = type_to_type(
                         typedef,
                         cursor,
                         nil,
@@ -876,7 +876,7 @@ parse_typedef_decl :: proc(cursor: clang.Cursor) {
     }
 
     type: runic.Type = ---
-    type, ctx.err = clang_type_to_runic_type(
+    type, ctx.err = type_to_type(
         typedef,
         cursor,
         type_hint,
@@ -911,7 +911,7 @@ parse_var_decl :: proc(cursor: clang.Cursor) {
     }
 
     type: runic.Type = ---
-    type, ctx.err = clang_type_to_runic_type(
+    type, ctx.err = type_to_type(
         cursor_type,
         cursor,
         type_hint,
@@ -945,7 +945,7 @@ parse_struct_decl :: proc(
 
     cursor_type := clang.getCursorType(cursor)
 
-    type := clang_type_to_runic_type(
+    type := type_to_type(
         cursor_type,
         cursor,
         name_hint = display_name,
@@ -984,7 +984,7 @@ parse_union_decl :: proc(
 
     cursor_type := clang.getCursorType(cursor)
 
-    type := clang_type_to_runic_type(
+    type := type_to_type(
         cursor_type,
         cursor,
         name_hint = display_name,
@@ -1023,7 +1023,7 @@ parse_enum_decl :: proc(
 
     cursor_type := clang.getCursorType(cursor)
 
-    type := clang_type_to_runic_type(
+    type := type_to_type(
         cursor_type,
         cursor,
         name_hint = display_name,
@@ -1068,7 +1068,7 @@ parse_function_decl :: proc(cursor: clang.Cursor) {
     return_type_name_hint := strings.concatenate({func_name, "_return_type"})
     defer delete(return_type_name_hint)
 
-    func.return_type, ctx.err = clang_type_to_runic_type(
+    func.return_type, ctx.err = type_to_type(
         cursor_return_type,
         cursor,
         type_hint,
@@ -1114,7 +1114,7 @@ parse_function_decl :: proc(cursor: clang.Cursor) {
         }
 
         type: runic.Type = ---
-        type, ctx.err = clang_type_to_runic_type(
+        type, ctx.err = type_to_type(
             param_type,
             param_cursor,
             type_hint,
@@ -1278,7 +1278,7 @@ parse_unknowns :: proc(
                 defer ctx.types = &ctx.rs.types
                 defer ctx.forward_decls = forward_decls
 
-                type, ctx.err = clang_type_to_runic_type(
+                type, ctx.err = type_to_type(
                     included_type,
                     cursor,
                     name_hint = unknown,

@@ -3315,6 +3315,43 @@ extend_unknown_types :: #force_inline proc(
     delete(unknowns)
 }
 
+recursively_extend_unknown_types :: proc(
+    type_name: string,
+    type: ^Type,
+    rs: ^Runestone,
+    unknown_types: ^[dynamic]string,
+    allocator: runtime.Allocator,
+    extern: []string = nil,
+    source: Maybe(string) = nil,
+    insert_type: bool = true,
+) {
+    is_extern :=
+        extern != nil && source != nil && single_list_glob(extern, source.?)
+
+    if is_extern {
+        unknowns := check_for_unknown_types(type, rs.externs)
+        extend_unknown_types(unknown_types, unknowns)
+
+        if insert_type {
+            om.insert(
+                &rs.externs,
+                type_name,
+                Extern {
+                    source = strings.clone(source.?, allocator),
+                    type = type^,
+                },
+            )
+        }
+    } else {
+        unknowns := check_for_unknown_types(type, rs.types)
+        extend_unknown_types(unknown_types, unknowns)
+
+        if insert_type {
+            om.insert(&rs.types, type_name, type^)
+        }
+    }
+}
+
 append_unknown_types :: #force_inline proc(
     unknown_types: ^[dynamic]string,
     unknown: string,
@@ -3461,4 +3498,3 @@ to_needs_to_process_constant_names :: #force_inline proc(to: To) -> bool {
         len(to.add_suffix.constants) != 0 \
     )
 }
-

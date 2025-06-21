@@ -293,41 +293,7 @@ generate_runestone :: proc(
 
         append(&units, unit)
 
-        is_fatal: bool
-        num_diag := clang.getNumDiagnostics(unit)
-        if num_diag != 0 {
-            for idx in 0 ..< num_diag {
-                dig := clang.getDiagnostic(unit, idx)
-                defer clang.disposeDiagnostic(dig)
-
-                sev := clang.getDiagnosticSeverity(dig)
-                dig_msg := clang.formatDiagnostic(
-                    dig,
-                    clang.defaultDiagnosticDisplayOptions(),
-                )
-                defer clang.disposeString(dig_msg)
-                dig_str := clang.getCString(dig_msg)
-
-                switch sev {
-                case .Error:
-                    fmt.eprint("ERROR: ")
-                    is_fatal = true
-                case .Fatal:
-                    fmt.eprint("FATAL: ")
-                    is_fatal = true
-                case .Warning:
-                    fmt.eprint("WARNING: ")
-                case .Note:
-                    fmt.eprint("NOTE: ")
-                case .Ignored:
-                    fmt.eprint("IGNORED: ")
-                }
-
-                fmt.eprintln(dig_str)
-            }
-        }
-
-        if is_fatal {
+        if print_diagnostics(os.stderr, unit) {
             fmt.eprintln(
                 "Errors occurred. The resulting runestone can not be trusted! Make sure to fix the errors accordingly. If system includes can not be found you can check this page for help: https://github.com/Samudevv/runic/wiki#how-system-include-files-are-handled",
             )
@@ -533,37 +499,7 @@ generate_runestone :: proc(
         defer clang.disposeTranslationUnit(unit)
 
         when ODIN_DEBUG {
-            num_diag := clang.getNumDiagnostics(unit)
-            if num_diag != 0 {
-                for idx in 0 ..< num_diag {
-                    dig := clang.getDiagnostic(unit, idx)
-                    defer clang.disposeDiagnostic(dig)
-
-                    sev := clang.getDiagnosticSeverity(dig)
-                    dig_msg := clang.formatDiagnostic(
-                        dig,
-                        clang.defaultDiagnosticDisplayOptions(),
-                    )
-                    defer clang.disposeString(dig_msg)
-                    dig_str := clang.getCString(dig_msg)
-
-                    fmt.eprint("MACROS-FILE-")
-                    switch sev {
-                    case .Error:
-                        fmt.eprint("ERROR: ")
-                    case .Fatal:
-                        fmt.eprint("FATAL: ")
-                    case .Warning:
-                        fmt.eprint("WARNING: ")
-                    case .Note:
-                        fmt.eprint("NOTE: ")
-                    case .Ignored:
-                        fmt.eprint("IGNORED: ")
-                    }
-
-                    fmt.eprintln(dig_str)
-                }
-            }
+            print_diagnostics(os.stderr, unit, "MACROS-FILE-")
         }
 
         cursor := clang.getTranslationUnitCursor(unit)

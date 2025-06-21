@@ -18,6 +18,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 package cpp_codegen
 
 import "core:fmt"
+import "core:io"
 import "core:os"
 import "core:strings"
 import "root:errors"
@@ -544,4 +545,54 @@ make_forward_decls_into_actual_types :: proc(
             om.insert(&ctx.rs.types, decl, forward_decl_type)
         }
     }
+}
+
+@(private)
+print_diagnostics :: proc(out: union #no_nil {
+        io.Writer,
+        os.Handle,
+    }, unit: clang.TranslationUnit, prefix: string = "") -> (is_fatal: bool) {
+    wd: io.Writer = ---
+    switch w in out {
+    case io.Writer:
+        wd = w
+    case os.Handle:
+        wd = os.stream_from_handle(w)
+    }
+
+    num_diag := clang.getNumDiagnostics(unit)
+    if num_diag != 0 {
+        for idx in 0 ..< num_diag {
+            dig := clang.getDiagnostic(unit, idx)
+            defer clang.disposeDiagnostic(dig)
+
+            sev := clang.getDiagnosticSeverity(dig)
+            dig_msg := clang.formatDiagnostic(
+                dig,
+                clang.defaultDiagnosticDisplayOptions(),
+            )
+            defer clang.disposeString(dig_msg)
+            dig_str := clang.getCString(dig_msg)
+
+            fmt.wprint(wd, prefix)
+            switch sev {
+            case .Error:
+                fmt.wprint(wd, "ERROR: ")
+                is_fatal = true
+            case .Fatal:
+                fmt.wprint(wd, "FATAL: ")
+                is_fatal = true
+            case .Warning:
+                fmt.wprint(wd, "WARNING: ")
+            case .Note:
+                fmt.wprint(wd, "NOTE: ")
+            case .Ignored:
+                fmt.wprint(wd, "IGNORED: ")
+            }
+
+            fmt.wprintln(wd, dig_str)
+        }
+    }
+
+    return
 }

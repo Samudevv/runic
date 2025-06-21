@@ -26,6 +26,16 @@ import "root:runic"
 import clang "shared:libclang"
 
 @(private)
+ps :: #force_inline proc(loc := #caller_location) -> ^ParseContext {
+    assert(
+        context.user_ptr != nil,
+        "tried to get ParseContext from nil context.user_ptr",
+        loc,
+    )
+    return cast(^ParseContext)context.user_ptr
+}
+
+@(private)
 struct_is_unnamed_string :: #force_inline proc(display_name: string) -> bool {
     return(
         display_name == "" ||
@@ -491,19 +501,18 @@ generate_clang_flags :: proc(
 
 @(private)
 make_forward_decls_into_actual_types :: proc(
-    data: ^ParseContext,
     forward_decls: [dynamic]string,
     forward_decl_type: runic.Type,
     included_file_name: Maybe(string) = nil,
-    extern: []string = nil,
 ) {
+    ctx := ps()
+
     for decl in forward_decls {
-        if decl in data.included_types do continue
+        if decl in ctx.included_types do continue
 
         // If is extern
-        if extern != nil &&
-           included_file_name != nil &&
-           runic.single_list_glob(extern, included_file_name.?) {
+        if included_file_name != nil &&
+           runic.single_list_glob(ctx.extern, included_file_name.?) {
             when ODIN_DEBUG {
                 fmt.eprintfln(
                     "debug: forward declaration \"{}\" will be added to externs as defined by \"from.forward_decl_type\" (default: '#Opaque')",
@@ -512,18 +521,18 @@ make_forward_decls_into_actual_types :: proc(
             }
 
             om.insert(
-                &data.rs.externs,
+                &ctx.rs.externs,
                 decl,
                 runic.Extern {
                     source = strings.clone(
                         included_file_name.?,
-                        data.allocator,
+                        ctx.allocator,
                     ),
                     type = forward_decl_type,
                 },
             )
         } else {
-            if om.contains(data.rs.types, decl) do continue
+            if om.contains(ctx.rs.types, decl) do continue
 
             when ODIN_DEBUG {
                 fmt.eprintfln(
@@ -532,7 +541,7 @@ make_forward_decls_into_actual_types :: proc(
                 )
             }
 
-            om.insert(&data.rs.types, decl, forward_decl_type)
+            om.insert(&ctx.rs.types, decl, forward_decl_type)
         }
     }
 }

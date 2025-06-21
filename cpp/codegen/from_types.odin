@@ -46,13 +46,14 @@ FuncParamsData :: struct {
 clang_type_to_runic_type :: proc(
     type: clang.Type,
     cursor: clang.Cursor,
-    ctx: ^ParseContext,
     type_hint: Maybe(string) = nil,
     name_hint: string = "TYPE_NAME_UNKNOWN",
 ) -> (
     tp: runic.Type,
     err: errors.Error,
 ) {
+    ctx := ps()
+
     #partial switch type.kind {
     case .Void:
         tp.spec = runic.Builtin.Untyped
@@ -118,7 +119,6 @@ clang_type_to_runic_type :: proc(
             tp = clang_type_to_runic_type(
                 named_type,
                 named_cursor,
-                ctx,
                 name_hint = name_hint,
             ) or_return
         } else {
@@ -141,7 +141,6 @@ clang_type_to_runic_type :: proc(
         tp = clang_type_to_runic_type(
             pointee,
             cursor,
-            ctx,
             pointee_hint,
             name_hint,
         ) or_return
@@ -176,7 +175,6 @@ clang_type_to_runic_type :: proc(
         tp = clang_type_to_runic_type(
             arr_type,
             cursor,
-            ctx,
             type_hint,
             name_hint,
         ) or_return
@@ -201,7 +199,6 @@ clang_type_to_runic_type :: proc(
         tp = clang_type_to_runic_type(
             arr_type,
             cursor,
-            ctx,
             type_hint,
             name_hint,
         ) or_return
@@ -240,8 +237,9 @@ clang_type_to_runic_type :: proc(
         }
 
         clang.visitChildren(cursor, proc "c" (cursor, parent: clang.Cursor, client_data: clang.ClientData) -> clang.ChildVisitResult {
-                data := cast(^RecordData)client_data
                 context = runtime.default_context()
+                data := cast(^RecordData)client_data
+                context.user_ptr = data.ctx
 
                 cursor_type := clang.getCursorType(cursor)
                 cursor_kind := clang.getCursorKind(cursor)
@@ -288,7 +286,7 @@ clang_type_to_runic_type :: proc(
                         type_hint = clang_var_decl_get_type_hint(cursor)
                     }
 
-                    type, data.err = clang_type_to_runic_type(cursor_type, cursor, data.ctx, type_hint, member_name)
+                    type, data.err = clang_type_to_runic_type(cursor_type, cursor, type_hint, member_name)
                     if data.err != nil do return .Break
                 }
 
@@ -377,7 +375,6 @@ clang_type_to_runic_type :: proc(
         enum_type := clang_type_to_runic_type(
             enum_int_type,
             clang.getTypeDeclaration(enum_int_type),
-            ctx,
             name_hint = name_hint,
         ) or_return
 
@@ -424,7 +421,6 @@ clang_type_to_runic_type :: proc(
         func.return_type = clang_type_to_runic_type(
             type_return_type,
             return_type_cursor,
-            ctx,
             name_hint = name_hint,
         ) or_return
 
@@ -448,9 +444,11 @@ clang_type_to_runic_type :: proc(
 
         // NOTE: If the return type of the function pointer is unknown the children can not be visited
         clang.visitChildren(cursor, proc "c" (cursor, parent: clang.Cursor, client_data: clang.ClientData) -> clang.ChildVisitResult {
-                if clang.getCursorKind(cursor) != .ParmDecl do return .Continue
-                data := cast(^FuncParamsData)client_data
                 context = runtime.default_context()
+                data := cast(^FuncParamsData)client_data
+                context.user_ptr = data.ctx
+
+                if clang.getCursorKind(cursor) != .ParmDecl do return .Continue
 
                 if data.param_idx == int(data.num_params) do return .Break
                 defer data.param_idx += 1
@@ -474,7 +472,7 @@ clang_type_to_runic_type :: proc(
                 }
 
                 type: runic.Type = ---
-                type, data.err = clang_type_to_runic_type(param_type, cursor, data.ctx, param_hint, param_name)
+                type, data.err = clang_type_to_runic_type(param_type, cursor, param_hint, param_name)
                 if data.err != nil do return .Break
 
                 handle_anon_type(&type, data.ctx, param_name)

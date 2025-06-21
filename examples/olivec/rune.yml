@@ -10,12 +10,10 @@ from:
   headers: olive.c
   defines:
     OLIVECDEF: "extern"
-  includedirs: stdinc
   ignore:
     macros:
       - OLIVE_C_
       - OLIVEC_CANVAS_NULL
-  disable_stdint_macros: true
 to:
   language: odin
   package: olivec

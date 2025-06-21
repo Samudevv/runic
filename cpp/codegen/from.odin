@@ -60,7 +60,6 @@ ParseContext :: struct {
     int_sizes:         Int_Sizes,
     anon_index:        ^int,
     forward_decls:     ^[dynamic]string,
-    arena_alloc:       runtime.Allocator,
     allocator:         runtime.Allocator,
     err:               errors.Error,
 }
@@ -74,10 +73,6 @@ generate_runestone :: proc(
     err: errors.Error,
 ) {
     if !filepath.is_abs(rune_file_name) do return rs, errors.message("Internal Error: rune_file_name (\"{}\") needs to be absolute for cpp_codegen.generate_runestone", rune_file_name)
-
-    arena: runtime.Arena
-    defer runtime.arena_destroy(&arena)
-    arena_alloc := runtime.arena_allocator(&arena)
 
     rs_arena_alloc := runic.init_runestone(&rs)
 
@@ -96,14 +91,14 @@ generate_runestone :: proc(
         rf.defines,
         plat,
     )
-    if !rd_ok do rune_defines = make(map[string]string, allocator = arena_alloc)
+    if !rd_ok do rune_defines = make(map[string]string, allocator = rs_arena_alloc)
 
     include_dirs, inc_ok := runic.platform_value_get(
         []string,
         rf.includedirs,
         plat,
     )
-    if !inc_ok do include_dirs = make([]string, 0, arena_alloc)
+    if !inc_ok do include_dirs = make([]string, 0, rs_arena_alloc)
 
     // Generate system includes as empty files just for placeholders
     stdinc_gen_dir: Maybe(string)
@@ -126,14 +121,14 @@ generate_runestone :: proc(
     disable_system_include_gen = dsysinc_ok && disable_system_include_gen
 
     flags, flag_ok := runic.platform_value_get([]cstring, rf.flags, plat)
-    if !flag_ok do flags = make([]cstring, 0, arena_alloc)
+    if !flag_ok do flags = make([]cstring, 0, rs_arena_alloc)
 
     if !enable_host_includes {
         if !disable_system_include_gen {
             stdinc_gen_dir_ok: bool = ---
             stdinc_gen_dir, stdinc_gen_dir_ok = system_includes_gen_dir(
                 plat,
-                arena_alloc,
+                rs_arena_alloc,
             )
 
             if stdinc_gen_dir_ok {
@@ -166,7 +161,7 @@ generate_runestone :: proc(
         enable_host_includes,
         stdinc_gen_dir,
         flags,
-        arena_alloc,
+        rs_arena_alloc,
     )
     defer delete(clang_flags)
 
@@ -197,7 +192,11 @@ generate_runestone :: proc(
     // Add stdinc gen dir to externs
     extern := rf.extern
     if add_extern, ok := stdinc_gen_dir.?; ok {
-        arr := system_includes_gen_extern(rf.extern, add_extern, arena_alloc)
+        arr := system_includes_gen_extern(
+            rf.extern,
+            add_extern,
+            rs_arena_alloc,
+        )
         extern = arr[:]
     }
 
@@ -217,7 +216,6 @@ generate_runestone :: proc(
         int_sizes         = int_sizes_from_platform(plat),
         anon_index        = &anon_index,
         forward_decls     = &forward_decls,
-        arena_alloc       = arena_alloc,
         allocator         = rs_arena_alloc,
     }
     context.user_ptr = &ctx
@@ -226,10 +224,10 @@ generate_runestone :: proc(
     defer clang.disposeIndex(index)
     units := make(
         [dynamic]clang.TranslationUnit,
-        allocator = arena_alloc,
         len = len(headers),
         cap = len(headers),
     )
+    defer delete(units)
     defer for unit in units {
         clang.disposeTranslationUnit(unit)
     }
@@ -243,7 +241,7 @@ generate_runestone :: proc(
     }
 
     for header in headers {
-        _, os_stat := os.stat(header, arena_alloc)
+        dealloc_me, os_stat := os.stat(header)
         #partial switch stat in os_stat {
         case os.General_Error:
             if stat == .Not_Exist {
@@ -260,6 +258,7 @@ generate_runestone :: proc(
             )
             return
         case nil:
+            os.file_info_delete(dealloc_me)
         case:
             err = errors.message(
                 "failed to open header file \"{}\": {}",
@@ -271,7 +270,7 @@ generate_runestone :: proc(
 
         fmt.eprintfln("Parsing \"{}\" ...", header)
 
-        header_cstr := strings.clone_to_cstring(header, arena_alloc)
+        header_cstr := strings.clone_to_cstring(header)
 
         unit := clang.parseTranslationUnit(
             index,
@@ -282,6 +281,7 @@ generate_runestone :: proc(
             0,
             .DetailedPreprocessingRecord | .SkipFunctionBodies,
         )
+        delete(header_cstr)
 
         if unit == nil {
             err = errors.message(
@@ -338,7 +338,7 @@ generate_runestone :: proc(
         rel_main_file_name, rel_main_ok := runic.absolute_to_file(
             rune_file_name,
             header,
-            arena_alloc,
+            rs_arena_alloc,
         )
         ctx.main_file_name = rel_main_file_name if rel_main_ok else header
 
@@ -406,10 +406,7 @@ generate_runestone :: proc(
         }
     }
 
-    make_forward_decls_into_actual_types(
-        ctx.forward_decls^,
-        forward_decl_type,
-    )
+    make_forward_decls_into_actual_types(ctx.forward_decls^, forward_decl_type)
 
     runic.ignore_types(&rs.types, ignore)
 
@@ -444,8 +441,10 @@ generate_runestone :: proc(
             defer os.close(macro_file)
 
             stringify_name, stringify2_name: strings.Builder
-            strings.builder_init(&stringify_name, arena_alloc)
-            strings.builder_init(&stringify2_name, arena_alloc)
+            strings.builder_init(&stringify_name)
+            strings.builder_init(&stringify2_name)
+            defer strings.builder_destroy(&stringify_name)
+            defer strings.builder_destroy(&stringify2_name)
 
             strings.write_rune(&stringify_name, 'S')
             strings.write_string(&stringify2_name, "SS")
@@ -478,11 +477,11 @@ generate_runestone :: proc(
                 name, macro := entry.key, entry.value
                 if macro.func || macro.extern || len(macro.def) == 0 do continue
 
-                prefix_name := strings.concatenate({"R", name}, arena_alloc)
+                prefix_name := strings.concatenate({"R", name}, rs_arena_alloc)
                 for om.contains(macros, prefix_name) {
                     prefix_name = strings.concatenate(
                         {"_", prefix_name},
-                        arena_alloc,
+                        rs_arena_alloc,
                     )
                 }
 
@@ -509,10 +508,7 @@ generate_runestone :: proc(
         defer delete(macro_file_name)
         defer os.remove(macro_file_name)
 
-        macro_file_name_cstr := strings.clone_to_cstring(
-            macro_file_name,
-            arena_alloc,
-        )
+        macro_file_name_cstr := strings.clone_to_cstring(macro_file_name)
 
         macro_index := clang.createIndex(0, 0)
         defer clang.disposeIndex(macro_index)
@@ -528,6 +524,8 @@ generate_runestone :: proc(
             0,
             .SkipFunctionBodies | .SingleFileParse,
         )
+        delete(macro_file_name_cstr)
+
         if unit == nil {
             err = errors.message("failed to parse macro file")
             return
@@ -674,10 +672,7 @@ generate_runestone :: proc(
                             }
                         }
 
-                        const.value = strings.clone(
-                            const_value,
-                            ctx.allocator,
-                        )
+                        const.value = strings.clone(const_value, ctx.allocator)
                     }
                 }
 
@@ -724,18 +719,26 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
         return false
     }
 
-    file_name, _ := strings.replace_all(
+    file_name: string
+
+    repl_file_name, repl_file_name_alloc := strings.replace_all(
         file_name_str,
         "\\",
         "/",
-        ctx.arena_alloc,
     )
+    defer if repl_file_name_alloc do delete(repl_file_name)
+
     rel_file_name, rel_ok := runic.absolute_to_file(
         ctx.rune_file_name,
-        file_name,
-        ctx.arena_alloc,
+        repl_file_name,
+        ctx.allocator,
     )
-    if rel_ok do file_name = rel_file_name
+
+    if rel_ok {
+        file_name = rel_file_name
+    } else {
+        file_name = repl_file_name
+    }
 
     load_as_main :=
         (file_name == ctx.main_file_name) ||
@@ -748,7 +751,7 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
         typedef := clang.getTypedefDeclUnderlyingType(cursor)
 
         type_name_clang := clang.getTypedefName(cursor_type)
-        type_name := strings.clone(clang_str(type_name_clang), ctx.arena_alloc)
+        type_name := strings.clone(clang_str(type_name_clang), ctx.allocator)
         clang.disposeString(type_name_clang)
 
         if !(type_name in ctx.included_types) {
@@ -780,7 +783,7 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
                     }
 
                     ctx.included_types[type_name] = IncludedType {
-                        file_name = strings.clone(file_name, ctx.arena_alloc),
+                        file_name = file_name if rel_ok else strings.clone(file_name, ctx.allocator),
                         type      = type,
                         system    = bool(
                             clang.Location_isInSystemHeader(cursor_location),
@@ -791,7 +794,7 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
             }
 
             ctx.included_types[type_name] = IncludedType {
-                file_name = strings.clone(file_name, ctx.arena_alloc),
+                file_name = file_name if rel_ok else strings.clone(file_name, ctx.allocator),
                 type      = typedef,
                 system    = bool(
                     clang.Location_isInSystemHeader(cursor_location),
@@ -800,12 +803,12 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
         }
     case .StructDecl:
         if struct_is_unnamed(display_name) do break
-        display_name = strings.clone(display_name, ctx.arena_alloc)
+        display_name = strings.clone(display_name, ctx.allocator)
 
         // TODO: if a forward declaration is declared in one included file (included by header A), but the implementation is defined in a file included by header B. This leads to the forward declaration being added instead of the implementation, maybe changing included_types to a map of arrays and then add every declaration found could solve this.
         if !(display_name in ctx.included_types) {
             ctx.included_types[display_name] = IncludedType {
-                file_name = strings.clone(file_name, ctx.arena_alloc),
+                file_name = file_name if rel_ok else strings.clone(file_name, ctx.allocator),
                 type      = cursor_type,
                 system    = bool(
                     clang.Location_isInSystemHeader(cursor_location),
@@ -814,11 +817,11 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
         }
     case .EnumDecl:
         if enum_is_unnamed(display_name) do break
-        display_name = strings.clone(display_name, ctx.arena_alloc)
+        display_name = strings.clone(display_name, ctx.allocator)
 
         if !(display_name in ctx.included_types) {
             ctx.included_types[display_name] = IncludedType {
-                file_name = strings.clone(file_name, ctx.arena_alloc),
+                file_name = file_name if rel_ok else strings.clone(file_name, ctx.allocator),
                 type      = cursor_type,
                 system    = bool(
                     clang.Location_isInSystemHeader(cursor_location),
@@ -827,11 +830,11 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
         }
     case .UnionDecl:
         if union_is_unnamed(display_name) do break
-        display_name = strings.clone(display_name, ctx.arena_alloc)
+        display_name = strings.clone(display_name, ctx.allocator)
 
         if !(display_name in ctx.included_types) {
             ctx.included_types[display_name] = IncludedType {
-                file_name = strings.clone(file_name, ctx.arena_alloc),
+                file_name = file_name if rel_ok else strings.clone(file_name, ctx.allocator),
                 type      = cursor_type,
                 system    = bool(
                     clang.Location_isInSystemHeader(cursor_location),
@@ -876,12 +879,7 @@ parse_typedef_decl :: proc(cursor: clang.Cursor) {
     }
 
     type: runic.Type = ---
-    type, ctx.err = type_to_type(
-        typedef,
-        cursor,
-        type_hint,
-        type_name,
-    )
+    type, ctx.err = type_to_type(typedef, cursor, type_hint, type_name)
     if ctx.err != nil do return
 
     om.insert(ctx.types, strings.clone(type_name, ctx.allocator), type)
@@ -911,12 +909,7 @@ parse_var_decl :: proc(cursor: clang.Cursor) {
     }
 
     type: runic.Type = ---
-    type, ctx.err = type_to_type(
-        cursor_type,
-        cursor,
-        type_hint,
-        display_name,
-    )
+    type, ctx.err = type_to_type(cursor_type, cursor, type_hint, display_name)
     if ctx.err != nil do return
 
     var_name := strings.clone(display_name, ctx.allocator)
@@ -929,11 +922,7 @@ parse_var_decl :: proc(cursor: clang.Cursor) {
 }
 
 @(private)
-parse_struct_decl :: proc(
-    cursor: clang.Cursor,
-) -> (
-    err: errors.Error,
-) {
+parse_struct_decl :: proc(cursor: clang.Cursor) -> (err: errors.Error) {
     ctx := ps()
 
     cursor_display_name := clang.getCursorDisplayName(cursor)
@@ -957,21 +946,13 @@ parse_struct_decl :: proc(
         return
     }
 
-    om.insert(
-        ctx.types,
-        strings.clone(display_name, ctx.allocator),
-        type,
-    )
+    om.insert(ctx.types, strings.clone(display_name, ctx.allocator), type)
 
     return
 }
 
 @(private)
-parse_union_decl :: proc(
-    cursor: clang.Cursor,
-) -> (
-    err: errors.Error,
-) {
+parse_union_decl :: proc(cursor: clang.Cursor) -> (err: errors.Error) {
     ctx := ps()
 
     cursor_display_name := clang.getCursorDisplayName(cursor)
@@ -996,21 +977,13 @@ parse_union_decl :: proc(
         return
     }
 
-    om.insert(
-        ctx.types,
-        strings.clone(display_name, ctx.allocator),
-        type,
-    )
+    om.insert(ctx.types, strings.clone(display_name, ctx.allocator), type)
 
     return
 }
 
 @(private)
-parse_enum_decl :: proc(
-    cursor: clang.Cursor,
-) -> (
-    err: errors.Error,
-) {
+parse_enum_decl :: proc(cursor: clang.Cursor) -> (err: errors.Error) {
     ctx := ps()
 
     cursor_display_name := clang.getCursorDisplayName(cursor)
@@ -1029,11 +1002,7 @@ parse_enum_decl :: proc(
         name_hint = display_name,
     ) or_return
 
-    om.insert(
-        ctx.types,
-        strings.clone(display_name, ctx.allocator),
-        type,
-    )
+    om.insert(ctx.types, strings.clone(display_name, ctx.allocator), type)
 
     return
 }
@@ -1155,10 +1124,7 @@ parse_function_decl :: proc(cursor: clang.Cursor) {
 }
 
 @(private)
-parse_macro_definition :: proc(
-    cursor: clang.Cursor,
-    not_from_main: bool,
-) {
+parse_macro_definition :: proc(cursor: clang.Cursor, not_from_main: bool) {
     ctx := ps()
 
     cursor_extent := clang.getCursorExtent(cursor)
@@ -1221,14 +1187,12 @@ parse_macro_definition :: proc(
 }
 
 @(private)
-parse_unknowns :: proc(
-    forward_decl_type: runic.Type,
-    extern: []string,
-) {
+parse_unknowns :: proc(forward_decl_type: runic.Type, extern: []string) {
     ctx := ps()
 
     // Look for unknown types
-    unknown_types := runic.check_for_unknown_types(ctx.rs, ctx.arena_alloc)
+    unknown_types := runic.check_for_unknown_types(ctx.rs)
+    defer delete(unknown_types)
 
     // Try to find the unknown types in the includes
     unknown_anons := om.make(string, runic.Type)
@@ -1266,7 +1230,7 @@ parse_unknowns :: proc(
                         included_type = named_type
                         included_type_value.file_name = strings.clone(
                             file_name,
-                            ctx.arena_alloc,
+                            ctx.allocator,
                         )
                         cursor = named_cursor
                     }

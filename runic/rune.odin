@@ -3336,10 +3336,7 @@ recursively_extend_unknown_types :: proc(
             om.insert(
                 &rs.externs,
                 type_name,
-                Extern {
-                    source = strings.clone(source.?, allocator),
-                    type = type^,
-                },
+                Extern{source = source.?, type = type^},
             )
         }
     } else {

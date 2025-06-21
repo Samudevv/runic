@@ -47,18 +47,22 @@ IncludedType :: struct {
 }
 
 @(private)
-ClientData :: struct {
-    rs:                ^runic.Runestone,
-    arena_alloc:       runtime.Allocator,
-    err:               errors.Error,
-    included_types:    ^map[string]IncludedType,
-    included_anons:    ^om.OrderedMap(string, runic.Type),
-    macros:            ^om.OrderedMap(string, Macro),
+ParseContext :: struct {
     rune_file_name:    string,
     load_all_includes: bool,
     extern:            []string,
     main_file_name:    string,
-    ctx:               ^ClangToRunicTypeContext,
+    rs:                ^runic.Runestone,
+    types:             ^om.OrderedMap(string, runic.Type),
+    included_types:    ^map[string]IncludedType,
+    included_anons:    ^om.OrderedMap(string, runic.Type),
+    macros:            ^om.OrderedMap(string, Macro),
+    int_sizes:         Int_Sizes,
+    anon_index:        ^int,
+    forward_decls:     ^[dynamic]string,
+    arena_alloc:       runtime.Allocator,
+    allocator:         runtime.Allocator,
+    err:               errors.Error,
 }
 
 generate_runestone :: proc(
@@ -197,29 +201,25 @@ generate_runestone :: proc(
         extern = arr[:]
     }
 
+    anon_index: int
     forward_decls := make([dynamic]string)
-    data := ClientData {
-        rs                = &rs,
-        arena_alloc       = arena_alloc,
-        included_types    = &included_types,
-        included_anons    = &included_anons,
-        macros            = &macros,
+    defer delete(forward_decls)
+
+    data := ParseContext {
         rune_file_name    = rune_file_name,
         load_all_includes = load_all_includes,
         extern            = extern[:],
-        ctx               = new_clone(
-            ClangToRunicTypeContext {
-                int_sizes = int_sizes_from_platform(plat),
-                anon_index = new_clone(int(0)),
-                types = &rs.types,
-                forward_decls = &forward_decls,
-                allocator = rs_arena_alloc,
-            },
-        ),
+        rs                = &rs,
+        types             = &rs.types,
+        included_types    = &included_types,
+        included_anons    = &included_anons,
+        macros            = &macros,
+        int_sizes         = int_sizes_from_platform(plat),
+        anon_index        = &anon_index,
+        forward_decls     = &forward_decls,
+        arena_alloc       = arena_alloc,
+        allocator         = rs_arena_alloc,
     }
-    defer free(data.ctx)
-    defer free(data.ctx.anon_index)
-    defer delete(forward_decls)
 
     index := clang.createIndex(0, 0)
     defer clang.disposeIndex(index)
@@ -347,7 +347,7 @@ generate_runestone :: proc(
                 cursor, parent: clang.Cursor,
                 client_data: clang.ClientData,
             ) -> clang.ChildVisitResult {
-                data := cast(^ClientData)client_data
+                data := cast(^ParseContext)client_data
                 context = runtime.default_context()
 
                 cursor_location := clang.getCursorLocation(cursor)
@@ -406,7 +406,7 @@ generate_runestone :: proc(
 
     make_forward_decls_into_actual_types(
         &data,
-        data.ctx.forward_decls^,
+        data.forward_decls^,
         forward_decl_type,
     )
 
@@ -575,7 +575,7 @@ generate_runestone :: proc(
                 cursor, parent: clang.Cursor,
                 client_data: clang.ClientData,
             ) -> clang.ChildVisitResult {
-                data := cast(^ClientData)client_data
+                data := cast(^ParseContext)client_data
                 context = runtime.default_context()
 
                 cursor_kind := clang.getCursorKind(cursor)
@@ -597,7 +597,7 @@ generate_runestone :: proc(
 
                     var_name_str := strings.clone(
                         var_name[start:],
-                        data.ctx.allocator,
+                        data.allocator,
                     )
 
                     om.insert(
@@ -623,7 +623,7 @@ generate_runestone :: proc(
                                 strings.trim_suffix(const_value, "\\\""),
                                 "\\\"",
                             ),
-                            data.ctx.allocator,
+                            data.allocator,
                         )
                         const.type.spec = runic.Builtin.String
                     } else if strings.has_prefix(const_value, "'") &&
@@ -634,7 +634,7 @@ generate_runestone :: proc(
                                 strings.trim_suffix(const_value, "'"),
                                 "'",
                             ),
-                            data.ctx.allocator,
+                            data.allocator,
                         )
                         const.type.spec = runic.Builtin.SInt8
                     } else if value_i64, ok_i64 := strconv.parse_i64(
@@ -673,7 +673,7 @@ generate_runestone :: proc(
 
                         const.value = strings.clone(
                             const_value,
-                            data.ctx.allocator,
+                            data.allocator,
                         )
                     }
                 }
@@ -690,7 +690,7 @@ generate_runestone :: proc(
 // return value of false means "do not continue" else "continue"
 @(private)
 parse_cursor_not_from_main :: proc(
-    data: ^ClientData,
+    data: ^ParseContext,
     cursor: clang.Cursor,
 ) -> bool {
     cursor_kind := clang.getCursorKind(cursor)
@@ -758,15 +758,15 @@ parse_cursor_not_from_main :: proc(
                 pointee := clang.getPointeeType(typedef)
                 if pointee.kind == .FunctionProto ||
                    pointee.kind == .FunctionNoProto {
-                    data.ctx.types = data.included_anons
-                    defer data.ctx.types = &data.rs.types
+                    data.types = data.included_anons
+                    defer data.types = &data.rs.types
 
                     // TODO: handle forward declarations
                     type: runic.Type = ---
                     type, data.err = clang_type_to_runic_type(
                         typedef,
                         cursor,
-                        data.ctx,
+                        data,
                         nil,
                         type_name,
                     )
@@ -848,7 +848,7 @@ parse_cursor_not_from_main :: proc(
 }
 
 @(private)
-parse_typedef_decl :: proc(data: ^ClientData, cursor: clang.Cursor) {
+parse_typedef_decl :: proc(data: ^ParseContext, cursor: clang.Cursor) {
     cursor_type := clang.getCursorType(cursor)
 
     typedef := clang.getTypedefDeclUnderlyingType(cursor)
@@ -879,7 +879,7 @@ parse_typedef_decl :: proc(data: ^ClientData, cursor: clang.Cursor) {
     type, data.err = clang_type_to_runic_type(
         typedef,
         cursor,
-        data.ctx,
+        data,
         type_hint,
         type_name,
     )
@@ -887,13 +887,13 @@ parse_typedef_decl :: proc(data: ^ClientData, cursor: clang.Cursor) {
 
     om.insert(
         &data.rs.types,
-        strings.clone(type_name, data.ctx.allocator),
+        strings.clone(type_name, data.allocator),
         type,
     )
 }
 
 @(private)
-parse_var_decl :: proc(data: ^ClientData, cursor: clang.Cursor) {
+parse_var_decl :: proc(data: ^ParseContext, cursor: clang.Cursor) {
     storage_class := clang.Cursor_getStorageClass(cursor)
     cursor_display_name := clang.getCursorDisplayName(cursor)
     defer clang.disposeString(cursor_display_name)
@@ -917,16 +917,16 @@ parse_var_decl :: proc(data: ^ClientData, cursor: clang.Cursor) {
     type, data.err = clang_type_to_runic_type(
         cursor_type,
         cursor,
-        data.ctx,
+        data,
         type_hint,
         display_name,
     )
     if data.err != nil do return
 
-    var_name := strings.clone(display_name, data.ctx.allocator)
+    var_name := strings.clone(display_name, data.allocator)
 
     if _, ok := type.spec.(runic.FunctionPointer); !ok {
-        handle_anon_type(&type, data.ctx, var_name)
+        handle_anon_type(&type, data, var_name)
     }
 
     om.insert(&data.rs.symbols, var_name, runic.Symbol{value = type})
@@ -934,7 +934,7 @@ parse_var_decl :: proc(data: ^ClientData, cursor: clang.Cursor) {
 
 @(private)
 parse_struct_decl :: proc(
-    data: ^ClientData,
+    data: ^ParseContext,
     cursor: clang.Cursor,
 ) -> (
     err: errors.Error,
@@ -951,22 +951,22 @@ parse_struct_decl :: proc(
     type := clang_type_to_runic_type(
         cursor_type,
         cursor,
-        data.ctx,
+        data,
         name_hint = display_name,
     ) or_return
 
     if spec, is_struct := type.spec.(runic.Struct);
        is_struct && len(spec.members) == 0 {
         append(
-            data.ctx.forward_decls,
-            strings.clone(display_name, data.ctx.allocator),
+            data.forward_decls,
+            strings.clone(display_name, data.allocator),
         )
         return
     }
 
     om.insert(
         &data.rs.types,
-        strings.clone(display_name, data.ctx.allocator),
+        strings.clone(display_name, data.allocator),
         type,
     )
 
@@ -975,7 +975,7 @@ parse_struct_decl :: proc(
 
 @(private)
 parse_union_decl :: proc(
-    data: ^ClientData,
+    data: ^ParseContext,
     cursor: clang.Cursor,
 ) -> (
     err: errors.Error,
@@ -993,22 +993,22 @@ parse_union_decl :: proc(
     type := clang_type_to_runic_type(
         cursor_type,
         cursor,
-        data.ctx,
+        data,
         name_hint = display_name,
     ) or_return
 
     if spec, is_union := type.spec.(runic.Union);
        is_union && len(spec.members) == 0 {
         append(
-            data.ctx.forward_decls,
-            strings.clone(display_name, data.ctx.allocator),
+            data.forward_decls,
+            strings.clone(display_name, data.allocator),
         )
         return
     }
 
     om.insert(
         &data.rs.types,
-        strings.clone(display_name, data.ctx.allocator),
+        strings.clone(display_name, data.allocator),
         type,
     )
 
@@ -1017,7 +1017,7 @@ parse_union_decl :: proc(
 
 @(private)
 parse_enum_decl :: proc(
-    data: ^ClientData,
+    data: ^ParseContext,
     cursor: clang.Cursor,
 ) -> (
     err: errors.Error,
@@ -1035,13 +1035,13 @@ parse_enum_decl :: proc(
     type := clang_type_to_runic_type(
         cursor_type,
         cursor,
-        data.ctx,
+        data,
         name_hint = display_name,
     ) or_return
 
     om.insert(
         &data.rs.types,
-        strings.clone(display_name, data.ctx.allocator),
+        strings.clone(display_name, data.allocator),
         type,
     )
 
@@ -1049,7 +1049,7 @@ parse_enum_decl :: proc(
 }
 
 @(private)
-parse_function_decl :: proc(data: ^ClientData, cursor: clang.Cursor) {
+parse_function_decl :: proc(data: ^ParseContext, cursor: clang.Cursor) {
     storage_class := clang.Cursor_getStorageClass(cursor)
 
     // NOTE: defining structs, unions and enums with a name inside the parameter list is not supported
@@ -1079,17 +1079,17 @@ parse_function_decl :: proc(data: ^ClientData, cursor: clang.Cursor) {
     func.return_type, data.err = clang_type_to_runic_type(
         cursor_return_type,
         cursor,
-        data.ctx,
+        data,
         type_hint,
         return_type_name_hint,
     )
     if data.err != nil do return
 
-    handle_anon_type(&func.return_type, data.ctx, func_name)
+    handle_anon_type(&func.return_type, data, func_name)
 
     func.parameters = make(
         [dynamic]runic.Member,
-        allocator = data.ctx.allocator,
+        allocator = data.allocator,
         len = 0,
         cap = num_params,
     )
@@ -1111,10 +1111,10 @@ parse_function_decl :: proc(data: ^ClientData, cursor: clang.Cursor) {
             param_name_str = fmt.aprintf(
                 "param{}",
                 idx,
-                allocator = data.ctx.allocator,
+                allocator = data.allocator,
             )
         } else {
-            param_name_str = strings.clone(param_name, data.ctx.allocator)
+            param_name_str = strings.clone(param_name, data.allocator)
         }
 
         type_hint = nil
@@ -1126,13 +1126,13 @@ parse_function_decl :: proc(data: ^ClientData, cursor: clang.Cursor) {
         type, data.err = clang_type_to_runic_type(
             param_type,
             param_cursor,
-            data.ctx,
+            data,
             type_hint,
             param_name,
         )
         if data.err != nil do return
 
-        handle_anon_type(&type, data.ctx, param_name_str)
+        handle_anon_type(&type, data, param_name_str)
 
         append(
             &func.parameters,
@@ -1159,14 +1159,14 @@ parse_function_decl :: proc(data: ^ClientData, cursor: clang.Cursor) {
 
     om.insert(
         &data.rs.symbols,
-        strings.clone(func_name, data.ctx.allocator),
+        strings.clone(func_name, data.allocator),
         runic.Symbol{value = func},
     )
 }
 
 @(private)
 parse_macro_definition :: proc(
-    data: ^ClientData,
+    data: ^ParseContext,
     cursor: clang.Cursor,
     not_from_main: bool,
 ) {
@@ -1206,13 +1206,13 @@ parse_macro_definition :: proc(
         }
     }
 
-    macro_name := strings.clone(macro_def[:macro_name_end], data.ctx.allocator)
+    macro_name := strings.clone(macro_def[:macro_name_end], data.allocator)
 
     macro_value: string
     if macro_name_end != len(macro_def) {
         macro_value = strings.clone(
             strings.trim_space(macro_def[macro_name_end:]),
-            data.ctx.allocator,
+            data.allocator,
         )
     }
 
@@ -1231,7 +1231,7 @@ parse_macro_definition :: proc(
 
 @(private)
 parse_unknowns :: proc(
-    data: ^ClientData,
+    data: ^ParseContext,
     forward_decl_type: runic.Type,
     extern: []string,
 ) {
@@ -1280,16 +1280,16 @@ parse_unknowns :: proc(
                     }
                 }
 
-                forward_decls := data.ctx.forward_decls
-                data.ctx.types = &unknown_anons
-                data.ctx.forward_decls = &unknown_forward_decls
-                defer data.ctx.types = &data.rs.types
-                defer data.ctx.forward_decls = forward_decls
+                forward_decls := data.forward_decls
+                data.types = &unknown_anons
+                data.forward_decls = &unknown_forward_decls
+                defer data.types = &data.rs.types
+                defer data.forward_decls = forward_decls
 
                 type, data.err = clang_type_to_runic_type(
                     included_type,
                     cursor,
-                    data.ctx,
+                    data,
                     name_hint = unknown,
                 )
 
@@ -1342,7 +1342,7 @@ parse_unknowns :: proc(
                     t,
                     data.rs,
                     &unknown_types,
-                    data.ctx.allocator,
+                    data.allocator,
                     extern,
                     included_type_value.file_name,
                 )
@@ -1362,7 +1362,7 @@ parse_unknowns :: proc(
                 &type,
                 data.rs,
                 &unknown_types,
-                data.ctx.allocator,
+                data.allocator,
                 extern,
                 included_type_value.file_name,
             )

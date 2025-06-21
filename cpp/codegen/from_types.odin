@@ -25,20 +25,11 @@ import om "root:ordered_map"
 import "root:runic"
 import clang "shared:libclang"
 
-@(private)
-ClangToRunicTypeContext :: struct {
-    int_sizes:     Int_Sizes,
-    anon_index:    ^int,
-    types:         ^om.OrderedMap(string, runic.Type),
-    forward_decls: ^[dynamic]string,
-    allocator:     runtime.Allocator,
-}
-
 @(private = "file")
 RecordData :: struct {
     members:        ^[dynamic]runic.Member,
     members_failed: bool,
-    ctx:            ^ClangToRunicTypeContext,
+    ctx:            ^ParseContext,
     err:            errors.Error,
 }
 
@@ -47,7 +38,7 @@ FuncParamsData :: struct {
     param_idx:  int,
     num_params: i32,
     func:       ^runic.Function,
-    ctx:        ^ClangToRunicTypeContext,
+    ctx:        ^ParseContext,
     err:        errors.Error,
 }
 
@@ -55,7 +46,7 @@ FuncParamsData :: struct {
 clang_type_to_runic_type :: proc(
     type: clang.Type,
     cursor: clang.Cursor,
-    ctx: ^ClangToRunicTypeContext,
+    ctx: ^ParseContext,
     type_hint: Maybe(string) = nil,
     name_hint: string = "TYPE_NAME_UNKNOWN",
 ) -> (
@@ -550,7 +541,7 @@ clang_type_to_runic_type :: proc(
 @(private)
 handle_anon_type :: #force_inline proc(
     tp: ^runic.Type,
-    ctx: ^ClangToRunicTypeContext,
+    ctx: ^ParseContext,
     prefix: string = "",
 ) {
     type_name: string = ---

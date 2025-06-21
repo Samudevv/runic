@@ -491,7 +491,7 @@ generate_clang_flags :: proc(
 
 @(private)
 make_forward_decls_into_actual_types :: proc(
-    data: ^ClientData,
+    data: ^ParseContext,
     forward_decls: [dynamic]string,
     forward_decl_type: runic.Type,
     included_file_name: Maybe(string) = nil,
@@ -517,7 +517,7 @@ make_forward_decls_into_actual_types :: proc(
                 runic.Extern {
                     source = strings.clone(
                         included_file_name.?,
-                        data.ctx.allocator,
+                        data.allocator,
                     ),
                     type = forward_decl_type,
                 },

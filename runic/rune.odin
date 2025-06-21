@@ -2887,7 +2887,9 @@ absolute_to_file :: proc(
     string,
     bool,
 ) #optional_ok {
-    if !filepath.is_abs(file_name) do return file_name, true
+    if !filepath.is_abs(file_name) {
+        return strings.clone(file_name, allocator), true
+    }
 
     rune_dir := filepath.dir(rune_file_name, allocator)
     defer delete(rune_dir, allocator)

@@ -307,6 +307,7 @@ generate_wrapper :: proc(
                 rune_file_name,
                 in_header,
             )
+            defer if rel_main_ok do delete(rel_main_file_name)
             data.main_file_name =
                 rel_main_file_name if rel_main_ok else in_header
 

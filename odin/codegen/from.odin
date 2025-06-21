@@ -69,7 +69,7 @@ generate_runestone :: proc(
     pending_bit_sets := make(map[string]string)
     defer delete(pending_bit_sets)
 
-    ttt_ctx := TypeToTypeContext {
+    ctx := ParseContext {
         constants        = &rs.constants,
         symbols          = &rs.symbols,
         types            = &rs.types,
@@ -79,6 +79,7 @@ generate_runestone :: proc(
         pending_bit_sets = &pending_bit_sets,
         allocator        = rs_arena_alloc,
     }
+    context.user_ptr = &ctx
 
     for pack in packages {
         pack_name, pack_ok := runic.relative_to_file(
@@ -108,9 +109,9 @@ generate_runestone :: proc(
             imports := make(map[string]Import)
             defer delete(imports)
 
-            ttt_ctx.imports = &imports
+            ctx.imports = &imports
 
-            parse_decls(plat, &ttt_ctx, file_name, file.decls[:]) or_return
+            parse_decls(plat, file_name, file.decls[:]) or_return
         }
     }
 
@@ -159,13 +160,14 @@ EvalType :: union #no_nil {
 
 evaluate_expr :: proc(
     plat: runic.Platform,
-    ctx: ^TypeToTypeContext,
     expr: ^odina.Expr,
     loc := #caller_location,
 ) -> (
     rs: EvalType,
     err: errors.Error,
 ) {
+    ctx := ps()
+
     #partial switch e in expr.derived_expr {
     case ^odina.Basic_Lit:
         #partial switch e.tok.kind {
@@ -229,8 +231,8 @@ evaluate_expr :: proc(
             return
         }
     case ^odina.Binary_Expr:
-        left := evaluate_expr(plat, ctx, e.left, loc) or_return
-        right := evaluate_expr(plat, ctx, e.right, loc) or_return
+        left := evaluate_expr(plat, e.left, loc) or_return
+        right := evaluate_expr(plat, e.right, loc) or_return
 
         left_id := reflect.union_variant_typeid(left)
         right_id := reflect.union_variant_typeid(right)
@@ -458,7 +460,7 @@ evaluate_expr :: proc(
             }
         }
     case ^odina.Paren_Expr:
-        rs, err = evaluate_expr(plat, ctx, e.expr, loc)
+        rs, err = evaluate_expr(plat, e.expr, loc)
         return
     case ^odina.Ident:
         switch e.name {
@@ -547,12 +549,13 @@ evaluate_expr :: proc(
 }
 
 parse_import_decl :: proc(
-    ctx: ^TypeToTypeContext,
     file_name: string,
     stm: ^odina.Import_Decl,
 ) -> (
     err: errors.Error,
 ) {
+    ctx := ps()
+
     imp_path := strings.trim_suffix(
         strings.trim_prefix(stm.fullpath, `"`),
         `"`,
@@ -604,11 +607,12 @@ parse_import_decl :: proc(
 lookup_type_of_import :: proc(
     plat: runic.Platform,
     pkg, type_name: string,
-    ctx: ^TypeToTypeContext,
 ) -> (
     type: runic.Type,
     err: errors.Error,
 ) {
+    ctx := ps()
+
     imp, ok := ctx.imports^[pkg]
 
     if !ok || imp.pkg == nil {
@@ -630,7 +634,7 @@ lookup_type_of_import :: proc(
         if imp.collection == "base" {
             switch imp.name {
             case "builtin":
-                return ident_to_type(plat, ctx, type_name)
+                return ident_to_type(plat, type_name)
             case "runtime":
                 // TODO: Implement more types
                 switch type_name {
@@ -738,11 +742,10 @@ lookup_type_of_import :: proc(
 
                     type.spec = s
 
-                    maybe_add_runtime_extern(plat, ctx, "Allocator") or_return
-                    maybe_add_runtime_extern(plat, ctx, "Logger") or_return
+                    maybe_add_runtime_extern(plat, "Allocator") or_return
+                    maybe_add_runtime_extern(plat, "Logger") or_return
                     maybe_add_runtime_extern(
                         plat,
-                        ctx,
                         "Random_Generator",
                     ) or_return
                 case:
@@ -775,30 +778,37 @@ lookup_type_of_import :: proc(
 
         reserved_packages := make([dynamic]string)
 
-        context.user_ptr = &reserved_packages
-        context.allocator = ctx.allocator
-        p.err = proc(pos: odint.Pos, msg: string, args: ..any) {
-            whole_msg := fmt.aprintf(
-                msg,
-                ..args,
-                allocator = errors.error_allocator,
-            )
-            if strings.has_prefix(whole_msg, "use of reserved package name") {
-                when ODIN_DEBUG {
-                    reserved_packages := cast(^[dynamic]string)context.user_ptr
-                    if !slice.contains(reserved_packages^[:], whole_msg) {
-                        fmt.eprintln("debug:", whole_msg)
-                        append(reserved_packages, whole_msg)
+        {
+            context.user_ptr = &reserved_packages
+            defer context.user_ptr = ctx
+            context.allocator = ctx.allocator
+
+            p.err = proc(pos: odint.Pos, msg: string, args: ..any) {
+                whole_msg := fmt.aprintf(
+                    msg,
+                    ..args,
+                    allocator = errors.error_allocator,
+                )
+                if strings.has_prefix(
+                    whole_msg,
+                    "use of reserved package name",
+                ) {
+                    when ODIN_DEBUG {
+                        reserved_packages := cast(^[dynamic]string)context.user_ptr
+                        if !slice.contains(reserved_packages^[:], whole_msg) {
+                            fmt.eprintln("debug:", whole_msg)
+                            append(reserved_packages, whole_msg)
+                        }
                     }
+                    return
                 }
-                return
+
+                fmt.eprintln(error_tok(whole_msg, pos))
             }
 
-            fmt.eprintln(error_tok(whole_msg, pos))
+            imp.pkg, ok = odinp.parse_package_from_path(imp.abs_path, &p)
+            delete(reserved_packages)
         }
-
-        imp.pkg, ok = odinp.parse_package_from_path(imp.abs_path, &p)
-        delete(reserved_packages)
 
         errors.wrap(
             ok,
@@ -813,13 +823,7 @@ lookup_type_of_import :: proc(
 
     // TODO: Maybe hardcode some types of "core:c"
 
-    type, err = lookup_type_in_package(
-        plat,
-        type_name,
-        imp.imp_path,
-        imp.pkg,
-        ctx,
-    )
+    type, err = lookup_type_in_package(plat, type_name, imp.imp_path, imp.pkg)
 
     return
 }
@@ -829,11 +833,12 @@ lookup_type_in_package :: proc(
     type_name: string,
     imp_path: string,
     pkg: ^odina.Package,
-    ctx: ^TypeToTypeContext,
 ) -> (
     type: runic.Type,
     err: errors.Error,
 ) {
+    ctx := ps()
+
     prev_imp_path := ctx.current_import_path
     prev_pkg := ctx.current_package
     ctx.current_package = pkg
@@ -853,7 +858,7 @@ lookup_type_in_package :: proc(
         for decl in file.decls {
             #partial switch stm in decl.derived_stmt {
             case ^odina.Import_Decl:
-                parse_import_decl(ctx, file_name, stm) or_return
+                parse_import_decl(file_name, stm) or_return
             case ^odina.Value_Decl:
                 for name_expr, idx in stm.names {
                     if len(stm.values) <= idx {
@@ -865,7 +870,7 @@ lookup_type_in_package :: proc(
                     if name == type_name {
                         value_expr := stm.values[idx]
 
-                        return type_to_type(plat, ctx, name, value_expr)
+                        return type_to_type(plat, name, value_expr)
                     }
                 }
             }
@@ -1185,11 +1190,12 @@ extract_attributes :: proc(
 
 parse_value_decl :: proc(
     plat: runic.Platform,
-    ctx: ^TypeToTypeContext,
     stm: ^odina.Value_Decl,
 ) -> (
     err: errors.Error,
 ) {
+    ctx := ps()
+
     link_name, exported := extract_attributes(stm) or_return
 
     first_name: Maybe(string)
@@ -1200,7 +1206,7 @@ parse_value_decl :: proc(
     decl_type: Maybe(runic.Type)
     if stm.type != nil {
         type_err: errors.Error = ---
-        decl_type, type_err = type_to_type(plat, ctx, first_name, stm.type)
+        decl_type, type_err = type_to_type(plat, first_name, stm.type)
         if type_err != nil {
             fmt.eprintln(type_err)
             return
@@ -1250,7 +1256,7 @@ parse_value_decl :: proc(
         case ^odina.Proc_Lit:
             if !exported do continue
 
-            fn, fn_err := proc_to_function(plat, ctx, value.type, name)
+            fn, fn_err := proc_to_function(plat, value.type, name)
             if fn_err != nil {
                 fmt.eprintln(fn_err)
                 continue
@@ -1336,7 +1342,7 @@ parse_value_decl :: proc(
                 runic.Constant{value = const_val, type = {spec = const_spec}},
             )
         case:
-            type, type_err := type_to_type(plat, ctx, name, value_expr)
+            type, type_err := type_to_type(plat, name, value_expr)
             if type_err != nil {
                 fmt.eprintln(type_err)
                 continue
@@ -1381,7 +1387,6 @@ parse_value_decl :: proc(
 
 parse_when_stmt :: proc(
     plat: runic.Platform,
-    ctx: ^TypeToTypeContext,
     file_name: string,
     stm: ^odina.When_Stmt,
 ) -> (
@@ -1396,7 +1401,7 @@ parse_when_stmt :: proc(
             break
         }
 
-        is_cond_true_any, eval_err := evaluate_expr(plat, ctx, stm.cond)
+        is_cond_true_any, eval_err := evaluate_expr(plat, stm.cond)
         if eval_err != nil {
             fmt.eprintln(
                 error_tok(
@@ -1444,7 +1449,7 @@ parse_when_stmt :: proc(
 
     #partial switch decl in body.derived_stmt {
     case ^odina.Block_Stmt:
-        parse_decls(plat, ctx, file_name, decl.stmts) or_return
+        parse_decls(plat, file_name, decl.stmts) or_return
     case:
         err = error_tok(
             fmt.aprintf(
@@ -1543,7 +1548,6 @@ evaluate_implicit_selector :: proc(
 
 parse_decls :: proc(
     plat: runic.Platform,
-    ctx: ^TypeToTypeContext,
     file_name: string,
     stmts: []^odina.Stmt,
 ) -> (
@@ -1552,11 +1556,11 @@ parse_decls :: proc(
     for decl in stmts {
         #partial switch stm in decl.derived_stmt {
         case ^odina.Value_Decl:
-            parse_value_decl(plat, ctx, stm) or_return
+            parse_value_decl(plat, stm) or_return
         case ^odina.Import_Decl:
-            parse_import_decl(ctx, file_name, stm) or_return
+            parse_import_decl(file_name, stm) or_return
         case ^odina.When_Stmt:
-            parse_when_stmt(plat, ctx, file_name, stm) or_return
+            parse_when_stmt(plat, file_name, stm) or_return
         case:
             fmt.println(
                 error_tok(
@@ -1590,20 +1594,16 @@ odin_root :: proc(allocator := context.allocator) -> string {
 
 maybe_add_runtime_extern :: proc(
     plat: runic.Platform,
-    ctx: ^TypeToTypeContext,
     type_name: string,
 ) -> (
     err: errors.Error,
 ) {
+    ctx := ps()
+
     extern_name := strings.concatenate({"runtime_", type_name}, ctx.allocator)
 
     if !om.contains(ctx.externs^, extern_name) {
-        type := lookup_type_of_import(
-            plat,
-            "runtime",
-            type_name,
-            ctx,
-        ) or_return
+        type := lookup_type_of_import(plat, "runtime", type_name) or_return
         om.insert(
             ctx.externs,
             extern_name,

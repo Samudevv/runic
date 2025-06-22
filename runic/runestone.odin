@@ -303,6 +303,21 @@ parse_runestone :: proc(
 }
 
 runestone_destroy :: proc(rs: ^Runestone) {
+    when ODIN_DEBUG {
+        fmt.eprintfln(
+            "------ Runestone {}-{} Memory Report -------",
+            rs.platform.os,
+            rs.platform.arch,
+        )
+        fmt.eprintfln("--- total_used:         {}B", rs.arena.total_used)
+        fmt.eprintfln("--- total_capacity:     {}B", rs.arena.total_capacity)
+        fmt.eprintfln(
+            "--- minimum_block_size: {}B",
+            rs.arena.minimum_block_size,
+        )
+        fmt.eprintln("-------------------------------------")
+    }
+
     om.delete(rs.symbols)
     om.delete(rs.types)
     om.delete(rs.constants)
@@ -1956,4 +1971,3 @@ odin_tokenizer_peek :: #force_inline proc(
     tokenizer_copy := tokenizer^
     return odintz.scan(&tokenizer_copy), tokenizer_copy
 }
-

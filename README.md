@@ -22,7 +22,12 @@ There is documentation available on the [wiki](https://github.com/Samudevv/runic
 ## Usage
 
 ```console
-runic [rune file]
+	runic [rune] [--credits] [--version]
+Flags:
+	--rune <string>  | The rune configuration file to load
+	                 |
+	--credits        | Print credits to dependencies
+	--version        | Print version and license information
 ```
 
 Runic is configured through a **rune** file which is a yaml file that contains the language **from** which to generate a **runestone** and (if specified) the language **to** which to write bindings using the generated **runestone**. If no rune file is specified a `rune.yml` file in the current directory is attempted to be opened.
@@ -161,7 +166,7 @@ from:
   defines:
     OLIVECDEF: "extern"
   ignore:
-    macros:
+    constants:
       - OLIVE_C_
       - OLIVEC_CANVAS_NULL
 to:

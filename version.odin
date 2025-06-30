@@ -20,7 +20,7 @@ package main
 import "core:fmt"
 
 VERSION_MAJOR :: 0
-VERSION_MINOR :: 6
+VERSION_MINOR :: 7
 
 print_version :: #force_inline proc() {
     fmt.printfln(

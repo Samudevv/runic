@@ -1,3 +1,4 @@
+#+feature global-context
 /*
 This file is part of runic.
 

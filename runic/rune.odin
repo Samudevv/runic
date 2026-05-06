@@ -1454,7 +1454,7 @@ parse_rune :: proc(
                                 )
                                 errors.wrap(mem_err) or_return
 
-                                d_map[d_key] = strconv.append_int(
+                                d_map[d_key] = strconv.write_int(
                                     buf[:],
                                     d_v,
                                     10,
@@ -1467,7 +1467,7 @@ parse_rune :: proc(
                                 )
                                 errors.wrap(mem_err) or_return
 
-                                d_map[d_key] = strconv.append_float(
+                                d_map[d_key] = strconv.write_float(
                                     buf[:],
                                     d_v,
                                     'f',

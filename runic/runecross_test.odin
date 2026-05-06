@@ -54,26 +54,24 @@ func.c = #Untyped a #String b #String #Attr Arr 4 #AttrEnd
 
 @(test)
 test_is_same :: proc(t: ^testing.T) {
-    using testing
-
     rd1, rd2: strings.Reader
     strings.reader_init(&rd1, SAME_RUNESTONE1)
     strings.reader_init(&rd2, SAME_RUNESTONE2)
 
     rs1, rs1_err := parse_runestone(strings.reader_to_stream(&rd1), "/rd1")
-    if !expect_value(t, rs1_err, nil) do return
+    if !testing.expect_value(t, rs1_err, nil) do return
     defer runestone_destroy(&rs1)
 
     rs2, rs2_err := parse_runestone(strings.reader_to_stream(&rd2), "/rd2")
-    if !expect_value(t, rs2_err, nil) do return
+    if !testing.expect_value(t, rs2_err, nil) do return
     defer runestone_destroy(&rs2)
 
-    expect(t, rs1.lib.static != rs2.lib.static)
+    testing.expect(t, rs1.lib.static != rs2.lib.static)
 
-    expect(t, is_same(om.get(rs1.symbols, "a"), om.get(rs2.symbols, "a")))
-    expect(t, is_same(om.get(rs1.symbols, "b"), om.get(rs2.symbols, "b")))
-    expect(t, !is_same(om.get(rs1.symbols, "a"), om.get(rs2.symbols, "b")))
-    expect(t, !is_same(om.get(rs1.symbols, "c"), om.get(rs2.symbols, "c")))
+    testing.expect(t, is_same(om.get(rs1.symbols, "a"), om.get(rs2.symbols, "a")))
+    testing.expect(t, is_same(om.get(rs1.symbols, "b"), om.get(rs2.symbols, "b")))
+    testing.expect(t, !is_same(om.get(rs1.symbols, "a"), om.get(rs2.symbols, "b")))
+    testing.expect(t, !is_same(om.get(rs1.symbols, "c"), om.get(rs2.symbols, "c")))
 }
 
 
@@ -137,31 +135,31 @@ test_runecross :: proc(t: ^testing.T) {
         strings.reader_to_stream(&linux_rd),
         "/linux",
     )
-    if !expect_value(t, linux_err, nil) do return
+    if !testing.expect_value(t, linux_err, nil) do return
     defer runestone_destroy(&linux_stone)
 
     windows_stone, windows_err := parse_runestone(
         strings.reader_to_stream(&windows_rd),
         "/windows",
     )
-    if !expect_value(t, windows_err, nil) do return
+    if !testing.expect_value(t, windows_err, nil) do return
     defer runestone_destroy(&windows_stone)
 
     cross, cross_err := cross_the_runes(
         {"/linux", "/windows"},
         {linux_stone, windows_stone},
     )
-    if !expect_value(t, cross_err, nil) do return
+    if !testing.expect_value(t, cross_err, nil) do return
     defer runecross_destroy(&cross)
 
     general := &cross.cross[0]
 
-    expect_value(t, len(general.plats), 1)
-    expect_value(t, general.plats[0].os, OS.Any)
-    expect_value(t, general.plats[0].arch, Architecture.Any)
+    testing.expect_value(t, len(general.plats), 1)
+    testing.expect_value(t, general.plats[0].os, OS.Any)
+    testing.expect_value(t, general.plats[0].arch, Architecture.Any)
 
-    expect_value(t, om.length(general.types), 6)
-    expect_value(t, om.length(general.symbols), 2)
+    testing.expect_value(t, om.length(general.types), 6)
+    testing.expect_value(t, om.length(general.symbols), 2)
 
     linux_cross_idx, found := slice.linear_search_proc(
         cross.cross[:],
@@ -169,11 +167,11 @@ test_runecross :: proc(t: ^testing.T) {
             return slice.contains(value.plats[:], Platform{.Linux, .Any})
         },
     )
-    if !expect(t, found) do return
+    if !testing.expect(t, found) do return
 
     linux_cross := cross.cross[linux_cross_idx]
-    expect_value(t, om.length(linux_cross.types), 1)
-    expect_value(t, om.length(linux_cross.symbols), 1)
+    testing.expect_value(t, om.length(linux_cross.types), 1)
+    testing.expect_value(t, om.length(linux_cross.symbols), 1)
 
     windows_cross_idx, found_win := slice.linear_search_proc(
         cross.cross[:],
@@ -181,10 +179,10 @@ test_runecross :: proc(t: ^testing.T) {
             return slice.contains(value.plats[:], Platform{.Windows, .Any})
         },
     )
-    if !expect(t, found_win) do return
+    if !testing.expect(t, found_win) do return
 
     windows_cross := cross.cross[windows_cross_idx]
-    expect_value(t, om.length(windows_cross.types), 1)
-    expect_value(t, om.length(windows_cross.symbols), 1)
+    testing.expect_value(t, om.length(windows_cross.types), 1)
+    testing.expect_value(t, om.length(windows_cross.symbols), 1)
 }
 

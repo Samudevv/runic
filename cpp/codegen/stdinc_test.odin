@@ -25,8 +25,6 @@ import "root:runic"
 
 @(test)
 test_cpp_stdinc :: proc(t: ^testing.T) {
-    using testing
-
     plat := runic.Platform{.Linux, .x86_64}
 
     gen_dir, gen_dir_ok := system_includes_gen_dir(plat)
@@ -41,13 +39,13 @@ test_cpp_stdinc :: proc(t: ^testing.T) {
         defer delete(file_path)
 
         fd, err := os.open(file_path, os.O_RDONLY)
-        if expect_value(t, err, nil) {
+        if testing.expect_value(t, err, nil) {
             if expected_contents, expected_ok := system_includes_contents(
                 file_name,
             ); expected_ok {
                 contents, contents_ok := os.read_entire_file(fd)
                 if expect(t, contents_ok) {
-                    if !expect_value(t, string(contents), expected_contents) do fmt.eprintfln("contents of {} differ from expected", file_name)
+                    if !testing.expect_value(t, string(contents), expected_contents) do fmt.eprintfln("contents of {} differ from expected", file_name)
                     delete(contents)
                 }
             }
@@ -57,6 +55,6 @@ test_cpp_stdinc :: proc(t: ^testing.T) {
 
     delete_system_includes(gen_dir)
 
-    expect(t, !(os.exists(gen_dir) || os.is_dir(gen_dir)))
+    testing.expect(t, !(os.exists(gen_dir) || os.is_dir(gen_dir)))
 }
 

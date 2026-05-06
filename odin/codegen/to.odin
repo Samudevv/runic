@@ -354,7 +354,7 @@ generate_bindings :: proc(
         allocator = arena_alloc,
     )
     opened_handles := make(
-        [dynamic]os.Handle,
+        [dynamic]^os.File,
         len = 0,
         cap = len(grouped_imports),
         allocator = arena_alloc,
@@ -401,7 +401,7 @@ generate_bindings :: proc(
                     )
                 }
             } else {
-                imp_wd = os.stream_from_handle(imp_file)
+                imp_wd = os.to_stream(imp_file)
                 append(&opened_handles, imp_file)
             }
 

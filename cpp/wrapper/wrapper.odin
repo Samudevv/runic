@@ -205,8 +205,8 @@ generate_wrapper :: proc(
         }
 
         data := ClientData {
-            header            = os.stream_from_handle(out_header),
-            source            = os.stream_from_handle(out_source),
+            header            = os.to_stream(out_header),
+            source            = os.to_stream(out_source),
             load_all_includes = load_all_includes,
             extern            = extern,
             rune_file_name    = rune_file_name,

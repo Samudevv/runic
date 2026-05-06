@@ -1,3 +1,4 @@
+#+feature using-stmt
 /*
 This file is part of runic.
 
@@ -14,7 +15,6 @@ You should have received a copy of the GNU General Public License
 along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-
 package runic
 
 import "base:runtime"
@@ -70,13 +70,13 @@ parse_runestone :: proc(
         }
         switch os_str {
         case "Linux":
-            platform.os = .Linux
+            rs.platform.os = .Linux
         case "Windows":
-            platform.os = .Windows
+            rs.platform.os = .Windows
         case "Macos":
-            platform.os = .Macos
+            rs.platform.os = .Macos
         case "BSD":
-            platform.os = .BSD
+            rs.platform.os = .BSD
         case "Any":
             err = errors.message("a runestone can not have any os")
             return
@@ -94,13 +94,13 @@ parse_runestone :: proc(
         }
         switch arch_str {
         case "x86_64":
-            platform.arch = .x86_64
+            rs.platform.arch = .x86_64
         case "arm64":
-            platform.arch = .arm64
+            rs.platform.arch = .arm64
         case "x86":
-            platform.arch = .x86
+            rs.platform.arch = .x86
         case "arm32":
-            platform.arch = .arm32
+            rs.platform.arch = .arm32
         case "Any":
             err = errors.message("a runestone can not have any architecture")
             return
@@ -119,14 +119,14 @@ parse_runestone :: proc(
         static, static_ok := om.get(sect, "static")
 
         if shared_ok && len(shared) != 0 {
-            lib.shared = relative_to_file(file_path, shared, needs_dir = true)
+            rs.lib.shared = relative_to_file(file_path, shared, needs_dir = true)
         }
         if static_ok && len(static) != 0 {
-            lib.static = relative_to_file(file_path, static, needs_dir = true)
+            rs.lib.static = relative_to_file(file_path, static, needs_dir = true)
         }
 
         errors.assert(
-            lib.shared != nil || lib.static != nil,
+            rs.lib.shared != nil || rs.lib.static != nil,
             "No libraries have been specified",
         ) or_return
     }

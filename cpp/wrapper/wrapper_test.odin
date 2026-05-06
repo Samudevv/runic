@@ -27,8 +27,6 @@ import "root:runic"
 
 @(test)
 test_cpp_wrapper :: proc(t: ^testing.T) {
-    using testing
-
     cwd := os.get_current_directory()
     defer delete(cwd)
 
@@ -64,7 +62,7 @@ test_cpp_wrapper :: proc(t: ^testing.T) {
         rn,
         rf,
     )
-    expect_value(t, err, nil)
+    testing.expect_value(t, err, nil)
 
     header_data_linux, linux_ok := os.read_entire_file(
         "test_data/wrapper_out_header-Linux_x86_64.h",
@@ -72,7 +70,7 @@ test_cpp_wrapper :: proc(t: ^testing.T) {
     header_data_windows, windows_ok := os.read_entire_file(
         "test_data/wrapper_out_header-Windows_x86_64.h",
     )
-    if !expect(t, linux_ok && windows_ok) do return
+    if !testing.expect(t, linux_ok && windows_ok) do return
     defer delete(header_data_linux)
     defer delete(header_data_windows)
 
@@ -82,7 +80,7 @@ test_cpp_wrapper :: proc(t: ^testing.T) {
     source_data_windows, windows_src_ok := os.read_entire_file(
         "test_data/wrapper_out_source-Windows_x86_64.c",
     )
-    if !expect(t, linux_src_ok && windows_src_ok) do return
+    if !testing.expect(t, linux_src_ok && windows_src_ok) do return
     defer delete(source_data_linux)
     defer delete(source_data_windows)
 

@@ -15,7 +15,6 @@ You should have received a copy of the GNU General Public License
 along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-
 package runic
 
 import "core:fmt"
@@ -91,87 +90,87 @@ test_example_runestone :: proc(t: ^testing.T) {
 
     rs, err := parse_runestone(strings.reader_to_stream(&rd), "/example")
     defer runestone_destroy(&rs)
-    if !expect_value(t, err, nil) do return
+    if !testing.expect_value(t, err, nil) do return
 
     using rs
 
-    expect_value(t, version, 0)
+    testing.expect_value(t, version, 0)
 
-    expect_value(t, platform.os, OS.Linux)
-    expect_value(t, platform.arch, Architecture.x86_64)
+    testing.expect_value(t, platform.os, OS.Linux)
+    testing.expect_value(t, platform.arch, Architecture.x86_64)
 
-    expect_value(t, lib.shared.?, "libfoo.so")
-    expect_value(t, lib.static.?, "libfoo.a")
+    testing.expect_value(t, lib.shared.?, "libfoo.so")
+    testing.expect_value(t, lib.static.?, "libfoo.a")
 
-    expect_value(t, om.length(symbols), 7)
-    expect_value(
+    testing.expect_value(t, om.length(symbols), 7)
+    testing.expect_value(
         t,
         om.get(symbols, "foo").value.(Function).return_type.spec.(Builtin),
         Builtin.Untyped,
     )
-    expect_value(t, len(om.get(symbols, "foo").value.(Function).parameters), 2)
-    expect_value(
+    testing.expect_value(t, len(om.get(symbols, "foo").value.(Function).parameters), 2)
+    testing.expect_value(
         t,
         om.get(symbols, "foo").value.(Function).parameters[0].name,
         "a",
     )
-    expect_value(
+    testing.expect_value(
         t,
         om.get(symbols, "foo").value.(Function).parameters[1].name,
         "b",
     )
-    expect_value(t, om.get(symbols, "foo").aliases[0], "oof")
-    expect_value(t, om.get(symbols, "foo").remap, "foo1234")
-    expect_value(t, om.get(symbols, "foo_var").remap, "foo_varZZXX6")
-    expect_value(
+    testing.expect_value(t, om.get(symbols, "foo").aliases[0], "oof")
+    testing.expect_value(t, om.get(symbols, "foo").remap, "foo1234")
+    testing.expect_value(t, om.get(symbols, "foo_var").remap, "foo_varZZXX6")
+    testing.expect_value(
         t,
         om.get(symbols, "funcy").value.(Function).return_type.spec.(Builtin),
         Builtin.RawPtr,
     )
-    expect_value(
+    testing.expect_value(
         t,
         len(om.get(symbols, "funcy").value.(Function).parameters),
         0,
     )
-    expect_value(
+    testing.expect_value(
         t,
         om.get(symbols, "output_print_name").value.(Function).method_info.?.type,
         "output",
     )
-    expect_value(
+    testing.expect_value(
         t,
         om.get(symbols, "output_print_name").value.(Function).method_info.?.name,
         "print_name",
     )
-    expect_value(
+    testing.expect_value(
         t,
         om.get(symbols, "idx").value.(Type).spec.(Builtin),
         Builtin.UInt64,
     )
-    expect_value(
+    testing.expect_value(
         t,
         om.get(symbols, "counter").value.(Type).spec.(Builtin),
         Builtin.UInt8,
     )
 
-    expect_value(t, om.length(types), 14)
-    expect_value(t, om.get(types, "super_ptr").pointer_info.count, 1)
-    expect_value(t, len(om.get(types, "numbers").array_info), 1)
-    expect_value(t, om.get(types, "numbers").array_info[0].size.(u64), 5)
-    expect_value(
+    testing.expect_value(t, om.length(types), 14)
+    testing.expect_value(t, om.get(types, "super_ptr").pointer_info.count, 1)
+    testing.expect_value(t, len(om.get(types, "numbers").array_info), 1)
+    testing.expect_value(t, om.get(types, "numbers").array_info[0].size.(u64), 5)
+    testing.expect_value(
         t,
         om.get(types, "times").array_info[0].size.(string),
         "5*6/3*(8%9)",
     )
-    expect_value(t, om.get(types, "transform").array_info[0].size.(u64), 4)
-    expect_value(t, om.get(types, "transform").array_info[1].size.(u64), 4)
-    expect_value(t, om.get(types, "Events").spec.(ExternType), "SDL_Event")
-    expect_value(t, om.get(types, "DynInt").spec.(Builtin), Builtin.SIntX)
-    expect_value(t, om.get(types, "DynUInt").spec.(Builtin), Builtin.UIntX)
+    testing.expect_value(t, om.get(types, "transform").array_info[0].size.(u64), 4)
+    testing.expect_value(t, om.get(types, "transform").array_info[1].size.(u64), 4)
+    testing.expect_value(t, om.get(types, "Events").spec.(ExternType), "SDL_Event")
+    testing.expect_value(t, om.get(types, "DynInt").spec.(Builtin), Builtin.SIntX)
+    testing.expect_value(t, om.get(types, "DynUInt").spec.(Builtin), Builtin.UIntX)
 
-    expect_value(t, om.length(externs), 1)
-    expect_value(t, om.get(externs, "SDL_Event").source, "SDL2/SDL_Event.h")
-    expect_value(
+    testing.expect_value(t, om.length(externs), 1)
+    testing.expect_value(t, om.get(externs, "SDL_Event").source, "SDL2/SDL_Event.h")
+    testing.expect_value(
         t,
         om.get(externs, "SDL_Event").type.spec.(Struct).members[0].name,
         "key",
@@ -182,25 +181,25 @@ test_example_runestone :: proc(t: ^testing.T) {
         os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
         0o644,
     )
-    if !expect_value(t, os_err, nil) do return
+    if !testing.expect_value(t, os_err, nil) do return
     defer os.close(out_file)
 
     io_err := write_runestone(
         rs,
-        os.stream_from_handle(out_file),
+        os.to_stream(out_file),
         "test_data/example_runestone.ini",
     )
-    if !expect_value(t, io_err, io.Error.None) do return
+    if !testing.expect_value(t, io_err, io.Error.None) do return
 
-    if !expect_value(t, om.length(constants), 4) do return
-    expect_value(t, om.get(constants, "ARR_SIZE").value.(i64), 5)
-    expect_value(t, om.get(constants, "ARR_CAP").value.(i64), 20)
-    expect_value(
+    if !testing.expect_value(t, om.length(constants), 4) do return
+    testing.expect_value(t, om.get(constants, "ARR_SIZE").value.(i64), 5)
+    testing.expect_value(t, om.get(constants, "ARR_CAP").value.(i64), 20)
+    testing.expect_value(
         t,
         om.get(constants, "APP_NAME").value.(string),
         "Hello World",
     )
-    expect_value(t, om.get(constants, "LENGTH").value.(f64), 267.345)
+    testing.expect_value(t, om.get(constants, "LENGTH").value.(f64), 267.345)
 }
 
 @(test)
@@ -281,10 +280,10 @@ test_cyclic_dependency :: proc(t: ^testing.T) {
         types,
     )
 
-    expect(t, connected)
-    if expect_value(t, len(visited_path), 2) {
-        expect_value(t, visited_path[0], "little_foo")
-        expect_value(t, visited_path[1], "big_foo")
+    testing.expect(t, connected)
+    if testing.expect_value(t, len(visited_path), 2) {
+        testing.expect_value(t, visited_path[0], "little_foo")
+        testing.expect_value(t, visited_path[1], "big_foo")
     }
 
     delete(visited_path)
@@ -296,12 +295,12 @@ test_cyclic_dependency :: proc(t: ^testing.T) {
         types,
     )
 
-    expect(t, connected)
-    if expect_value(t, len(visited_path), 4) {
-        expect_value(t, visited_path[0], "cycle_0")
-        expect_value(t, visited_path[1], "cycle_1")
-        expect_value(t, visited_path[2], "cycle_2")
-        expect_value(t, visited_path[3], "cycle_3")
+    testing.expect(t, connected)
+    if testing.expect_value(t, len(visited_path), 4) {
+        testing.expect_value(t, visited_path[0], "cycle_0")
+        testing.expect_value(t, visited_path[1], "cycle_1")
+        testing.expect_value(t, visited_path[2], "cycle_2")
+        testing.expect_value(t, visited_path[3], "cycle_3")
     } else {
         fmt.printfln("visited_path: {}", visited_path)
     }
@@ -315,11 +314,11 @@ test_cyclic_dependency :: proc(t: ^testing.T) {
         types,
     )
 
-    expect(t, connected)
-    if expect_value(t, len(visited_path), 3) {
-        expect_value(t, visited_path[0], "struct_cycle_0")
-        expect_value(t, visited_path[1], "struct_cycle_1")
-        expect_value(t, visited_path[2], "struct_cycle_2")
+    testing.expect(t, connected)
+    if testing.expect_value(t, len(visited_path), 3) {
+        testing.expect_value(t, visited_path[0], "struct_cycle_0")
+        testing.expect_value(t, visited_path[1], "struct_cycle_1")
+        testing.expect_value(t, visited_path[2], "struct_cycle_2")
     }
 
     delete(visited_path)
@@ -329,7 +328,7 @@ test_cyclic_dependency :: proc(t: ^testing.T) {
         pointer_info = {count = 1},
     }
 
-    expect(t, references_type_as_pointer_or_array(pointer_type, "pointed"))
+    testing.expect(t, references_type_as_pointer_or_array(pointer_type, "pointed"))
 
     array_type := Type {
         spec       = string("arrayed"),
@@ -337,7 +336,7 @@ test_cyclic_dependency :: proc(t: ^testing.T) {
     }
     defer delete(array_type.array_info)
 
-    expect(t, references_type_as_pointer_or_array(array_type, "arrayed"))
+    testing.expect(t, references_type_as_pointer_or_array(array_type, "arrayed"))
 }
 
 @(test)
@@ -362,10 +361,10 @@ test_trim_enum_type_names :: proc(t: ^testing.T) {
         trim_enum_type_names(&type, type_name)
 
         e := type.spec.(Enum)
-        expect_value(t, e.entries[0].name, "UP")
-        expect_value(t, e.entries[1].name, "DOWN")
-        expect_value(t, e.entries[2].name, "LEFT")
-        expect_value(t, e.entries[3].name, "RIGHT")
+        testing.expect_value(t, e.entries[0].name, "UP")
+        testing.expect_value(t, e.entries[1].name, "DOWN")
+        testing.expect_value(t, e.entries[2].name, "LEFT")
+        testing.expect_value(t, e.entries[3].name, "RIGHT")
     }
     {
         type_name :: "SlidingDirection"
@@ -385,10 +384,10 @@ test_trim_enum_type_names :: proc(t: ^testing.T) {
         trim_enum_type_names(&type, type_name)
 
         e := type.spec.(Enum)
-        expect_value(t, e.entries[0].name, "Up")
-        expect_value(t, e.entries[1].name, "Down")
-        expect_value(t, e.entries[2].name, "Left")
-        expect_value(t, e.entries[3].name, "Right")
+        testing.expect_value(t, e.entries[0].name, "Up")
+        testing.expect_value(t, e.entries[1].name, "Down")
+        testing.expect_value(t, e.entries[2].name, "Left")
+        testing.expect_value(t, e.entries[3].name, "Right")
     }
     {
         type_name :: "sliding_direction"
@@ -408,9 +407,9 @@ test_trim_enum_type_names :: proc(t: ^testing.T) {
         trim_enum_type_names(&type, type_name)
 
         e := type.spec.(Enum)
-        expect_value(t, e.entries[0].name, "up")
-        expect_value(t, e.entries[1].name, "down")
-        expect_value(t, e.entries[2].name, "left")
-        expect_value(t, e.entries[3].name, "right")
+        testing.expect_value(t, e.entries[0].name, "up")
+        testing.expect_value(t, e.entries[1].name, "down")
+        testing.expect_value(t, e.entries[2].name, "left")
+        testing.expect_value(t, e.entries[3].name, "right")
     }
 }

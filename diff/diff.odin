@@ -19,7 +19,7 @@ package diff
 
 import "core:fmt"
 import "core:log"
-import os "core:os/os2"
+import "core:os"
 import "core:testing"
 
 expect_diff_files :: proc(
@@ -106,7 +106,7 @@ expect_diff_strings :: proc(
     tmp, tmp_err := os.temp_directory(context.allocator)
     if !testing.expect_value(t, tmp_err, nil) do return false
 
-    old_file, new_file: ^os.File
+    old_file, new_file: ^^os.File
     old_file_name, new_file_name: string
     for i := 0;; i += 1 {
         old_file_base := fmt.aprintf("test_old_diff_%3v%v", i, file_ext)

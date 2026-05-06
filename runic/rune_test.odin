@@ -27,27 +27,25 @@ import om "root:ordered_map"
 
 @(test)
 test_rune :: proc(t: ^testing.T) {
-    using testing
-
     file, os_err := os.open("test_data/rune.yml")
-    if !expect_value(t, os_err, nil) do return
+    if !testing.expect_value(t, os_err, nil) do return
     defer os.close(file)
 
-    rn, err := parse_rune(os.stream_from_handle(file), "test_data/rune.yml")
+    rn, err := parse_rune(os.to_stream(file), "test_data/rune.yml")
     defer rune_destroy(&rn)
-    if !expect_value(t, err, nil) do return
+    if !testing.expect_value(t, err, nil) do return
 
     cwd := os.get_current_directory()
     defer delete(cwd)
 
-    expect_value(t, rn.version, 0)
+    testing.expect_value(t, rn.version, 0)
 
-    expect_value(t, rn.from.(From).language, "c")
-    expect_value(t, len(rn.platforms), 2)
-    expect_value(t, rn.platforms[0].os, OS.Linux)
-    expect_value(t, rn.platforms[1].os, OS.Windows)
-    expect_value(t, rn.platforms[0].arch, Architecture.x86_64)
-    expect_value(t, rn.platforms[1].arch, Architecture.x86_64)
+    testing.expect_value(t, rn.from.(From).language, "c")
+    testing.expect_value(t, len(rn.platforms), 2)
+    testing.expect_value(t, rn.platforms[0].os, OS.Linux)
+    testing.expect_value(t, rn.platforms[1].os, OS.Windows)
+    testing.expect_value(t, rn.platforms[0].arch, Architecture.x86_64)
+    testing.expect_value(t, rn.platforms[1].arch, Architecture.x86_64)
 
     foo_h := filepath.join({cwd, "test_data/foo.h"})
     foz_h := filepath.join({cwd, "test_data/foz.h"})
@@ -71,91 +69,91 @@ test_rune :: proc(t: ^testing.T) {
     macos_headers := f.headers.d[{.Macos, .Any}]
     linux_headers := f.headers.d[{.Linux, .x86_64}]
     windows_headers := f.headers.d[{.Windows, .x86_64}]
-    expect_value(t, f.shared.d[Platform{.Any, .Any}], "libfoo.so")
-    expect_value(t, len(any_headers), 3)
-    expect_value(t, len(linux_headers), 4)
-    expect_value(t, len(windows_headers), 4)
-    expect_value(t, len(macos_headers), 1)
-    expect_value(t, any_headers[0], foo_h)
-    expect_value(t, any_headers[1], foz_h)
-    expect_value(t, any_headers[2], bar_h)
-    expect_value(t, linux_headers[0], foo_h)
-    expect_value(t, linux_headers[1], foz_h)
-    expect_value(t, linux_headers[2], bar_h)
-    expect_value(t, linux_headers[3], wrapper_gen_linux_h)
-    expect_value(t, windows_headers[0], foo_h)
-    expect_value(t, windows_headers[1], foz_h)
-    expect_value(t, windows_headers[2], bar_h)
-    expect_value(t, windows_headers[3], wrapper_gen_windows_h)
-    expect_value(t, macos_headers[0], plat_macos_h)
-    expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].types), 4)
-    expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].functions), 3)
-    expect_value(t, f.enable_host_includes.d[Platform{.Any, .Any}], true)
-    expect_value(t, f.enable_host_includes.d[Platform{.Linux, .arm64}], false)
-    expect_value(t, f.disable_system_include_gen.d[Platform{.Any, .Any}], true)
-    expect_value(
+    testing.expect_value(t, f.shared.d[Platform{.Any, .Any}], "libfoo.so")
+    testing.expect_value(t, len(any_headers), 3)
+    testing.expect_value(t, len(linux_headers), 4)
+    testing.expect_value(t, len(windows_headers), 4)
+    testing.expect_value(t, len(macos_headers), 1)
+    testing.expect_value(t, any_headers[0], foo_h)
+    testing.expect_value(t, any_headers[1], foz_h)
+    testing.expect_value(t, any_headers[2], bar_h)
+    testing.expect_value(t, linux_headers[0], foo_h)
+    testing.expect_value(t, linux_headers[1], foz_h)
+    testing.expect_value(t, linux_headers[2], bar_h)
+    testing.expect_value(t, linux_headers[3], wrapper_gen_linux_h)
+    testing.expect_value(t, windows_headers[0], foo_h)
+    testing.expect_value(t, windows_headers[1], foz_h)
+    testing.expect_value(t, windows_headers[2], bar_h)
+    testing.expect_value(t, windows_headers[3], wrapper_gen_windows_h)
+    testing.expect_value(t, macos_headers[0], plat_macos_h)
+    testing.expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].types), 4)
+    testing.expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].functions), 3)
+    testing.expect_value(t, f.enable_host_includes.d[Platform{.Any, .Any}], true)
+    testing.expect_value(t, f.enable_host_includes.d[Platform{.Linux, .arm64}], false)
+    testing.expect_value(t, f.disable_system_include_gen.d[Platform{.Any, .Any}], true)
+    testing.expect_value(
         t,
         f.disable_system_include_gen.d[Platform{.Windows, .Any}],
         false,
     )
-    expect_value(t, f.disable_stdint_macros.d[Platform{.Any, .Any}], true)
-    expect_value(t, f.disable_stdint_macros.d[Platform{.Windows, .Any}], false)
+    testing.expect_value(t, f.disable_stdint_macros.d[Platform{.Any, .Any}], true)
+    testing.expect_value(t, f.disable_stdint_macros.d[Platform{.Windows, .Any}], false)
 
     load_all_includes_any := f.load_all_includes.d[Platform{.Any, .Any}]
     load_all_includes_macos := f.load_all_includes.d[Platform{.Macos, .Any}]
-    expect_value(t, load_all_includes_any, true)
-    expect_value(t, load_all_includes_macos, false)
+    testing.expect_value(t, load_all_includes_any, true)
+    testing.expect_value(t, load_all_includes_macos, false)
 
     forward_decl_type_any := f.forward_decl_type.d[Platform{.Any, .Any}]
     forward_decl_type_linux := f.forward_decl_type.d[Platform{.Linux, .Any}]
     forward_decl_type_windows :=
         f.forward_decl_type.d[Platform{.Windows, .Any}]
-    expect_value(t, forward_decl_type_any.spec.(Builtin), Builtin.Opaque)
-    expect_value(t, forward_decl_type_linux.spec.(Builtin), Builtin.Untyped)
-    expect_value(t, forward_decl_type_windows.spec.(Builtin), Builtin.SInt32)
+    testing.expect_value(t, forward_decl_type_any.spec.(Builtin), Builtin.Opaque)
+    testing.expect_value(t, forward_decl_type_linux.spec.(Builtin), Builtin.Untyped)
+    testing.expect_value(t, forward_decl_type_windows.spec.(Builtin), Builtin.SInt32)
 
     ow := f.overwrite.d[Platform{.Any, .Any}]
-    expect_value(t, len(ow.functions), 3)
+    testing.expect_value(t, len(ow.functions), 3)
     for func in ow.functions {
         switch func.name {
         case "funcy":
-            expect_value(t, func.instruction.(OverwriteParameterName).idx, 0)
-            expect_value(
+            testing.expect_value(t, func.instruction.(OverwriteParameterName).idx, 0)
+            testing.expect_value(
                 t,
                 func.instruction.(OverwriteParameterName).overwrite,
                 "input",
             )
         case "sunky":
-            expect_value(t, func.instruction.(OverwriteParameterType).idx, 1)
-            expect_value(
+            testing.expect_value(t, func.instruction.(OverwriteParameterType).idx, 1)
+            testing.expect_value(
                 t,
                 func.instruction.(OverwriteParameterType).overwrite,
                 "output",
             )
         case "uinky":
-            expect_value(t, func.instruction.(OverwriteReturnType), "#SInt32")
+            testing.expect_value(t, func.instruction.(OverwriteReturnType), "#SInt32")
         case:
             fail(t)
         }
     }
 
-    expect_value(t, len(f.extern), 1)
-    expect_value(t, f.extern[0], "test_data/the_system/*")
+    testing.expect_value(t, len(f.extern), 1)
+    testing.expect_value(t, f.extern[0], "test_data/the_system/*")
 
     for type in ow.types {
         switch type.name {
         case "size_t":
-            expect_value(t, type.instruction.(OverwriteWhole), "#UInt64")
+            testing.expect_value(t, type.instruction.(OverwriteWhole), "#UInt64")
         case "func_ptr":
             #partial switch ins in type.instruction {
             case OverwriteParameterType:
-                expect_value(t, ins.idx, 1)
-                expect_value(t, ins.overwrite, "wl_seat #Attr Ptr 1 #AttrEnd")
+                testing.expect_value(t, ins.idx, 1)
+                testing.expect_value(t, ins.overwrite, "wl_seat #Attr Ptr 1 #AttrEnd")
             case OverwriteParameterName:
-                expect_value(t, ins.idx, 0)
-                expect_value(t, ins.overwrite, "bar")
+                testing.expect_value(t, ins.idx, 0)
+                testing.expect_value(t, ins.overwrite, "bar")
             case OverwriteReturnType:
-                expect_value(t, ins, "#RawPtr")
+                testing.expect_value(t, ins, "#RawPtr")
             case:
                 fail(t)
             }
@@ -165,33 +163,33 @@ test_rune :: proc(t: ^testing.T) {
     }
 
     to := rn.to.(To)
-    expect_value(t, to.static_switch, "FOO_STATIC")
+    testing.expect_value(t, to.static_switch, "FOO_STATIC")
 
-    expect_value(t, to.trim_prefix.enum_type_name, true)
+    testing.expect_value(t, to.trim_prefix.enum_type_name, true)
 
     extern := to.extern
-    expect_value(t, extern.trim_prefix, true)
-    expect_value(t, extern.trim_suffix, false)
-    expect_value(t, extern.add_prefix, false)
-    expect_value(t, extern.add_suffix, false)
-    expect_value(t, len(extern.sources), 2)
-    expect_value(t, extern.sources["SDL2/SDL_Event.h"], "vendor:sdl2")
-    expect_value(t, extern.sources["SDL2/SDL_Renderer.h"], "vendor:sdl2")
-    expect_value(t, len(extern.remaps), 1)
-    expect_value(t, extern.remaps["SDL_Renderer"], "Renderer")
+    testing.expect_value(t, extern.trim_prefix, true)
+    testing.expect_value(t, extern.trim_suffix, false)
+    testing.expect_value(t, extern.add_prefix, false)
+    testing.expect_value(t, extern.add_suffix, false)
+    testing.expect_value(t, len(extern.sources), 2)
+    testing.expect_value(t, extern.sources["SDL2/SDL_Event.h"], "vendor:sdl2")
+    testing.expect_value(t, extern.sources["SDL2/SDL_Renderer.h"], "vendor:sdl2")
+    testing.expect_value(t, len(extern.remaps), 1)
+    testing.expect_value(t, extern.remaps["SDL_Renderer"], "Renderer")
 
     remaps := f.remaps
-    expect_value(t, len(remaps), 2)
-    expect_value(t, remaps["wl_surface_interface"], "wl_surface_interface_v")
-    expect_value(t, remaps["wl_cursor_interface"], "wl_cursor_interface_v")
+    testing.expect_value(t, len(remaps), 2)
+    testing.expect_value(t, remaps["wl_surface_interface"], "wl_surface_interface_v")
+    testing.expect_value(t, remaps["wl_cursor_interface"], "wl_cursor_interface_v")
 
     aliases := f.aliases
-    expect_value(t, len(aliases), 2)
-    expect_value(t, len(aliases["SDL_Event"]), 1)
-    expect_value(t, aliases["SDL_Event"][0], "SDL_Happening")
-    expect_value(t, len(aliases["SDL_Renderer"]), 2)
-    expect_value(t, aliases["SDL_Renderer"][0], "SDL_Painter")
-    expect_value(t, aliases["SDL_Renderer"][1], "SDL_Drawer")
+    testing.expect_value(t, len(aliases), 2)
+    testing.expect_value(t, len(aliases["SDL_Event"]), 1)
+    testing.expect_value(t, aliases["SDL_Event"][0], "SDL_Happening")
+    testing.expect_value(t, len(aliases["SDL_Renderer"]), 2)
+    testing.expect_value(t, aliases["SDL_Renderer"][0], "SDL_Painter")
+    testing.expect_value(t, aliases["SDL_Renderer"][1], "SDL_Drawer")
 
     in_header := filepath.join({cwd, "test_data/wrapper.h"})
     out_header := filepath.join({cwd, "test_data/wrapper.gen.h"})
@@ -201,35 +199,35 @@ test_rune :: proc(t: ^testing.T) {
     defer delete(out_source)
 
     wrapper := rn.wrapper.?
-    expect_value(t, wrapper.language, "c")
-    expect_value(t, wrapper.from_compiler_flags.d[{.Any, .Any}], false)
-    expect_value(t, wrapper.add_header_to_from, true)
-    expect_value(t, wrapper.defines.d[{.Any, .Any}]["FOO"], "BAR")
-    expect_value(t, len(wrapper.in_headers.d[{.Any, .Any}]), 1)
-    expect_value(t, wrapper.in_headers.d[{.Any, .Any}][0], in_header)
-    expect_value(t, wrapper.out_header, out_header)
-    expect_value(t, wrapper.out_source, out_source)
+    testing.expect_value(t, wrapper.language, "c")
+    testing.expect_value(t, wrapper.from_compiler_flags.d[{.Any, .Any}], false)
+    testing.expect_value(t, wrapper.add_header_to_from, true)
+    testing.expect_value(t, wrapper.defines.d[{.Any, .Any}]["FOO"], "BAR")
+    testing.expect_value(t, len(wrapper.in_headers.d[{.Any, .Any}]), 1)
+    testing.expect_value(t, wrapper.in_headers.d[{.Any, .Any}][0], in_header)
+    testing.expect_value(t, wrapper.out_header, out_header)
+    testing.expect_value(t, wrapper.out_source, out_source)
 
     wrapper_incs := wrapper.include_dirs.d[{.Any, .Any}]
-    expect_value(t, len(wrapper_incs), 2)
+    testing.expect_value(t, len(wrapper_incs), 2)
     wi1 := filepath.join({cwd, "test_data/header_files/"})
     wi2 := filepath.join({cwd, "test_data/inc/other_headers"})
     defer delete(wi1)
     defer delete(wi2)
-    expect_value(t, wrapper_incs[0], wi1)
-    expect_value(t, wrapper_incs[1], wi2)
-    expect_value(t, len(wrapper.flags.d[{.Any, .Any}]), 2)
-    expect_value(t, wrapper.flags.d[{.Any, .Any}][0], "-fsomething")
-    expect_value(t, wrapper.flags.d[{.Any, .Any}][1], "-nostdinc")
-    expect_value(t, wrapper.load_all_includes.d[{.Any, .Any}], true)
-    expect_value(t, len(wrapper.extern.d[{.Any, .Any}]), 2)
+    testing.expect_value(t, wrapper_incs[0], wi1)
+    testing.expect_value(t, wrapper_incs[1], wi2)
+    testing.expect_value(t, len(wrapper.flags.d[{.Any, .Any}]), 2)
+    testing.expect_value(t, wrapper.flags.d[{.Any, .Any}][0], "-fsomething")
+    testing.expect_value(t, wrapper.flags.d[{.Any, .Any}][1], "-nostdinc")
+    testing.expect_value(t, wrapper.load_all_includes.d[{.Any, .Any}], true)
+    testing.expect_value(t, len(wrapper.extern.d[{.Any, .Any}]), 2)
 
     ext1 := filepath.join({cwd, "test_data/stdarg.h"})
     ext2 := filepath.join({cwd, "test_data/third_party/files/*"})
     defer delete(ext1)
     defer delete(ext2)
-    expect_value(t, wrapper.extern.d[{.Any, .Any}][0], ext1)
-    expect_value(t, wrapper.extern.d[{.Any, .Any}][1], ext2)
+    testing.expect_value(t, wrapper.extern.d[{.Any, .Any}][0], ext1)
+    testing.expect_value(t, wrapper.extern.d[{.Any, .Any}][1], ext2)
 
     add_libs_any := platform_value_get(
         []string,
@@ -257,15 +255,15 @@ test_rune :: proc(t: ^testing.T) {
     GLx86 := filepath.join({test_data_dir, "lib", "GLx86.lib"})
     defer delete(GLx86)
 
-    expect_value(t, len(add_libs_any), 1)
-    expect_value(t, len(add_libs_linux), 2)
-    expect_value(t, len(add_libs_win64), 1)
-    expect_value(t, len(add_libs_linux_arm64), 1)
-    expect_value(t, add_libs_any[0], "libGL.so")
-    expect_value(t, add_libs_linux[0], "libEGL.so")
-    expect_value(t, add_libs_linux[1], "libGLX.so")
-    expect_value(t, add_libs_win64[0], GLx86)
-    expect_value(t, add_libs_linux_arm64[0], "libfoo.so")
+    testing.expect_value(t, len(add_libs_any), 1)
+    testing.expect_value(t, len(add_libs_linux), 2)
+    testing.expect_value(t, len(add_libs_win64), 1)
+    testing.expect_value(t, len(add_libs_linux_arm64), 1)
+    testing.expect_value(t, add_libs_any[0], "libGL.so")
+    testing.expect_value(t, add_libs_linux[0], "libEGL.so")
+    testing.expect_value(t, add_libs_linux[1], "libGLX.so")
+    testing.expect_value(t, add_libs_win64[0], GLx86)
+    testing.expect_value(t, add_libs_linux_arm64[0], "libfoo.so")
 }
 
 @(test)
@@ -283,22 +281,22 @@ test_overwrite :: proc(t: ^testing.T) {
     err: errors.Error = ---
 
     var, err = parse_type("#SInt32")
-    if !expect_value(t, err, nil) do return
+    if !testing.expect_value(t, err, nil) do return
     type, err = parse_type("#String #Attr Arr 5 #AttrEnd")
-    if !expect_value(t, err, nil) do return
+    if !testing.expect_value(t, err, nil) do return
     func_ptr, err = parse_type("#FuncPtr #Untyped a #SInt32 b #Float32")
-    if !expect_value(t, err, nil) do return
+    if !testing.expect_value(t, err, nil) do return
     unon, err = parse_type("#Union foo #RawPtr bar #RawPtr")
-    if !expect_value(t, err, nil) do return
+    if !testing.expect_value(t, err, nil) do return
 
     func1, err = parse_func("#Untyped a #SInt32 b #String")
-    if !expect_value(t, err, nil) do return
+    if !testing.expect_value(t, err, nil) do return
     func2, err = parse_func("#UInt32 a #SInt32 b #String")
-    if !expect_value(t, err, nil) do return
+    if !testing.expect_value(t, err, nil) do return
 
 
     const, err = parse_constant("15 #Untyped")
-    if !expect_value(t, err, nil) do return
+    if !testing.expect_value(t, err, nil) do return
 
     overwrite := OverwriteSet {
         variables = {{"var", OverwriteWhole("#UInt32")}},
@@ -339,47 +337,47 @@ test_overwrite :: proc(t: ^testing.T) {
     overwrite_runestone(&rs, overwrite)
 
     type = om.get(rs.types, "type")
-    expect_value(t, type.spec.(Builtin), Builtin.RawPtr)
-    expect_value(t, len(type.array_info), 0)
+    testing.expect_value(t, type.spec.(Builtin), Builtin.RawPtr)
+    testing.expect_value(t, len(type.array_info), 0)
 
     func_ptr = om.get(rs.types, "func_ptr")
-    expect_value(
+    testing.expect_value(
         t,
         func_ptr.spec.(FunctionPointer).return_type.spec.(Builtin),
         Builtin.SInt32,
     )
-    expect_value(t, len(func_ptr.spec.(FunctionPointer).parameters), 2)
-    expect_value(
+    testing.expect_value(t, len(func_ptr.spec.(FunctionPointer).parameters), 2)
+    testing.expect_value(
         t,
         func_ptr.spec.(FunctionPointer).parameters[0].type.spec.(Builtin),
         Builtin.Float32,
     )
-    expect_value(t, func_ptr.spec.(FunctionPointer).parameters[1].name, "c")
-    expect_value(t, func_ptr.spec.(FunctionPointer).parameters[0].name, "a")
+    testing.expect_value(t, func_ptr.spec.(FunctionPointer).parameters[1].name, "c")
+    testing.expect_value(t, func_ptr.spec.(FunctionPointer).parameters[0].name, "a")
 
     unon = om.get(rs.types, "unon")
-    expect_value(t, len(unon.spec.(Union).members), 2)
-    expect_value(
+    testing.expect_value(t, len(unon.spec.(Union).members), 2)
+    testing.expect_value(
         t,
         unon.spec.(Union).members[0].type.spec.(Builtin),
         Builtin.UInt64,
     )
-    expect_value(t, unon.spec.(Union).members[1].name, "baz")
+    testing.expect_value(t, unon.spec.(Union).members[1].name, "baz")
 
     func1 = om.get(rs.symbols, "func1").value.(Function)
-    expect_value(t, func1.return_type.spec.(Builtin), Builtin.Bool32)
-    expect_value(t, func1.parameters[1].name, "str")
+    testing.expect_value(t, func1.return_type.spec.(Builtin), Builtin.Bool32)
+    testing.expect_value(t, func1.parameters[1].name, "str")
 
     func2 = om.get(rs.symbols, "func2").value.(Function)
-    expect_value(t, func2.parameters[0].type.spec.(Builtin), Builtin.UInt64)
-    expect_value(t, func2.parameters[1].type.spec.(Builtin), Builtin.UInt8)
-    expect_value(t, func2.parameters[1].type.pointer_info.count, 1)
+    testing.expect_value(t, func2.parameters[0].type.spec.(Builtin), Builtin.UInt64)
+    testing.expect_value(t, func2.parameters[1].type.spec.(Builtin), Builtin.UInt8)
+    testing.expect_value(t, func2.parameters[1].type.pointer_info.count, 1)
 
     var = om.get(rs.symbols, "var").value.(Type)
-    expect_value(t, var.spec.(Builtin), Builtin.UInt32)
+    testing.expect_value(t, var.spec.(Builtin), Builtin.UInt32)
 
     const = om.get(rs.constants, "const")
-    expect_value(t, const.value.(i64), 27)
-    expect_value(t, const.type.spec.(Builtin), Builtin.UInt64)
+    testing.expect_value(t, const.value.(i64), 27)
+    testing.expect_value(t, const.type.spec.(Builtin), Builtin.UInt64)
 }
 

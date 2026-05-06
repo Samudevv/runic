@@ -573,7 +573,8 @@ parse_import_decl :: proc(
 
     switch collection {
     case "core", "base", "vendor":
-        path = filepath.join(
+        path_err: os.Error = ---
+        path, path_err = filepath.join(
             {odin_root(ctx.allocator), collection, path},
             ctx.allocator,
         )
@@ -1212,15 +1213,15 @@ parse_value_decl :: proc(stm: ^odina.Value_Decl) -> (err: errors.Error) {
                     sym := om.get(ctx.symbols^, name)
                     switch v in sym.value {
                     case runic.Type:
-                        runic.write_type(os.stream_from_handle(os.stderr), v)
+                        runic.write_type(os.to_stream(os.stderr), v)
                     case runic.Function:
                         runic.write_function(
-                            os.stream_from_handle(os.stderr),
+                            os.to_stream(os.stderr),
                             v,
                         )
                     }
                     fmt.eprintln("\" and \"")
-                    runic.write_type(os.stream_from_handle(os.stderr), type)
+                    runic.write_type(os.to_stream(os.stderr), type)
                     fmt.eprintln('"')
                 }
 
@@ -1254,12 +1255,12 @@ parse_value_decl :: proc(stm: ^odina.Value_Decl) -> (err: errors.Error) {
                 sym := om.get(ctx.symbols^, name)
                 switch v in sym.value {
                 case runic.Type:
-                    runic.write_type(os.stream_from_handle(os.stderr), v)
+                    runic.write_type(os.to_stream(os.stderr), v)
                 case runic.Function:
-                    runic.write_function(os.stream_from_handle(os.stderr), v)
+                    runic.write_function(os.to_stream(os.stderr), v)
                 }
                 fmt.eprintln("\" and \"")
-                runic.write_function(os.stream_from_handle(os.stderr), fn)
+                runic.write_function(os.to_stream(os.stderr), fn)
                 fmt.eprintln('"')
             }
 
@@ -1336,12 +1337,12 @@ parse_value_decl :: proc(stm: ^odina.Value_Decl) -> (err: errors.Error) {
                 sym := om.get(ctx.symbols^, name)
                 switch v in sym.value {
                 case runic.Type:
-                    runic.write_type(os.stream_from_handle(os.stderr), v)
+                    runic.write_type(os.to_stream(os.stderr), v)
                 case runic.Function:
-                    runic.write_function(os.stream_from_handle(os.stderr), v)
+                    runic.write_function(os.to_stream(os.stderr), v)
                 }
                 fmt.eprintln("\" and \"")
-                runic.write_type(os.stream_from_handle(os.stderr), type)
+                runic.write_type(os.to_stream(os.stderr), type)
                 fmt.eprintln('"')
             }
 
@@ -1467,8 +1468,8 @@ evaluate_implicit_selector :: proc(
             rs = runtime.Odin_OS_Type.Darwin
         case "Linux":
             rs = runtime.Odin_OS_Type.Linux
-        case "Essence":
-            rs = runtime.Odin_OS_Type.Essence
+        // case "Essence": NOTE: not declared anymore
+        //    rs = runtime.Odin_OS_Type.Essence
         case "FreeBSD":
             rs = runtime.Odin_OS_Type.FreeBSD
         case "OpenBSD":

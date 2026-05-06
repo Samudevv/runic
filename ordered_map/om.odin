@@ -50,53 +50,53 @@ make :: #force_inline proc(
 }
 
 insert :: #force_inline proc(
-    using m: ^OrderedMap($Key, $Value),
+    m: ^OrderedMap($Key, $Value),
     key: Key,
     value: Value,
     loc := #caller_location,
 ) {
-    if idx, ok := indices[key]; ok {
-        entry := &data[idx]
+    if idx, ok := m.indices[key]; ok {
+        entry := &m.data[idx]
         entry.value = value
     } else {
-        idx = len(data)
-        indices[key] = idx
-        append(&data, Entry(Key, Value){key = key, value = value}, loc = loc)
+        idx = len(m.data)
+        m.indices[key] = idx
+        append(&m.data, Entry(Key, Value){key = key, value = value}, loc = loc)
     }
 }
 
 replace :: #force_inline proc(
-    using m: ^OrderedMap($Key, $Value),
+    m: ^OrderedMap($Key, $Value),
     old_key: Key,
     new_key: Key,
     value: Value,
 ) {
-    if idx, ok := indices[old_key]; ok {
-        runtime.delete_key(&indices, old_key)
-        data[idx].key = new_key
-        data[idx].value = value
-        indices[new_key] = idx
+    if idx, ok := m.indices[old_key]; ok {
+        runtime.delete_key(&m.indices, old_key)
+        m.data[idx].key = new_key
+        m.data[idx].value = value
+        m.indices[new_key] = idx
     } else {
         insert(m, new_key, value)
     }
 }
 
 get :: #force_inline proc(
-    using m: OrderedMap($Key, $Value),
+    m: OrderedMap($Key, $Value),
     key: Key,
 ) -> (
     value: Value,
     ok: bool,
 ) #optional_ok {
     idx: int = ---
-    if idx, ok = indices[key]; ok {
-        value = data[idx].value
+    if idx, ok = m.indices[key]; ok {
+        value = m.data[idx].value
     }
     return
 }
 
 delete :: #force_inline proc(
-    using m: OrderedMap($Key, $Value),
+    m: OrderedMap($Key, $Value),
     loc := #caller_location,
 ) -> runtime.Allocator_Error {
     delete_map(m.indices, loc) or_return
@@ -105,32 +105,32 @@ delete :: #force_inline proc(
 }
 
 delete_key :: #force_inline proc(
-    using m: ^OrderedMap($Key, $Value),
+    m: ^OrderedMap($Key, $Value),
     key: Key,
     loc := #caller_location,
 ) {
-    idx, ok := indices[key]
+    idx, ok := m.indices[key]
     if !ok do return
 
-    ordered_remove(&data, idx, loc)
-    runtime.delete_key(&indices, key)
+    ordered_remove( m.data, idx, loc)
+    runtime.delete_key(&m.indices, key)
 
-    for i, v in indices {
+    for i, v in m.indices {
         if v > idx {
-            indices[i] = v - 1
+            m.indices[i] = v - 1
         }
     }
 }
 
-length :: #force_inline proc(using m: OrderedMap($Key, $Value)) -> int {
-    return len(data)
+length :: #force_inline proc(m: OrderedMap($Key, $Value)) -> int {
+    return len(m.data)
 }
 
 contains :: #force_inline proc(
-    using m: OrderedMap($Key, $Value),
+    m: OrderedMap($Key, $Value),
     key: Key,
 ) -> bool {
-    return key in indices
+    return key in m.indices
 }
 
 extend :: #force_inline proc(
@@ -145,45 +145,45 @@ extend :: #force_inline proc(
 }
 
 index :: #force_inline proc(
-    using m: OrderedMap($Key, $Value),
+    m: OrderedMap($Key, $Value),
     key: Key,
 ) -> (
     idx: int,
     ok: bool,
 ) #optional_ok {
-    return indices[key]
+    return m.indices[key]
 }
 
 move :: #force_inline proc(
-    using m: ^OrderedMap($Key, $Value),
+    m: ^OrderedMap($Key, $Value),
     key: Key,
     dst: int,
 ) {
-    assert(dst >= 0 && dst < len(data))
+    assert(dst >= 0 && dst < len(m.data))
 
-    src, ok := indices[key]
+    src, ok := m.indices[key]
     if !ok do return
 
-    tmp := data[src].value
+    tmp := m.data[src].value
 
     if dst < src {
         for i := src - 1; i >= dst; i -= 1 {
-            i_key := data[i].key
-            data[i + 1] = data[i]
-            indices[i_key] = i + 1
+            i_key := m.data[i].key
+            m.data[i + 1] = m.data[i]
+            m.indices[i_key] = i + 1
         }
     } else if dst > src {
         for i := src + 1; i <= dst; i += 1 {
-            i_key := data[i].key
-            data[i - 1] = data[i]
-            indices[i_key] = i - 1
+            i_key := m.data[i].key
+            m.data[i - 1] = m.data[i]
+            m.indices[i_key] = i - 1
         }
     } else {
         return
     }
 
-    data[dst].key = key
-    data[dst].value = tmp
-    indices[key] = dst
+    m.data[dst].key = key
+    m.data[dst].value = tmp
+    m.indices[key] = dst
 }
 

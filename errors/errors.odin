@@ -145,16 +145,6 @@ wrap_allocator :: proc(
     )
 }
 
-wrap_errno :: proc(
-    err: os.Error,
-    msg := "",
-    allocator := error_allocator,
-    loc := #caller_location,
-) -> Error {
-    if err == 0 do return nil
-    return message("{}{}", msg, err, allocator = allocator, loc = loc)
-}
-
 wrap_union :: proc(
     err: any,
     msg := "",
@@ -176,7 +166,7 @@ wrap_union :: proc(
         case runtime.Allocator_Error:
             return wrap_allocator(v, msg, allocator, loc)
         case os.Error:
-            return wrap_errno(v, msg, allocator, loc)
+            return wrap_os_error(v, msg, allocator, loc)
         case Error:
             return v
         }
@@ -185,13 +175,63 @@ wrap_union :: proc(
     return message("{}{}", msg, err, allocator = allocator, loc = loc)
 }
 
+wrap_os_error :: proc(
+    err: os.Error,
+    msg := "",
+    allocator := error_allocator,
+    loc := #caller_location,
+) -> Error {
+    if err == nil do return nil
+
+    switch v in err {
+    case os.General_error:
+        return wrap_os_general_error(v, msg, allocator, loc)
+    case io.Error:
+        return wrap_io(v, msg, allocator, loc)
+    case runtime.Allocator_Error:
+        return wrap_allocator(v, msg, allocator, loc)
+    case os.Platform_Error:
+        return wrap_os_platform_error(v, msg, allocator, loc)
+    }
+
+    return message("{}{}", msg, err, allocator = allocator, loc = loc)
+}
+
+wrap_os_general_error :: proc(err: os.General_Error, msg := "", allocator := error_allocator, loc := #caller_location) -> Error {
+    if err == .None do return nil
+
+    return message(
+        "{}os.General_Error: {}",
+        msg,
+        err,
+        allocator = allocator,
+        loc = loc,
+    )
+}
+
+wrap_os_platform_error :: proc(err: os.Platform_Error, msg := "", allocator := error_allocator, loc := #caller_location) -> Error {
+    if err == .NONE do return nil
+
+
+    // TODO: make text platform specific
+    return message(
+        "{}os.Platform_Error: {}",
+        msg,
+        err,
+        allocator = allocator,
+        loc = loc,
+    )
+}
+
 wrap :: proc {
     wrap_io,
     wrap_json,
     wrap_ok,
     wrap_allocator,
-    wrap_errno,
     wrap_union,
+    wrap_os_error,
+    wrap_os_general_error,
+    wrap_os_platform_error,
 }
 
 assert :: wrap_ok

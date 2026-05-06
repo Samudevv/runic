@@ -394,7 +394,7 @@ generate_runestone :: proc(
     if om.length(macros) != 0 {
         macro_file_name: string = ---
         {
-            macro_file: os.Handle = ---
+            macro_file: ^os.File = ---
             macro_file_err: errors.Error = ---
             macro_file, macro_file_name, macro_file_err = temp_file()
             if macro_file_err != nil {

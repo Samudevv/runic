@@ -38,8 +38,6 @@ when ODIN_OS == .Windows {
 
 @(test)
 test_to_odin_codegen :: proc(t: ^testing.T) {
-    using testing
-
     arena: runtime.Arena
     defer runtime.arena_destroy(&arena)
     context.allocator = runtime.arena_allocator(&arena)
@@ -98,7 +96,7 @@ main :: proc() {}`
 
 
     abs_test_data, abs_ok := filepath.abs("test_data")
-    if !expect(t, abs_ok) do return
+    if !testing.expect(t, abs_ok) do return
     defer delete(abs_test_data)
     lib_shared := filepath.join({abs_test_data, "libfoo.so"})
     defer delete(lib_shared)
@@ -352,7 +350,7 @@ main :: proc() {}`
             os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
             0o644,
         )
-        if !expect_value(t, os_err, nil) do return
+        if !testing.expect_value(t, os_err, nil) do return
         defer os.close(file)
 
         rc: runic.Runecross
@@ -369,17 +367,17 @@ main :: proc() {}`
                 rc,
                 rn,
                 {{.Macos, .x86_64}},
-                os.stream_from_handle(file),
+                os.to_stream(file),
                 abs_file_name,
             ),
         )
-        if !expect_value(t, err, nil) do return
+        if !testing.expect_value(t, err, nil) do return
 
         os.write_string(file, "main :: proc() {}")
     }
 
     contents, os_err := os.read_entire_file(abs_file_name)
-    if !expect(t, os_err) do return
+    if !testing.expect(t, os_err) do return
 
     diff.expect_diff_strings(t, ODIN_EXPECTED, string(contents), ".odin")
 }
@@ -432,7 +430,7 @@ test_to_odin_extern :: proc(t: ^testing.T) {
         RUNESTONE_TEST_PATH,
         rf,
     )
-    if !expect_value(t, err, nil) do return
+    if !testing.expect_value(t, err, nil) do return
     runic.from_postprocess_runestone(&rs, rf)
 
     rs_out, os_err := os.open(
@@ -440,14 +438,14 @@ test_to_odin_extern :: proc(t: ^testing.T) {
         os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
         0o644,
     )
-    if !expect_value(t, os_err, nil) do return
+    if !testing.expect_value(t, os_err, nil) do return
     defer os.close(rs_out)
 
-    expect_value(
+    testing.expect_value(
         t,
         runic.write_runestone(
             rs,
-            os.stream_from_handle(rs_out),
+            os.to_stream(rs_out),
             "test_data/extern_test_runestone.ini",
         ),
         io.Error.None,
@@ -457,28 +455,28 @@ test_to_odin_extern :: proc(t: ^testing.T) {
 
     rc: runic.Runecross = ---
     rc, err = runic.cross_the_runes({RUNESTONE_TEST_PATH}, {rs})
-    if !expect_value(t, err, nil) do return
+    if !testing.expect_value(t, err, nil) do return
     defer runic.runecross_destroy(&rc)
 
-    out_file: os.Handle = ---
+    out_file: ^os.File = ---
     out_file, os_err = os.open(
         "test_data/extern_test.odin",
         os.O_CREATE | os.O_TRUNC | os.O_WRONLY,
         0o644,
     )
-    if !expect_value(t, os_err, nil) do return
+    if !testing.expect_value(t, os_err, nil) do return
 
     err = errors.wrap(
         generate_bindings(
             rc,
             rt,
             {runic.platform_from_host()},
-            os.stream_from_handle(out_file),
+            os.to_stream(out_file),
             RUNESTONE_TEST_PATH,
         ),
     )
     os.close(out_file)
-    if !expect_value(t, err, nil) do return
+    if !testing.expect_value(t, err, nil) do return
 
     EXPECT_BINDINGS :: `package extern_test
 
@@ -514,7 +512,7 @@ foreign import extern_test_runic "system:system_include"
 
 
     data, ok := os.read_entire_file("test_data/extern_test.odin")
-    if !expect(t, ok) do return
+    if !testing.expect(t, ok) do return
     defer delete(data)
 
     diff.expect_diff_strings(t, EXPECT_BINDINGS, string(data), ".odin")
@@ -525,22 +523,22 @@ test_odin_import_path :: proc(t: ^testing.T) {
     using testing
 
     ow, path := import_path("util")
-    expect_value(t, ow, "")
-    expect_value(t, path, "util")
+    testing.expect_value(t, ow, "")
+    testing.expect_value(t, path, "util")
 
     ow, path = import_path("u util")
-    expect_value(t, ow, "u")
-    expect_value(t, path, "util")
+    testing.expect_value(t, ow, "u")
+    testing.expect_value(t, path, "util")
 
     ow, path = import_path("u ../util")
-    expect_value(t, ow, "u")
-    expect_value(t, path, "../util")
+    testing.expect_value(t, ow, "u")
+    testing.expect_value(t, path, "../util")
 
-    expect_value(t, import_prefix("util"), "util")
-    expect_value(t, import_prefix("u util"), "u")
-    expect_value(t, import_prefix("core:util"), "util")
-    expect_value(t, import_prefix("u core:util"), "u")
-    expect_value(t, import_prefix("../../../util"), "util")
+    testing.expect_value(t, import_prefix("util"), "util")
+    testing.expect_value(t, import_prefix("u util"), "u")
+    testing.expect_value(t, import_prefix("core:util"), "util")
+    testing.expect_value(t, import_prefix("u core:util"), "u")
+    testing.expect_value(t, import_prefix("../../../util"), "util")
 }
 
 @(test)
@@ -651,17 +649,17 @@ func.designer_draw_design = #Untyped designer #Extern Designer #Attr Ptr 1 #Attr
         strings.reader_to_stream(&linux_rs_reader),
         linux_rs_path,
     )
-    if !expect_value(t, linux_rs_err, nil) do return
+    if !testing.expect_value(t, linux_rs_err, nil) do return
     windows_rs, windows_rs_err := runic.parse_runestone(
         strings.reader_to_stream(&windows_rs_reader),
         windows_rs_path,
     )
-    if !expect_value(t, windows_rs_err, nil) do return
+    if !testing.expect_value(t, windows_rs_err, nil) do return
     macos_rs, macos_rs_err := runic.parse_runestone(
         strings.reader_to_stream(&macos_rs_reader),
         macos_rs_path,
     )
-    if !expect_value(t, macos_rs_err, nil) do return
+    if !testing.expect_value(t, macos_rs_err, nil) do return
 
     defer runic.runestone_destroy(&linux_rs)
     defer runic.runestone_destroy(&windows_rs)
@@ -672,7 +670,7 @@ func.designer_draw_design = #Untyped designer #Extern Designer #Attr Ptr 1 #Attr
         {linux_rs, windows_rs, macos_rs},
         rn.extern.sources,
     )
-    if !expect_value(t, rc_err, nil) do return
+    if !testing.expect_value(t, rc_err, nil) do return
     defer runic.runecross_destroy(&rc)
 
     out_file, out_err := os.open(
@@ -680,17 +678,17 @@ func.designer_draw_design = #Untyped designer #Extern Designer #Attr Ptr 1 #Attr
         os.O_CREATE | os.O_WRONLY | os.O_TRUNC,
         0o644,
     )
-    if !expect_value(t, out_err, nil) do return
+    if !testing.expect_value(t, out_err, nil) do return
     defer os.close(out_file)
 
     odin_err := generate_bindings(
         rc,
         rn,
         {{.Linux, .x86_64}, {.Windows, .x86_64}, {.Macos, .x86_64}},
-        os.stream_from_handle(out_file),
+        os.to_stream(out_file),
         rn.out,
     )
-    if !expect_value(t, errors.wrap(odin_err), nil) do return
+    if !testing.expect_value(t, errors.wrap(odin_err), nil) do return
 
     ANY_EXPECTED :: `#+build linux amd64, windows amd64, darwin amd64
 package multi
@@ -788,19 +786,19 @@ foreign import multi_runic "system:multi"
     defer delete(macos_path)
 
     any_data, any_data_ok := os.read_entire_file(out_path)
-    if !expect(t, any_data_ok) do return
+    if !testing.expect(t, any_data_ok) do return
     defer delete(any_data)
 
     linux_data, linux_data_ok := os.read_entire_file(linux_path)
-    if !expect(t, linux_data_ok) do return
+    if !testing.expect(t, linux_data_ok) do return
     defer delete(linux_data)
 
     windows_data, windows_data_ok := os.read_entire_file(windows_path)
-    if !expect(t, windows_data_ok) do return
+    if !testing.expect(t, windows_data_ok) do return
     defer delete(windows_data)
 
     macos_data, macos_data_ok := os.read_entire_file(macos_path)
-    if !expect(t, macos_data_ok) do return
+    if !testing.expect(t, macos_data_ok) do return
     defer delete(macos_data)
 
     diff.expect_diff_strings(t, ANY_EXPECTED, string(any_data))

@@ -153,7 +153,7 @@ canvas_to_ppm :: proc(
 
     fmt.fprintf(file, "P6\n{} {}\n255\n", width, height)
 
-    stream := os.stream_from_handle(file)
+    stream := os.to_stream(file)
 
     for h in 0 ..< height {
         for w in 0 ..< width {

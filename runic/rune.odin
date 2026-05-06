@@ -24,6 +24,7 @@ import "core:io"
 import "core:path/filepath"
 import "core:path/slashpath"
 import "core:slice"
+import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:unicode"
@@ -2865,18 +2866,19 @@ relative_to_file :: proc(
     if len(file_name) == 0 do return file_name, true
     if filepath.is_abs(file_name) || (needs_dir && !strings.contains(file_name, "/") && !strings.contains(file_name, "\\")) do return strings.clone(file_name, allocator), true
 
-    rune_dir := filepath.dir(rune_file_name, allocator)
-    defer delete(rune_dir, allocator)
+    rune_dir := os.dir(rune_file_name)
 
     if !filepath.is_abs(rune_dir) {
-        abs_rune_dir, ok := filepath.abs(rune_dir, allocator)
-        if ok {
+        abs_rune_dir, err := filepath.abs(rune_dir, allocator)
+        if err != nil {
             delete(rune_dir, allocator)
             rune_dir = abs_rune_dir
         }
     }
 
-    rel_path := filepath.join({rune_dir, file_name}, allocator)
+    rel_path, err := filepath.join({rune_dir, file_name}, allocator)
+    if err != .None do return "", false
+
     return rel_path, true
 }
 
@@ -2891,8 +2893,7 @@ absolute_to_file :: proc(
         return strings.clone(file_name, allocator), true
     }
 
-    rune_dir := filepath.dir(rune_file_name, allocator)
-    defer delete(rune_dir, allocator)
+    rune_dir := os.dir(rune_file_name)
 
     rel_path, rel_err := filepath.rel(rune_dir, file_name, allocator)
     if rel_err != .None do return file_name, false

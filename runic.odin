@@ -62,7 +62,7 @@ main :: proc() {
             os.exit(1)
         case flags.Help_Request:
             flags.write_usage(
-                os.stream_from_handle(os.stderr),
+                os.to_stream(os.stderr),
                 any(args).id,
                 os.args[0],
                 .Unix,
@@ -110,7 +110,7 @@ main :: proc() {
     host_plat := runic.platform_from_host()
 
     if !filepath.is_abs(rune_file_name) {
-        cwd := os.get_current_directory()
+        cwd, _ := os.get_working_directory()
         defer delete(cwd)
         rune_file_name = filepath.join(
             {cwd, rune_file_name},
@@ -127,7 +127,7 @@ main :: proc() {
 
     err: errors.Error
     rune, rune_err := runic.parse_rune(
-        os.stream_from_handle(rune_file),
+        os.to_stream(rune_file),
         rune_file_name,
     )
     err = errors.wrap(rune_err)
@@ -258,7 +258,7 @@ main :: proc() {
             )
         }
     case string:
-        rs_file: os.Handle = ---
+        rs_file: ^os.File = ---
         rs_file_name: string = ---
         if from == "stdin" {
             rs_file = os.stdin
@@ -280,7 +280,7 @@ main :: proc() {
 
         rs: runic.Runestone = ---
         rs, err = runic.parse_runestone(
-            os.stream_from_handle(rs_file),
+            os.to_stream(rs_file),
             rs_file_name,
         )
         if err != nil {
@@ -295,7 +295,7 @@ main :: proc() {
     case [dynamic]string:
         for file_path in from {
             rs: runic.Runestone = ---
-            rs_file: os.Handle = ---
+            rs_file: ^os.File = ---
             rs_file_name := runic.relative_to_file(
                 rune_file_name,
                 file_path,
@@ -310,7 +310,7 @@ main :: proc() {
             defer os.close(rs_file)
 
             rs, err = runic.parse_runestone(
-                os.stream_from_handle(rs_file),
+                os.to_stream(rs_file),
                 file_path,
             )
             if err != nil {
@@ -398,7 +398,7 @@ main :: proc() {
                     runecross,
                     to,
                     rune.platforms,
-                    os.stream_from_handle(out_file),
+                    os.to_stream(out_file),
                     out_file_name,
                 ),
             )
@@ -407,7 +407,7 @@ main :: proc() {
                 ccdg.generate_bindings(
                     runecross,
                     to,
-                    os.stream_from_handle(out_file),
+                    os.to_stream(out_file),
                 ),
             )
         case:
@@ -432,7 +432,7 @@ main :: proc() {
         )
     case string:
         rs_files := make(
-            [dynamic]os.Handle,
+            [dynamic]^os.File,
             allocator = context.temp_allocator,
             len = 0,
             cap = len(runestones),
@@ -479,7 +479,7 @@ main :: proc() {
                     context.temp_allocator,
                 )
 
-                rs_file: os.Handle = ---
+                rs_file: ^os.File = ---
                 rs_file, os_err = os.open(
                     rs_file_path,
                     os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
@@ -506,7 +506,7 @@ main :: proc() {
             if err = errors.wrap(
                 runic.write_runestone(
                     rs,
-                    os.stream_from_handle(rs_files[idx]),
+                    os.to_stream(rs_files[idx]),
                     to,
                 ),
             ); err != nil {

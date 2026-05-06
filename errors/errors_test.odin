@@ -24,20 +24,18 @@ import "core:testing"
 
 @(test)
 test_wrap :: proc(t: ^testing.T) {
-    using testing
-
     err: union {
         io.Error,
         json.Error,
     }
 
-    expect_value(t, wrap_union(err), nil)
+    testing.expect_value(t, wrap_union(err), nil)
 
     err = io.Error.Unknown
 
-    expect(t, strings.has_prefix(wrap_union(err).?, "io.Error: Unknown"))
-    expect(t, strings.has_prefix(wrap(io.Error.EOF).?, "io.Error: EOF"))
-    expect(
+    testing.expect(t, strings.has_prefix(wrap_union(err).?, "io.Error: Unknown"))
+    testing.expect(t, strings.has_prefix(wrap(io.Error.EOF).?, "io.Error: EOF"))
+    testing.expect(
         t,
         strings.has_prefix(
             wrap(json.Error.Illegal_Character).?,
@@ -45,6 +43,6 @@ test_wrap :: proc(t: ^testing.T) {
         ),
     )
 
-    expect(t, strings.has_prefix(wrap("Success").?, "Success"))
+    testing.expect(t, strings.has_prefix(wrap("Success").?, "Success"))
 }
 

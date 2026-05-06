@@ -22,8 +22,6 @@ import "core:testing"
 
 @(test)
 test_diff :: proc(t: ^testing.T) {
-    using testing
-
     internal_T: testing.T
 
     rs: bool
@@ -36,7 +34,7 @@ test_diff :: proc(t: ^testing.T) {
         )
     }
 
-    expect_value(t, rs, false)
+    testing.expect_value(t, rs, false)
 
     {
         OLD_TEXT :: `#pragma once
@@ -60,5 +58,5 @@ static void hello_world() { printf("こんにちは世界！"); }
         rs = expect_diff_strings(t, OLD_TEXT, NEW_TEXT, ".c")
     }
 
-    expect_value(t, rs, false)
+    testing.expect_value(t, rs, false)
 }

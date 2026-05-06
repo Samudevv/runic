@@ -326,7 +326,7 @@ delete_system_includes :: proc(gen_dir: string) {
     context.allocator = runtime.arena_allocator(&arena)
 
     walk_proc := proc(
-        info: os.File_Info,
+        info: ^os.File_Info,
         in_err: os.Error,
         user_data: rawptr,
     ) -> (

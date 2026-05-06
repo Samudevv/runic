@@ -132,7 +132,7 @@ clang_source_error :: proc(
 @(private)
 temp_file :: proc(
 ) -> (
-    file: os.Handle,
+    file: ^os.File,
     file_path: string,
     err: errors.Error,
 ) {
@@ -550,14 +550,14 @@ make_forward_decls_into_actual_types :: proc(
 @(private)
 print_diagnostics :: proc(out: union #no_nil {
         io.Writer,
-        os.Handle,
+        ^os.File,
     }, unit: clang.TranslationUnit, prefix: string = "") -> (is_fatal: bool) {
     wd: io.Writer = ---
     switch w in out {
     case io.Writer:
         wd = w
-    case os.Handle:
-        wd = os.stream_from_handle(w)
+    case ^os.File:
+        wd = os.to_stream(w)
     }
 
     num_diag := clang.getNumDiagnostics(unit)

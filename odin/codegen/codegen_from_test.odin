@@ -25,8 +25,6 @@ import "root:runic"
 
 @(test)
 test_from_odin_codegen :: proc(t: ^testing.T) {
-    using testing
-
     plats := [?]runic.Platform {
         {os = .Linux, arch = .x86_64},
         {os = .Windows, arch = .x86_64},
@@ -39,14 +37,14 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
     }
 
     rune_file, os_err := os.open("test_data/foozy/rune.yml")
-    if !expect_value(t, os_err, nil) do return
+    if !testing.expect_value(t, os_err, nil) do return
     defer os.close(rune_file)
 
     rn, rn_err := runic.parse_rune(
-        os.stream_from_handle(rune_file),
+        os.to_stream(rune_file),
         "test_data/foozy/rune.yml",
     )
-    if !expect_value(t, rn_err, nil) do return
+    if !testing.expect_value(t, rn_err, nil) do return
 
     for plat, idx in plats {
         rs, rs_err := generate_runestone(
@@ -54,17 +52,17 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
             "test_data/foozy/rune.yml",
             rn.from.(runic.From),
         )
-        if !expect_value(t, rs_err, nil) do return
+        if !testing.expect_value(t, rs_err, nil) do return
         defer runic.runestone_destroy(&rs)
         runic.from_postprocess_runestone(&rs, rn.from.(runic.From))
 
-        out_file: os.Handle = ---
+        out_file: ^os.File = ---
         out_file, os_err = os.open(
             file_names[idx],
             os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
             0o644,
         )
-        if !expect_value(t, os_err, nil) do return
+        if !testing.expect_value(t, os_err, nil) do return
         defer os.close(out_file)
 
         runic.to_preprocess_runestone(&rs, rn.to.(runic.To), ccdg.C_RESERVED)
@@ -72,9 +70,9 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
         ccdg_err := ccdg.generate_bindings(
             rs,
             rn.to.(runic.To),
-            os.stream_from_handle(out_file),
+            os.to_stream(out_file),
         )
-        if !expect_value(t, ccdg_err, nil) do return
+        if !testing.expect_value(t, ccdg_err, nil) do return
     }
 
     diff.expect_diff_files(

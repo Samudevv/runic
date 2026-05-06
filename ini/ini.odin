@@ -17,7 +17,7 @@ parse_file :: proc(
     file, os_err := os.open(file_name)
     errors.wrap(os_err) or_return
     defer os.close(file)
-    return parse_reader(os.stream_from_handle(file), file_name, allocator)
+    return parse_reader(os.to_stream(file), file_name, allocator)
 }
 
 parse_reader :: proc(

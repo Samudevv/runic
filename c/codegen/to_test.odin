@@ -27,8 +27,6 @@ import "root:runic"
 
 @(test)
 test_c_to :: proc(t: ^testing.T) {
-    using testing
-
     LINUX_RUNESTONE :: `
 version = 0
 
@@ -142,21 +140,21 @@ var.macos_globals = Array
         strings.reader_to_stream(&linux_rd),
         "/linux",
     )
-    if !expect_value(t, rs_err, nil) do return
+    if !testing.expect_value(t, rs_err, nil) do return
     defer runic.runestone_destroy(&linux_rs)
 
     windows_rs, rs_err = runic.parse_runestone(
         strings.reader_to_stream(&windows_rd),
         "/windows",
     )
-    if !expect_value(t, rs_err, nil) do return
+    if !testing.expect_value(t, rs_err, nil) do return
     defer runic.runestone_destroy(&windows_rs)
 
     macos_rs, rs_err = runic.parse_runestone(
         strings.reader_to_stream(&macos_rd),
         "/macos",
     )
-    if !expect_value(t, rs_err, nil) do return
+    if !testing.expect_value(t, rs_err, nil) do return
     defer runic.runestone_destroy(&macos_rs)
 
     strings.reader_init(&linux_rd, string(LINUX_RUNESTONE))
@@ -164,7 +162,7 @@ var.macos_globals = Array
         strings.reader_to_stream(&linux_rd),
         "/linux_arm",
     )
-    if !expect_value(t, rs_err, nil) do return
+    if !testing.expect_value(t, rs_err, nil) do return
     linux_arm_rs.platform.arch = .arm64
     defer runic.runestone_destroy(&linux_arm_rs)
 
@@ -182,7 +180,7 @@ var.macos_globals = Array
     file_paths := []string{"/linux", "/windows", "/macos", "/linux_arm"}
 
     rc, rc_err := runic.cross_the_runes(file_paths, runestones)
-    if !expect_value(t, rc_err, nil) do return
+    if !testing.expect_value(t, rc_err, nil) do return
     defer runic.runecross_destroy(&rc)
 
     out_file, os_err := os.open(
@@ -190,11 +188,11 @@ var.macos_globals = Array
         os.O_CREATE | os.O_WRONLY | os.O_TRUNC,
         0o644,
     )
-    if !expect_value(t, os_err, nil) do return
+    if !testing.expect_value(t, os_err, nil) do return
     defer os.close(out_file)
 
-    err := generate_bindings(rc, rn, os.stream_from_handle(out_file))
-    if !expect_value(t, err, nil) do return
+    err := generate_bindings(rc, rn, os.to_stream(out_file))
+    if !testing.expect_value(t, err, nil) do return
 
     data, os_ok := os.read_entire_file("test_data/to_c_test.h")
     if !expect(t, os_ok) do return

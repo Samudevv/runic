@@ -21,8 +21,6 @@ import "core:testing"
 
 @(test)
 test_minimize_platforms :: proc(t: ^testing.T) {
-    using testing
-
     {
         rune_platforms := []Platform {
             {.Windows, .x86_64},
@@ -51,11 +49,11 @@ test_minimize_platforms :: proc(t: ^testing.T) {
             ignore_arch = false,
         )
 
-        expect_value(t, len(plats), 2)
-        expect_value(t, plats[0].os, OS.Any)
-        expect_value(t, plats[0].arch, Architecture.x86_64)
-        expect_value(t, plats[1].os, OS.Any)
-        expect_value(t, plats[1].arch, Architecture.arm64)
+        testing.expect_value(t, len(plats), 2)
+        testing.expect_value(t, plats[0].os, OS.Any)
+        testing.expect_value(t, plats[0].arch, Architecture.x86_64)
+        testing.expect_value(t, plats[1].os, OS.Any)
+        testing.expect_value(t, plats[1].arch, Architecture.arm64)
 
         delete(plats)
 
@@ -74,11 +72,11 @@ test_minimize_platforms :: proc(t: ^testing.T) {
             ignore_arch = false,
         )
 
-        expect_value(t, len(plats), 2)
-        expect_value(t, plats[0].os, OS.Windows)
-        expect_value(t, plats[0].arch, Architecture.Any)
-        expect_value(t, plats[1].os, OS.Macos)
-        expect_value(t, plats[1].arch, Architecture.Any)
+        testing.expect_value(t, len(plats), 2)
+        testing.expect_value(t, plats[0].os, OS.Windows)
+        testing.expect_value(t, plats[0].arch, Architecture.Any)
+        testing.expect_value(t, plats[1].os, OS.Macos)
+        testing.expect_value(t, plats[1].arch, Architecture.Any)
 
         delete(plats)
     }

@@ -211,7 +211,11 @@ wrap_os_general_error :: proc(err: os.General_Error, msg := "", allocator := err
 }
 
 wrap_os_platform_error :: proc(err: os.Platform_Error, msg := "", allocator := error_allocator, loc := #caller_location) -> Error {
-    if err == .NONE do return nil
+    when ODIN_OS == .Windows {
+        if err == .SUCCESS do return nil
+    } else {
+        if err == .NONE do return nil
+    }
 
 
     // TODO: make text platform specific

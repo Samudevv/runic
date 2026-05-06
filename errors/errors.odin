@@ -1,4 +1,5 @@
 #+feature global-context
+// TODO: remove global-context, put global proc calls into init procedure
 /*
 This file is part of runic.
 

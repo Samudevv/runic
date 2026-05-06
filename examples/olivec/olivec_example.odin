@@ -137,7 +137,7 @@ main :: proc() {
 }
 
 canvas_to_ppm :: proc(
-    using canvas: olivec.Canvas,
+    canvas: olivec.Canvas,
     file_name: string,
 ) -> union {
         os.Error,
@@ -146,18 +146,18 @@ canvas_to_ppm :: proc(
     file, os_err := os.open(
         file_name,
         os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
-        0o644,
+        os.perm(0o644),
     )
     if os_err != nil do return os_err
     defer os.close(file)
 
-    fmt.fprintf(file, "P6\n{} {}\n255\n", width, height)
+    fmt.fprintf(file, "P6\n{} {}\n255\n", canvas.width, canvas.height)
 
     stream := os.to_stream(file)
 
-    for h in 0 ..< height {
-        for w in 0 ..< width {
-            io.write_ptr(stream, &pixels[stride * h + w], 3) or_return
+    for h in 0 ..< canvas.height {
+        for w in 0 ..< canvas.width {
+            io.write_ptr(stream, &canvas.pixels[canvas.stride * h + w], 3) or_return
         }
     }
 

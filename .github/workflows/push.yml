@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, windows-2022, macos-13, macos-14]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, windows-2022, macos-14]
     name: ${{ matrix.os == 'ubuntu-24.04' && 'linux-x86_64' || matrix.os == 'ubuntu-24.04-arm' && 'linux-aarch64' || matrix.os == 'macos-13' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-aarch64' || 'windows-x86_64' }}
     env:
       os: ${{ startsWith(matrix.os, 'ubuntu') && 'linux' || startsWith(matrix.os, 'macos') && 'macos' || 'windows' }}

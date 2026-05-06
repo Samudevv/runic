@@ -1,6 +1,7 @@
 /*
 This file has been copied from https://github.com/SabeDoesThings/odin-tiled.
 It has been slightly modified to allow bindings to C.
+And it has been modified to compile under the new odin compiler.
 Here is the license of said project:
 
 MIT License
@@ -52,9 +53,9 @@ parse_tilemap :: proc "c" (path: string) -> Map {
     context = runtime.default_context()
 
     m: Map
-    jdata, ok := os.read_entire_file(path)
-    if !ok {
-        fmt.print("Failed to read file: ", path, "\n")
+    jdata, jdata_err := os.read_entire_file(path, context.allocator)
+    if jdata_err != nil {
+        fmt.printfln("Failed to read file \"%s\": {} ", path, jdata_err)
         return m
     }
 
@@ -73,9 +74,9 @@ parse_tileset :: proc "c" (path: string) -> Tileset {
     context = runtime.default_context()
 
     ts: Tileset
-    jdata, ok := os.read_entire_file(path)
-    if !ok {
-        fmt.print("Failed to read file: ", path, "\n")
+    jdata, jdata_err := os.read_entire_file(path, context.allocator)
+    if jdata_err != nil {
+        fmt.printfln("Failed to read file \"%s\": {}", path, jdata_err)
         return ts
     }
 

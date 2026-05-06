@@ -2868,7 +2868,7 @@ relative_to_file :: proc(
 
     if !filepath.is_abs(rune_dir) {
         abs_rune_dir, err := filepath.abs(rune_dir, allocator)
-        if err != nil {
+        if err == nil {
             delete(rune_dir, allocator)
             rune_dir = abs_rune_dir
         }

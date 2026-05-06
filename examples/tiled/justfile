@@ -45,7 +45,7 @@ build: bindings tiled sdl2-headers
     /LIBPATH:"{{ ODIN_ROOT / 'vendor' / 'stb' / 'lib' }}" \
     /LIBPATH:"{{ ODIN_ROOT / 'vendor' / 'sdl2' }}" \
     /LIBPATH:"{{ ODIN_ROOT / 'vendor' / 'sdl2' / 'image' }}" \
-    tiled.lib SDL2.lib SDL2_image.lib stb_image.lib
+    tiled.lib SDL2.lib SDL2_image.lib stb_image.lib Bcrypt.lib Advapi32.lib
 
 [windows]
 sdl2-headers:

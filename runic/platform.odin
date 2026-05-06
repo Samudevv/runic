@@ -267,8 +267,6 @@ multiple_platforms_file_name :: proc(
     stem := filepath.stem(file_name)
     ext := filepath.ext(file_name)
 
-    defer delete(dir, allocator)
-
     bd: strings.Builder
     strings.builder_init(
         &bd,

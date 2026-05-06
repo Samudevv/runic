@@ -295,8 +295,14 @@ generate_system_includes :: proc(gen_dir: string) -> bool {
         file_path, file_path_err := filepath.join({gen_dir, slashed_file_name})
         if file_path_err != .None do return false
 
-        dir := filepath.dir(file_path)
-        if err := make_directory_parents(dir); err != nil do return false
+        dir := os.dir(file_path)
+
+        if !os.is_directory(dir) {
+            if os.mkdir_all(dir) != nil {
+                return false
+            }
+        }
+
 
         fd, err := os.open(
             file_path,
@@ -318,25 +324,6 @@ generate_system_includes :: proc(gen_dir: string) -> bool {
 
 delete_system_includes :: proc(gen_dir: string) {
     os.remove_all(gen_dir)
-}
-
-@(private = "file")
-make_directory_parents :: proc(path: string) -> os.Error {
-    // An arena is necessary because filepath.dir can allocate memory
-    arena: runtime.Arena
-    defer runtime.arena_destroy(&arena)
-    runtime.arena_init(&arena, 0, context.allocator) or_return
-    context.allocator = runtime.arena_allocator(&arena)
-
-    dir := filepath.dir(path)
-    if dir != "." && dir != "/" && dir != path {
-        if err := make_directory_parents(dir); err != nil do return err
-    }
-    if !os.is_dir(path) {
-        return os.make_directory(path, os.perm(0o755))
-    }
-
-    return nil
 }
 
 system_includes_gen_extern :: proc(

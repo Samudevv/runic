@@ -20,6 +20,7 @@ package runic
 import "base:runtime"
 import "core:fmt"
 import "core:io"
+import "core:os"
 import odintz "core:odin/tokenizer"
 import "core:path/filepath"
 import "core:slice"
@@ -368,8 +369,8 @@ write_runestone :: proc(
         io.write_string(wd, "shared = ") or_return
 
         if filepath.is_abs(shared) {
-            dir_name := filepath.dir(file_path)
-            defer delete(dir_name)
+            dir_name := os.dir(file_path)
+
             rel_shared, err := filepath.rel(dir_name, shared)
             if err == .None && len(rel_shared) < len(shared) {
                 if !strings.contains(rel_shared, "/") &&
@@ -390,8 +391,8 @@ write_runestone :: proc(
         io.write_string(wd, "static = ") or_return
 
         if filepath.is_abs(static) {
-            dir_name := filepath.dir(file_path)
-            defer delete(dir_name)
+            dir_name := os.dir(file_path)
+
             rel_static, err := filepath.rel(dir_name, static)
             if err == .None && len(rel_static) < len(static) {
                 if !strings.contains(rel_static, "/") &&

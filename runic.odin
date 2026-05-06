@@ -375,8 +375,7 @@ main :: proc() {
                 context.temp_allocator,
             )
 
-            dir := filepath.dir(abs_out)
-            defer delete(dir)
+            dir := os.dir(abs_out)
 
             if !os.is_dir(dir) {
                 err = errors.wrap(os.make_directory(dir))
@@ -470,7 +469,8 @@ main :: proc() {
                 if len(runestones) > 1 {
                     stem := filepath.stem(runestone_file_name)
                     ext := filepath.ext(runestone_file_name)
-                    dir := filepath.dir(runestone_file_name)
+                    dir := os.dir(runestone_file_name)
+
                     file_name := fmt.aprintf(
                         "{}-{}.{}{}",
                         stem,
@@ -479,6 +479,7 @@ main :: proc() {
                         ext,
                         allocator = context.temp_allocator,
                     )
+
                     runestone_file_name, _ = filepath.join(
                         {dir, file_name},
                         context.temp_allocator,

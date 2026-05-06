@@ -1378,8 +1378,7 @@ write_foreign_lib_name :: proc(
     force_lib_a_trim := false,
 ) -> io.Error {
     if filepath.is_abs(lib_name) {
-        dir_name := filepath.dir(file_path)
-        defer delete(dir_name)
+        dir_name := os.dir(file_path)
 
         out_lib: string = ---
         rel_lib, rel_err := filepath.rel(dir_name, lib_name)

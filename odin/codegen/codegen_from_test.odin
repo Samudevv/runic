@@ -60,7 +60,7 @@ test_from_odin_codegen :: proc(t: ^testing.T) {
         out_file, os_err = os.open(
             file_names[idx],
             os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
-            0o644,
+            os.perm(0o644),
         )
         if !testing.expect_value(t, os_err, nil) do return
         defer os.close(out_file)

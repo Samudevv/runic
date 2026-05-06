@@ -19,6 +19,7 @@ package main
 
 import "base:runtime"
 import "core:fmt"
+import "core:os"
 import "core:mem"
 import "core:path/filepath"
 import "core:slice"
@@ -134,16 +135,14 @@ print_track_results :: proc(tracker: ^mem.Tracking_Allocator) {
         }
 
         for bad_free in memories {
-            using bad_free
-
-            rel_path := short_path(file_path)
+            rel_path := short_path(bad_free.file_path)
             fmt.eprintfln(
                 "│ %-35v │",
                 fmt.aprintf(
                     "{}:{}:{}",
                     rel_path,
-                    line,
-                    column,
+                    bad_free.line,
+                    bad_free.column,
                     allocator = context.temp_allocator,
                 ),
             )
@@ -163,7 +162,7 @@ short_path :: proc(file_path: string) -> string {
     ) -> runtime.Source_Code_Location {return loc}(
 
     )
-    src_dir := filepath.dir(src_loc.file_path, context.temp_allocator)
+    src_dir := os.dir(src_loc.file_path)
 
     rel_path, rel_err := filepath.rel(
         src_dir,

@@ -154,7 +154,7 @@ temp_file :: proc(
         file, os_err = os.open(
             strings.to_string(file_name),
             os.O_WRONLY | os.O_CREATE | os.O_EXCL,
-            0o777,
+            os.perm(0o777),
         )
         if os_err == nil {
             file_path = strings.to_string(file_name)

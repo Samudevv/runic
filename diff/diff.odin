@@ -106,7 +106,7 @@ expect_diff_strings :: proc(
     tmp, tmp_err := os.temp_directory(context.allocator)
     if !testing.expect_value(t, tmp_err, nil) do return false
 
-    old_file, new_file: ^^os.File
+    old_file, new_file: ^os.File
     old_file_name, new_file_name: string
     for i := 0;; i += 1 {
         old_file_base := fmt.aprintf("test_old_diff_%3v%v", i, file_ext)
@@ -134,7 +134,7 @@ expect_diff_strings :: proc(
         old_file, file_err = os.open(
             old_file_name,
             {.Write, .Create, .Trunc, .Excl},
-            0o644,
+            os.perm(0o644),
         )
         if file_err != nil {
             delete(old_file_name)
@@ -145,7 +145,7 @@ expect_diff_strings :: proc(
         new_file, file_err = os.open(
             new_file_name,
             {.Write, .Create, .Trunc, .Excl},
-            0o644,
+            os.perm(0o644),
         )
         if file_err != nil {
             delete(old_file_name)

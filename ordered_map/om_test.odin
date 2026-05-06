@@ -46,7 +46,7 @@ test_ordered_map :: proc(t: ^testing.T) {
             testing.expect_value(t, key, "3")
             testing.expect_value(t, value, 9)
         case:
-            fail(t)
+            testing.fail(t)
         }
     }
 
@@ -66,15 +66,13 @@ test_ordered_map :: proc(t: ^testing.T) {
             testing.expect_value(t, key, "3")
             testing.expect_value(t, value, 9)
         case:
-            fail(t)
+            testing.fail(t)
         }
     }
 }
 
 @(test)
 test_ordered_map_move :: proc(t: ^testing.T) {
-    using testing
-
     omap := make(string, f32)
     defer delete(omap)
 

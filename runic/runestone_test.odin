@@ -1,4 +1,5 @@
 #+ feature dynamic-literals
+#+ feature using-stmt
 /*
 This file is part of runic.
 
@@ -82,8 +83,6 @@ LENGTH = 267.345 #Float64
 
 @(test)
 test_example_runestone :: proc(t: ^testing.T) {
-    using testing
-
     rd: strings.Reader
     strings.reader_init(&rd, string(EXAMPLE_RUNESTONE))
 
@@ -179,7 +178,7 @@ test_example_runestone :: proc(t: ^testing.T) {
     out_file, os_err := os.open(
         "test_data/example_runestone.ini",
         os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
-        0o644,
+        os.perm(0o644),
     )
     if !testing.expect_value(t, os_err, nil) do return
     defer os.close(out_file)
@@ -204,8 +203,6 @@ test_example_runestone :: proc(t: ^testing.T) {
 
 @(test)
 test_cyclic_dependency :: proc(t: ^testing.T) {
-    using testing
-
     types := om.OrderedMap(string, Type) {
         indices = {
             "little_foo" = 0,
@@ -341,8 +338,6 @@ test_cyclic_dependency :: proc(t: ^testing.T) {
 
 @(test)
 test_trim_enum_type_names :: proc(t: ^testing.T) {
-    using testing
-
     {
         type_name :: "SlidingDirection"
         type := Type {

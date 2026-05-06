@@ -192,19 +192,17 @@ parse_rune :: proc(
                 add_header_to_from = true,
             }
             {
-                using wrapper
                 context.allocator = rn_arena_alloc
 
-                from_compiler_flags = make_platform_value(bool)
-                defines = make_platform_value(map[string]string)
-                include_dirs = make_platform_value([]string)
-                flags = make_platform_value([]cstring)
-                load_all_includes = make_platform_value(bool)
-                extern = make_platform_value([]string)
-                in_headers = make_platform_value([]string)
+                wrapper.from_compiler_flags = make_platform_value(bool)
+                wrapper.defines = make_platform_value(map[string]string)
+                wrapper.include_dirs = make_platform_value([]string)
+                wrapper.flags = make_platform_value([]cstring)
+                wrapper.load_all_includes = make_platform_value(bool)
+                wrapper.extern = make_platform_value([]string)
+                wrapper.in_headers = make_platform_value([]string)
 
-                from_compiler_flags.d[{.Any, .Any}] = true
-
+                wrapper.from_compiler_flags.d[{.Any, .Any}] = true
             }
 
             #partial switch wrapper_map in wrapper_value {

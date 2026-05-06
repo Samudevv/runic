@@ -35,7 +35,7 @@ test_rune :: proc(t: ^testing.T) {
     defer rune_destroy(&rn)
     if !testing.expect_value(t, err, nil) do return
 
-    cwd := os.get_current_directory()
+    cwd, _ := os.get_working_directory(context.allocator)
     defer delete(cwd)
 
     testing.expect_value(t, rn.version, 0)
@@ -47,16 +47,16 @@ test_rune :: proc(t: ^testing.T) {
     testing.expect_value(t, rn.platforms[0].arch, Architecture.x86_64)
     testing.expect_value(t, rn.platforms[1].arch, Architecture.x86_64)
 
-    foo_h := filepath.join({cwd, "test_data/foo.h"})
-    foz_h := filepath.join({cwd, "test_data/foz.h"})
-    bar_h := filepath.join({cwd, "test_data/bar.h"})
-    wrapper_gen_linux_h := filepath.join(
+    foo_h, _ := filepath.join({cwd, "test_data/foo.h"})
+    foz_h, _ := filepath.join({cwd, "test_data/foz.h"})
+    bar_h, _ := filepath.join({cwd, "test_data/bar.h"})
+    wrapper_gen_linux_h, _ := filepath.join(
         {cwd, "test_data/wrapper.gen-Linux_x86_64.h"},
     )
-    wrapper_gen_windows_h := filepath.join(
+    wrapper_gen_windows_h, _ := filepath.join(
         {cwd, "test_data/wrapper.gen-Windows_x86_64.h"},
     )
-    plat_macos_h := filepath.join({cwd, "test_data/plat_macos.h"})
+    plat_macos_h, _ := filepath.join({cwd, "test_data/plat_macos.h"})
     defer delete(foo_h)
     defer delete(foz_h)
     defer delete(bar_h)
@@ -133,7 +133,7 @@ test_rune :: proc(t: ^testing.T) {
         case "uinky":
             testing.expect_value(t, func.instruction.(OverwriteReturnType), "#SInt32")
         case:
-            fail(t)
+            testing.fail(t)
         }
     }
 
@@ -155,10 +155,10 @@ test_rune :: proc(t: ^testing.T) {
             case OverwriteReturnType:
                 testing.expect_value(t, ins, "#RawPtr")
             case:
-                fail(t)
+                testing.fail(t)
             }
         case:
-            fail(t)
+            testing.fail(t)
         }
     }
 
@@ -191,9 +191,9 @@ test_rune :: proc(t: ^testing.T) {
     testing.expect_value(t, aliases["SDL_Renderer"][0], "SDL_Painter")
     testing.expect_value(t, aliases["SDL_Renderer"][1], "SDL_Drawer")
 
-    in_header := filepath.join({cwd, "test_data/wrapper.h"})
-    out_header := filepath.join({cwd, "test_data/wrapper.gen.h"})
-    out_source := filepath.join({cwd, "test_data/wrapper.gen.c"})
+    in_header , _ := filepath.join({cwd, "test_data/wrapper.h"})
+    out_header, _ := filepath.join({cwd, "test_data/wrapper.gen.h"})
+    out_source, _ := filepath.join({cwd, "test_data/wrapper.gen.c"})
     defer delete(in_header)
     defer delete(out_header)
     defer delete(out_source)
@@ -210,8 +210,8 @@ test_rune :: proc(t: ^testing.T) {
 
     wrapper_incs := wrapper.include_dirs.d[{.Any, .Any}]
     testing.expect_value(t, len(wrapper_incs), 2)
-    wi1 := filepath.join({cwd, "test_data/header_files/"})
-    wi2 := filepath.join({cwd, "test_data/inc/other_headers"})
+    wi1, _ := filepath.join({cwd, "test_data/header_files/"})
+    wi2, _ := filepath.join({cwd, "test_data/inc/other_headers"})
     defer delete(wi1)
     defer delete(wi2)
     testing.expect_value(t, wrapper_incs[0], wi1)
@@ -222,8 +222,8 @@ test_rune :: proc(t: ^testing.T) {
     testing.expect_value(t, wrapper.load_all_includes.d[{.Any, .Any}], true)
     testing.expect_value(t, len(wrapper.extern.d[{.Any, .Any}]), 2)
 
-    ext1 := filepath.join({cwd, "test_data/stdarg.h"})
-    ext2 := filepath.join({cwd, "test_data/third_party/files/*"})
+    ext1, _ := filepath.join({cwd, "test_data/stdarg.h"})
+    ext2, _ := filepath.join({cwd, "test_data/third_party/files/*"})
     defer delete(ext1)
     defer delete(ext2)
     testing.expect_value(t, wrapper.extern.d[{.Any, .Any}][0], ext1)
@@ -252,7 +252,7 @@ test_rune :: proc(t: ^testing.T) {
 
     test_data_dir, _ := filepath.abs("test_data")
     defer delete(test_data_dir)
-    GLx86 := filepath.join({test_data_dir, "lib", "GLx86.lib"})
+    GLx86, _ := filepath.join({test_data_dir, "lib", "GLx86.lib"})
     defer delete(GLx86)
 
     testing.expect_value(t, len(add_libs_any), 1)
@@ -268,8 +268,6 @@ test_rune :: proc(t: ^testing.T) {
 
 @(test)
 test_overwrite :: proc(t: ^testing.T) {
-    using testing
-
     rs: Runestone
     defer runestone_destroy(&rs)
 

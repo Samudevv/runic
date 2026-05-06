@@ -674,7 +674,7 @@ parse_type_token :: proc(
         case "FuncPtr":
             func: Function = ---
             func, token = parse_func_token(tokenizer) or_return
-            type.spec = cast(FunctionPointer)new_clone(func)
+            type.spec = new_clone(func)
             return
         case "Extern":
             token = odintz.scan(tokenizer)

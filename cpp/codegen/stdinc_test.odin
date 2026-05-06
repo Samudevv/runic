@@ -28,14 +28,14 @@ test_cpp_stdinc :: proc(t: ^testing.T) {
     plat := runic.Platform{.Linux, .x86_64}
 
     gen_dir, gen_dir_ok := system_includes_gen_dir(plat)
-    if !expect(t, gen_dir_ok) do return
+    if !testing.expect(t, gen_dir_ok) do return
     defer delete(gen_dir)
 
     ok := generate_system_includes(gen_dir)
-    if !expect(t, ok) do return
+    if !testing.expect(t, ok) do return
 
     for file_name in SYSTEM_INCLUDE_FILES {
-        file_path := filepath.join({gen_dir, file_name})
+        file_path, _ := filepath.join({gen_dir, file_name})
         defer delete(file_path)
 
         fd, err := os.open(file_path, os.O_RDONLY)
@@ -43,11 +43,14 @@ test_cpp_stdinc :: proc(t: ^testing.T) {
             if expected_contents, expected_ok := system_includes_contents(
                 file_name,
             ); expected_ok {
-                contents, contents_ok := os.read_entire_file(fd)
-                if expect(t, contents_ok) {
+                contents, contents_err := os.read_entire_file(fd, context.allocator)
+
+                if testing.expect_value(t, contents_err, nil) {
                     if !testing.expect_value(t, string(contents), expected_contents) do fmt.eprintfln("contents of {} differ from expected", file_name)
+
                     delete(contents)
                 }
+
             }
             os.close(fd)
         }

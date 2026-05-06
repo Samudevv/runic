@@ -22,6 +22,7 @@ import "core:fmt"
 import "core:path/filepath"
 import "core:slice"
 import "core:strings"
+import "core:os"
 
 Platform :: struct {
     os:   OS,
@@ -212,7 +213,7 @@ platform_file_name :: proc(
     plat: Platform,
     allocator := context.allocator,
 ) -> string {
-    dir := filepath.dir(file_name, allocator)
+    dir := os.dir(file_name)
     stem := filepath.stem(file_name)
     ext := filepath.ext(file_name)
 
@@ -262,7 +263,7 @@ multiple_platforms_file_name :: proc(
     plats: []Platform,
     allocator := context.allocator,
 ) -> string {
-    dir := filepath.dir(file_name, allocator)
+    dir := os.dir(file_name)
     stem := filepath.stem(file_name)
     ext := filepath.ext(file_name)
 

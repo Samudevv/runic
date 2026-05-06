@@ -25,9 +25,7 @@ EXTRA_LINKER_FLAGS := if os() == 'macos' {
 }
 
 ODIN_FLAGS := (
-  '-vet-shadowing ' +
-  '-vet-unused ' +
-  '-vet-style ' +
+  '-vet ' +
   '-warnings-as-errors ' +
   '-error-pos-style:unix ' +
   '-collection:root=. ' +

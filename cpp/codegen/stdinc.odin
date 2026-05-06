@@ -240,39 +240,36 @@ system_includes_gen_dir :: proc(
     for _ in 0 ..< 100 {
         // At max six digits
         id := rand.uint32() % 1000000
+
         folder_name := fmt.aprintf(
             "{}-{:06d}",
             os_arch_name,
             id,
             allocator = allocator,
         )
-        gen_dir = filepath.join(
+
+        gen_dir_err: runtime.Allocator_Error = ---
+        gen_dir, gen_dir_err = filepath.join(
             {SYSTEM_INCLUDE_GEN_DIR, folder_name},
             allocator,
         )
         delete(folder_name, allocator = allocator)
+        if gen_dir_err != .None {
+            continue
+        }
 
-        err := make_directory_parents(gen_dir)
-        #partial switch errno in err {
-        case nil:
-            ok = true
-            return
-        case:
-            delete(gen_dir, allocator = allocator)
-            if plat_err, plat_err_ok := os.is_platform_error(errno);
-               plat_err_ok {
-                when ODIN_OS == .Windows {
-                    is_already_exists :=
-                        plat_err == i32(os.ERROR_ALREADY_EXISTS)
-                } else {
-                    is_already_exists := plat_err == i32(os.EEXIST)
-                }
+        if os.is_directory(gen_dir) {
+            continue
+        }
 
-                if is_already_exists do continue
-            }
+        err := os.mkdir_all(gen_dir)
+        if err != nil {
             ok = false
             return
         }
+
+        ok = true
+        return
     }
 
     ok = false
@@ -295,14 +292,16 @@ generate_system_includes :: proc(gen_dir: string) -> bool {
                 strings.trim_null(file_name) if false else file_name
         }
 
-        file_path := filepath.join({gen_dir, slashed_file_name})
+        file_path, file_path_err := filepath.join({gen_dir, slashed_file_name})
+        if file_path_err != .None do return false
+
         dir := filepath.dir(file_path)
         if err := make_directory_parents(dir); err != nil do return false
 
         fd, err := os.open(
             file_path,
             os.O_CREATE | os.O_TRUNC | os.O_WRONLY,
-            0o644,
+            os.perm(0o644),
         )
         if err != nil do return false
 
@@ -318,33 +317,7 @@ generate_system_includes :: proc(gen_dir: string) -> bool {
 }
 
 delete_system_includes :: proc(gen_dir: string) {
-    arena: runtime.Arena
-    alloc_err := runtime.arena_init(&arena, 0, context.allocator)
-    if alloc_err != .None do return
-    defer runtime.arena_destroy(&arena)
-
-    context.allocator = runtime.arena_allocator(&arena)
-
-    walk_proc := proc(
-        info: ^os.File_Info,
-        in_err: os.Error,
-        user_data: rawptr,
-    ) -> (
-        err: os.Error,
-        skip_dir: bool,
-    ) {
-        if !info.is_dir {
-            os.remove(info.fullpath)
-        } else {
-            remove_directory(info.fullpath)
-        }
-
-        return
-    }
-
-    for os.is_dir(gen_dir) {
-        filepath.walk(gen_dir, walk_proc, nil)
-    }
+    os.remove_all(gen_dir)
 }
 
 @(private = "file")
@@ -360,7 +333,7 @@ make_directory_parents :: proc(path: string) -> os.Error {
         if err := make_directory_parents(dir); err != nil do return err
     }
     if !os.is_dir(path) {
-        return os.make_directory(path, 0o755)
+        return os.make_directory(path, os.perm(0o755))
     }
 
     return nil

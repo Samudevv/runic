@@ -186,14 +186,14 @@ generate_wrapper :: proc(
         out_header, out_header_err := os.open(
             out_header_name,
             os.O_CREATE | os.O_TRUNC | os.O_WRONLY,
-            0o644,
+            os.perm(0o644),
         )
         errors.wrap(out_header_err, "failed to create out header") or_return
         defer os.close(out_header)
         out_source, out_source_err := os.open(
             out_source_name,
             os.O_CREATE | os.O_TRUNC | os.O_WRONLY,
-            0o644,
+            os.perm(0o644),
         )
         errors.wrap(out_source_err, "failed to create out source") or_return
         defer os.close(out_source)
@@ -229,7 +229,7 @@ generate_wrapper :: proc(
         io.write_string(data.header, "#pragma once\n\n") or_return
         for in_header in in_headers {
             rel_in_header, rel_err := filepath.rel(
-                filepath.dir(out_header_name, arena_alloc),
+                os.dir(out_header_name),
                 in_header,
                 arena_alloc,
             )
@@ -241,7 +241,7 @@ generate_wrapper :: proc(
         }
 
         rel_out_header, rel_err := filepath.rel(
-            filepath.dir(out_source_name, arena_alloc),
+            os.dir(out_source_name),
             out_header_name,
             arena_alloc,
         )

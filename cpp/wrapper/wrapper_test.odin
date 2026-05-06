@@ -27,13 +27,13 @@ import "root:runic"
 
 @(test)
 test_cpp_wrapper :: proc(t: ^testing.T) {
-    cwd := os.get_current_directory()
+    cwd, _ := os.get_working_directory(context.allocator)
     defer delete(cwd)
 
-    rune_file_name := filepath.join({cwd, "test_data/wrapper_rune.yml"})
-    in_header := filepath.join({cwd, "test_data/wrapper_in_header.h"})
-    out_header := filepath.join({cwd, "test_data/wrapper_out_header.h"})
-    out_source := filepath.join({cwd, "test_data/wrapper_out_source.c"})
+    rune_file_name, _ := filepath.join({cwd, "test_data/wrapper_rune.yml"})
+    in_header , _ := filepath.join({cwd, "test_data/wrapper_in_header.h"})
+    out_header, _  := filepath.join({cwd, "test_data/wrapper_out_header.h"})
+    out_source, _  := filepath.join({cwd, "test_data/wrapper_out_source.c"})
     defer delete(rune_file_name)
     defer delete(in_header)
     defer delete(out_header)
@@ -64,23 +64,27 @@ test_cpp_wrapper :: proc(t: ^testing.T) {
     )
     testing.expect_value(t, err, nil)
 
-    header_data_linux, linux_ok := os.read_entire_file(
+    header_data_linux, linux_err := os.read_entire_file(
         "test_data/wrapper_out_header-Linux_x86_64.h",
+        context.allocator,
     )
-    header_data_windows, windows_ok := os.read_entire_file(
+    header_data_windows, windows_err := os.read_entire_file(
         "test_data/wrapper_out_header-Windows_x86_64.h",
+        context.allocator,
     )
-    if !testing.expect(t, linux_ok && windows_ok) do return
+    if !testing.expect(t, linux_err == nil && windows_err == nil) do return
     defer delete(header_data_linux)
     defer delete(header_data_windows)
 
-    source_data_linux, linux_src_ok := os.read_entire_file(
+    source_data_linux, linux_src_err := os.read_entire_file(
         "test_data/wrapper_out_source-Linux_x86_64.c",
+        context.allocator,
     )
-    source_data_windows, windows_src_ok := os.read_entire_file(
+    source_data_windows, windows_src_err := os.read_entire_file(
         "test_data/wrapper_out_source-Windows_x86_64.c",
+        context.allocator,
     )
-    if !testing.expect(t, linux_src_ok && windows_src_ok) do return
+    if !testing.expect(t, linux_src_err == nil && windows_src_err == nil) do return
     defer delete(source_data_linux)
     defer delete(source_data_windows)
 

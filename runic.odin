@@ -17,6 +17,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 
 package main
 
+import "base:runtime"
 import ccdg "c/codegen"
 import "core:flags"
 import "core:fmt"
@@ -110,12 +111,23 @@ main :: proc() {
     host_plat := runic.platform_from_host()
 
     if !filepath.is_abs(rune_file_name) {
-        cwd, _ := os.get_working_directory()
+        cwd, cwd_err := os.get_working_directory(context.allocator)
+        if cwd_err != nil {
+            fmt.eprintfln("cwd error: {}", cwd_err)
+            os.exit(1)
+        }
         defer delete(cwd)
-        rune_file_name = filepath.join(
+
+        alloc_err: runtime.Allocator_Error = ---
+        rune_file_name, alloc_err = filepath.join(
             {cwd, rune_file_name},
             context.temp_allocator,
         )
+
+        if alloc_err != .None {
+            fmt.eprintfln("allocator error: {}", alloc_err)
+            os.exit(1)
+        }
     }
 
     rune_file, os_err := os.open(rune_file_name)
@@ -381,7 +393,7 @@ main :: proc() {
         out_file, out_err := os.open(
             out_file_name,
             os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
-            0o644,
+            os.perm(0o644),
         )
         if err = errors.wrap(out_err); err != nil {
             fmt.eprintfln("failed to open to file: {}", err)
@@ -467,7 +479,7 @@ main :: proc() {
                         ext,
                         allocator = context.temp_allocator,
                     )
-                    runestone_file_name = filepath.join(
+                    runestone_file_name, _ = filepath.join(
                         {dir, file_name},
                         context.temp_allocator,
                     )
@@ -483,7 +495,7 @@ main :: proc() {
                 rs_file, os_err = os.open(
                     rs_file_path,
                     os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
-                    0o644,
+                    os.perm(0o644),
                 )
                 if err = errors.wrap(os_err); err != nil {
                     fmt.eprintfln(

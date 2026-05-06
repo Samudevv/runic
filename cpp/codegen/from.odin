@@ -241,7 +241,7 @@ generate_runestone :: proc(
     }
 
     for header in headers {
-        dealloc_me, os_stat := os.stat(header)
+        dealloc_me, os_stat := os.stat(header, context.allocator)
         #partial switch stat in os_stat {
         case os.General_Error:
             if stat == .Not_Exist {
@@ -258,7 +258,7 @@ generate_runestone :: proc(
             )
             return
         case nil:
-            os.file_info_delete(dealloc_me)
+            os.file_info_delete(dealloc_me, context.allocator)
         case:
             err = errors.message(
                 "failed to open header file \"{}\": {}",

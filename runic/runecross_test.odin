@@ -125,8 +125,6 @@ func.multiply = #Untyped value BigInt
 
 @(test)
 test_runecross :: proc(t: ^testing.T) {
-    using testing
-
     linux_rd, windows_rd: strings.Reader
     strings.reader_init(&linux_rd, LINUX_RUNESTONE)
     strings.reader_init(&windows_rd, WINDOWS_RUNESTONE)

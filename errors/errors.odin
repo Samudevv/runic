@@ -184,7 +184,7 @@ wrap_os_error :: proc(
     if err == nil do return nil
 
     switch v in err {
-    case os.General_error:
+    case os.General_Error:
         return wrap_os_general_error(v, msg, allocator, loc)
     case io.Error:
         return wrap_io(v, msg, allocator, loc)

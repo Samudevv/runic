@@ -391,7 +391,7 @@ generate_bindings :: proc(
             imp_file, imp_file_err := os.open(
                 imp_file_name,
                 os.O_CREATE | os.O_WRONLY | os.O_TRUNC,
-                0o666,
+                os.perm(0o666),
             )
             if imp_file_err != nil {
                 when ODIN_DEBUG {

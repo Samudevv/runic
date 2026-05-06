@@ -186,7 +186,7 @@ var.macos_globals = Array
     out_file, os_err := os.open(
         "test_data/to_c_test.h",
         os.O_CREATE | os.O_WRONLY | os.O_TRUNC,
-        0o644,
+        os.perm(0o644),
     )
     if !testing.expect_value(t, os_err, nil) do return
     defer os.close(out_file)
@@ -194,8 +194,8 @@ var.macos_globals = Array
     err := generate_bindings(rc, rn, os.to_stream(out_file))
     if !testing.expect_value(t, err, nil) do return
 
-    data, os_ok := os.read_entire_file("test_data/to_c_test.h")
-    if !expect(t, os_ok) do return
+    data, data_err := os.read_entire_file("test_data/to_c_test.h", context.allocator)
+    if !testing.expect_value(t, data_err, nil) do return
     defer delete(data)
 
     EXPECTED_HEADER :: `#pragma once

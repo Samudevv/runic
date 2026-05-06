@@ -95,10 +95,10 @@ when #config(FOO_PKG_STATIC, false) {
 main :: proc() {}`
 
 
-    abs_test_data, abs_ok := filepath.abs("test_data")
-    if !testing.expect(t, abs_ok) do return
+    abs_test_data, abs_err := filepath.abs("test_data")
+    if !testing.expect_value(t, abs_err, nil) do return
     defer delete(abs_test_data)
-    lib_shared := filepath.join({abs_test_data, "libfoo.so"})
+    lib_shared, _ := filepath.join({abs_test_data, "libfoo.so"})
     defer delete(lib_shared)
 
     rs := runic.Runestone {
@@ -300,7 +300,7 @@ main :: proc() {}`
 
     test_data_dir, _ := filepath.abs("test_data")
     defer delete(test_data_dir)
-    libcompiled := filepath.join({test_data_dir, "lib", "libcompiled.a"})
+    libcompiled, _ := filepath.join({test_data_dir, "lib", "libcompiled.a"})
     defer delete(libcompiled)
 
     rn := runic.To {
@@ -343,12 +343,12 @@ main :: proc() {}`
     abs_file_name: string = ---
     defer delete(abs_file_name)
     {
-        abs_file_name = filepath.join({abs_test_data, "bindings.odin"})
+        abs_file_name, _ = filepath.join({abs_test_data, "bindings.odin"})
 
         file, os_err := os.open(
             abs_file_name,
             os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
-            0o644,
+            os.perm(0o644),
         )
         if !testing.expect_value(t, os_err, nil) do return
         defer os.close(file)
@@ -376,16 +376,14 @@ main :: proc() {}`
         os.write_string(file, "main :: proc() {}")
     }
 
-    contents, os_err := os.read_entire_file(abs_file_name)
-    if !testing.expect(t, os_err) do return
+    contents, os_err := os.read_entire_file(abs_file_name, context.allocator)
+    if !testing.expect_value(t, os_err, nil) do return
 
     diff.expect_diff_strings(t, ODIN_EXPECTED, string(contents), ".odin")
 }
 
 @(test)
 test_to_odin_extern :: proc(t: ^testing.T) {
-    using testing
-
     rf := runic.From {
         language = "c",
         shared = {d = {runic.Platform{.Any, .Any} = "libsystem_include.so"}},
@@ -436,7 +434,7 @@ test_to_odin_extern :: proc(t: ^testing.T) {
     rs_out, os_err := os.open(
         "test_data/extern_test_runestone.ini",
         os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
-        0o644,
+        os.perm(0o644),
     )
     if !testing.expect_value(t, os_err, nil) do return
     defer os.close(rs_out)
@@ -462,7 +460,7 @@ test_to_odin_extern :: proc(t: ^testing.T) {
     out_file, os_err = os.open(
         "test_data/extern_test.odin",
         os.O_CREATE | os.O_TRUNC | os.O_WRONLY,
-        0o644,
+        os.perm(0o644),
     )
     if !testing.expect_value(t, os_err, nil) do return
 
@@ -511,8 +509,8 @@ foreign import extern_test_runic "system:system_include"
 `
 
 
-    data, ok := os.read_entire_file("test_data/extern_test.odin")
-    if !testing.expect(t, ok) do return
+    data, data_err := os.read_entire_file("test_data/extern_test.odin", context.allocator)
+    if !testing.expect_value(t, data_err, nil) do return
     defer delete(data)
 
     diff.expect_diff_strings(t, EXPECT_BINDINGS, string(data), ".odin")
@@ -520,8 +518,6 @@ foreign import extern_test_runic "system:system_include"
 
 @(test)
 test_odin_import_path :: proc(t: ^testing.T) {
-    using testing
-
     ow, path := import_path("util")
     testing.expect_value(t, ow, "")
     testing.expect_value(t, path, "util")
@@ -543,8 +539,6 @@ test_odin_import_path :: proc(t: ^testing.T) {
 
 @(test)
 test_odin_to_multiple_files :: proc(t: ^testing.T) {
-    using testing
-
     LINUX_RUNESTONE :: `version = 0
 os = Linux
 arch = x86_64
@@ -605,19 +599,19 @@ func.designer_draw_design = #Untyped designer #Extern Designer #Attr Ptr 1 #Attr
 `
 
 
-    cwd := os.get_current_directory()
+    cwd, _ := os.get_working_directory(context.allocator)
     defer delete(cwd)
-    test_data_dir := filepath.join({cwd, "test_data"})
+    test_data_dir, _ := filepath.join({cwd, "test_data"})
     defer delete(test_data_dir)
 
-    linux_rs_path := filepath.join({test_data_dir, "linux_rs"})
-    windows_rs_path := filepath.join({test_data_dir, "windows_rs"})
-    macos_rs_path := filepath.join({test_data_dir, "macos_rs"})
+    linux_rs_path, _ := filepath.join({test_data_dir, "linux_rs"})
+    windows_rs_path, _ := filepath.join({test_data_dir, "windows_rs"})
+    macos_rs_path, _ := filepath.join({test_data_dir, "macos_rs"})
     defer delete(linux_rs_path)
     defer delete(windows_rs_path)
     defer delete(macos_rs_path)
 
-    out_path := filepath.join(
+    out_path, _ := filepath.join(
         {test_data_dir, "test_odin_to_multiple_files.odin"},
     )
     defer delete(out_path)
@@ -676,7 +670,7 @@ func.designer_draw_design = #Untyped designer #Extern Designer #Attr Ptr 1 #Attr
     out_file, out_err := os.open(
         out_path,
         os.O_CREATE | os.O_WRONLY | os.O_TRUNC,
-        0o644,
+        os.perm(0o644),
     )
     if !testing.expect_value(t, out_err, nil) do return
     defer os.close(out_file)
@@ -772,33 +766,33 @@ foreign import multi_runic "system:multi"
 `
 
 
-    linux_path := filepath.join(
+    linux_path, _ := filepath.join(
         {test_data_dir, "test_odin_to_multiple_files-Linux.odin"},
     )
-    windows_path := filepath.join(
+    windows_path, _ := filepath.join(
         {test_data_dir, "test_odin_to_multiple_files-Windows.odin"},
     )
-    macos_path := filepath.join(
+    macos_path, _ := filepath.join(
         {test_data_dir, "test_odin_to_multiple_files-Macos.odin"},
     )
     defer delete(linux_path)
     defer delete(windows_path)
     defer delete(macos_path)
 
-    any_data, any_data_ok := os.read_entire_file(out_path)
-    if !testing.expect(t, any_data_ok) do return
+    any_data, any_data_err := os.read_entire_file(out_path, context.allocator)
+    if !testing.expect_value(t, any_data_err, nil) do return
     defer delete(any_data)
 
-    linux_data, linux_data_ok := os.read_entire_file(linux_path)
-    if !testing.expect(t, linux_data_ok) do return
+    linux_data, linux_data_err := os.read_entire_file(linux_path, context.allocator)
+    if !testing.expect_value(t, linux_data_err, nil) do return
     defer delete(linux_data)
 
-    windows_data, windows_data_ok := os.read_entire_file(windows_path)
-    if !testing.expect(t, windows_data_ok) do return
+    windows_data, windows_data_err := os.read_entire_file(windows_path, context.allocator)
+    if !testing.expect_value(t, windows_data_err, nil) do return
     defer delete(windows_data)
 
-    macos_data, macos_data_ok := os.read_entire_file(macos_path)
-    if !testing.expect(t, macos_data_ok) do return
+    macos_data, macos_data_err := os.read_entire_file(macos_path, context.allocator)
+    if !testing.expect_value(t, macos_data_err, nil) do return
     defer delete(macos_data)
 
     diff.expect_diff_strings(t, ANY_EXPECTED, string(any_data))

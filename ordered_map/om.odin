@@ -112,7 +112,7 @@ delete_key :: #force_inline proc(
     idx, ok := m.indices[key]
     if !ok do return
 
-    ordered_remove( m.data, idx, loc)
+    ordered_remove(&m.data, idx, loc)
     runtime.delete_key(&m.indices, key)
 
     for i, v in m.indices {

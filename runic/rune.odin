@@ -2997,6 +2997,8 @@ any_glob_match_abs_or_rel :: proc(base_file_name: string, list: []string, value:
             check_p_needs_free = true
         }
 
+        fmt.eprintfln("any_glob_match: check value=\"{}\" list_entry=\"{}\"", check_value, check_p)
+
         ok, _ := slashpath.match(check_p, check_value)
         if ok do return true
     }

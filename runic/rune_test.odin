@@ -402,7 +402,7 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
         result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
         delete(value)
 
-        testing.expect_value(t, result, true)
+        testing.expectf(t, result, "\"{}\" is not in {}", value, externs)
     } else {
         externs := []string{
             "C:/temp/banana/stddef.h",
@@ -417,18 +417,18 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
         result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
         delete(value)
 
-        testing.expect_value(t, result, true)
+        testing.expectf(t, result, "\"{}\" is not in {}", value, externs)
     }
 
     value = "alpro.h"
     result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
-    testing.expect_value(t, result, true)
+    testing.expectf(t, result, "\"{}\" is not in {}", value, externs)
 
     value = "banana.h"
     result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
-    testing.expect_value(t, result, false)
+    testing.expectf(t, !result, "\"{}\" is in {}")
 
     value = "../test_data/now.h"
     result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
-    testing.expect_value(t, result, true)
+    testing.expectf(t, result, "\"{}\" is in {}", value, externs)
 }

@@ -416,7 +416,7 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
         }
 
         rel_value, rel_err := filepath.rel(os.dir(rune_file_name), "C:\\temp\\banana\\stddef.h")
-        if !testing.expect_value(t, rel_err, filepath.Relative_Error.None) do return
+        if !testing.expectf(t, rel_err == .None, "test value error: {} (dir=\"{}\" base=\"{}\")", rel_err, os.dir(rune_file_name), rune_file_name) do return
         value, repl_sep_err = filepath.replace_separators(rel_value, '/')
         delete(rel_value)
         if !testing.expect_value(t, repl_sep_err, runtime.Allocator_Error.None) do return

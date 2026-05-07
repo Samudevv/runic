@@ -381,10 +381,15 @@ test_overwrite :: proc(t: ^testing.T) {
 
 @(test)
 test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
-    cwd, _ := os.get_working_directory(context.allocator)
+    cwd, cwd_err := os.get_working_directory(context.allocator)
+    if !testing.expect_value(t, cwd_err, nil) do return
     defer delete(cwd)
 
-    rune_file_name, _ := filepath.join({cwd, "test_data", "rune.yml"}, context.allocator)
+    raw_rune_file_name, join_err := filepath.join({cwd, "test_data", "rune.yml"}, context.allocator)
+    if !testing.expect_value(t, join_err, runtime.Allocator_Error.None) do return
+    rune_file_name, repl_sep_err := filepath.replace_separators(raw_rune_file_name, '/')
+    delete(raw_rune_file_name)
+    if !testing.expect_value(t, repl_sep_err, runtime.Allocator_Error.None) do return
     defer delete(rune_file_name)
 
     value: string = ---
@@ -402,7 +407,7 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
         result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
         delete(value)
 
-        testing.expectf(t, result, "\"{}\" is not in {}", value, externs)
+        testing.expectf(t, result, "\"{}\" is not in {} (base=\"{}\")", value, externs, rune_file_name)
     } else {
         externs := []string{
             "C:/temp/banana/stddef.h",
@@ -410,25 +415,27 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
             "now.h",
         }
 
-        rel_value, _ := filepath.rel(os.dir(rune_file_name), "C:\\temp\\banana\\stddef.h")
-        value, _ = filepath.replace_separators(rel_value, '/')
+        rel_value, rel_err := filepath.rel(os.dir(rune_file_name), "C:\\temp\\banana\\stddef.h")
+        if !testing.expect_value(t, rel_err, filepath.Relative_Error.None) do return
+        value, repl_sep_err = filepath.replace_separators(rel_value, '/')
         delete(rel_value)
+        if !testing.expect_value(t, repl_sep_err, runtime.Allocator_Error.None) do return
 
         result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
         delete(value)
 
-        testing.expectf(t, result, "\"{}\" is not in {}", value, externs)
+        testing.expectf(t, result, "\"{}\" is not in {} (base=\"{}\")", value, externs, rune_file_name)
     }
 
     value = "alpro.h"
     result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
-    testing.expectf(t, result, "\"{}\" is not in {}", value, externs)
+    testing.expectf(t, result, "\"{}\" is not in {} (base=\"{}\")", value, externs, rune_file_name)
 
     value = "banana.h"
     result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
-    testing.expectf(t, !result, "\"{}\" is in {}")
+    testing.expectf(t, !result, "\"{}\" is in {} (base=\"{}\")", value, externs, rune_file_name)
 
     value = "../test_data/now.h"
     result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
-    testing.expectf(t, result, "\"{}\" is in {}", value, externs)
+    testing.expectf(t, result, "\"{}\" is not in {} (base=\"{}\")", value, externs, rune_file_name)
 }

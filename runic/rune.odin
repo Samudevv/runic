@@ -2908,6 +2908,69 @@ single_list_glob :: proc(list: []string, value: string) -> bool {
     return false
 }
 
+// Joins the elements together and cleans it afterwards
+slashpath_join_clean :: proc(elements: []string) -> (result: string, ok: bool) #optional_ok {
+    joined_value  := slashpath.join(elements)
+
+    // since filepath is used, windows requires backslashes
+    when ODIN_OS == .Windows {
+        new_sep_value, was_alloc := strings.replace_all(joined_value, "/", "\\")
+        delete(joined_value)
+
+        if !was_alloc {
+            // Make sure that it can be deleted
+            new_sep_value = strings.clone(new_sep_value)
+        }
+
+        joined_value = new_sep_value
+    }
+
+    cleaned_value, cleaned_value_err := filepath.clean(joined_value, context.allocator)
+    delete(joined_value)
+    if cleaned_value_err != .None do return cleaned_value, false
+
+    // since filepath is used, windows requires backslashes
+    when ODIN_OS == .Windows {
+        new_sep_value, was_alloc = strings.replace_all(cleaned_value, "\\", "/")
+        delete(cleaned_value)
+
+        if !was_alloc {
+            // Make sure that it can be deleted
+            new_sep_value = strings.clone(new_sep_value)
+        }
+
+        cleaned_value = new_sep_value
+    }
+
+    return cleaned_value, true
+}
+
+slashpath_is_abs :: proc(file_path: string) -> bool {
+    if slashpath.is_abs(file_path) do return true
+
+    when ODIN_OS == .Windows {
+        reader: strings.Reader
+        strings.reader_init(&reader, file_path)
+
+        r, _, err := strings.reader_read_rune(&reader)
+        if err != .None do return false
+
+        if !(unicode.is_letter(r) && unicode.is_upper(r)) do return false
+
+        r, _, err = strings.reader_read_rune(&reader)
+        if err != .None do return false
+
+        if r != ':' do return false
+
+        r, _, err = strings.reader_read_rune(&reader)
+        if err != .None do return false
+
+        return r == '/'
+    } else {
+        return false
+    }
+}
+
 // Returns whether any of the list elements matches value (if value or a list element is relative,
 // it will be made absolute by assuming that it is relative to the directory of base_file_name
 any_glob_match_abs_or_rel :: proc(base_file_name: string, list: []string, value: string) -> bool {
@@ -2918,40 +2981,8 @@ any_glob_match_abs_or_rel :: proc(base_file_name: string, list: []string, value:
     base_dir := slashpath.dir(base_file_name)
     defer delete(base_dir)
 
-    if !slashpath.is_abs(check_value) {
-        joined_value  := slashpath.join({base_dir, check_value})
-
-        // since filepath is used, windows requires backslashes
-        when ODIN_OS == .Windows {
-            new_sep_value, was_alloc := strings.replace_all(joined_value, "/", "\\")
-            delete(joined_value)
-
-            if !was_alloc {
-                // Make sure that it can be deleted
-                new_sep_value = strings.clone(new_sep_value)
-            }
-
-            joined_value = new_sep_value
-        }
-
-        cleaned_value, cleaned_value_err := filepath.clean(joined_value, context.allocator)
-        delete(joined_value)
-        if cleaned_value_err != .None do return false
-
-        // since filepath is used, windows requires backslashes
-        when ODIN_OS == .Windows {
-            new_sep_value, was_alloc = strings.replace_all(cleaned_value, "\\", "/")
-            delete(cleaned_value)
-
-            if !was_alloc {
-                // Make sure that it can be deleted
-                new_sep_value = strings.clone(new_sep_value)
-            }
-
-            cleaned_value = new_sep_value
-        }
-
-        check_value = cleaned_value
+    if !slashpath_is_abs(check_value) {
+        check_value = slashpath_join_clean({base_dir, check_value}) or_return
         check_value_needs_free = true
     }
 
@@ -2960,40 +2991,8 @@ any_glob_match_abs_or_rel :: proc(base_file_name: string, list: []string, value:
         check_p_needs_free := false
         defer if check_p_needs_free do delete(check_p)
 
-        if !slashpath.is_abs(check_p) {
-            joined_value := slashpath.join({base_dir, check_p})
-
-            // since filepath is used, windows requires backslashes
-            when ODIN_OS == .Windows {
-                new_sep_value, was_alloc := strings.replace_all(joined_value, "/", "\\")
-                delete(joined_value)
-
-                if !was_alloc {
-                    // Make sure that it can be deleted
-                    new_sep_value = strings.clone(new_sep_value)
-                }
-
-                joined_value = new_sep_value
-            }
-
-            cleaned_value, cleaned_value_err := filepath.clean(joined_value, context.allocator)
-            delete(joined_value)
-            if cleaned_value_err != .None do return false
-
-            // since filepath is used, windows requires backslashes
-            when ODIN_OS == .Windows {
-                new_sep_value, was_alloc = strings.replace_all(cleaned_value, "\\", "/")
-                delete(cleaned_value)
-
-                if !was_alloc {
-                    // Make sure that it can be deleted
-                    new_sep_value = strings.clone(new_sep_value)
-                }
-
-                cleaned_value = new_sep_value
-            }
-
-            check_p = cleaned_value
+        if !slashpath_is_abs(check_p) {
+            check_p = slashpath_join_clean({base_dir, check_p}) or_return
             check_p_needs_free = true
         }
 

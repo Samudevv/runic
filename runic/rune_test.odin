@@ -460,3 +460,44 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
 
     delete(strings.clone("banana"))
 }
+
+@(test)
+test_slashpath_is_abs :: proc(t: ^testing.T) {
+    testing.expect(t, slashpath_is_abs("/tmp/banana/foo.h"))
+    testing.expect(t, slashpath_is_abs("/home/apple/foo.h"))
+    testing.expect(t, !slashpath_is_abs("foo.h"))
+
+    when ODIN_OS == .Windows {
+        testing.expect(t, slashpath_is_abs("C:/temp/apples_are_awesome.txt"))
+        testing.expect(t, slashpath_is_abs("D:/temp/apples_are_awesome.txt"))
+        testing.expect(t, !slashpath_is_abs("temp/apples_are_awesome.txt"))
+    }
+}
+
+@(test)
+test_slashpath_join_clean :: proc(t: ^testing.T) {
+    {
+        joined, ok := slashpath_join_clean({"banana", "apples"})
+
+        testing.expect(t, ok)
+        testing.expect_value(t, joined, "banana/apples")
+        delete(joined)
+    }
+
+    when ODIN_OS != .Windows {
+        joined, ok := slashpath_join_clean({"/tmp/banana", "../apples"})
+        testing.expect(t, ok)
+        testing.expect_value(t, joined, "/tmp/apples")
+        delete(joined)
+
+        joined, ok = slashpath_join_clean({"/d/run/into/the/town", "../../../../temp/banana/stddef.h"})
+        testing.expect(t, ok)
+        testing.expect_value(t, joined, "/d/temp/banana/stddef.h")
+        delete(joined)
+    } else {
+        joined, ok := slashpath_join_clean({"D:/run/into/the/town", "../../../../temp/banana/stddef.h"})
+        testing.expect(t, ok)
+        testing.expect_value(t, joined, "D:/temp/banana/stddef.h")
+        delete(joined)
+    }
+}

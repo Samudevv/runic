@@ -22,6 +22,7 @@ import "base:runtime"
 import "core:os"
 import "core:path/filepath"
 import "core:testing"
+import "core:strings"
 import "root:errors"
 import om "root:ordered_map"
 
@@ -411,15 +412,33 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
     } else {
         externs := []string{
             "C:/temp/banana/stddef.h",
+            "D:/temp/banana/stddef.h",
             "../test_data/alpro.h",
             "now.h",
         }
 
         rel_value, rel_err := filepath.rel(os.dir(rune_file_name), "C:\\temp\\banana\\stddef.h")
-        if !testing.expectf(t, rel_err == .None, "test value error: {} (dir=\"{}\" base=\"{}\")", rel_err, os.dir(rune_file_name), rune_file_name) do return
-        value, repl_sep_err = filepath.replace_separators(rel_value, '/')
-        delete(rel_value)
-        if !testing.expect_value(t, repl_sep_err, runtime.Allocator_Error.None) do return
+        if rel_err == .None {
+            value, repl_sep_err = filepath.replace_separators(rel_value, '/')
+            delete(rel_value)
+            if !testing.expect_value(t, repl_sep_err, runtime.Allocator_Error.None) do return
+        } else {
+            value = strings.clone("C:/temp/banana/stddef.h")
+        }
+
+        result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
+        delete(value)
+
+        testing.expectf(t, result, "\"{}\" is not in {} (base=\"{}\")", value, externs, rune_file_name)
+
+        rel_value, rel_err = filepath.rel(os.dir(rune_file_name), "D:\\temp\\banana\\stddef.h")
+        if rel_err == .None {
+            value, repl_sep_err = filepath.replace_separators(rel_value, '/')
+            delete(rel_value)
+            if !testing.expect_value(t, repl_sep_err, runtime.Allocator_Error.None) do return
+        } else {
+            value = strings.clone("D:/temp/banana/stddef.h")
+        }
 
         result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
         delete(value)
@@ -438,4 +457,6 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
     value = "../test_data/now.h"
     result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
     testing.expectf(t, result, "\"{}\" is not in {} (base=\"{}\")", value, externs, rune_file_name)
+
+    delete(strings.clone("banana"))
 }

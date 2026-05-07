@@ -2911,9 +2911,6 @@ single_list_glob :: proc(list: []string, value: string) -> bool {
 // Returns whether any of the list elements matches value (if value or a list element is relative,
 // it will be made absolute by assuming that it is relative to the directory of base_file_name
 any_glob_match_abs_or_rel :: proc(base_file_name: string, list: []string, value: string) -> bool {
-    // TODO: ignore windows for now
-    // TODO: windows '\' must be respected
-
     check_value := value
     check_value_needs_free := false
     defer if check_value_needs_free do delete(check_value)

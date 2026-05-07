@@ -2940,7 +2940,7 @@ any_glob_match_abs_or_rel :: proc(base_file_name: string, list: []string, value:
 
         // since filepath is used, windows requires backslashes
         when ODIN_OS == .Windows {
-            new_sep_value, was_alloc := strings.replace_all(cleaned_value, "\\", "/")
+            new_sep_value, was_alloc = strings.replace_all(cleaned_value, "\\", "/")
             delete(cleaned_value)
 
             if !was_alloc {
@@ -2982,7 +2982,7 @@ any_glob_match_abs_or_rel :: proc(base_file_name: string, list: []string, value:
 
             // since filepath is used, windows requires backslashes
             when ODIN_OS == .Windows {
-                new_sep_value, was_alloc := strings.replace_all(cleaned_value, "\\", "/")
+                new_sep_value, was_alloc = strings.replace_all(cleaned_value, "\\", "/")
                 delete(cleaned_value)
 
                 if !was_alloc {

@@ -1,5 +1,3 @@
-#+feature global-context
-// TODO: remove global-context, put global proc calls into init procedure
 /*
 This file is part of runic.
 
@@ -30,13 +28,22 @@ Error :: Maybe(string)
 
 @(private)
 error_arena: runtime.Arena
-@(private)
-error_arena_err := runtime.arena_init(
-    &error_arena,
-    0,
-    runtime.default_allocator(),
-)
-error_allocator := runtime.arena_allocator(&error_arena)
+
+error_allocator: runtime.Allocator
+
+init :: proc(backing_allocator := context.allocator) {
+    error_arena_err := runtime.arena_init(&error_arena, 0, backing_allocator)
+    if error_arena_err != .None {
+        fmt.eprintfln("failed to initialize error arena: {}", error_arena_err)
+        return
+    }
+
+    error_allocator = runtime.arena_allocator(&error_arena)
+}
+
+destroy :: proc() {
+    runtime.arena_destroy(&error_arena)
+}
 
 message :: proc(
     fmt_str: string,
@@ -44,6 +51,10 @@ message :: proc(
     allocator := error_allocator,
     loc := #caller_location,
 ) -> string {
+    if error_allocator.procedure == nil {
+        init()
+    }
+
     when ODIN_DEBUG {
         return fmt.aprintf(
             "{} at {}:{}:{}",
@@ -62,6 +73,10 @@ empty :: proc(
     allocator := error_allocator,
     loc := #caller_location,
 ) -> string {
+    if error_allocator.procedure == nil {
+        init()
+    }
+
     return fmt.aprintf("error at {}", loc, allocator = allocator)
 }
 

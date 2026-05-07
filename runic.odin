@@ -41,8 +41,10 @@ main :: proc() {
         context.allocator = tracker_allocator
     }
 
+    errors.init()
+
     defer free_all(context.temp_allocator)
-    defer free_all(errors.error_allocator)
+    defer errors.destroy()
 
     args: struct {
         version:

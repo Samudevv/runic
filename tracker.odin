@@ -185,7 +185,12 @@ short_path :: proc(file_path: string) -> string {
                 append(&elements, "core:")
                 break
             }
-            dir = dir[:len(dir) - 1]
+
+            if len(dir) != 0 {
+                dir = dir[:len(dir) - 1]
+            } else {
+                break
+            }
         }
 
         rel_str: strings.Builder

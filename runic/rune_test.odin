@@ -384,39 +384,51 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
     cwd, _ := os.get_working_directory(context.allocator)
     defer delete(cwd)
 
-    {
-        rune_file_name, _ := filepath.join({cwd, "test_data", "rune.yml"}, context.allocator)
-        defer delete(rune_file_name)
+    rune_file_name, _ := filepath.join({cwd, "test_data", "rune.yml"}, context.allocator)
+    defer delete(rune_file_name)
 
+    value: string = ---
+    result: bool = ---
+
+    when ODIN_OS != .Windows {
         externs := []string{
             "/tmp/banana/stddef.h",
             "../test_data/alpro.h",
             "now.h",
         }
 
-        value: string = ---
-        result: bool = ---
+        value, _ = filepath.rel(os.dir(rune_file_name), "/tmp/banana/stddef.h")
 
-        when ODIN_OS != .Windows {
-            value, _ = filepath.rel(os.dir(rune_file_name), "/tmp/banana/stddef.h")
+        result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
+        delete(value)
 
-            result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
-            delete(value)
-
-            testing.expect_value(t, result, true)
+        testing.expect_value(t, result, true)
+    } else {
+        externs := []string{
+            "C:/temp/banana/stddef.h",
+            "../test_data/alpro.h",
+            "now.h",
         }
 
-        value = "alpro.h"
-        result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
-        testing.expect_value(t, result, true)
+        rel_value, _ := filepath.rel(os.dir(rune_file_name), "C:\\temp\\banana\\stddef.h")
+        value, _ = filepath.replace_separators(rel_value, '/')
+        delete(rel_value)
 
-        value = "banana.h"
         result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
-        testing.expect_value(t, result, false)
+        delete(value)
 
-        value = "../test_data/now.h"
-        result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
         testing.expect_value(t, result, true)
     }
 
+    value = "alpro.h"
+    result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
+    testing.expect_value(t, result, true)
+
+    value = "banana.h"
+    result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
+    testing.expect_value(t, result, false)
+
+    value = "../test_data/now.h"
+    result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
+    testing.expect_value(t, result, true)
 }

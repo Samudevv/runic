@@ -2915,13 +2915,41 @@ any_glob_match_abs_or_rel :: proc(base_file_name: string, list: []string, value:
     check_value_needs_free := false
     defer if check_value_needs_free do delete(check_value)
 
+    base_dir := slashpath.dir(base_file_name)
+    defer delete(base_dir)
+
     if !slashpath.is_abs(check_value) {
-        joined_value, joined_value_err := filepath.join({os.dir(base_file_name), check_value}, context.allocator)
-        if joined_value_err != .None do return false
+        joined_value  := slashpath.join({base_dir, check_value})
+
+        // since filepath is used, windows requires backslashes
+        when ODIN_OS == .Windows {
+            new_sep_value, was_alloc := strings.replace_all(joined_value, "/", "\\")
+            delete(joined_value)
+
+            if !was_alloc {
+                // Make sure that it can be deleted
+                new_sep_value = strings.clone(new_sep_value)
+            }
+
+            joined_value = new_sep_value
+        }
 
         cleaned_value, cleaned_value_err := filepath.clean(joined_value, context.allocator)
         delete(joined_value)
         if cleaned_value_err != .None do return false
+
+        // since filepath is used, windows requires backslashes
+        when ODIN_OS == .Windows {
+            new_sep_value, was_alloc := strings.replace_all(cleaned_value, "\\", "/")
+            delete(cleaned_value)
+
+            if !was_alloc {
+                // Make sure that it can be deleted
+                new_sep_value = strings.clone(new_sep_value)
+            }
+
+            cleaned_value = new_sep_value
+        }
 
         check_value = cleaned_value
         check_value_needs_free = true
@@ -2933,12 +2961,37 @@ any_glob_match_abs_or_rel :: proc(base_file_name: string, list: []string, value:
         defer if check_p_needs_free do delete(check_p)
 
         if !slashpath.is_abs(check_p) {
-            joined_value, joined_value_err := filepath.join({os.dir(base_file_name), check_p}, context.allocator)
-            if joined_value_err != .None do return false
+            joined_value := slashpath.join({base_dir, check_p})
+
+            // since filepath is used, windows requires backslashes
+            when ODIN_OS == .Windows {
+                new_sep_value, was_alloc := strings.replace_all(joined_value, "/", "\\")
+                delete(joined_value)
+
+                if !was_alloc {
+                    // Make sure that it can be deleted
+                    new_sep_value = strings.clone(new_sep_value)
+                }
+
+                joined_value = new_sep_value
+            }
 
             cleaned_value, cleaned_value_err := filepath.clean(joined_value, context.allocator)
             delete(joined_value)
             if cleaned_value_err != .None do return false
+
+            // since filepath is used, windows requires backslashes
+            when ODIN_OS == .Windows {
+                new_sep_value, was_alloc := strings.replace_all(cleaned_value, "\\", "/")
+                delete(cleaned_value)
+
+                if !was_alloc {
+                    // Make sure that it can be deleted
+                    new_sep_value = strings.clone(new_sep_value)
+                }
+
+                cleaned_value = new_sep_value
+            }
 
             check_p = cleaned_value
             check_p_needs_free = true

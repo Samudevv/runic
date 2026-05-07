@@ -678,8 +678,7 @@ parse_cursor_not_from_main :: proc(cursor: clang.Cursor) -> bool {
 
     load_as_main :=
         (file_name == ctx.main_file_name) ||
-        (ctx.load_all_includes &&
-                !runic.single_list_glob(ctx.extern, file_name))
+        (ctx.load_all_includes && !runic.any_glob_match_abs_or_rel(ctx.rune_file_name, ctx.extern, file_name))
     if load_as_main do return true
 
     #partial switch cursor_kind {

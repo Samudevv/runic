@@ -2908,6 +2908,53 @@ single_list_glob :: proc(list: []string, value: string) -> bool {
     return false
 }
 
+// Returns whether any of the list elements matches value (if value or a list element is relative,
+// it will be made absolute by assuming that it is relative to the directory of base_file_name
+any_glob_match_abs_or_rel :: proc(base_file_name: string, list: []string, value: string) -> bool {
+    // TODO: ignore windows for now
+    // TODO: windows '\' must be respected
+
+    check_value := value
+    check_value_needs_free := false
+    defer if check_value_needs_free do delete(check_value)
+
+    if !slashpath.is_abs(check_value) {
+        joined_value, joined_value_err := filepath.join({os.dir(base_file_name), check_value}, context.allocator)
+        if joined_value_err != .None do return false
+
+        cleaned_value, cleaned_value_err := filepath.clean(joined_value, context.allocator)
+        delete(joined_value)
+        if cleaned_value_err != .None do return false
+
+        check_value = cleaned_value
+        check_value_needs_free = true
+    }
+
+    for p in list {
+        check_p := p
+        check_p_needs_free := false
+        defer if check_p_needs_free do delete(check_p)
+
+        if !slashpath.is_abs(check_p) {
+            joined_value, joined_value_err := filepath.join({os.dir(base_file_name), check_p}, context.allocator)
+            if joined_value_err != .None do return false
+
+            cleaned_value, cleaned_value_err := filepath.clean(joined_value, context.allocator)
+            delete(joined_value)
+            if cleaned_value_err != .None do return false
+
+            check_p = cleaned_value
+            check_p_needs_free = true
+        }
+
+        ok, _ := slashpath.match(check_p, check_value)
+        if ok do return true
+    }
+
+
+    return false
+}
+
 map_glob :: proc(m: $M/map[$K]$V, v: K) -> (match: V, ok: bool) #optional_ok {
     for pattern, potential_match in m {
         if matched, _ := slashpath.match(pattern, v); matched {

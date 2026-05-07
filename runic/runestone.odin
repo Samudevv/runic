@@ -1,4 +1,3 @@
-#+feature using-stmt
 /*
 This file is part of runic.
 
@@ -49,8 +48,6 @@ parse_runestone :: proc(
 
     ini_file := ini.parse(in_stm, file_path) or_return
 
-    using rs
-
     global: {
         sect, ok := ini_file[""]
         errors.wrap(ok) or_return
@@ -59,13 +56,13 @@ parse_runestone :: proc(
         version_str, ok1 := om.get(sect, "version")
         errors.wrap(ok1) or_return
 
-        version, ok = strconv.parse_uint(version_str, 10)
+        rs.version, ok = strconv.parse_uint(version_str, 10)
         errors.wrap(ok) or_return
 
         os_str, ok2 := om.get(sect, "os")
         errors.wrap(ok2) or_return
 
-        switch platform.os {
+        switch rs.platform.os {
         case .Linux, .Windows, .Macos, .BSD, .Any:
         // Just a reminder to update this when platforms change
         }
@@ -89,7 +86,7 @@ parse_runestone :: proc(
         arch_str, ok3 := om.get(sect, "arch")
         errors.wrap(ok3) or_return
 
-        switch platform.arch {
+        switch rs.platform.arch {
         case .x86_64, .arm64, .Any, .x86, .arm32:
         // Just a reminder to update this when platforms change
         }
@@ -154,11 +151,11 @@ parse_runestone :: proc(
             case "func":
                 func := parse_func(def) or_return
 
-                om.insert(&symbols, symbol_name, Symbol{value = func})
+                om.insert(&rs.symbols, symbol_name, Symbol{value = func})
             case "var":
                 var := parse_type(def) or_return
 
-                om.insert(&symbols, symbol_name, Symbol{value = var})
+                om.insert(&rs.symbols, symbol_name, Symbol{value = var})
             case:
                 err = errors.message("invalid symbol type {}", symbol_type)
                 return
@@ -173,13 +170,13 @@ parse_runestone :: proc(
 
         for value in sect.data {
             remap_name, symbol_name := value.key, value.value
-            symbol, sym_ok := om.get(symbols, symbol_name)
+            symbol, sym_ok := om.get(rs.symbols, symbol_name)
             errors.wrap(sym_ok) or_return
 
             if symbol.remap != nil do return rs, errors.message("remap has already been set for {}", symbol_name)
 
             symbol.remap = symbol_name
-            om.replace(&symbols, symbol_name, remap_name, symbol)
+            om.replace(&rs.symbols, symbol_name, remap_name, symbol)
         }
     }
 
@@ -190,11 +187,11 @@ parse_runestone :: proc(
 
         for value in sect.data {
             alias_name, symbol_name := value.key, value.value
-            symbol, sym_ok := om.get(symbols, symbol_name)
+            symbol, sym_ok := om.get(rs.symbols, symbol_name)
             errors.wrap(sym_ok) or_return
 
             append(&symbol.aliases, alias_name)
-            om.insert(&symbols, symbol_name, symbol)
+            om.insert(&rs.symbols, symbol_name, symbol)
         }
     }
 
@@ -257,7 +254,7 @@ parse_runestone :: proc(
             method_caller = arr[0]
             method_name = arr[1]
 
-            symbol, sym_ok := om.get(symbols, symbol_name)
+            symbol, sym_ok := om.get(rs.symbols, symbol_name)
             errors.wrap(sym_ok) or_return
 
             func, ok1 := symbol.value.(Function)
@@ -271,7 +268,7 @@ parse_runestone :: proc(
             }
 
             symbol.value = func
-            om.insert(&symbols, symbol_name, symbol)
+            om.insert(&rs.symbols, symbol_name, symbol)
         }
     }
 

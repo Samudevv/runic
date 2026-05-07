@@ -1,5 +1,4 @@
 #+ feature dynamic-literals
-#+ feature using-stmt
 /*
 This file is part of runic.
 
@@ -91,87 +90,85 @@ test_example_runestone :: proc(t: ^testing.T) {
     defer runestone_destroy(&rs)
     if !testing.expect_value(t, err, nil) do return
 
-    using rs
+    testing.expect_value(t, rs.version, 0)
 
-    testing.expect_value(t, version, 0)
+    testing.expect_value(t, rs.platform.os, OS.Linux)
+    testing.expect_value(t, rs.platform.arch, Architecture.x86_64)
 
-    testing.expect_value(t, platform.os, OS.Linux)
-    testing.expect_value(t, platform.arch, Architecture.x86_64)
+    testing.expect_value(t, rs.lib.shared.?, "libfoo.so")
+    testing.expect_value(t, rs.lib.static.?, "libfoo.a")
 
-    testing.expect_value(t, lib.shared.?, "libfoo.so")
-    testing.expect_value(t, lib.static.?, "libfoo.a")
-
-    testing.expect_value(t, om.length(symbols), 7)
+    testing.expect_value(t, om.length(rs.symbols), 7)
     testing.expect_value(
         t,
-        om.get(symbols, "foo").value.(Function).return_type.spec.(Builtin),
+        om.get(rs.symbols, "foo").value.(Function).return_type.spec.(Builtin),
         Builtin.Untyped,
     )
-    testing.expect_value(t, len(om.get(symbols, "foo").value.(Function).parameters), 2)
+    testing.expect_value(t, len(om.get(rs.symbols, "foo").value.(Function).parameters), 2)
     testing.expect_value(
         t,
-        om.get(symbols, "foo").value.(Function).parameters[0].name,
+        om.get(rs.symbols, "foo").value.(Function).parameters[0].name,
         "a",
     )
     testing.expect_value(
         t,
-        om.get(symbols, "foo").value.(Function).parameters[1].name,
+        om.get(rs.symbols, "foo").value.(Function).parameters[1].name,
         "b",
     )
-    testing.expect_value(t, om.get(symbols, "foo").aliases[0], "oof")
-    testing.expect_value(t, om.get(symbols, "foo").remap, "foo1234")
-    testing.expect_value(t, om.get(symbols, "foo_var").remap, "foo_varZZXX6")
+    testing.expect_value(t, om.get(rs.symbols, "foo").aliases[0], "oof")
+    testing.expect_value(t, om.get(rs.symbols, "foo").remap, "foo1234")
+    testing.expect_value(t, om.get(rs.symbols, "foo_var").remap, "foo_varZZXX6")
     testing.expect_value(
         t,
-        om.get(symbols, "funcy").value.(Function).return_type.spec.(Builtin),
+        om.get(rs.symbols, "funcy").value.(Function).return_type.spec.(Builtin),
         Builtin.RawPtr,
     )
     testing.expect_value(
         t,
-        len(om.get(symbols, "funcy").value.(Function).parameters),
+        len(om.get(rs.symbols, "funcy").value.(Function).parameters),
         0,
     )
     testing.expect_value(
         t,
-        om.get(symbols, "output_print_name").value.(Function).method_info.?.type,
+        om.get(rs.symbols, "output_print_name").value.(Function).method_info.?.type,
         "output",
     )
     testing.expect_value(
         t,
-        om.get(symbols, "output_print_name").value.(Function).method_info.?.name,
+        om.get(rs.symbols, "output_print_name").value.(Function).method_info.?.name,
         "print_name",
     )
     testing.expect_value(
         t,
-        om.get(symbols, "idx").value.(Type).spec.(Builtin),
+        om.get(rs.symbols, "idx").value.(Type).spec.(Builtin),
         Builtin.UInt64,
     )
     testing.expect_value(
         t,
-        om.get(symbols, "counter").value.(Type).spec.(Builtin),
+        om.get(rs.symbols, "counter").value.(Type).spec.(Builtin),
         Builtin.UInt8,
     )
 
-    testing.expect_value(t, om.length(types), 14)
-    testing.expect_value(t, om.get(types, "super_ptr").pointer_info.count, 1)
-    testing.expect_value(t, len(om.get(types, "numbers").array_info), 1)
-    testing.expect_value(t, om.get(types, "numbers").array_info[0].size.(u64), 5)
+    testing.expect_value(t, om.length(rs.types), 14)
+    testing.expect_value(t, om.get(rs.types, "super_ptr").pointer_info.count, 1)
+    testing.expect_value(t, len(om.get(rs.types, "numbers").array_info), 1)
+    testing.expect_value(t, om.get(rs.types, "numbers").array_info[0].size.(u64), 5)
     testing.expect_value(
         t,
-        om.get(types, "times").array_info[0].size.(string),
+        om.get(rs.types, "times").array_info[0].size.(string),
         "5*6/3*(8%9)",
     )
-    testing.expect_value(t, om.get(types, "transform").array_info[0].size.(u64), 4)
-    testing.expect_value(t, om.get(types, "transform").array_info[1].size.(u64), 4)
-    testing.expect_value(t, om.get(types, "Events").spec.(ExternType), "SDL_Event")
-    testing.expect_value(t, om.get(types, "DynInt").spec.(Builtin), Builtin.SIntX)
-    testing.expect_value(t, om.get(types, "DynUInt").spec.(Builtin), Builtin.UIntX)
+    testing.expect_value(t, om.get(rs.types, "transform").array_info[0].size.(u64), 4)
+    testing.expect_value(t, om.get(rs.types, "transform").array_info[1].size.(u64), 4)
+    testing.expect_value(t, om.get(rs.types, "Events").spec.(ExternType), "SDL_Event")
+    testing.expect_value(t, om.get(rs.types, "DynInt").spec.(Builtin), Builtin.SIntX)
+    testing.expect_value(t, om.get(rs.types, "DynUInt").spec.(Builtin), Builtin.UIntX)
 
-    testing.expect_value(t, om.length(externs), 1)
-    testing.expect_value(t, om.get(externs, "SDL_Event").source, "SDL2/SDL_Event.h")
+    testing.expect_value(t, om.length(rs.externs), 1)
+    testing.expect_value(t, om.get(rs.externs, "SDL_Event").source, "SDL2/SDL_Event.h")
     testing.expect_value(
         t,
-        om.get(externs, "SDL_Event").type.spec.(Struct).members[0].name,
+        om.get(rs.externs, "SDL_Event").type.spec.(Struct).members[0].name,
         "key",
     )
 
@@ -190,15 +187,15 @@ test_example_runestone :: proc(t: ^testing.T) {
     )
     if !testing.expect_value(t, io_err, io.Error.None) do return
 
-    if !testing.expect_value(t, om.length(constants), 4) do return
-    testing.expect_value(t, om.get(constants, "ARR_SIZE").value.(i64), 5)
-    testing.expect_value(t, om.get(constants, "ARR_CAP").value.(i64), 20)
+    if !testing.expect_value(t, om.length(rs.constants), 4) do return
+    testing.expect_value(t, om.get(rs.constants, "ARR_SIZE").value.(i64), 5)
+    testing.expect_value(t, om.get(rs.constants, "ARR_CAP").value.(i64), 20)
     testing.expect_value(
         t,
-        om.get(constants, "APP_NAME").value.(string),
+        om.get(rs.constants, "APP_NAME").value.(string),
         "Hello World",
     )
-    testing.expect_value(t, om.get(constants, "LENGTH").value.(f64), 267.345)
+    testing.expect_value(t, om.get(rs.constants, "LENGTH").value.(f64), 267.345)
 }
 
 @(test)

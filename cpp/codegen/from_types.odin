@@ -466,20 +466,25 @@ enum_to_type :: proc(
             cursor, parent: clang.Cursor,
             client_data: clang.ClientData,
         ) -> clang.ChildVisitResult {
-            display_name_clang := clang.getCursorDisplayName(cursor)
-            defer clang.disposeString(display_name_clang)
+            e := cast(^runic.Enum)client_data
+            context = runtime.default_context()
 
             // Not all children of an enum declaration are enum values
-            if clang.getCString(display_name_clang) == "" {
+            if cursor.kind != .EnumConstantDecl {
                 // Ignore them
                 return .Continue
             }
 
-            e := cast(^runic.Enum)client_data
-            context = runtime.default_context()
+            display_name_clang := clang.getCursorDisplayName(cursor)
+            defer clang.disposeString(display_name_clang)
+            display_name := clang_str(display_name_clang)
+
             rs_arena_alloc := e.entries.allocator
 
-            display_name := clang_str(display_name_clang)
+            // just a safety check
+            if len(display_name) == 0 {
+                return .Continue
+            }
 
             value := clang.getEnumConstantDeclValue(cursor)
 

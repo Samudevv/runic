@@ -7,12 +7,22 @@ import (
 	"github.com/ebitengine/purego"
 )
 
+type my_size_type uint64
+type Window struct {
+	name string
+	width uint32
+	height uint32
+}
+type Array struct {
+	len my_size_type
+	cap my_size_type
+	els uint32
+}
+
 var (
-	ErrNoLibraryForPlatform = errors.New("Current platform does not have a library")
-
-	runicForeignLibrary uintptr
-
-	Puts func(string)
+	create_window func(name string, width uint32, height uint32) Window
+	create_array func(size my_size_type) Array
+	linux_globals Array
 )
 
 func LoadForeignLibrary() error {
@@ -55,9 +65,23 @@ func UnloadForeignLibrary() error {
 	return purego.Dlclose(runicForeignLibrary)
 }
 
+
+
+/**************************************************************/
+/* Internal functions                                         */
+/**************************************************************/
+
+var (
+	ErrNoLibraryForPlatform = errors.New("Current platform does not have a library")
+
+	runicForeignLibrary uintptr
+)
+
 func runicRegisterSymbols() error {
 	runicSymbols := [][2]any{
-		{&Puts, "puts"},
+		{&create_window, "create_window"},
+		{&create_array, "create_array"},
+		{&linux_globals, "linux_globals"},
 	}
 
 	for _, runicEntry := range runicSymbols {
@@ -71,10 +95,4 @@ func runicRegisterSymbols() error {
 	return nil
 }
 
-func main() {
-	if err := LoadForeignLibrary(); err != nil {
-		panic(err)
-	}
 
-	Puts("Calling C from Go without Cgo!")
-}

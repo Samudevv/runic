@@ -7,11 +7,9 @@ import (
 	"github.com/ebitengine/purego"
 )
 
+type LibCType int
+
 var (
-	ErrNoLibraryForPlatform = errors.New("Current platform does not have a library")
-
-	runicForeignLibrary uintptr
-
 	Puts func(string)
 )
 
@@ -54,6 +52,18 @@ func LoadForeignLibrary() error {
 func UnloadForeignLibrary() error {
 	return purego.Dlclose(runicForeignLibrary)
 }
+
+
+
+/**************************************************************/
+/* Internal functions                                         */
+/**************************************************************/
+
+var (
+	ErrNoLibraryForPlatform = errors.New("Current platform does not have a library")
+
+	runicForeignLibrary uintptr
+)
 
 func runicRegisterSymbols() error {
 	runicSymbols := [][2]any{

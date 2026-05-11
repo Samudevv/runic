@@ -45,6 +45,14 @@ generate_bindings_from_runecross :: proc(
 
     file_contents = purego_generate_package_name(file_contents, rn)
     file_contents = purego_generate_platforms_and_libraries(file_contents, rc, rn)
+
+    for rs in rc.cross {
+        file_contents = purego_generate_types(file_contents, rs, rn)
+        file_contents = purego_generate_symbol_declarations(file_contents, rs, rn)
+        file_contents = purego_generate_symbol_registrations(file_contents, rs, rn)
+    }
+
+	file_contents = purego_clean_template(file_contents)
     
     io.write_string(wd, file_contents) or_return
 

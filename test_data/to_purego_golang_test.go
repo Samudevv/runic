@@ -3,26 +3,28 @@ package greatwave
 import (
 	"errors"
 	"runtime"
+	"unsafe"
 
 	"github.com/ebitengine/purego"
 )
 
-type my_size_type uint64
+type MySizeType uint64
 type Window struct {
-	name string
-	width uint32
-	height uint32
+	Name RunicString
+	Width uint32
+	Height uint32
 }
 type Array struct {
-	len my_size_type
-	cap my_size_type
-	els uint32
+	Len MySizeType
+	Cap MySizeType
+	Els *uint32
 }
 
 var (
-	create_window func(name string, width uint32, height uint32) Window
-	create_array func(size my_size_type) Array
-	linux_globals Array
+	CreateWindow func(name string, width uint32, height uint32) *Window
+	CreateArray func(size MySizeType) Array
+	ArrayAppend func(arr *Array, value uint32) Array
+	LinuxGlobals Array
 )
 
 func LoadForeignLibrary() error {
@@ -65,11 +67,11 @@ func UnloadForeignLibrary() error {
 	return purego.Dlclose(runicForeignLibrary)
 }
 
-
-
 /**************************************************************/
 /* Internal functions                                         */
 /**************************************************************/
+
+type RunicString *uint8
 
 var (
 	ErrNoLibraryForPlatform = errors.New("Current platform does not have a library")
@@ -79,9 +81,10 @@ var (
 
 func runicRegisterSymbols() error {
 	runicSymbols := [][2]any{
-		{&create_window, "create_window"},
-		{&create_array, "create_array"},
-		{&linux_globals, "linux_globals"},
+		{&CreateWindow, "create_window"},
+		{&CreateArray, "create_array"},
+		{&ArrayAppend, "array_append"},
+
 	}
 
 	for _, runicEntry := range runicSymbols {
@@ -93,6 +96,47 @@ func runicRegisterSymbols() error {
 	}
 
 	return nil
+}
+
+func GoString(str RunicString) string {
+	if str == nil {
+		return ""
+	}
+
+	var strLen int
+	ptr := uintptr(unsafe.Pointer(str))
+	for {
+		c := *(*uint8)(unsafe.Pointer(ptr))
+		if c == 0 {
+			break
+		}
+
+		strLen += 1
+		ptr += unsafe.Sizeof(*str)
+	}
+
+	slc := unsafe.Slice(str, strLen)
+	return string(slc)
+}
+
+func ConstGoString(str RunicString) string {
+	if str == nil {
+		return ""
+	}
+
+	var strLen int
+	ptr := uintptr(unsafe.Pointer(str))
+	for {
+		c := *(*uint8)(unsafe.Pointer(ptr))
+		if c == 0 {
+			break
+		}
+
+		strLen += 1
+		ptr += unsafe.Sizeof(*str)
+	}
+
+	return unsafe.String((*byte)(unsafe.Pointer(str)), strLen)
 }
 
 

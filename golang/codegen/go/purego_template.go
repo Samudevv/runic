@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"runtime"
+	"unsafe"
 
 	"github.com/ebitengine/purego"
 )
@@ -53,11 +54,11 @@ func UnloadForeignLibrary() error {
 	return purego.Dlclose(runicForeignLibrary)
 }
 
-
-
 /**************************************************************/
 /* Internal functions                                         */
 /**************************************************************/
+
+type RunicString *uint8
 
 var (
 	ErrNoLibraryForPlatform = errors.New("Current platform does not have a library")
@@ -79,6 +80,47 @@ func runicRegisterSymbols() error {
 	}
 
 	return nil
+}
+
+func GoString(str RunicString) string {
+	if str == nil {
+		return ""
+	}
+
+	var strLen int
+	ptr := uintptr(unsafe.Pointer(str))
+	for {
+		c := *(*uint8)(unsafe.Pointer(ptr))
+		if c == 0 {
+			break
+		}
+
+		strLen += 1
+		ptr += unsafe.Sizeof(*str)
+	}
+
+	slc := unsafe.Slice(str, strLen)
+	return string(slc)
+}
+
+func ConstGoString(str RunicString) string {
+	if str == nil {
+		return ""
+	}
+
+	var strLen int
+	ptr := uintptr(unsafe.Pointer(str))
+	for {
+		c := *(*uint8)(unsafe.Pointer(ptr))
+		if c == 0 {
+			break
+		}
+
+		strLen += 1
+		ptr += unsafe.Sizeof(*str)
+	}
+
+	return unsafe.String((*byte)(unsafe.Pointer(str)), strLen)
 }
 
 func main() {

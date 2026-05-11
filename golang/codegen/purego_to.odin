@@ -108,8 +108,12 @@ purego_generate_symbol_declarations :: proc(buffer: string, rs: runic.Runestone,
     for entry, idx in rs.symbols.data {
         sym_name, sym := entry.key, entry.value
 
+        upper_sym_name, upper_sym_name_err := strings.to_pascal_case(sym_name)
+        if upper_sym_name_err != .None do continue
+        defer delete(upper_sym_name)
+
         strings.write_rune(&buf, '\t')
-        strings.write_string(&buf, sym_name)
+        strings.write_string(&buf, upper_sym_name)
         strings.write_rune(&buf, ' ')
         purego_write_symbol(&buf, sym, rn)
 
@@ -128,17 +132,39 @@ purego_generate_symbol_declarations :: proc(buffer: string, rs: runic.Runestone,
 purego_write_symbol :: proc(buf: ^strings.Builder, sym: runic.Symbol, rn: runic.To) {
     switch val in sym.value {
     case runic.Type:
-        purego_write_type(buf, val, rn)
+        purego_write_type(buf, val, rn, false)
     case runic.Function:
         purego_write_function(buf, val, rn)
     }
 }
 
 @(private)
-purego_write_type :: proc(buf: ^strings.Builder, typ: runic.Type, rn: runic.To) {
+purego_write_type :: proc(buf: ^strings.Builder, typ: runic.Type, rn: runic.To, is_struct_member: bool) {
     // TODO: handle pointer and array
+    for i := uint(0); i < typ.pointer_info.count; i+=1 {
+        strings.write_rune(buf, '*')
+    }
 
-    purego_write_typespecifier(buf, typ.spec, rn)
+    for arr in typ.array_info {
+        strings.write_rune(buf, '[')
+
+        switch size in arr.size {
+        case u64:
+            strings.write_u64(buf, size, 10)
+        case string:
+            strings.write_string(buf, size)
+        case:
+            // nil
+        }
+
+        strings.write_rune(buf, ']')
+
+        for i := uint(0); i < arr.pointer_info.count; i+=1 {
+            strings.write_rune(buf, '*')
+        }
+    }
+
+    purego_write_typespecifier(buf, typ.spec, rn, is_struct_member)
 }
 
 @(private)
@@ -148,7 +174,7 @@ purego_write_function :: proc(buf: ^strings.Builder, func: runic.Function, rn: r
     for param, idx in func.parameters {
         strings.write_string(buf, param.name)
         strings.write_rune(buf, ' ')
-        purego_write_type(buf, param.type, rn)
+        purego_write_type(buf, param.type, rn, false)
 
         if idx != len(func.parameters) - 1 {
             strings.write_string(buf, ", ")
@@ -164,11 +190,11 @@ purego_write_function :: proc(buf: ^strings.Builder, func: runic.Function, rn: r
     }
 
     strings.write_rune(buf, ' ')
-    purego_write_type(buf, func.return_type, rn)
+    purego_write_type(buf, func.return_type, rn, false)
 }
 
 @(private)
-purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecifier, rn: runic.To) {
+purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecifier, rn: runic.To, is_struct_member: bool) {
     switch s in spec {
     case runic.Builtin:
         switch s {
@@ -207,7 +233,11 @@ purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecif
         case .Float128:
             strings.write_string(buf, "float128")
         case .String:
-            strings.write_string(buf, "string")
+            if is_struct_member {
+                strings.write_string(buf, "RunicString")
+            } else {
+                strings.write_string(buf, "string")
+            }
         case .Bool8:
             strings.write_string(buf, "bool8")
         case .Bool16:
@@ -223,26 +253,39 @@ purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecif
         strings.write_string(buf, "struct {\n")
         for member in s.members {
             strings.write_rune(buf, '\t')
-            strings.write_string(buf, member.name)
+
+            upper_member_name, upper_member_name_err := strings.to_pascal_case(member.name)
+            if upper_member_name_err != .None {
+                upper_member_name = strings.clone(member.name)
+            }
+            defer delete(upper_member_name)
+
+            strings.write_string(buf, upper_member_name)
             strings.write_rune(buf, ' ')
-            purego_write_type(buf, member.type, rn)
+            purego_write_type(buf, member.type, rn, true)
             strings.write_rune(buf, '\n')
         }
         strings.write_string(buf, "}")
     case runic.Enum:
-        purego_write_typespecifier(buf, s.type, rn)
+        purego_write_typespecifier(buf, s.type, rn, false)
     case runic.Union:
         strings.write_string(buf, "union {\n")
         for member in s.members {
             strings.write_rune(buf, '\t')
             strings.write_string(buf, member.name)
             strings.write_rune(buf, ' ')
-            purego_write_type(buf, member.type, rn)
+            purego_write_type(buf, member.type, rn, true)
             strings.write_rune(buf, '\n')
         }
         strings.write_string(buf, "}")
     case string:
-        strings.write_string(buf, s)
+        upper_case_name, err := strings.to_pascal_case(s)
+        if err != .None {
+            upper_case_name = strings.clone(s)
+        }
+        defer delete(upper_case_name)
+
+        strings.write_string(buf, upper_case_name)
     case runic.Unknown:
         strings.write_string(buf, "unknown")
     case runic.FunctionPointer:
@@ -262,10 +305,14 @@ purego_generate_types :: proc(buffer: string, rs: runic.Runestone, rn: runic.To)
     for entry, idx in rs.types.data {
         typ_name, typ := entry.key, entry.value
 
+        upper_case_type_name, pascal_err := strings.to_pascal_case(typ_name)
+        if pascal_err != .None do continue
+        defer delete(upper_case_type_name)
+
         strings.write_string(&buf, "type ")
-        strings.write_string(&buf, typ_name)
+        strings.write_string(&buf, upper_case_type_name)
         strings.write_rune(&buf, ' ')
-        purego_write_type(&buf, typ, rn)
+        purego_write_type(&buf, typ, rn, false)
 
         if idx != om.length(rs.types) - 1 {
             strings.write_rune(&buf, '\n')
@@ -285,10 +332,15 @@ purego_generate_symbol_registrations :: proc(buffer: string, rs: runic.Runestone
     defer strings.builder_destroy(&buf)
 
     for entry, idx in rs.symbols.data {
-        sym_name := entry.key
+        sym_name, sym := entry.key, entry.value
+        if _, is_type := sym.value.(runic.Type); is_type do continue
+
+        upper_sym_name, upper_sym_name_err := strings.to_pascal_case(sym_name)
+        if upper_sym_name_err != .None do continue
+        defer delete(upper_sym_name)
 
         strings.write_string(&buf, "\t\t{&")
-        strings.write_string(&buf, sym_name)
+        strings.write_string(&buf, upper_sym_name)
         strings.write_string(&buf, ", \"")
         strings.write_string(&buf, sym_name)
         strings.write_string(&buf, "\"},")

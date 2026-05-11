@@ -50,6 +50,8 @@ Array = #Struct len my_size_type cap my_size_type els #UInt32 #Attr Ptr 1 #AttrE
 [symbols]
 func.create_window = Window #Attr Ptr 1 #AttrEnd name #String width #UInt32 height #UInt32
 func.create_array = Array size my_size_type
+func.array_append = Array arr Array #Attr Ptr 1 #AttrEnd value #UInt32
+
 var.linux_globals = Array
 
 `

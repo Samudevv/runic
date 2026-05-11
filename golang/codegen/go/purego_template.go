@@ -1,4 +1,4 @@
-package greatwave
+package main
 
 import (
 	"errors"
@@ -17,7 +17,7 @@ var (
 
 func LoadForeignLibrary() error {
 	var runicLibraries = map[[2]string]string{
-		{"any", "any"}: "libfoo.so",
+		{"linux", "amd64"}: "libc.so.6",
 	}
 
 	runicRuntimePlatform := [2]string{runtime.GOOS, runtime.GOARCH}

@@ -36,6 +36,7 @@ arch = x86_64
 
 [lib]
 static = libfoo.a
+shared = libfoo.so
 
 [constants]
 MAX_ARRAY_SIZE = 4096 #Untyped

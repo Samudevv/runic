@@ -32,3 +32,6 @@ build/
 ols.json
 examples/olivec/olivec/
 examples/glew/gl/
+go.mod
+go.sum
+purego_template

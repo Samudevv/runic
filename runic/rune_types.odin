@@ -77,6 +77,8 @@ To :: struct {
     use_when_else:   bool,
     add_libs_shared: PlatformValue([]string),
     add_libs_static: PlatformValue([]string),
+    // Golang
+    purego: bool,
 }
 
 Wrapper :: struct {

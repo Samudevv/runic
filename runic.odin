@@ -28,6 +28,7 @@ import cppcdg "cpp/codegen"
 import cppwrap "cpp/wrapper"
 import "errors"
 import odincdg "odin/codegen"
+import golangcdg "golang/codegen"
 import "runic"
 
 DEFAULT_TO_FILE_NAME :: "runic.to"
@@ -348,6 +349,8 @@ main :: proc() {
             reserved_keywords = ccdg.C_RESERVED
         case "odin":
             reserved_keywords = odincdg.ODIN_RESERVED
+        case "go", "golang":
+            reserved_keywords = golangcdg.GO_RESERVED
         case:
             fmt.eprintfln("To Language \"{}\" is not supported", to.language)
             os.exit(1)
@@ -418,6 +421,14 @@ main :: proc() {
         case "c":
             err = errors.wrap(
                 ccdg.generate_bindings(
+                    runecross,
+                    to,
+                    os.to_stream(out_file),
+                ),
+            )
+        case "go", "golang":
+            err = errors.wrap(
+                golangcdg.generate_bindings(
                     runecross,
                     to,
                     os.to_stream(out_file),

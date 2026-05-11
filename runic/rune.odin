@@ -2430,6 +2430,8 @@ parse_rune :: proc(
 
                 t.add_libs_shared = make_platform_value([]string)
                 t.add_libs_static = make_platform_value([]string)
+
+                t.purego = true
             }
 
             for key, value in to {
@@ -2578,6 +2580,18 @@ parse_rune :: proc(
                     } else {
                         t.add_libs_static.d[plat] = arr[:]
                         t.add_libs_shared.d[plat] = arr[:]
+                    }
+                case "purego":
+                    #partial switch v in value {
+                    case bool:
+                        t.purego = v
+                    case:
+                        err = errors.message(
+                            "\"to.{}\" has invalid type: %T",
+                            key,
+                            v,
+                        )
+                        return
                     }
                 }
             }

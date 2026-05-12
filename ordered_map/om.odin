@@ -126,10 +126,7 @@ length :: #force_inline proc(m: OrderedMap($Key, $Value)) -> int {
     return len(m.data)
 }
 
-contains :: #force_inline proc(
-    m: OrderedMap($Key, $Value),
-    key: Key,
-) -> bool {
+contains :: #force_inline proc(m: OrderedMap($Key, $Value), key: Key) -> bool {
     return key in m.indices
 }
 
@@ -154,11 +151,7 @@ index :: #force_inline proc(
     return m.indices[key]
 }
 
-move :: #force_inline proc(
-    m: ^OrderedMap($Key, $Value),
-    key: Key,
-    dst: int,
-) {
+move :: #force_inline proc(m: ^OrderedMap($Key, $Value), key: Key, dst: int) {
     assert(dst >= 0 && dst < len(m.data))
 
     src, ok := m.indices[key]
@@ -186,4 +179,3 @@ move :: #force_inline proc(
     m.data[dst].value = tmp
     m.indices[key] = dst
 }
-

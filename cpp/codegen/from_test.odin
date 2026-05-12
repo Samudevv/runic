@@ -30,21 +30,37 @@ test_cpp_builtin :: proc(t: ^testing.T) {
 
     rab := om.get(rs.symbols, "rab")
     rab_type := rab.value.(runic.Type)
-    testing.expect_value(t, rab_type.spec.(runic.Builtin), runic.Builtin.SInt32)
+    testing.expect_value(
+        t,
+        rab_type.spec.(runic.Builtin),
+        runic.Builtin.SInt32,
+    )
     testing.expect_value(t, rab_type.pointer_info.count, 2)
 
     zab := om.get(rs.symbols, "zab")
     zab_type := zab.value.(runic.Type)
-    testing.expect_value(t, zab_type.spec.(runic.Builtin), runic.Builtin.SInt32)
+    testing.expect_value(
+        t,
+        zab_type.spec.(runic.Builtin),
+        runic.Builtin.SInt32,
+    )
     testing.expect_value(t, zab.value.(runic.Type).pointer_info.count, 1)
     testing.expect_value(t, zab.value.(runic.Type).array_info[0].size.(u64), 2)
 
     not_string := om.get(rs.types, "not_string")
-    testing.expect_value(t, not_string.spec.(runic.Builtin), runic.Builtin.SInt8)
+    testing.expect_value(
+        t,
+        not_string.spec.(runic.Builtin),
+        runic.Builtin.SInt8,
+    )
     testing.expect_value(t, not_string.pointer_info.count, 1)
 
     is_a_string := om.get(rs.types, "is_a_string")
-    testing.expect_value(t, is_a_string.spec.(runic.Builtin), runic.Builtin.String)
+    testing.expect_value(
+        t,
+        is_a_string.spec.(runic.Builtin),
+        runic.Builtin.String,
+    )
     testing.expect_value(t, is_a_string.pointer_info.count, 0)
 
     l := om.get(rs.types, "l")
@@ -55,7 +71,7 @@ test_cpp_builtin :: proc(t: ^testing.T) {
 
 @(test)
 test_cpp_pointer :: proc(t: ^testing.T) {
-    
+
 
     rf := runic.From {
         language = "c",
@@ -78,7 +94,11 @@ test_cpp_pointer :: proc(t: ^testing.T) {
     arr := om.get(rs.symbols, "arr")
     arr_type := arr.value.(runic.Type)
 
-    testing.expect_value(t, arr_type.spec.(runic.Builtin), runic.Builtin.String)
+    testing.expect_value(
+        t,
+        arr_type.spec.(runic.Builtin),
+        runic.Builtin.String,
+    )
     testing.expect_value(t, arr_type.read_only, true)
     testing.expect_value(t, arr_type.pointer_info.count, 1)
     testing.expect_value(t, arr_type.pointer_info.read_only, true)
@@ -86,7 +106,7 @@ test_cpp_pointer :: proc(t: ^testing.T) {
 
 @(test)
 test_cpp_array :: proc(t: ^testing.T) {
-    
+
 
     rf := runic.From {
         language = "c",
@@ -109,7 +129,11 @@ test_cpp_array :: proc(t: ^testing.T) {
     ptr := om.get(rs.symbols, "ptr")
     ptr_type := ptr.value.(runic.Type)
 
-    testing.expect_value(t, ptr_type.spec.(runic.Builtin), runic.Builtin.RawPtr)
+    testing.expect_value(
+        t,
+        ptr_type.spec.(runic.Builtin),
+        runic.Builtin.RawPtr,
+    )
     testing.expect_value(t, len(ptr_type.array_info), 1)
     testing.expect_value(t, ptr_type.array_info[0].size.(u64), 12)
 
@@ -124,7 +148,7 @@ test_cpp_array :: proc(t: ^testing.T) {
 
 @(test)
 test_cpp_struct :: proc(t: ^testing.T) {
-    
+
 
     rf := runic.From {
         language          = "c",
@@ -181,7 +205,11 @@ test_cpp_struct :: proc(t: ^testing.T) {
     testing.expect_value(t, x, "x_struct_anon_0")
 
     wl_output := om.get(rs.types, "wl_output")
-    testing.expect_value(t, wl_output.spec.(runic.Builtin), runic.Builtin.RawPtr)
+    testing.expect_value(
+        t,
+        wl_output.spec.(runic.Builtin),
+        runic.Builtin.RawPtr,
+    )
     testing.expect_value(
         t,
         om.get(rs.types, "mega_type").spec.(runic.Builtin),
@@ -197,7 +225,11 @@ test_cpp_struct :: proc(t: ^testing.T) {
         om.get(rs.types, "super_union").spec.(runic.Builtin),
         runic.Builtin.RawPtr,
     )
-    testing.expect_value(t, om.get(rs.types, "super_type").spec.(string), "mega_type")
+    testing.expect_value(
+        t,
+        om.get(rs.types, "super_type").spec.(string),
+        "mega_type",
+    )
     testing.expect_value(
         t,
         om.get(rs.types, "tippy_toes").spec.(runic.Struct).members[0].type.spec.(string),
@@ -205,16 +237,32 @@ test_cpp_struct :: proc(t: ^testing.T) {
     )
 
     my_struct := om.get(rs.types, "my_struct")
-    testing.expect_value(t, my_struct.spec.(runic.Builtin), runic.Builtin.Untyped)
+    testing.expect_value(
+        t,
+        my_struct.spec.(runic.Builtin),
+        runic.Builtin.Untyped,
+    )
 
     byte_array := om.get(rs.types, "byte_array").spec.(runic.Struct)
     testing.expect_value(t, len(byte_array.members), 3)
     ba_x := byte_array.members[0]
     ba_y := byte_array.members[1]
     ba_b := byte_array.members[2]
-    testing.expect_value(t, ba_x.type.spec.(runic.Builtin), runic.Builtin.UInt8)
-    testing.expect_value(t, ba_y.type.spec.(runic.Builtin), runic.Builtin.UInt8)
-    testing.expect_value(t, ba_b.type.spec.(runic.Builtin), runic.Builtin.UInt8)
+    testing.expect_value(
+        t,
+        ba_x.type.spec.(runic.Builtin),
+        runic.Builtin.UInt8,
+    )
+    testing.expect_value(
+        t,
+        ba_y.type.spec.(runic.Builtin),
+        runic.Builtin.UInt8,
+    )
+    testing.expect_value(
+        t,
+        ba_b.type.spec.(runic.Builtin),
+        runic.Builtin.UInt8,
+    )
     testing.expect_value(t, ba_x.type.array_info[0].size.(u64), 1)
     testing.expect_value(t, ba_y.type.array_info[0].size.(u64), 2)
     testing.expect_value(t, ba_b.type.array_info[0].size.(u64), 3)
@@ -222,7 +270,7 @@ test_cpp_struct :: proc(t: ^testing.T) {
 
 @(test)
 test_cpp_enum :: proc(t: ^testing.T) {
-    
+
 
     rf := runic.From {
         language = "c",
@@ -289,7 +337,11 @@ test_cpp_enum :: proc(t: ^testing.T) {
     testing.expect_value(t, con_enum.entries[3].value.(i64), -7)
     testing.expect_value(t, con_enum.entries[4].value.(i64), 789)
     testing.expect_value(t, con_enum.entries[5].value.(i64), 90)
-    testing.expect_value(t, con_enum.entries[6].value.(i64), (70 * 4 + 9) / 6 % 7)
+    testing.expect_value(
+        t,
+        con_enum.entries[6].value.(i64),
+        (70 * 4 + 9) / 6 % 7,
+    )
 
     adv := om.get(rs.types, "advanced").spec.(runic.Enum)
 
@@ -299,7 +351,7 @@ test_cpp_enum :: proc(t: ^testing.T) {
 
 @(test)
 test_cpp_union :: proc(t: ^testing.T) {
-    
+
 
     rf := runic.From {
         language = "c",
@@ -339,7 +391,7 @@ test_cpp_union :: proc(t: ^testing.T) {
 
 @(test)
 test_cpp_attribute :: proc(t: ^testing.T) {
-    
+
 
     rf := runic.From {
         language = "c",
@@ -365,7 +417,7 @@ test_cpp_attribute :: proc(t: ^testing.T) {
 
 @(test)
 test_cpp_include :: proc(t: ^testing.T) {
-    
+
 
     rf := runic.From {
         language = "c",
@@ -403,7 +455,8 @@ test_cpp_include :: proc(t: ^testing.T) {
     testing.expect_value(t, om.length(rs.symbols), 0)
     testing.expect_value(t, om.length(rs.constants), 0)
 
-    if callbacker_type, ok := om.get(rs.types, "callbacker"); testing.expect(t, ok) {
+    if callbacker_type, ok := om.get(rs.types, "callbacker");
+       testing.expect(t, ok) {
         if callbacker, spec_ok := callbacker_type.spec.(runic.Struct);
            testing.expect(t, spec_ok) {
             if testing.expect_value(t, len(callbacker.members), 1) {
@@ -438,7 +491,11 @@ test_cpp_include :: proc(t: ^testing.T) {
     testing.expect(t, om.contains(rs_all.types, "lower_t"))
     testing.expect(t, om.contains(rs_all.types, "below_t"))
 
-    testing.expect_value(t, om.get(rs_all.types, "lower_t").spec.(string), "below_t")
+    testing.expect_value(
+        t,
+        om.get(rs_all.types, "lower_t").spec.(string),
+        "below_t",
+    )
     testing.expect_value(
         t,
         om.get(rs_all.types, "below_t").spec.(runic.Struct).members[0].name,
@@ -453,7 +510,7 @@ test_cpp_include :: proc(t: ^testing.T) {
 
 @(test)
 test_cpp_system_include :: proc(t: ^testing.T) {
-    
+
 
     rf := runic.From {
         language = "c",
@@ -561,7 +618,7 @@ test_cpp_system_include :: proc(t: ^testing.T) {
 
 @(test)
 test_cpp_elaborated :: proc(t: ^testing.T) {
-    
+
 
     rf := runic.From {
         language = "c",
@@ -620,7 +677,11 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
     testing.expect_value(t, len(uni.members), 4)
     testing.expect_value(t, uni.members[0].type.spec.(string), "big_package")
     testing.expect_value(t, uni.members[1].type.spec.(string), "small_package")
-    testing.expect_value(t, uni.members[2].type.spec.(string), "w_struct_anon_0")
+    testing.expect_value(
+        t,
+        uni.members[2].type.spec.(string),
+        "w_struct_anon_0",
+    )
     testing.expect_value(t, uni.members[3].type.spec.(string), "zuz")
 
     zuz := om.get(rs.types, "zuz")
@@ -634,7 +695,7 @@ test_cpp_elaborated :: proc(t: ^testing.T) {
 }
 @(test)
 test_cpp_function :: proc(t: ^testing.T) {
-    
+
 
     rf := runic.From {
         language = "c",
@@ -660,7 +721,11 @@ test_cpp_function :: proc(t: ^testing.T) {
     hello_world := om.get(rs.symbols, "hello_world")
     hw := hello_world.value.(runic.Function)
 
-    testing.expect_value(t, hw.return_type.spec.(runic.Builtin), runic.Builtin.Untyped)
+    testing.expect_value(
+        t,
+        hw.return_type.spec.(runic.Builtin),
+        runic.Builtin.Untyped,
+    )
     testing.expect_value(t, len(hw.parameters), 0)
     testing.expect(t, !hw.variadic)
 
@@ -690,7 +755,11 @@ test_cpp_function :: proc(t: ^testing.T) {
     baz := om.get(rs.symbols, "baz")
     bz := baz.value.(runic.Function)
 
-    testing.expect_value(t, bz.parameters[0].type.spec.(string), "x_struct_anon_0")
+    testing.expect_value(
+        t,
+        bz.parameters[0].type.spec.(string),
+        "x_struct_anon_0",
+    )
 
     variadic := om.get(rs.symbols, "variadic_func").value.(runic.Function)
     testing.expect_value(t, len(variadic.parameters), 1)
@@ -699,7 +768,7 @@ test_cpp_function :: proc(t: ^testing.T) {
 
 @(test)
 test_cpp_function_pointer :: proc(t: ^testing.T) {
-    
+
 
     rf := runic.From {
         language = "c",
@@ -738,7 +807,11 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     by := bye.value.(runic.Type).spec.(runic.FunctionPointer)
 
     testing.expect_value(t, len(by.parameters), 4)
-    testing.expect_value(t, by.parameters[3].type.spec.(string), "s_struct_anon_0")
+    testing.expect_value(
+        t,
+        by.parameters[3].type.spec.(string),
+        "s_struct_anon_0",
+    )
 
     consty := om.get(rs.types, "consty")
     coy := consty.spec.(runic.FunctionPointer)
@@ -755,8 +828,7 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
     _, signal_rt_is_fp = signal_rt.spec.(runic.FunctionPointer)
     testing.expect(t, signal_rt_is_fp)
 
-    signal_rt_name, signal_rt_is_fp =
-    signal_func.value.(runic.Function).parameters[1].type.spec.(string)
+    signal_rt_name, signal_rt_is_fp = signal_func.value.(runic.Function).parameters[1].type.spec.(string)
     testing.expect(t, signal_rt_is_fp)
 
     signal_rt = om.get(rs.types, signal_rt_name)
@@ -778,7 +850,7 @@ test_cpp_function_pointer :: proc(t: ^testing.T) {
 
 @(test)
 test_cpp_macros :: proc(t: ^testing.T) {
-    
+
 
     rf := runic.From {
         language = "c",
@@ -837,7 +909,7 @@ test_cpp_macros :: proc(t: ^testing.T) {
 
 @(test)
 test_cpp_unknown_int :: proc(t: ^testing.T) {
-    
+
 
     rf := runic.From {
         language = "c",
@@ -872,7 +944,11 @@ test_cpp_unknown_int :: proc(t: ^testing.T) {
         strc.members[0].type.spec.(runic.Builtin),
         runic.Builtin.SInt32,
     )
-    testing.expect_value(t, strc.members[1].type.spec.(runic.Unknown), "heart_t")
+    testing.expect_value(
+        t,
+        strc.members[1].type.spec.(runic.Unknown),
+        "heart_t",
+    )
     testing.expect_value(
         t,
         strc.members[2].type.spec.(runic.Builtin),
@@ -880,7 +956,11 @@ test_cpp_unknown_int :: proc(t: ^testing.T) {
     )
 
     super_size := om.get(rs.types, "super_size")
-    testing.expect_value(t, super_size.spec.(runic.Builtin), runic.Builtin.SIntX)
+    testing.expect_value(
+        t,
+        super_size.spec.(runic.Builtin),
+        runic.Builtin.SIntX,
+    )
 
     funcy := om.get(rs.symbols, "funcy")
     fy := funcy.value.(runic.Function)
@@ -891,7 +971,11 @@ test_cpp_unknown_int :: proc(t: ^testing.T) {
         fy.parameters[0].type.spec.(runic.Builtin),
         runic.Builtin.SInt32,
     )
-    testing.expect_value(t, fy.parameters[1].type.spec.(runic.Unknown), "pants_t")
+    testing.expect_value(
+        t,
+        fy.parameters[1].type.spec.(runic.Unknown),
+        "pants_t",
+    )
     testing.expect_value(
         t,
         fy.parameters[2].type.spec.(runic.Builtin),
@@ -903,12 +987,20 @@ test_cpp_unknown_int :: proc(t: ^testing.T) {
     fp := f_ptr.spec.(runic.FunctionPointer)
 
     testing.expect_value(t, len(fp.parameters), 2)
-    testing.expect_value(t, fp.parameters[0].type.spec.(runic.Unknown), "pants_t")
+    testing.expect_value(
+        t,
+        fp.parameters[0].type.spec.(runic.Unknown),
+        "pants_t",
+    )
     testing.expect_value(
         t,
         fp.parameters[1].type.spec.(runic.Builtin),
         runic.Builtin.SInt8,
     )
 
-    testing.expect_value(t, fp.return_type.spec.(runic.Builtin), runic.Builtin.SInt8)
+    testing.expect_value(
+        t,
+        fp.return_type.spec.(runic.Builtin),
+        runic.Builtin.SInt8,
+    )
 }

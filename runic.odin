@@ -27,8 +27,8 @@ import "core:strings"
 import cppcdg "cpp/codegen"
 import cppwrap "cpp/wrapper"
 import "errors"
-import odincdg "odin/codegen"
 import golangcdg "golang/codegen"
+import odincdg "odin/codegen"
 import "runic"
 
 DEFAULT_TO_FILE_NAME :: "runic.to"
@@ -48,12 +48,9 @@ main :: proc() {
     defer errors.destroy()
 
     args: struct {
-        version:
-        bool `args:"name=version" usage:"Print version and license information"`,
-        credits:
-        bool `args:"name=credits" usage:"Print credits to dependencies"`,
-        rune_file_name:
-        string `args:"pos=0,name=rune" usage:"The rune configuration file to load"`,
+        version:        bool `args:"name=version" usage:"Print version and license information"`,
+        credits:        bool `args:"name=credits" usage:"Print credits to dependencies"`,
+        rune_file_name: string `args:"pos=0,name=rune" usage:"The rune configuration file to load"`,
     }
 
     if flags_err := flags.parse(&args, os.args[1:], .Unix); flags_err != nil {
@@ -141,10 +138,7 @@ main :: proc() {
     defer os.close(rune_file)
 
     err: errors.Error
-    rune, rune_err := runic.parse_rune(
-        os.to_stream(rune_file),
-        rune_file_name,
-    )
+    rune, rune_err := runic.parse_rune(os.to_stream(rune_file), rune_file_name)
     err = errors.wrap(rune_err)
     defer runic.rune_destroy(&rune)
     if err != nil {
@@ -294,10 +288,7 @@ main :: proc() {
         defer if from != "stdin" do os.close(rs_file)
 
         rs: runic.Runestone = ---
-        rs, err = runic.parse_runestone(
-            os.to_stream(rs_file),
-            rs_file_name,
-        )
+        rs, err = runic.parse_runestone(os.to_stream(rs_file), rs_file_name)
         if err != nil {
             fmt.eprintfln("failed to parse runestone: {}", err)
             os.exit(1)
@@ -324,10 +315,7 @@ main :: proc() {
             }
             defer os.close(rs_file)
 
-            rs, err = runic.parse_runestone(
-                os.to_stream(rs_file),
-                file_path,
-            )
+            rs, err = runic.parse_runestone(os.to_stream(rs_file), file_path)
             if err != nil {
                 fmt.eprintfln("failed to parse runestone: {}", err)
                 os.exit(1)
@@ -420,11 +408,7 @@ main :: proc() {
             )
         case "c":
             err = errors.wrap(
-                ccdg.generate_bindings(
-                    runecross,
-                    to,
-                    os.to_stream(out_file),
-                ),
+                ccdg.generate_bindings(runecross, to, os.to_stream(out_file)),
             )
         case "go", "golang":
             err = errors.wrap(
@@ -530,11 +514,7 @@ main :: proc() {
 
         for rs, idx in runestones {
             if err = errors.wrap(
-                runic.write_runestone(
-                    rs,
-                    os.to_stream(rs_files[idx]),
-                    to,
-                ),
+                runic.write_runestone(rs, os.to_stream(rs_files[idx]), to),
             ); err != nil {
                 fmt.eprintfln(
                     "failed to write runestone {}.{}: {}",

@@ -68,10 +68,22 @@ test_is_same :: proc(t: ^testing.T) {
 
     testing.expect(t, rs1.lib.static != rs2.lib.static)
 
-    testing.expect(t, is_same(om.get(rs1.symbols, "a"), om.get(rs2.symbols, "a")))
-    testing.expect(t, is_same(om.get(rs1.symbols, "b"), om.get(rs2.symbols, "b")))
-    testing.expect(t, !is_same(om.get(rs1.symbols, "a"), om.get(rs2.symbols, "b")))
-    testing.expect(t, !is_same(om.get(rs1.symbols, "c"), om.get(rs2.symbols, "c")))
+    testing.expect(
+        t,
+        is_same(om.get(rs1.symbols, "a"), om.get(rs2.symbols, "a")),
+    )
+    testing.expect(
+        t,
+        is_same(om.get(rs1.symbols, "b"), om.get(rs2.symbols, "b")),
+    )
+    testing.expect(
+        t,
+        !is_same(om.get(rs1.symbols, "a"), om.get(rs2.symbols, "b")),
+    )
+    testing.expect(
+        t,
+        !is_same(om.get(rs1.symbols, "c"), om.get(rs2.symbols, "c")),
+    )
 }
 
 
@@ -183,4 +195,3 @@ test_runecross :: proc(t: ^testing.T) {
     testing.expect_value(t, om.length(windows_cross.types), 1)
     testing.expect_value(t, om.length(windows_cross.symbols), 1)
 }
-

@@ -20,11 +20,23 @@ test_ini :: proc(t: ^testing.T) {
 
     testing.expect_value(t, om.get(ini_file[""], "version"), "0")
 
-    testing.expect_value(t, om.get(ini_file["first_section"], "foo"), "\"bar\"")
+    testing.expect_value(
+        t,
+        om.get(ini_file["first_section"], "foo"),
+        "\"bar\"",
+    )
     testing.expect_value(t, om.get(ini_file["first_section"], "pa"), "\"5=6\"")
-    testing.expect_value(t, om.get(ini_file["first_section"], "\"funny=sad\""), "zuz")
+    testing.expect_value(
+        t,
+        om.get(ini_file["first_section"], "\"funny=sad\""),
+        "zuz",
+    )
 
     testing.expect_value(t, om.get(ini_file["second_section"], "0"), "3")
-    testing.expect_value(t, om.get(ini_file["second_section"], "pär"), "pöü")
+    testing.expect_value(
+        t,
+        om.get(ini_file["second_section"], "pär"),
+        "pöü",
+    )
     testing.expect_value(t, om.get(ini_file["second_section"], "🤣"), "😥")
 }

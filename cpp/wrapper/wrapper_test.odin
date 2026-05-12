@@ -31,9 +31,9 @@ test_cpp_wrapper :: proc(t: ^testing.T) {
     defer delete(cwd)
 
     rune_file_name, _ := filepath.join({cwd, "test_data/wrapper_rune.yml"})
-    in_header , _ := filepath.join({cwd, "test_data/wrapper_in_header.h"})
-    out_header, _  := filepath.join({cwd, "test_data/wrapper_out_header.h"})
-    out_source, _  := filepath.join({cwd, "test_data/wrapper_out_source.c"})
+    in_header, _ := filepath.join({cwd, "test_data/wrapper_in_header.h"})
+    out_header, _ := filepath.join({cwd, "test_data/wrapper_out_header.h"})
+    out_source, _ := filepath.join({cwd, "test_data/wrapper_out_source.c"})
     defer delete(rune_file_name)
     defer delete(in_header)
     defer delete(out_header)

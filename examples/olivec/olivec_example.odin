@@ -136,10 +136,7 @@ main :: proc() {
     }
 }
 
-canvas_to_ppm :: proc(
-    canvas: olivec.Canvas,
-    file_name: string,
-) -> union {
+canvas_to_ppm :: proc(canvas: olivec.Canvas, file_name: string) -> union {
         os.Error,
         io.Error,
     } {
@@ -157,10 +154,13 @@ canvas_to_ppm :: proc(
 
     for h in 0 ..< canvas.height {
         for w in 0 ..< canvas.width {
-            io.write_ptr(stream, &canvas.pixels[canvas.stride * h + w], 3) or_return
+            io.write_ptr(
+                stream,
+                &canvas.pixels[canvas.stride * h + w],
+                3,
+            ) or_return
         }
     }
 
     return nil
 }
-

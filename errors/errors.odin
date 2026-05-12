@@ -213,7 +213,12 @@ wrap_os_error :: proc(
     return message("{}{}", msg, err, allocator = allocator, loc = loc)
 }
 
-wrap_os_general_error :: proc(err: os.General_Error, msg := "", allocator := error_allocator, loc := #caller_location) -> Error {
+wrap_os_general_error :: proc(
+    err: os.General_Error,
+    msg := "",
+    allocator := error_allocator,
+    loc := #caller_location,
+) -> Error {
     if err == .None do return nil
 
     return message(
@@ -225,7 +230,12 @@ wrap_os_general_error :: proc(err: os.General_Error, msg := "", allocator := err
     )
 }
 
-wrap_os_platform_error :: proc(err: os.Platform_Error, msg := "", allocator := error_allocator, loc := #caller_location) -> Error {
+wrap_os_platform_error :: proc(
+    err: os.Platform_Error,
+    msg := "",
+    allocator := error_allocator,
+    loc := #caller_location,
+) -> Error {
     when ODIN_OS == .Windows {
         if err == .SUCCESS do return nil
     } else {
@@ -255,4 +265,3 @@ wrap :: proc {
 }
 
 assert :: wrap_ok
-

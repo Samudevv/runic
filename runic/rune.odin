@@ -21,10 +21,10 @@ import "base:runtime"
 import "core:bytes"
 import "core:fmt"
 import "core:io"
+import "core:os"
 import "core:path/filepath"
 import "core:path/slashpath"
 import "core:slice"
-import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:unicode"
@@ -2186,8 +2186,7 @@ parse_rune :: proc(
                 case yaml.Mapping:
                     ok: bool = ---
                     if "functions" in add_prfx {
-                        t.add_prefix.functions, ok =
-                        add_prfx["functions"].(string)
+                        t.add_prefix.functions, ok = add_prfx["functions"].(string)
                         errors.wrap(
                             ok,
                             "\"to.add_prefix.functions\" has invalid type",
@@ -2195,8 +2194,7 @@ parse_rune :: proc(
                     }
 
                     if "variables" in add_prfx {
-                        t.add_prefix.variables, ok =
-                        add_prfx["variables"].(string)
+                        t.add_prefix.variables, ok = add_prfx["variables"].(string)
                         errors.wrap(
                             ok,
                             "\"to.add_prefix.variables\" has invalid type",
@@ -2212,8 +2210,7 @@ parse_rune :: proc(
                     }
 
                     if "constants" in add_prfx {
-                        t.add_prefix.constants, ok =
-                        add_prfx["constants"].(string)
+                        t.add_prefix.constants, ok = add_prfx["constants"].(string)
                         errors.wrap(
                             ok,
                             "\"to.add_prefix.constants\" has invalid type",
@@ -2238,8 +2235,7 @@ parse_rune :: proc(
                 case yaml.Mapping:
                     ok: bool = ---
                     if "functions" in add_sfx {
-                        t.add_suffix.functions, ok =
-                        add_sfx["functions"].(string)
+                        t.add_suffix.functions, ok = add_sfx["functions"].(string)
                         errors.wrap(
                             ok,
                             "\"to.add_suffix.functions\" has invalid type",
@@ -2247,8 +2243,7 @@ parse_rune :: proc(
                     }
 
                     if "variables" in add_sfx {
-                        t.add_suffix.variables, ok =
-                        add_sfx["variables"].(string)
+                        t.add_suffix.variables, ok = add_sfx["variables"].(string)
                         errors.wrap(
                             ok,
                             "\"to.add_suffix.variables\" has invalid type",
@@ -2264,8 +2259,7 @@ parse_rune :: proc(
                     }
 
                     if "constants" in add_sfx {
-                        t.add_suffix.constants, ok =
-                        add_sfx["constants"].(string)
+                        t.add_suffix.constants, ok = add_sfx["constants"].(string)
                         errors.wrap(
                             ok,
                             "\"to.add_suffix.constants\" has invalid type",
@@ -2923,12 +2917,21 @@ single_list_glob :: proc(list: []string, value: string) -> bool {
 }
 
 // Joins the elements together and cleans it afterwards
-slashpath_join_clean :: proc(elements: []string) -> (result: string, ok: bool) #optional_ok {
-    joined_value  := slashpath.join(elements)
+slashpath_join_clean :: proc(
+    elements: []string,
+) -> (
+    result: string,
+    ok: bool,
+) #optional_ok {
+    joined_value := slashpath.join(elements)
 
     // since filepath is used, windows requires backslashes
     when ODIN_OS == .Windows {
-        new_sep_value, was_alloc := strings.replace_all(joined_value, "/", "\\")
+        new_sep_value, was_alloc := strings.replace_all(
+            joined_value,
+            "/",
+            "\\",
+        )
         delete(joined_value)
 
         if !was_alloc {
@@ -2939,13 +2942,20 @@ slashpath_join_clean :: proc(elements: []string) -> (result: string, ok: bool) #
         joined_value = new_sep_value
     }
 
-    cleaned_value, cleaned_value_err := filepath.clean(joined_value, context.allocator)
+    cleaned_value, cleaned_value_err := filepath.clean(
+        joined_value,
+        context.allocator,
+    )
     delete(joined_value)
     if cleaned_value_err != .None do return cleaned_value, false
 
     // since filepath is used, windows requires backslashes
     when ODIN_OS == .Windows {
-        new_sep_value, was_alloc = strings.replace_all(cleaned_value, "\\", "/")
+        new_sep_value, was_alloc = strings.replace_all(
+            cleaned_value,
+            "\\",
+            "/",
+        )
         delete(cleaned_value)
 
         if !was_alloc {
@@ -2987,7 +2997,11 @@ slashpath_is_abs :: proc(file_path: string) -> bool {
 
 // Returns whether any of the list elements matches value (if value or a list element is relative,
 // it will be made absolute by assuming that it is relative to the directory of base_file_name
-any_glob_match_abs_or_rel :: proc(base_file_name: string, list: []string, value: string) -> bool {
+any_glob_match_abs_or_rel :: proc(
+    base_file_name: string,
+    list: []string,
+    value: string,
+) -> bool {
     check_value := value
     check_value_needs_free := false
     defer if check_value_needs_free do delete(check_value)

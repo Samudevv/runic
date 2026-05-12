@@ -166,11 +166,7 @@ elaborated_to_type :: proc(
     if struct_is_unnamed(named_name) ||
        enum_is_unnamed(named_name) ||
        union_is_unnamed(named_name) {
-        return type_to_type(
-            named_type,
-            named_cursor,
-            name_hint = name_hint,
-        )
+        return type_to_type(named_type, named_cursor, name_hint = name_hint)
     } else {
         tp.spec = handle_builtin_int(named_name, ctx.int_sizes, ctx.allocator)
     }
@@ -197,12 +193,7 @@ pointer_to_type :: proc(
         pointee_hint = clang_var_decl_get_type_hint(cursor)
     }
 
-    tp = type_to_type(
-        pointee,
-        cursor,
-        pointee_hint,
-        name_hint,
-    ) or_return
+    tp = type_to_type(pointee, cursor, pointee_hint, name_hint) or_return
 
     if _, ok := tp.spec.(runic.FunctionPointer); !ok {
         handle_anon_type(&tp, "pointer")
@@ -246,12 +237,7 @@ constant_array_to_type :: proc(
     ctx := ps()
 
     arr_type := clang.getArrayElementType(type)
-    tp = type_to_type(
-        arr_type,
-        cursor,
-        type_hint,
-        name_hint,
-    ) or_return
+    tp = type_to_type(arr_type, cursor, type_hint, name_hint) or_return
 
     handle_anon_type(&tp, "array")
 
@@ -285,12 +271,7 @@ incomplete_array_to_type :: proc(
     ctx := ps()
 
     arr_type := clang.getArrayElementType(type)
-    tp = type_to_type(
-        arr_type,
-        cursor,
-        type_hint,
-        name_hint,
-    ) or_return
+    tp = type_to_type(arr_type, cursor, type_hint, name_hint) or_return
 
     handle_anon_type(&tp, "array")
 

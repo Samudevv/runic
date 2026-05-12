@@ -104,7 +104,11 @@ test_example_runestone :: proc(t: ^testing.T) {
         om.get(rs.symbols, "foo").value.(Function).return_type.spec.(Builtin),
         Builtin.Untyped,
     )
-    testing.expect_value(t, len(om.get(rs.symbols, "foo").value.(Function).parameters), 2)
+    testing.expect_value(
+        t,
+        len(om.get(rs.symbols, "foo").value.(Function).parameters),
+        2,
+    )
     testing.expect_value(
         t,
         om.get(rs.symbols, "foo").value.(Function).parameters[0].name,
@@ -117,7 +121,11 @@ test_example_runestone :: proc(t: ^testing.T) {
     )
     testing.expect_value(t, om.get(rs.symbols, "foo").aliases[0], "oof")
     testing.expect_value(t, om.get(rs.symbols, "foo").remap, "foo1234")
-    testing.expect_value(t, om.get(rs.symbols, "foo_var").remap, "foo_varZZXX6")
+    testing.expect_value(
+        t,
+        om.get(rs.symbols, "foo_var").remap,
+        "foo_varZZXX6",
+    )
     testing.expect_value(
         t,
         om.get(rs.symbols, "funcy").value.(Function).return_type.spec.(Builtin),
@@ -150,22 +158,54 @@ test_example_runestone :: proc(t: ^testing.T) {
     )
 
     testing.expect_value(t, om.length(rs.types), 14)
-    testing.expect_value(t, om.get(rs.types, "super_ptr").pointer_info.count, 1)
+    testing.expect_value(
+        t,
+        om.get(rs.types, "super_ptr").pointer_info.count,
+        1,
+    )
     testing.expect_value(t, len(om.get(rs.types, "numbers").array_info), 1)
-    testing.expect_value(t, om.get(rs.types, "numbers").array_info[0].size.(u64), 5)
+    testing.expect_value(
+        t,
+        om.get(rs.types, "numbers").array_info[0].size.(u64),
+        5,
+    )
     testing.expect_value(
         t,
         om.get(rs.types, "times").array_info[0].size.(string),
         "5*6/3*(8%9)",
     )
-    testing.expect_value(t, om.get(rs.types, "transform").array_info[0].size.(u64), 4)
-    testing.expect_value(t, om.get(rs.types, "transform").array_info[1].size.(u64), 4)
-    testing.expect_value(t, om.get(rs.types, "Events").spec.(ExternType), "SDL_Event")
-    testing.expect_value(t, om.get(rs.types, "DynInt").spec.(Builtin), Builtin.SIntX)
-    testing.expect_value(t, om.get(rs.types, "DynUInt").spec.(Builtin), Builtin.UIntX)
+    testing.expect_value(
+        t,
+        om.get(rs.types, "transform").array_info[0].size.(u64),
+        4,
+    )
+    testing.expect_value(
+        t,
+        om.get(rs.types, "transform").array_info[1].size.(u64),
+        4,
+    )
+    testing.expect_value(
+        t,
+        om.get(rs.types, "Events").spec.(ExternType),
+        "SDL_Event",
+    )
+    testing.expect_value(
+        t,
+        om.get(rs.types, "DynInt").spec.(Builtin),
+        Builtin.SIntX,
+    )
+    testing.expect_value(
+        t,
+        om.get(rs.types, "DynUInt").spec.(Builtin),
+        Builtin.UIntX,
+    )
 
     testing.expect_value(t, om.length(rs.externs), 1)
-    testing.expect_value(t, om.get(rs.externs, "SDL_Event").source, "SDL2/SDL_Event.h")
+    testing.expect_value(
+        t,
+        om.get(rs.externs, "SDL_Event").source,
+        "SDL2/SDL_Event.h",
+    )
     testing.expect_value(
         t,
         om.get(rs.externs, "SDL_Event").type.spec.(Struct).members[0].name,
@@ -195,7 +235,11 @@ test_example_runestone :: proc(t: ^testing.T) {
         om.get(rs.constants, "APP_NAME").value.(string),
         "Hello World",
     )
-    testing.expect_value(t, om.get(rs.constants, "LENGTH").value.(f64), 267.345)
+    testing.expect_value(
+        t,
+        om.get(rs.constants, "LENGTH").value.(f64),
+        267.345,
+    )
 }
 
 @(test)
@@ -322,7 +366,10 @@ test_cyclic_dependency :: proc(t: ^testing.T) {
         pointer_info = {count = 1},
     }
 
-    testing.expect(t, references_type_as_pointer_or_array(pointer_type, "pointed"))
+    testing.expect(
+        t,
+        references_type_as_pointer_or_array(pointer_type, "pointed"),
+    )
 
     array_type := Type {
         spec       = string("arrayed"),
@@ -330,7 +377,10 @@ test_cyclic_dependency :: proc(t: ^testing.T) {
     }
     defer delete(array_type.array_info)
 
-    testing.expect(t, references_type_as_pointer_or_array(array_type, "arrayed"))
+    testing.expect(
+        t,
+        references_type_as_pointer_or_array(array_type, "arrayed"),
+    )
 }
 
 @(test)

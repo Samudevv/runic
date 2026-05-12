@@ -21,8 +21,8 @@ package runic
 import "base:runtime"
 import "core:os"
 import "core:path/filepath"
-import "core:testing"
 import "core:strings"
+import "core:testing"
 import "root:errors"
 import om "root:ordered_map"
 
@@ -88,17 +88,41 @@ test_rune :: proc(t: ^testing.T) {
     testing.expect_value(t, windows_headers[3], wrapper_gen_windows_h)
     testing.expect_value(t, macos_headers[0], plat_macos_h)
     testing.expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].types), 4)
-    testing.expect_value(t, len(f.overwrite.d[Platform{.Any, .Any}].functions), 3)
-    testing.expect_value(t, f.enable_host_includes.d[Platform{.Any, .Any}], true)
-    testing.expect_value(t, f.enable_host_includes.d[Platform{.Linux, .arm64}], false)
-    testing.expect_value(t, f.disable_system_include_gen.d[Platform{.Any, .Any}], true)
+    testing.expect_value(
+        t,
+        len(f.overwrite.d[Platform{.Any, .Any}].functions),
+        3,
+    )
+    testing.expect_value(
+        t,
+        f.enable_host_includes.d[Platform{.Any, .Any}],
+        true,
+    )
+    testing.expect_value(
+        t,
+        f.enable_host_includes.d[Platform{.Linux, .arm64}],
+        false,
+    )
+    testing.expect_value(
+        t,
+        f.disable_system_include_gen.d[Platform{.Any, .Any}],
+        true,
+    )
     testing.expect_value(
         t,
         f.disable_system_include_gen.d[Platform{.Windows, .Any}],
         false,
     )
-    testing.expect_value(t, f.disable_stdint_macros.d[Platform{.Any, .Any}], true)
-    testing.expect_value(t, f.disable_stdint_macros.d[Platform{.Windows, .Any}], false)
+    testing.expect_value(
+        t,
+        f.disable_stdint_macros.d[Platform{.Any, .Any}],
+        true,
+    )
+    testing.expect_value(
+        t,
+        f.disable_stdint_macros.d[Platform{.Windows, .Any}],
+        false,
+    )
 
     load_all_includes_any := f.load_all_includes.d[Platform{.Any, .Any}]
     load_all_includes_macos := f.load_all_includes.d[Platform{.Macos, .Any}]
@@ -109,30 +133,54 @@ test_rune :: proc(t: ^testing.T) {
     forward_decl_type_linux := f.forward_decl_type.d[Platform{.Linux, .Any}]
     forward_decl_type_windows :=
         f.forward_decl_type.d[Platform{.Windows, .Any}]
-    testing.expect_value(t, forward_decl_type_any.spec.(Builtin), Builtin.Opaque)
-    testing.expect_value(t, forward_decl_type_linux.spec.(Builtin), Builtin.Untyped)
-    testing.expect_value(t, forward_decl_type_windows.spec.(Builtin), Builtin.SInt32)
+    testing.expect_value(
+        t,
+        forward_decl_type_any.spec.(Builtin),
+        Builtin.Opaque,
+    )
+    testing.expect_value(
+        t,
+        forward_decl_type_linux.spec.(Builtin),
+        Builtin.Untyped,
+    )
+    testing.expect_value(
+        t,
+        forward_decl_type_windows.spec.(Builtin),
+        Builtin.SInt32,
+    )
 
     ow := f.overwrite.d[Platform{.Any, .Any}]
     testing.expect_value(t, len(ow.functions), 3)
     for func in ow.functions {
         switch func.name {
         case "funcy":
-            testing.expect_value(t, func.instruction.(OverwriteParameterName).idx, 0)
+            testing.expect_value(
+                t,
+                func.instruction.(OverwriteParameterName).idx,
+                0,
+            )
             testing.expect_value(
                 t,
                 func.instruction.(OverwriteParameterName).overwrite,
                 "input",
             )
         case "sunky":
-            testing.expect_value(t, func.instruction.(OverwriteParameterType).idx, 1)
+            testing.expect_value(
+                t,
+                func.instruction.(OverwriteParameterType).idx,
+                1,
+            )
             testing.expect_value(
                 t,
                 func.instruction.(OverwriteParameterType).overwrite,
                 "output",
             )
         case "uinky":
-            testing.expect_value(t, func.instruction.(OverwriteReturnType), "#SInt32")
+            testing.expect_value(
+                t,
+                func.instruction.(OverwriteReturnType),
+                "#SInt32",
+            )
         case:
             testing.fail(t)
         }
@@ -144,12 +192,20 @@ test_rune :: proc(t: ^testing.T) {
     for type in ow.types {
         switch type.name {
         case "size_t":
-            testing.expect_value(t, type.instruction.(OverwriteWhole), "#UInt64")
+            testing.expect_value(
+                t,
+                type.instruction.(OverwriteWhole),
+                "#UInt64",
+            )
         case "func_ptr":
             #partial switch ins in type.instruction {
             case OverwriteParameterType:
                 testing.expect_value(t, ins.idx, 1)
-                testing.expect_value(t, ins.overwrite, "wl_seat #Attr Ptr 1 #AttrEnd")
+                testing.expect_value(
+                    t,
+                    ins.overwrite,
+                    "wl_seat #Attr Ptr 1 #AttrEnd",
+                )
             case OverwriteParameterName:
                 testing.expect_value(t, ins.idx, 0)
                 testing.expect_value(t, ins.overwrite, "bar")
@@ -175,14 +231,26 @@ test_rune :: proc(t: ^testing.T) {
     testing.expect_value(t, extern.add_suffix, false)
     testing.expect_value(t, len(extern.sources), 2)
     testing.expect_value(t, extern.sources["SDL2/SDL_Event.h"], "vendor:sdl2")
-    testing.expect_value(t, extern.sources["SDL2/SDL_Renderer.h"], "vendor:sdl2")
+    testing.expect_value(
+        t,
+        extern.sources["SDL2/SDL_Renderer.h"],
+        "vendor:sdl2",
+    )
     testing.expect_value(t, len(extern.remaps), 1)
     testing.expect_value(t, extern.remaps["SDL_Renderer"], "Renderer")
 
     remaps := f.remaps
     testing.expect_value(t, len(remaps), 2)
-    testing.expect_value(t, remaps["wl_surface_interface"], "wl_surface_interface_v")
-    testing.expect_value(t, remaps["wl_cursor_interface"], "wl_cursor_interface_v")
+    testing.expect_value(
+        t,
+        remaps["wl_surface_interface"],
+        "wl_surface_interface_v",
+    )
+    testing.expect_value(
+        t,
+        remaps["wl_cursor_interface"],
+        "wl_cursor_interface_v",
+    )
 
     aliases := f.aliases
     testing.expect_value(t, len(aliases), 2)
@@ -192,7 +260,7 @@ test_rune :: proc(t: ^testing.T) {
     testing.expect_value(t, aliases["SDL_Renderer"][0], "SDL_Painter")
     testing.expect_value(t, aliases["SDL_Renderer"][1], "SDL_Drawer")
 
-    in_header , _ := filepath.join({cwd, "test_data/wrapper.h"})
+    in_header, _ := filepath.join({cwd, "test_data/wrapper.h"})
     out_header, _ := filepath.join({cwd, "test_data/wrapper.gen.h"})
     out_source, _ := filepath.join({cwd, "test_data/wrapper.gen.c"})
     defer delete(in_header)
@@ -351,8 +419,16 @@ test_overwrite :: proc(t: ^testing.T) {
         func_ptr.spec.(FunctionPointer).parameters[0].type.spec.(Builtin),
         Builtin.Float32,
     )
-    testing.expect_value(t, func_ptr.spec.(FunctionPointer).parameters[1].name, "c")
-    testing.expect_value(t, func_ptr.spec.(FunctionPointer).parameters[0].name, "a")
+    testing.expect_value(
+        t,
+        func_ptr.spec.(FunctionPointer).parameters[1].name,
+        "c",
+    )
+    testing.expect_value(
+        t,
+        func_ptr.spec.(FunctionPointer).parameters[0].name,
+        "a",
+    )
 
     unon = om.get(rs.types, "unon")
     testing.expect_value(t, len(unon.spec.(Union).members), 2)
@@ -368,8 +444,16 @@ test_overwrite :: proc(t: ^testing.T) {
     testing.expect_value(t, func1.parameters[1].name, "str")
 
     func2 = om.get(rs.symbols, "func2").value.(Function)
-    testing.expect_value(t, func2.parameters[0].type.spec.(Builtin), Builtin.UInt64)
-    testing.expect_value(t, func2.parameters[1].type.spec.(Builtin), Builtin.UInt8)
+    testing.expect_value(
+        t,
+        func2.parameters[0].type.spec.(Builtin),
+        Builtin.UInt64,
+    )
+    testing.expect_value(
+        t,
+        func2.parameters[1].type.spec.(Builtin),
+        Builtin.UInt8,
+    )
     testing.expect_value(t, func2.parameters[1].type.pointer_info.count, 1)
 
     var = om.get(rs.symbols, "var").value.(Type)
@@ -386,9 +470,15 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
     if !testing.expect_value(t, cwd_err, nil) do return
     defer delete(cwd)
 
-    raw_rune_file_name, join_err := filepath.join({cwd, "test_data", "rune.yml"}, context.allocator)
+    raw_rune_file_name, join_err := filepath.join(
+        {cwd, "test_data", "rune.yml"},
+        context.allocator,
+    )
     if !testing.expect_value(t, join_err, runtime.Allocator_Error.None) do return
-    rune_file_name, repl_sep_err := filepath.replace_separators(raw_rune_file_name, '/')
+    rune_file_name, repl_sep_err := filepath.replace_separators(
+        raw_rune_file_name,
+        '/',
+    )
     delete(raw_rune_file_name)
     if !testing.expect_value(t, repl_sep_err, runtime.Allocator_Error.None) do return
     defer delete(rune_file_name)
@@ -397,7 +487,7 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
     result: bool = ---
 
     when ODIN_OS != .Windows {
-        externs := []string{
+        externs := []string {
             "/tmp/banana/stddef.h",
             "../test_data/alpro.h",
             "now.h",
@@ -408,16 +498,26 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
         result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
         delete(value)
 
-        testing.expectf(t, result, "\"{}\" is not in {} (base=\"{}\")", value, externs, rune_file_name)
+        testing.expectf(
+            t,
+            result,
+            "\"{}\" is not in {} (base=\"{}\")",
+            value,
+            externs,
+            rune_file_name,
+        )
     } else {
-        externs := []string{
+        externs := []string {
             "C:/temp/banana/stddef.h",
             "D:/temp/banana/stddef.h",
             "../test_data/alpro.h",
             "now.h",
         }
 
-        rel_value, rel_err := filepath.rel(os.dir(rune_file_name), "C:\\temp\\banana\\stddef.h")
+        rel_value, rel_err := filepath.rel(
+            os.dir(rune_file_name),
+            "C:\\temp\\banana\\stddef.h",
+        )
         if rel_err == .None {
             value, repl_sep_err = filepath.replace_separators(rel_value, '/')
             delete(rel_value)
@@ -429,9 +529,19 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
         result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
         delete(value)
 
-        testing.expectf(t, result, "\"{}\" is not in {} (base=\"{}\")", value, externs, rune_file_name)
+        testing.expectf(
+            t,
+            result,
+            "\"{}\" is not in {} (base=\"{}\")",
+            value,
+            externs,
+            rune_file_name,
+        )
 
-        rel_value, rel_err = filepath.rel(os.dir(rune_file_name), "D:\\temp\\banana\\stddef.h")
+        rel_value, rel_err = filepath.rel(
+            os.dir(rune_file_name),
+            "D:\\temp\\banana\\stddef.h",
+        )
         if rel_err == .None {
             value, repl_sep_err = filepath.replace_separators(rel_value, '/')
             delete(rel_value)
@@ -443,20 +553,48 @@ test_any_glob_match_abs_or_rel :: proc(t: ^testing.T) {
         result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
         delete(value)
 
-        testing.expectf(t, result, "\"{}\" is not in {} (base=\"{}\")", value, externs, rune_file_name)
+        testing.expectf(
+            t,
+            result,
+            "\"{}\" is not in {} (base=\"{}\")",
+            value,
+            externs,
+            rune_file_name,
+        )
     }
 
     value = "alpro.h"
     result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
-    testing.expectf(t, result, "\"{}\" is not in {} (base=\"{}\")", value, externs, rune_file_name)
+    testing.expectf(
+        t,
+        result,
+        "\"{}\" is not in {} (base=\"{}\")",
+        value,
+        externs,
+        rune_file_name,
+    )
 
     value = "banana.h"
     result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
-    testing.expectf(t, !result, "\"{}\" is in {} (base=\"{}\")", value, externs, rune_file_name)
+    testing.expectf(
+        t,
+        !result,
+        "\"{}\" is in {} (base=\"{}\")",
+        value,
+        externs,
+        rune_file_name,
+    )
 
     value = "../test_data/now.h"
     result = any_glob_match_abs_or_rel(rune_file_name, externs, value)
-    testing.expectf(t, result, "\"{}\" is not in {} (base=\"{}\")", value, externs, rune_file_name)
+    testing.expectf(
+        t,
+        result,
+        "\"{}\" is not in {} (base=\"{}\")",
+        value,
+        externs,
+        rune_file_name,
+    )
 
     delete(strings.clone("banana"))
 }
@@ -490,12 +628,16 @@ test_slashpath_join_clean :: proc(t: ^testing.T) {
         testing.expect_value(t, joined, "/tmp/apples")
         delete(joined)
 
-        joined, ok = slashpath_join_clean({"/d/run/into/the/town", "../../../../temp/banana/stddef.h"})
+        joined, ok = slashpath_join_clean(
+            {"/d/run/into/the/town", "../../../../temp/banana/stddef.h"},
+        )
         testing.expect(t, ok)
         testing.expect_value(t, joined, "/d/temp/banana/stddef.h")
         delete(joined)
     } else {
-        joined, ok := slashpath_join_clean({"D:/run/into/the/town", "../../../../temp/banana/stddef.h"})
+        joined, ok := slashpath_join_clean(
+            {"D:/run/into/the/town", "../../../../temp/banana/stddef.h"},
+        )
         testing.expect(t, ok)
         testing.expect_value(t, joined, "D:/temp/banana/stddef.h")
         delete(joined)

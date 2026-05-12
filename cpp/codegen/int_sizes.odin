@@ -45,86 +45,78 @@ int_sizes_from_platform :: proc(plat: runic.Platform) -> (is: Int_Sizes) {
         case .Any:
             panic("no int sizes for any arch")
         case .x86_64, .arm64:
-            return(
-                 {
-                    char = 1,
-                    short = 2,
-                    Int = 4,
-                    long = 8,
-                    longlong = 8,
-                    float = 4,
-                    double = 8,
-                    long_double = 16,
-                    _Bool = 1,
-                    float_Complex = 8,
-                    double_Complex = 16,
-                    long_double_Complex = 32,
-                    size_t = 8,
-                    intptr_t = 8,
-                } \
-            )
+            return ({
+                        char = 1,
+                        short = 2,
+                        Int = 4,
+                        long = 8,
+                        longlong = 8,
+                        float = 4,
+                        double = 8,
+                        long_double = 16,
+                        _Bool = 1,
+                        float_Complex = 8,
+                        double_Complex = 16,
+                        long_double_Complex = 32,
+                        size_t = 8,
+                        intptr_t = 8,
+                    })
         case .x86, .arm32:
-            return(
-                 {
-                    char = 1,
-                    short = 2,
-                    Int = 4,
-                    long = 4,
-                    longlong = 8,
-                    float = 4,
-                    double = 8,
-                    long_double = 12,
-                    _Bool = 1,
-                    float_Complex = 8,
-                    double_Complex = 16,
-                    long_double_Complex = 24,
-                    size_t = 4,
-                    intptr_t = 4,
-                } \
-            )
+            return ({
+                        char = 1,
+                        short = 2,
+                        Int = 4,
+                        long = 4,
+                        longlong = 8,
+                        float = 4,
+                        double = 8,
+                        long_double = 12,
+                        _Bool = 1,
+                        float_Complex = 8,
+                        double_Complex = 16,
+                        long_double_Complex = 24,
+                        size_t = 4,
+                        intptr_t = 4,
+                    })
         }
     case .Windows:
         switch plat.arch {
         case .Any:
             panic("no int sizes for any arch")
         case .x86_64, .arm64:
-            return(
-                 {
-                    char = 1,
-                    short = 2,
-                    Int = 4,
-                    long = 4,
-                    longlong = 8,
-                    float = 4,
-                    double = 8,
-                    long_double = 8,
-                    _Bool = 1,
-                    float_Complex = 8,
-                    double_Complex = 16,
-                    long_double_Complex = 16,
-                    size_t = 8,
-                    intptr_t = 8,
-                } \
-            )
+            return ({
+                        char = 1,
+                        short = 2,
+                        Int = 4,
+                        long = 4,
+                        longlong = 8,
+                        float = 4,
+                        double = 8,
+                        long_double = 8,
+                        _Bool = 1,
+                        float_Complex = 8,
+                        double_Complex = 16,
+                        long_double_Complex = 16,
+                        size_t = 8,
+                        intptr_t = 8,
+                    })
         case .x86, .arm32:
-            return(
-                 {
-                    char = 1,
-                    short = 2,
-                    Int = 4,
-                    long = 4,
-                    longlong = 8,
-                    float = 4,
-                    double = 8,
-                    long_double = 8,
-                    _Bool = 1,
-                    float_Complex = 8,
-                    double_Complex = 16,
-                    long_double_Complex = 16,
-                    size_t = 4,
-                    intptr_t = 4,
-                } \
-            )
+            return ({
+                        char = 1,
+                        short = 2,
+                        Int = 4,
+                        long = 4,
+                        longlong = 8,
+                        float = 4,
+                        double = 8,
+                        long_double = 8,
+                        _Bool = 1,
+                        float_Complex = 8,
+                        double_Complex = 16,
+                        long_double_Complex = 16,
+                        size_t = 4,
+                        intptr_t = 4,
+                    })
         }
     }
     return

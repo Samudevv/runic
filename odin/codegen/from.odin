@@ -1215,10 +1215,7 @@ parse_value_decl :: proc(stm: ^odina.Value_Decl) -> (err: errors.Error) {
                     case runic.Type:
                         runic.write_type(os.to_stream(os.stderr), v)
                     case runic.Function:
-                        runic.write_function(
-                            os.to_stream(os.stderr),
-                            v,
-                        )
+                        runic.write_function(os.to_stream(os.stderr), v)
                     }
                     fmt.eprintln("\" and \"")
                     runic.write_type(os.to_stream(os.stderr), type)

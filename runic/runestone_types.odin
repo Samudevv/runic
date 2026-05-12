@@ -167,4 +167,3 @@ ArraySize :: union {
     u64,
     string,
 }
-

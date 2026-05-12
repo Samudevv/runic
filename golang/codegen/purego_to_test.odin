@@ -16,12 +16,12 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 */
 package golang_codegen
 
-import "root:runic"
+import "core:os"
 import "core:strings"
 import "core:testing"
 import "root:diff"
-import "core:os"
 import "root:errors"
+import "root:runic"
 
 @(test)
 test_purego_golang_to :: proc(t: ^testing.T) {
@@ -56,9 +56,9 @@ var.linux_globals = Array
 
 `
     rn := runic.To {
-        language = "golang",
+        language     = "golang",
         package_name = "greatwave",
-        purego   = true,
+        purego       = true,
     }
 
     linux_rd: strings.Reader
@@ -76,9 +76,7 @@ var.linux_globals = Array
 
     runic.to_preprocess_runestone(&linux_rs, rn, GO_RESERVED)
 
-    runestones := []runic.Runestone{
-        linux_rs,
-    }
+    runestones := []runic.Runestone{linux_rs}
     file_paths := []string{"/linux"}
 
     rc, rc_err := runic.cross_the_runes(file_paths, runestones)
@@ -96,7 +94,10 @@ var.linux_globals = Array
     err := generate_bindings(rc, rn, os.to_stream(out_file))
     if !testing.expect_value(t, err, nil) do return
 
-    data, data_err := os.read_entire_file("test_data/to_purego_golang_test.go", context.allocator)
+    data, data_err := os.read_entire_file(
+        "test_data/to_purego_golang_test.go",
+        context.allocator,
+    )
     if !testing.expect_value(t, data_err, nil) do return
     defer delete(data)
 

@@ -509,7 +509,10 @@ foreign import extern_test_runic "system:system_include"
 `
 
 
-    data, data_err := os.read_entire_file("test_data/extern_test.odin", context.allocator)
+    data, data_err := os.read_entire_file(
+        "test_data/extern_test.odin",
+        context.allocator,
+    )
     if !testing.expect_value(t, data_err, nil) do return
     defer delete(data)
 
@@ -783,15 +786,24 @@ foreign import multi_runic "system:multi"
     if !testing.expect_value(t, any_data_err, nil) do return
     defer delete(any_data)
 
-    linux_data, linux_data_err := os.read_entire_file(linux_path, context.allocator)
+    linux_data, linux_data_err := os.read_entire_file(
+        linux_path,
+        context.allocator,
+    )
     if !testing.expect_value(t, linux_data_err, nil) do return
     defer delete(linux_data)
 
-    windows_data, windows_data_err := os.read_entire_file(windows_path, context.allocator)
+    windows_data, windows_data_err := os.read_entire_file(
+        windows_path,
+        context.allocator,
+    )
     if !testing.expect_value(t, windows_data_err, nil) do return
     defer delete(windows_data)
 
-    macos_data, macos_data_err := os.read_entire_file(macos_path, context.allocator)
+    macos_data, macos_data_err := os.read_entire_file(
+        macos_path,
+        context.allocator,
+    )
     if !testing.expect_value(t, macos_data_err, nil) do return
     defer delete(macos_data)
 

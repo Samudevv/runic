@@ -19,8 +19,8 @@ package main
 
 import "base:runtime"
 import "core:fmt"
-import "core:os"
 import "core:mem"
+import "core:os"
 import "core:path/filepath"
 import "core:slice"
 import "core:strings"
@@ -160,7 +160,7 @@ short_path :: proc(file_path: string) -> string {
     src_loc := proc(
         loc := #caller_location,
     ) -> runtime.Source_Code_Location {return loc}(
-
+        
     )
     src_dir := os.dir(src_loc.file_path)
 
@@ -207,4 +207,3 @@ short_path :: proc(file_path: string) -> string {
 
     return rel_path
 }
-

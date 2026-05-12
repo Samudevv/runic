@@ -19,8 +19,8 @@ package runic
 import "base:runtime"
 import "core:fmt"
 import "core:io"
-import "core:os"
 import odintz "core:odin/tokenizer"
+import "core:os"
 import "core:path/filepath"
 import "core:slice"
 import "core:strconv"
@@ -117,10 +117,18 @@ parse_runestone :: proc(
         static, static_ok := om.get(sect, "static")
 
         if shared_ok && len(shared) != 0 {
-            rs.lib.shared = relative_to_file(file_path, shared, needs_dir = true)
+            rs.lib.shared = relative_to_file(
+                file_path,
+                shared,
+                needs_dir = true,
+            )
         }
         if static_ok && len(static) != 0 {
-            rs.lib.static = relative_to_file(file_path, static, needs_dir = true)
+            rs.lib.static = relative_to_file(
+                file_path,
+                static,
+                needs_dir = true,
+            )
         }
 
         errors.assert(

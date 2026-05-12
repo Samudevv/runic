@@ -371,8 +371,7 @@ slice_to_type :: proc(
     slice_type.members[0].name = "data"
     slice_type.members[0].type = type_to_type(name, elem) or_return
     if len(slice_type.members[0].type.array_info) != 0 {
-        slice_type.members[0].type.array_info[len(slice_type.members[0].type.array_info) - 1].pointer_info.count +=
-        1
+        slice_type.members[0].type.array_info[len(slice_type.members[0].type.array_info) - 1].pointer_info.count += 1
     } else {
         slice_type.members[0].type.pointer_info.count += 1
     }
@@ -507,8 +506,7 @@ dynamic_array_to_type :: proc(
     dynamic_array_type.members[0].name = "data"
     dynamic_array_type.members[0].type = type
     if len(dynamic_array_type.members[0].type.array_info) != 0 {
-        dynamic_array_type.members[0].type.array_info[len(dynamic_array_type.members[0].type.array_info) - 1].pointer_info.count +=
-        1
+        dynamic_array_type.members[0].type.array_info[len(dynamic_array_type.members[0].type.array_info) - 1].pointer_info.count += 1
     } else {
         dynamic_array_type.members[0].type.pointer_info.count += 1
     }

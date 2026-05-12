@@ -194,7 +194,10 @@ var.macos_globals = Array
     err := generate_bindings(rc, rn, os.to_stream(out_file))
     if !testing.expect_value(t, err, nil) do return
 
-    data, data_err := os.read_entire_file("test_data/to_c_test.h", context.allocator)
+    data, data_err := os.read_entire_file(
+        "test_data/to_c_test.h",
+        context.allocator,
+    )
     if !testing.expect_value(t, data_err, nil) do return
     defer delete(data)
 

@@ -130,12 +130,7 @@ clang_source_error :: proc(
 }
 
 @(private)
-temp_file :: proc(
-) -> (
-    file: ^os.File,
-    file_path: string,
-    err: errors.Error,
-) {
+temp_file :: proc() -> (file: ^os.File, file_path: string, err: errors.Error) {
     file_name: strings.Builder
 
     when ODIN_OS == .Windows {

@@ -17,10 +17,10 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 package golang_codegen
 
 import "core:io"
-import "root:runic"
-import "root:errors"
 import "core:strings"
+import "root:errors"
 import om "root:ordered_map"
+import "root:runic"
 
 @(private)
 purego_template :: #load("./go/purego_template.go", string)
@@ -30,17 +30,14 @@ purego_generate_bindings_from_runestone :: proc(
     rn: runic.To,
     wd: io.Writer,
 ) -> union {
-    io.Error,
-    errors.Error,
-} {
+        io.Error,
+        errors.Error,
+    } {
     return errors.Error(errors.not_implemented())
 }
 
 @(private)
-purego_generate_package_name :: proc(
-    buffer: string,
-    rn: runic.To,
-) -> string {
+purego_generate_package_name :: proc(buffer: string, rn: runic.To) -> string {
     buf: strings.Builder
     strings.builder_init(&buf)
     defer strings.builder_destroy(&buf)
@@ -48,7 +45,12 @@ purego_generate_package_name :: proc(
     strings.write_string(&buf, "package ")
     strings.write_string(&buf, rn.package_name)
 
-    new_buffer, _ := strings.replace(buffer, "package main", strings.to_string(buf), 1)
+    new_buffer, _ := strings.replace(
+        buffer,
+        "package main",
+        strings.to_string(buf),
+        1,
+    )
     delete(buffer)
 
     return new_buffer
@@ -93,14 +95,23 @@ purego_generate_platforms_and_libraries :: proc(
         }
     }
 
-    new_buffer, _ := strings.replace(buffer, "\t\t{\"linux\", \"amd64\"}: \"libc.so.6\",", strings.to_string(buf), 1)
+    new_buffer, _ := strings.replace(
+        buffer,
+        "\t\t{\"linux\", \"amd64\"}: \"libc.so.6\",",
+        strings.to_string(buf),
+        1,
+    )
     delete(buffer)
 
     return new_buffer
 }
 
 @(private)
-purego_generate_symbol_declarations :: proc(buffer: string, rs: runic.Runestone, rn: runic.To) -> string {
+purego_generate_symbol_declarations :: proc(
+    buffer: string,
+    rs: runic.Runestone,
+    rn: runic.To,
+) -> string {
     buf: strings.Builder
     strings.builder_init(&buf)
     defer strings.builder_destroy(&buf)
@@ -122,14 +133,23 @@ purego_generate_symbol_declarations :: proc(buffer: string, rs: runic.Runestone,
         }
     }
 
-    new_buffer, _ := strings.replace(buffer, "\tPuts func(string)", strings.to_string(buf), 1)
+    new_buffer, _ := strings.replace(
+        buffer,
+        "\tPuts func(string)",
+        strings.to_string(buf),
+        1,
+    )
     delete(buffer)
 
     return new_buffer
 }
 
 @(private)
-purego_write_symbol :: proc(buf: ^strings.Builder, sym: runic.Symbol, rn: runic.To) {
+purego_write_symbol :: proc(
+    buf: ^strings.Builder,
+    sym: runic.Symbol,
+    rn: runic.To,
+) {
     switch val in sym.value {
     case runic.Type:
         purego_write_type(buf, val, rn, true)
@@ -139,8 +159,13 @@ purego_write_symbol :: proc(buf: ^strings.Builder, sym: runic.Symbol, rn: runic.
 }
 
 @(private)
-purego_write_type :: proc(buf: ^strings.Builder, typ: runic.Type, rn: runic.To, string_able: bool) {
-    for i := uint(0); i < typ.pointer_info.count; i+=1 {
+purego_write_type :: proc(
+    buf: ^strings.Builder,
+    typ: runic.Type,
+    rn: runic.To,
+    string_able: bool,
+) {
+    for i := uint(0); i < typ.pointer_info.count; i += 1 {
         strings.write_rune(buf, '*')
     }
 
@@ -153,12 +178,12 @@ purego_write_type :: proc(buf: ^strings.Builder, typ: runic.Type, rn: runic.To, 
         case string:
             strings.write_string(buf, size)
         case:
-            // nil
+        // nil
         }
 
         strings.write_rune(buf, ']')
 
-        for i := uint(0); i < arr.pointer_info.count; i+=1 {
+        for i := uint(0); i < arr.pointer_info.count; i += 1 {
             strings.write_rune(buf, '*')
         }
     }
@@ -167,7 +192,12 @@ purego_write_type :: proc(buf: ^strings.Builder, typ: runic.Type, rn: runic.To, 
 }
 
 @(private)
-purego_write_function :: proc(buf: ^strings.Builder, func: runic.Function, rn: runic.To, string_able: bool) {
+purego_write_function :: proc(
+    buf: ^strings.Builder,
+    func: runic.Function,
+    rn: runic.To,
+    string_able: bool,
+) {
     strings.write_string(buf, "func(")
 
     for param, idx in func.parameters {
@@ -193,7 +223,12 @@ purego_write_function :: proc(buf: ^strings.Builder, func: runic.Function, rn: r
 }
 
 @(private)
-purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecifier, rn: runic.To, string_able: bool) {
+purego_write_typespecifier :: proc(
+    buf: ^strings.Builder,
+    spec: runic.TypeSpecifier,
+    rn: runic.To,
+    string_able: bool,
+) {
     switch s in spec {
     case runic.Builtin:
         switch s {
@@ -253,7 +288,9 @@ purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecif
         for member in s.members {
             strings.write_rune(buf, '\t')
 
-            upper_member_name, upper_member_name_err := strings.to_pascal_case(member.name)
+            upper_member_name, upper_member_name_err := strings.to_pascal_case(
+                member.name,
+            )
             if upper_member_name_err != .None {
                 upper_member_name = strings.clone(member.name)
             }
@@ -299,7 +336,11 @@ purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecif
 }
 
 @(private)
-purego_generate_types :: proc(buffer: string, rs: runic.Runestone, rn: runic.To) -> string {
+purego_generate_types :: proc(
+    buffer: string,
+    rs: runic.Runestone,
+    rn: runic.To,
+) -> string {
     buf: strings.Builder
     strings.builder_init(&buf)
     defer strings.builder_destroy(&buf)
@@ -321,14 +362,23 @@ purego_generate_types :: proc(buffer: string, rs: runic.Runestone, rn: runic.To)
         }
     }
 
-    new_buffer, _ := strings.replace(buffer, "type LibCType int", strings.to_string(buf), 1)
+    new_buffer, _ := strings.replace(
+        buffer,
+        "type LibCType int",
+        strings.to_string(buf),
+        1,
+    )
     delete(buffer)
 
     return new_buffer
 }
 
 @(private)
-purego_generate_symbol_registrations :: proc(buffer: string, rs: runic.Runestone, rn: runic.To) -> string {
+purego_generate_symbol_registrations :: proc(
+    buffer: string,
+    rs: runic.Runestone,
+    rn: runic.To,
+) -> string {
     buf: strings.Builder
     strings.builder_init(&buf)
     defer strings.builder_destroy(&buf)
@@ -352,7 +402,12 @@ purego_generate_symbol_registrations :: proc(buffer: string, rs: runic.Runestone
         }
     }
 
-    new_buffer, _ := strings.replace(buffer, "\t\t{&Puts, \"puts\"},", strings.to_string(buf), 1)
+    new_buffer, _ := strings.replace(
+        buffer,
+        "\t\t{&Puts, \"puts\"},",
+        strings.to_string(buf),
+        1,
+    )
     delete(buffer)
 
     return new_buffer
@@ -360,7 +415,7 @@ purego_generate_symbol_registrations :: proc(buffer: string, rs: runic.Runestone
 
 @(private)
 purego_clean_template :: proc(buffer: string) -> string {
-MAIN_FUNC :: `func main() {
+    MAIN_FUNC :: `func main() {
 	if err := LoadForeignLibrary(); err != nil {
 		panic(err)
 	}

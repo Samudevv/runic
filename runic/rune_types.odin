@@ -78,7 +78,7 @@ To :: struct {
     add_libs_shared: PlatformValue([]string),
     add_libs_static: PlatformValue([]string),
     // Golang
-    purego: bool,
+    purego:          bool,
 }
 
 Wrapper :: struct {
@@ -184,4 +184,3 @@ ExternRune :: struct {
     add_prefix:  bool,
     add_suffix:  bool,
 }
-

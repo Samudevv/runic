@@ -33,8 +33,14 @@ test_wrap :: proc(t: ^testing.T) {
 
     err = io.Error.Unknown
 
-    testing.expect(t, strings.has_prefix(wrap_union(err).?, "io.Error: Unknown"))
-    testing.expect(t, strings.has_prefix(wrap(io.Error.EOF).?, "io.Error: EOF"))
+    testing.expect(
+        t,
+        strings.has_prefix(wrap_union(err).?, "io.Error: Unknown"),
+    )
+    testing.expect(
+        t,
+        strings.has_prefix(wrap(io.Error.EOF).?, "io.Error: EOF"),
+    )
     testing.expect(
         t,
         strings.has_prefix(
@@ -45,4 +51,3 @@ test_wrap :: proc(t: ^testing.T) {
 
     testing.expect(t, strings.has_prefix(wrap("Success").?, "Success"))
 }
-

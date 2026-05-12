@@ -129,6 +129,26 @@ package: release (make-directory BUILD_DIR / 'package')
     iscc windows_installer.iss
 
 [unix]
+fmt:
+    #! /bin/sh
+    odin_files=$(find -type f -name '*.odin')
+
+    counter="0"
+    for odin_file in $odin_files; do
+        if [ -f "$odin_file" ] &&
+           [ "$(basename $(dirname $odin_file))" != 'libclang' ] &&
+           [ "$(basename $(dirname $odin_file))" != 'yaml' ] &&
+           [ "$(basename $odin_file)" != 'tags.odin' ]
+        then
+            odinfmt -w "$odin_file"
+            counter=$(expr "$counter" '+' '1')
+        fi
+    done
+
+    echo "$counter odin files formatted"
+
+
+[unix]
 clean:
   rm -rf "{{ BUILD_DIR }}" \
   test_data/write_to_handle \

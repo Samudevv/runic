@@ -81,4 +81,3 @@ test_minimize_platforms :: proc(t: ^testing.T) {
         delete(plats)
     }
 }
-

@@ -19,10 +19,10 @@ package runic
 
 import "base:runtime"
 import "core:fmt"
+import "core:os"
 import "core:path/filepath"
 import "core:slice"
 import "core:strings"
-import "core:os"
 
 Platform :: struct {
     os:   OS,
@@ -443,4 +443,3 @@ multiple_platforms_any_match :: proc(p1s, p2s: []Platform) -> bool {
 
     return false
 }
-

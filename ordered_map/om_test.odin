@@ -171,4 +171,3 @@ test_ordered_map_move :: proc(t: ^testing.T) {
     testing.expect_value(t, omap.indices["pineapple"], 5)
     testing.expect_value(t, omap.indices["kiwi"], 6)
 }
-

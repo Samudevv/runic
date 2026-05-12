@@ -16,25 +16,56 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 */
 package golang_codegen
 
-import "root:runic"
-import "root:errors"
 import "core:io"
 import "core:strings"
+import "root:errors"
+import "root:runic"
 
-GO_RESERVED :: []string{
-    "break", "case", "chan", "const", "continue",
-    "default", "defer", "else", "fallthrough", "for",
-    "func", "go", "goto", "if", "import",
-    "interface", "map", "package", "range", "return",
-    "select", "struct", "switch", "type", "var",
+GO_RESERVED :: []string {
+    "break",
+    "case",
+    "chan",
+    "const",
+    "continue",
+    "default",
+    "defer",
+    "else",
+    "fallthrough",
+    "for",
+    "func",
+    "go",
+    "goto",
+    "if",
+    "import",
+    "interface",
+    "map",
+    "package",
+    "range",
+    "return",
+    "select",
+    "struct",
+    "switch",
+    "type",
+    "var",
     "bool",
     "string",
-    "int", "int8", "int16", "int32", "int64",
-    "uint", "uint8", "uint16", "uint32", "uint64", "uintptr",
-    "float32", "float64",
-    "complex64", "complex128",
+    "int",
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "uint",
+    "uint8",
+    "uint16",
+    "uint32",
+    "uint64",
+    "uintptr",
+    "float32",
+    "float64",
+    "complex64",
+    "complex128",
     "byte",
-    "rune"
+    "rune",
 }
 
 generate_bindings :: proc {
@@ -46,24 +77,36 @@ generate_bindings_from_runecross :: proc(
     rn: runic.To,
     wd: io.Writer,
 ) -> union {
-    io.Error,
-    errors.Error,
-} {
+        io.Error,
+        errors.Error,
+    } {
     if !rn.purego do return errors.Error(errors.message("\"to.purego\" must be true. Only purego golang bindings are supported"))
 
     file_contents := strings.clone(purego_template)
     defer delete(file_contents)
 
     file_contents = purego_generate_package_name(file_contents, rn)
-    file_contents = purego_generate_platforms_and_libraries(file_contents, rc, rn)
+    file_contents = purego_generate_platforms_and_libraries(
+        file_contents,
+        rc,
+        rn,
+    )
 
     for rs in rc.cross {
         file_contents = purego_generate_types(file_contents, rs, rn)
-        file_contents = purego_generate_symbol_declarations(file_contents, rs, rn)
-        file_contents = purego_generate_symbol_registrations(file_contents, rs, rn)
+        file_contents = purego_generate_symbol_declarations(
+            file_contents,
+            rs,
+            rn,
+        )
+        file_contents = purego_generate_symbol_registrations(
+            file_contents,
+            rs,
+            rn,
+        )
     }
 
-	file_contents = purego_clean_template(file_contents)
+    file_contents = purego_clean_template(file_contents)
 
     io.write_string(wd, file_contents) or_return
 
@@ -97,9 +140,11 @@ runic_arch_to_goarch :: proc(arch: runic.Architecture) -> string {
         return "amd64"
     case .arm64:
         return "arm64"
-    case .x86: // TODO
+    case .x86:
+        // TODO
         return "i684"
-    case .arm32: // TODO
+    case .arm32:
+        // TODO
         return "arm"
     }
 

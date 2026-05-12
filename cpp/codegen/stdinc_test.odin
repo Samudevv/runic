@@ -43,7 +43,10 @@ test_cpp_stdinc :: proc(t: ^testing.T) {
             if expected_contents, expected_ok := system_includes_contents(
                 file_name,
             ); expected_ok {
-                contents, contents_err := os.read_entire_file(fd, context.allocator)
+                contents, contents_err := os.read_entire_file(
+                    fd,
+                    context.allocator,
+                )
 
                 if testing.expect_value(t, contents_err, nil) {
                     if !testing.expect_value(t, string(contents), expected_contents) do fmt.eprintfln("contents of {} differ from expected", file_name)
@@ -60,4 +63,3 @@ test_cpp_stdinc :: proc(t: ^testing.T) {
 
     testing.expect(t, !(os.exists(gen_dir) || os.is_dir(gen_dir)))
 }
-

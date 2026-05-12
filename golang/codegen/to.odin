@@ -22,8 +22,19 @@ import "core:io"
 import "core:strings"
 
 GO_RESERVED :: []string{
-    "int",
-    "uint",
+    "break", "case", "chan", "const", "continue",
+    "default", "defer", "else", "fallthrough", "for",
+    "func", "go", "goto", "if", "import",
+    "interface", "map", "package", "range", "return",
+    "select", "struct", "switch", "type", "var",
+    "bool",
+    "string",
+    "int", "int8", "int16", "int32", "int64",
+    "uint", "uint8", "uint16", "uint32", "uint64", "uintptr",
+    "float32", "float64",
+    "complex64", "complex128",
+    "byte",
+    "rune"
 }
 
 generate_bindings :: proc {
@@ -53,7 +64,7 @@ generate_bindings_from_runecross :: proc(
     }
 
 	file_contents = purego_clean_template(file_contents)
-    
+
     io.write_string(wd, file_contents) or_return
 
     return nil

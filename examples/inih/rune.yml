@@ -1,0 +1,31 @@
+version: 0
+platforms:
+  - Linux x86_64
+from:
+  language: c
+  shared: libinih.so
+  headers: ini.h
+  defines:
+    INI_ALLOW_MULTILINE: 0
+    INI_ALLOW_BOM: 1
+    INI_ALLOW_INLINE_COMMENTS: 0
+    INI_ALLOW_NO_VALUE: 1
+    INI_HANDLER_LINENO: 1
+    INI_CALL_HANDLER_ON_NEW_SECTION: 1
+    INI_USE_STACK: 0
+    INI_MAX_LINE: 512
+    INI_INITIAL_ALLOC: 1024
+    INI_ALLOW_REALLOC: 1
+    INI_SHARED_LIB: 1
+  includedirs:
+    - './stdinc'
+  ignore:
+    constants: '*'
+  extern:
+    - 'stdinc/*'
+to:
+  language: golang
+  purego: true
+  package: inih
+  out: banini/inih/inih.go
+  trim_prefix: 'ini_'

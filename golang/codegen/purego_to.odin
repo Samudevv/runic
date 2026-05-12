@@ -132,15 +132,14 @@ purego_generate_symbol_declarations :: proc(buffer: string, rs: runic.Runestone,
 purego_write_symbol :: proc(buf: ^strings.Builder, sym: runic.Symbol, rn: runic.To) {
     switch val in sym.value {
     case runic.Type:
-        purego_write_type(buf, val, rn, false)
+        purego_write_type(buf, val, rn, true)
     case runic.Function:
-        purego_write_function(buf, val, rn)
+        purego_write_function(buf, val, rn, true)
     }
 }
 
 @(private)
-purego_write_type :: proc(buf: ^strings.Builder, typ: runic.Type, rn: runic.To, is_struct_member: bool) {
-    // TODO: handle pointer and array
+purego_write_type :: proc(buf: ^strings.Builder, typ: runic.Type, rn: runic.To, string_able: bool) {
     for i := uint(0); i < typ.pointer_info.count; i+=1 {
         strings.write_rune(buf, '*')
     }
@@ -164,17 +163,17 @@ purego_write_type :: proc(buf: ^strings.Builder, typ: runic.Type, rn: runic.To, 
         }
     }
 
-    purego_write_typespecifier(buf, typ.spec, rn, is_struct_member)
+    purego_write_typespecifier(buf, typ.spec, rn, string_able)
 }
 
 @(private)
-purego_write_function :: proc(buf: ^strings.Builder, func: runic.Function, rn: runic.To) {
+purego_write_function :: proc(buf: ^strings.Builder, func: runic.Function, rn: runic.To, string_able: bool) {
     strings.write_string(buf, "func(")
 
     for param, idx in func.parameters {
         strings.write_string(buf, param.name)
         strings.write_rune(buf, ' ')
-        purego_write_type(buf, param.type, rn, false)
+        purego_write_type(buf, param.type, rn, string_able)
 
         if idx != len(func.parameters) - 1 {
             strings.write_string(buf, ", ")
@@ -190,16 +189,16 @@ purego_write_function :: proc(buf: ^strings.Builder, func: runic.Function, rn: r
     }
 
     strings.write_rune(buf, ' ')
-    purego_write_type(buf, func.return_type, rn, false)
+    purego_write_type(buf, func.return_type, rn, string_able)
 }
 
 @(private)
-purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecifier, rn: runic.To, is_struct_member: bool) {
+purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecifier, rn: runic.To, string_able: bool) {
     switch s in spec {
     case runic.Builtin:
         switch s {
         case .Untyped:
-            strings.write_string(buf, "untyped")
+            strings.write_string(buf, "unsafe.Pointer /* untyped */")
         case .RawPtr:
             strings.write_string(buf, "unsafe.Pointer")
         case .SInt8:
@@ -211,7 +210,7 @@ purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecif
         case .SInt64:
             strings.write_string(buf, "int64")
         case .SInt128:
-            strings.write_string(buf, "int128")
+            strings.write_string(buf, "[2]int64 /* int128 */")
         case .SIntX:
             strings.write_string(buf, "int")
         case .UInt8:
@@ -223,7 +222,7 @@ purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecif
         case .UInt64:
             strings.write_string(buf, "uint64")
         case .UInt128:
-            strings.write_string(buf, "uint128")
+            strings.write_string(buf, "[2]uint64 /* uint128 */")
         case .UIntX:
             strings.write_string(buf, "uint")
         case .Float32:
@@ -231,23 +230,23 @@ purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecif
         case .Float64:
             strings.write_string(buf, "float64")
         case .Float128:
-            strings.write_string(buf, "float128")
+            strings.write_string(buf, "[2]float64 /* float128 */")
         case .String:
-            if is_struct_member {
-                strings.write_string(buf, "RunicString")
-            } else {
+            if string_able {
                 strings.write_string(buf, "string")
+            } else {
+                strings.write_string(buf, "RunicString")
             }
         case .Bool8:
-            strings.write_string(buf, "bool8")
+            strings.write_string(buf, "int8 /* bool8 */")
         case .Bool16:
-            strings.write_string(buf, "bool16")
+            strings.write_string(buf, "int16 /* bool16 */")
         case .Bool32:
-            strings.write_string(buf, "bool32")
+            strings.write_string(buf, "int32 /* bool32 */")
         case .Bool64:
-            strings.write_string(buf, "bool64")
+            strings.write_string(buf, "int64 /* bool64 */")
         case .Opaque:
-            strings.write_string(buf, "opaque")
+            strings.write_string(buf, "unsafe.Pointer /* opaque */")
         }
     case runic.Struct:
         strings.write_string(buf, "struct {\n")
@@ -262,19 +261,19 @@ purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecif
 
             strings.write_string(buf, upper_member_name)
             strings.write_rune(buf, ' ')
-            purego_write_type(buf, member.type, rn, true)
+            purego_write_type(buf, member.type, rn, false)
             strings.write_rune(buf, '\n')
         }
         strings.write_string(buf, "}")
     case runic.Enum:
         purego_write_typespecifier(buf, s.type, rn, false)
     case runic.Union:
-        strings.write_string(buf, "union {\n")
+        strings.write_string(buf, "struct /* union */ {\n")
         for member in s.members {
             strings.write_rune(buf, '\t')
             strings.write_string(buf, member.name)
             strings.write_rune(buf, ' ')
-            purego_write_type(buf, member.type, rn, true)
+            purego_write_type(buf, member.type, rn, false)
             strings.write_rune(buf, '\n')
         }
         strings.write_string(buf, "}")
@@ -287,12 +286,15 @@ purego_write_typespecifier :: proc(buf: ^strings.Builder, spec: runic.TypeSpecif
 
         strings.write_string(buf, upper_case_name)
     case runic.Unknown:
-        strings.write_string(buf, "unknown")
-    case runic.FunctionPointer:
-        purego_write_function(buf, s^, rn)
-    case runic.ExternType:
-        strings.write_string(buf, "extern.")
+        strings.write_string(buf, "unsafe.Pointer /* unknown \"")
         strings.write_string(buf, string(s))
+        strings.write_string(buf, "\" */")
+    case runic.FunctionPointer:
+        purego_write_function(buf, s^, rn, false)
+    case runic.ExternType:
+        strings.write_string(buf, "unsafe.Pointer /* \"extern.")
+        strings.write_string(buf, string(s))
+        strings.write_string(buf, "\" */")
     }
 }
 
@@ -312,7 +314,7 @@ purego_generate_types :: proc(buffer: string, rs: runic.Runestone, rn: runic.To)
         strings.write_string(&buf, "type ")
         strings.write_string(&buf, upper_case_type_name)
         strings.write_rune(&buf, ' ')
-        purego_write_type(&buf, typ, rn, false)
+        purego_write_type(&buf, typ, rn, true)
 
         if idx != om.length(rs.types) - 1 {
             strings.write_rune(&buf, '\n')
@@ -342,7 +344,7 @@ purego_generate_symbol_registrations :: proc(buffer: string, rs: runic.Runestone
         strings.write_string(&buf, "\t\t{&")
         strings.write_string(&buf, upper_sym_name)
         strings.write_string(&buf, ", \"")
-        strings.write_string(&buf, sym_name)
+        strings.write_string(&buf, sym.remap.? or_else sym_name)
         strings.write_string(&buf, "\"},")
 
         if idx != om.length(rs.symbols) - 1 {

@@ -31,7 +31,9 @@ test_data/test_odin_to_multiple_files*.odin
 build/
 ols.json
 examples/olivec/olivec/
+examples/inih/banini/inih/
 examples/glew/gl/
 go.mod
 go.sum
 purego_template
+banini

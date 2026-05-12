@@ -1,0 +1,33 @@
+set windows-shell := ['powershell.exe']
+
+BUILD_DIR := justfile_directory() / '..' / '..' / 'build'
+
+CFLAGS := '-fPIC --std=c23 ' + \
+	'-DINI_ALLOW_MULTILINE=0 ' + \
+	'-DINI_ALLOW_BOM=1 ' + \
+	'-DINI_ALLOW_INLINE_COMMENTS=0 ' + \
+	'-DINI_ALLOW_NO_VALUE=1 ' + \
+	'-DINI_HANDLER_LINENO=1 ' + \
+	'-DINI_CALL_HANDLER_ON_NEW_SECTION=1 ' + \
+	'-DINI_USE_STACK=0 ' + \
+	'-DINI_MAX_LINE=512 ' + \
+	'-DINI_INITIAL_ALLOC=1024 ' + \
+	'-DINI_ALLOW_REALLOC=1 ' + \
+	'-DINI_SHARED_LIB'
+
+bindings:
+    "{{ BUILD_DIR / 'runic_debug' }}"
+
+[unix]
+inih:
+    cc -c -o "{{ BUILD_DIR }}/ini.o" {{ CFLAGS }} ini.c
+    cc -shared -o "{{ BUILD_DIR }}/libinih.so" "{{ BUILD_DIR }}/ini.o"
+
+build: inih bindings
+    go build -C ./banini -v -o "{{ BUILD_DIR / 'banini' }}"
+
+example: run
+
+run: build
+    "{{ BUILD_DIR / 'banini' }}"
+

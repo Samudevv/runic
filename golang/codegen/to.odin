@@ -17,6 +17,7 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 package golang_codegen
 
 import "core:io"
+import "core:os"
 import "core:strings"
 import "root:errors"
 import "root:runic"
@@ -85,30 +86,62 @@ generate_bindings_from_runecross :: proc(
     file_contents := strings.clone(purego_template)
     defer delete(file_contents)
 
-    file_contents = purego_generate_package_name(file_contents, rn)
-    file_contents = purego_generate_platforms_and_libraries(
-        file_contents,
-        rc,
-        rn,
-    )
+    file_contents_replace := make(map[string]string)
+    defer delete(file_contents_replace)
 
-    for rs in rc.cross {
-        file_contents = purego_generate_types(file_contents, rs, rn)
-        file_contents = purego_generate_symbol_declarations(
+    rs := rc.cross[0]
+    build_constraints := purego_generate_build_constraints(rs.plats)
+    package_name := purego_generate_package_name(rn)
+    platforms_and_libraries := purego_generate_platforms_and_libraries(rc, rn)
+    types := purego_generate_types(rs, rn)
+    symbol_declarations := purego_generate_symbol_declarations(rs, rn)
+    symbol_registrations := purego_generate_symbol_registrations(rs, rn)
+    symbol_variables := purego_generate_symbol_variables(rc)
+
+    defer if len(build_constraints) != 0 do delete(build_constraints)
+
+    file_contents_replace["package main"] = package_name
+    file_contents_replace["\t\t{\"linux\", \"amd64\"}: \"libc.so.6\","] =
+        platforms_and_libraries
+    file_contents_replace["type LibCType int"] = types
+    file_contents_replace["\tPuts func(string)"] = symbol_declarations
+    file_contents_replace["\t\t{&Puts, \"puts\"},"] = symbol_registrations
+    file_contents_replace["\t\trunicSymbols,"] = symbol_variables
+
+    for old_str, new_str in file_contents_replace {
+        new_file_contents, was_alloc := strings.replace(
             file_contents,
-            rs,
-            rn,
+            old_str,
+            new_str,
+            1,
         )
-        file_contents = purego_generate_symbol_registrations(
-            file_contents,
-            rs,
-            rn,
-        )
+        if was_alloc {
+            delete(file_contents)
+        }
+
+        file_contents = new_file_contents
+
+        delete(new_str)
     }
 
-    file_contents = purego_clean_template(file_contents)
-
+    if len(build_constraints) != 0 {
+        io.write_string(wd, build_constraints) or_return
+        io.write_rune(wd, '\n') or_return
+    }
     io.write_string(wd, file_contents) or_return
+
+    for rc_rs, idx in rc.cross[1:] {
+        file := purego_new_file_for_runestone(rc_rs, rn) or_return
+        defer os.close(file)
+
+        purego_generate_bindings_from_runestone(
+            rc_rs,
+            idx + 1,
+            rn,
+            rc,
+            os.to_stream(file),
+        ) or_return
+    }
 
     return nil
 }

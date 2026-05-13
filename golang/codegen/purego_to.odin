@@ -16,7 +16,9 @@ along with runic.  If not, see <http://www.gnu.org/licenses/>.
 */
 package golang_codegen
 
+import "core:fmt"
 import "core:io"
+import "core:os"
 import "core:strings"
 import "root:errors"
 import om "root:ordered_map"
@@ -26,39 +28,140 @@ import "root:runic"
 purego_template :: #load("./go/purego_template.go", string)
 
 purego_generate_bindings_from_runestone :: proc(
-    rs: runic.Runestone,
+    rs: runic.PlatformRunestone,
+    rc_idx: int,
     rn: runic.To,
+    rc: runic.Runecross,
     wd: io.Writer,
 ) -> union {
         io.Error,
         errors.Error,
     } {
-    return errors.Error(errors.not_implemented())
+
+    build_constraints := purego_generate_build_constraints(rs.plats)
+    package_name := purego_generate_package_name(rn)
+    types := purego_generate_types(rs, rn)
+    symbol_declarations := purego_generate_symbol_declarations(rs, rn)
+    symbol_registrations := purego_generate_symbol_registrations(rs, rn)
+    symbol_reg_var_name := purego_generate_symbol_registration_variable_name(
+        rs.plats,
+    )
+    defer if len(build_constraints) != 0 do delete(build_constraints)
+    defer delete(package_name)
+    defer delete(types)
+    defer delete(symbol_declarations)
+    defer delete(symbol_registrations)
+    defer delete(symbol_reg_var_name)
+
+    if len(build_constraints) != 0 {
+        io.write_string(wd, build_constraints) or_return
+        io.write_rune(wd, '\n') or_return
+    }
+    io.write_string(wd, package_name) or_return
+
+    io.write_string(wd, "\n\n\n") or_return
+    io.write_string(wd, types) or_return
+    io.write_string(wd, "\n\n") or_return
+
+    io.write_string(wd, "var (\n") or_return
+    io.write_string(wd, symbol_declarations) or_return
+    io.write_string(wd, "\n)\n\nvar (\n") or_return
+
+    io.write_rune(wd, '\t') or_return
+    io.write_string(wd, symbol_reg_var_name) or_return
+    io.write_string(wd, " = [][2]any{\n") or_return
+    io.write_string(wd, symbol_registrations) or_return
+    io.write_string(wd, "\t}\n") or_return
+
+
+    if len(rc.cross) >= 2 {
+        io.write_rune(wd, '\n') or_return
+    }
+
+    for rc_rs, idx in rc.cross {
+        if idx == rc_idx || idx == 0 do continue
+
+        reg_var_name := purego_generate_symbol_registration_variable_name(
+            rc_rs.plats,
+        )
+        defer delete(reg_var_name)
+
+        io.write_rune(wd, '\t') or_return
+        io.write_string(wd, reg_var_name) or_return
+        io.write_string(wd, " = [][2]any{}\n") or_return
+    }
+
+    io.write_string(wd, ")\n") or_return
+
+    return nil
 }
 
 @(private)
-purego_generate_package_name :: proc(buffer: string, rn: runic.To) -> string {
+purego_generate_build_constraints :: proc(plats: []runic.Platform) -> string {
+    if len(plats) == 0 do return ""
+
+    expressions := make([dynamic]string)
+    defer delete(expressions)
+    defer for e in expressions do delete(e)
+
+    for plat in plats {
+        if plat.os == .Any && plat.arch == .Any do continue
+
+        buf: strings.Builder
+        strings.builder_init(&buf)
+
+        if plat.os != .Any && plat.arch != .Any {
+            strings.write_rune(&buf, '(')
+        }
+
+        if plat.os != .Any {
+            strings.write_string(&buf, runic_os_to_goos(plat.os))
+        }
+
+        if plat.arch != .Any {
+            if plat.os != .Any {
+                strings.write_string(&buf, " && ")
+            }
+            strings.write_string(&buf, runic_arch_to_goarch(plat.arch))
+        }
+
+        if plat.os != .Any && plat.arch != .Any {
+            strings.write_rune(&buf, ')')
+        }
+
+        append(&expressions, strings.to_string(buf))
+    }
+
+    if len(expressions) == 0 do return ""
+
     buf: strings.Builder
     strings.builder_init(&buf)
-    defer strings.builder_destroy(&buf)
+
+    strings.write_string(&buf, "//go:build ")
+
+    for exp, idx in expressions {
+        strings.write_string(&buf, exp)
+        if idx != len(expressions) - 1 {
+            strings.write_string(&buf, " || ")
+        }
+    }
+
+    return strings.to_string(buf)
+}
+
+@(private)
+purego_generate_package_name :: proc(rn: runic.To) -> string {
+    buf: strings.Builder
+    strings.builder_init(&buf)
 
     strings.write_string(&buf, "package ")
     strings.write_string(&buf, rn.package_name)
 
-    new_buffer, _ := strings.replace(
-        buffer,
-        "package main",
-        strings.to_string(buf),
-        1,
-    )
-    delete(buffer)
-
-    return new_buffer
+    return strings.to_string(buf)
 }
 
 @(private)
 purego_generate_platforms_and_libraries :: proc(
-    buffer: string,
     rc: runic.Runecross,
     rn: runic.To,
 ) -> string {
@@ -77,7 +180,6 @@ purego_generate_platforms_and_libraries :: proc(
 
     buf: strings.Builder
     strings.builder_init(&buf)
-    defer strings.builder_destroy(&buf)
 
     for entry, idx in platform_libraries.data {
         plat, lib := entry.key, entry.value
@@ -95,26 +197,16 @@ purego_generate_platforms_and_libraries :: proc(
         }
     }
 
-    new_buffer, _ := strings.replace(
-        buffer,
-        "\t\t{\"linux\", \"amd64\"}: \"libc.so.6\",",
-        strings.to_string(buf),
-        1,
-    )
-    delete(buffer)
-
-    return new_buffer
+    return strings.to_string(buf)
 }
 
 @(private)
 purego_generate_symbol_declarations :: proc(
-    buffer: string,
     rs: runic.Runestone,
     rn: runic.To,
 ) -> string {
     buf: strings.Builder
     strings.builder_init(&buf)
-    defer strings.builder_destroy(&buf)
 
     for entry, idx in rs.symbols.data {
         sym_name, sym := entry.key, entry.value
@@ -133,15 +225,7 @@ purego_generate_symbol_declarations :: proc(
         }
     }
 
-    new_buffer, _ := strings.replace(
-        buffer,
-        "\tPuts func(string)",
-        strings.to_string(buf),
-        1,
-    )
-    delete(buffer)
-
-    return new_buffer
+    return strings.to_string(buf)
 }
 
 @(private)
@@ -336,14 +420,9 @@ purego_write_typespecifier :: proc(
 }
 
 @(private)
-purego_generate_types :: proc(
-    buffer: string,
-    rs: runic.Runestone,
-    rn: runic.To,
-) -> string {
+purego_generate_types :: proc(rs: runic.Runestone, rn: runic.To) -> string {
     buf: strings.Builder
     strings.builder_init(&buf)
-    defer strings.builder_destroy(&buf)
 
     for entry, idx in rs.types.data {
         typ_name, typ := entry.key, entry.value
@@ -362,26 +441,16 @@ purego_generate_types :: proc(
         }
     }
 
-    new_buffer, _ := strings.replace(
-        buffer,
-        "type LibCType int",
-        strings.to_string(buf),
-        1,
-    )
-    delete(buffer)
-
-    return new_buffer
+    return strings.to_string(buf)
 }
 
 @(private)
 purego_generate_symbol_registrations :: proc(
-    buffer: string,
     rs: runic.Runestone,
     rn: runic.To,
 ) -> string {
     buf: strings.Builder
     strings.builder_init(&buf)
-    defer strings.builder_destroy(&buf)
 
     for entry, idx in rs.symbols.data {
         sym_name, sym := entry.key, entry.value
@@ -402,29 +471,70 @@ purego_generate_symbol_registrations :: proc(
         }
     }
 
-    new_buffer, _ := strings.replace(
-        buffer,
-        "\t\t{&Puts, \"puts\"},",
-        strings.to_string(buf),
-        1,
-    )
-    delete(buffer)
-
-    return new_buffer
+    return strings.to_string(buf)
 }
 
 @(private)
-purego_clean_template :: proc(buffer: string) -> string {
-    MAIN_FUNC :: `func main() {
-	if err := LoadForeignLibrary(); err != nil {
-		panic(err)
-	}
+purego_new_file_for_runestone :: proc(
+    rs: runic.Runestone,
+    rn: runic.To,
+) -> (
+    ^os.File,
+    errors.Error,
+) {
+    platform_file_name := runic.platform_file_name(rn.out, rs.platform)
+    defer delete(platform_file_name)
 
-	Puts("Calling C from Go without Cgo!")
-}`
+    file, err := os.open(
+        platform_file_name,
+        {.Write, .Create, .Trunc},
+        {.Read_User, .Write_User, .Read_Group, .Read_Other},
+    )
+    if err != nil do return file, errors.wrap(err)
 
-    new_buffer, _ := strings.replace(buffer, MAIN_FUNC, "", 1)
-    delete(buffer)
+    return file, nil
+}
 
-    return new_buffer
+@(private)
+purego_generate_symbol_registration_variable_name :: proc(
+    plats: []runic.Platform,
+) -> string {
+    buf: strings.Builder
+    strings.builder_init(&buf)
+
+    strings.write_string(&buf, "runicSymbols")
+
+    for plat in plats {
+        if plat.os != .Any {
+            fmt.sbprintf(&buf, "{}", plat.os)
+        }
+        if plat.arch != .Any {
+            fmt.sbprintf(&buf, "{}", plat.arch)
+        }
+    }
+
+    return strings.to_string(buf)
+}
+
+@(private)
+purego_generate_symbol_variables :: proc(rc: runic.Runecross) -> string {
+    buf: strings.Builder
+    strings.builder_init(&buf)
+
+    for rc_rs, idx in rc.cross {
+        reg_var_name := purego_generate_symbol_registration_variable_name(
+            rc_rs.plats,
+        )
+        defer delete(reg_var_name)
+
+        strings.write_string(&buf, "\t\t")
+        strings.write_string(&buf, reg_var_name)
+        strings.write_rune(&buf, ',')
+
+        if idx != len(rc.cross) - 1 {
+            strings.write_rune(&buf, '\n')
+        }
+    }
+
+    return strings.to_string(buf)
 }

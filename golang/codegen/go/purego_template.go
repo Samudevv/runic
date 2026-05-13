@@ -14,6 +14,16 @@ var (
 	Puts func(string)
 )
 
+var (
+	runicSymbols = [][2]any{
+		{&Puts, "puts"},
+	}
+
+	runicAllSymbols = [][][2]any{
+		runicSymbols,
+	}
+)
+
 func LoadForeignLibrary() error {
 	var runicLibraries = map[[2]string]string{
 		{"linux", "amd64"}: "libc.so.6",
@@ -47,7 +57,13 @@ func LoadForeignLibrary() error {
 
 	runicForeignLibrary = runicLibrary
 
-	return runicRegisterSymbols()
+	for _, runicSomeSymbols := range runicAllSymbols {
+		if err := runicRegisterSymbols(runicSomeSymbols); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func UnloadForeignLibrary() error {
@@ -66,12 +82,8 @@ var (
 	runicForeignLibrary uintptr
 )
 
-func runicRegisterSymbols() error {
-	runicSymbols := [][2]any{
-		{&Puts, "puts"},
-	}
-
-	for _, runicEntry := range runicSymbols {
+func runicRegisterSymbols(runicSymbolsParam [][2]any) error {
+	for _, runicEntry := range runicSymbolsParam {
 		runicSym, runicSymErr := purego.Dlsym(runicForeignLibrary, runicEntry[1].(string))
 		if runicSymErr != nil {
 			return runicSymErr
@@ -123,10 +135,3 @@ func ConstGoString(str RunicString) string {
 	return unsafe.String((*byte)(unsafe.Pointer(str)), strLen)
 }
 
-func main() {
-	if err := LoadForeignLibrary(); err != nil {
-		panic(err)
-	}
-
-	Puts("Calling C from Go without Cgo!")
-}

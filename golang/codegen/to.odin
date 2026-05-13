@@ -94,7 +94,8 @@ generate_bindings_from_runecross :: proc(
     package_name := purego_generate_package_name(rn)
     platforms_and_libraries := purego_generate_platforms_and_libraries(rc, rn)
     types := purego_generate_types(rs, rn)
-    symbol_declarations := purego_generate_symbol_declarations(rs, rn)
+    func_sym_decls := purego_generate_function_symbol_declarations(rs, rn)
+    type_sym_decls := purego_generate_type_symbol_declarations(rs, rn)
     symbol_registrations := purego_generate_symbol_registrations(rs, rn)
     symbol_variables := purego_generate_symbol_variables(rc)
 
@@ -104,7 +105,9 @@ generate_bindings_from_runecross :: proc(
     file_contents_replace["\t\t{\"linux\", \"amd64\"}: \"libc.so.6\","] =
         platforms_and_libraries
     file_contents_replace["type LibCType int"] = types
-    file_contents_replace["\tPuts func(string)"] = symbol_declarations
+    file_contents_replace["\tPuts func(string)"] = func_sym_decls
+    file_contents_replace["func Errno() int {\n\treturn *(*int)(unsafe.Pointer(runicPtrErrno))\n}\n\nfunc SetErrno(value int) {\n\t*(*int)(unsafe.Pointer(runicPtrErrno)) = value\n}\n\nvar (\n\trunicPtrErrno uintptr\n)"] =
+        type_sym_decls
     file_contents_replace["\t\t{&Puts, \"puts\"},"] = symbol_registrations
     file_contents_replace["\t\trunicSymbols,"] = symbol_variables
 

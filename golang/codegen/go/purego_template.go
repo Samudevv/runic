@@ -14,6 +14,18 @@ var (
 	Puts func(string)
 )
 
+func Errno() int {
+	return *(*int)(unsafe.Pointer(runicPtrErrno))
+}
+
+func SetErrno(value int) {
+	*(*int)(unsafe.Pointer(runicPtrErrno)) = value
+}
+
+var (
+	runicPtrErrno uintptr
+)
+
 var (
 	runicSymbols = [][2]any{
 		{&Puts, "puts"},
@@ -88,7 +100,12 @@ func runicRegisterSymbols(runicSymbolsParam [][2]any) error {
 		if runicSymErr != nil {
 			return runicSymErr
 		}
-		purego.RegisterFunc(runicEntry[0], runicSym)
+
+		if runicUintptr, runicIsUintptr := runicEntry[0].(*uintptr); runicIsUintptr {
+			*runicUintptr = runicSym
+		} else {
+			purego.RegisterFunc(runicEntry[0], runicSym)
+		}
 	}
 
 	return nil

@@ -41,7 +41,8 @@ purego_generate_bindings_from_runestone :: proc(
     build_constraints := purego_generate_build_constraints(rs.plats)
     package_name := purego_generate_package_name(rn)
     types := purego_generate_types(rs, rn)
-    symbol_declarations := purego_generate_symbol_declarations(rs, rn)
+    func_sym_decls := purego_generate_function_symbol_declarations(rs, rn)
+    type_sym_decls := purego_generate_type_symbol_declarations(rs, rn)
     symbol_registrations := purego_generate_symbol_registrations(rs, rn)
     symbol_reg_var_name := purego_generate_symbol_registration_variable_name(
         rs.plats,
@@ -49,7 +50,8 @@ purego_generate_bindings_from_runestone :: proc(
     defer if len(build_constraints) != 0 do delete(build_constraints)
     defer delete(package_name)
     defer delete(types)
-    defer delete(symbol_declarations)
+    defer delete(func_sym_decls)
+    defer delete(type_sym_decls)
     defer delete(symbol_registrations)
     defer delete(symbol_reg_var_name)
 
@@ -58,20 +60,30 @@ purego_generate_bindings_from_runestone :: proc(
         io.write_rune(wd, '\n') or_return
     }
     io.write_string(wd, package_name) or_return
-
-    io.write_string(wd, "\n\n\n") or_return
-    io.write_string(wd, types) or_return
     io.write_string(wd, "\n\n") or_return
 
-    io.write_string(wd, "var (\n") or_return
-    io.write_string(wd, symbol_declarations) or_return
-    io.write_string(wd, "\n)\n\nvar (\n") or_return
+    if len(types) != 0 {
+        io.write_string(wd, types) or_return
+        io.write_string(wd, "\n\n") or_return
+    }
 
+    if len(func_sym_decls) != 0 {
+        io.write_string(wd, "var (\n") or_return
+        io.write_string(wd, func_sym_decls) or_return
+        io.write_string(wd, "\n)\n\n") or_return
+    }
+
+    if len(type_sym_decls) != 0 {
+        io.write_string(wd, type_sym_decls) or_return
+        io.write_string(wd, "\n\n") or_return
+    }
+
+    io.write_string(wd, "var (\n") or_return
     io.write_rune(wd, '\t') or_return
     io.write_string(wd, symbol_reg_var_name) or_return
     io.write_string(wd, " = [][2]any{\n") or_return
     io.write_string(wd, symbol_registrations) or_return
-    io.write_string(wd, "\t}\n") or_return
+    io.write_string(wd, "\n\t}\n") or_return
 
 
     if len(rc.cross) >= 2 {
@@ -201,15 +213,30 @@ purego_generate_platforms_and_libraries :: proc(
 }
 
 @(private)
-purego_generate_symbol_declarations :: proc(
+purego_generate_function_symbol_declarations :: proc(
     rs: runic.Runestone,
     rn: runic.To,
 ) -> string {
     buf: strings.Builder
     strings.builder_init(&buf)
 
-    for entry, idx in rs.symbols.data {
+    has_funcs: bool
+
+    for entry in rs.symbols.data {
+        sym := entry.value
+
+        if _, is_func := sym.value.(runic.Function); is_func {
+            has_funcs = true
+            break
+        }
+    }
+
+    if !has_funcs do return strings.to_string(buf)
+
+    for entry in rs.symbols.data {
         sym_name, sym := entry.key, entry.value
+
+        if _, is_type := sym.value.(runic.Type); is_type do continue
 
         upper_sym_name, upper_sym_name_err := strings.to_pascal_case(sym_name)
         if upper_sym_name_err != .None do continue
@@ -220,10 +247,89 @@ purego_generate_symbol_declarations :: proc(
         strings.write_rune(&buf, ' ')
         purego_write_symbol(&buf, sym, rn)
 
-        if idx != om.length(rs.symbols) - 1 {
-            strings.write_rune(&buf, '\n')
+        strings.write_rune(&buf, '\n')
+    }
+
+    return strings.to_string(buf)
+}
+
+@(private)
+purego_generate_type_symbol_declarations :: proc(
+    rs: runic.Runestone,
+    rn: runic.To,
+) -> string {
+    buf: strings.Builder
+    strings.builder_init(&buf)
+
+    has_types: bool
+
+    for entry in rs.symbols.data {
+        sym := entry.value
+        if _, is_type := sym.value.(runic.Type); is_type {
+            has_types = true
+            break
         }
     }
+
+    if !has_types do return strings.to_string(buf)
+
+    for entry in rs.symbols.data {
+        sym_name, sym := entry.key, entry.value
+
+        if _, is_type := sym.value.(runic.Type); !is_type do continue
+
+        upper_sym_name, upper_sym_name_err := strings.to_pascal_case(sym_name)
+        if upper_sym_name_err != .None do continue
+        defer delete(upper_sym_name)
+
+        strings.write_string(&buf, "func ")
+        strings.write_string(&buf, upper_sym_name)
+        strings.write_string(&buf, "() ")
+        purego_write_type(&buf, sym.value.(runic.Type), rn, false)
+        strings.write_string(&buf, " {\n\treturn *(*")
+        purego_write_type(&buf, sym.value.(runic.Type), rn, false)
+        strings.write_string(&buf, ")(unsafe.Pointer(runicPtr")
+        strings.write_string(&buf, upper_sym_name)
+        strings.write_string(&buf, "))\n}\n")
+    }
+
+    for entry in rs.symbols.data {
+        sym_name, sym := entry.key, entry.value
+
+        if _, is_type := sym.value.(runic.Type); !is_type do continue
+
+        upper_sym_name, upper_sym_name_err := strings.to_pascal_case(sym_name)
+        if upper_sym_name_err != .None do continue
+        defer delete(upper_sym_name)
+
+        strings.write_string(&buf, "func Set")
+        strings.write_string(&buf, upper_sym_name)
+        strings.write_string(&buf, "(value ")
+        purego_write_type(&buf, sym.value.(runic.Type), rn, false)
+        strings.write_string(&buf, ") {\n\t*(*")
+        purego_write_type(&buf, sym.value.(runic.Type), rn, false)
+        strings.write_string(&buf, ")(unsafe.Pointer(runicPtr")
+        strings.write_string(&buf, upper_sym_name)
+        strings.write_string(&buf, ")) = value\n}\n")
+    }
+
+    strings.write_string(&buf, "var (\n")
+
+    for entry in rs.symbols.data {
+        sym_name, sym := entry.key, entry.value
+
+        if _, is_type := sym.value.(runic.Type); !is_type do continue
+
+        upper_sym_name, upper_sym_name_err := strings.to_pascal_case(sym_name)
+        if upper_sym_name_err != .None do continue
+        defer delete(upper_sym_name)
+
+        strings.write_string(&buf, "\trunicPtr")
+        strings.write_string(&buf, upper_sym_name)
+        strings.write_string(&buf, " uintptr\n")
+    }
+
+    strings.write_string(&buf, ")\n")
 
     return strings.to_string(buf)
 }
@@ -454,13 +560,16 @@ purego_generate_symbol_registrations :: proc(
 
     for entry, idx in rs.symbols.data {
         sym_name, sym := entry.key, entry.value
-        if _, is_type := sym.value.(runic.Type); is_type do continue
+        _, is_type := sym.value.(runic.Type)
 
         upper_sym_name, upper_sym_name_err := strings.to_pascal_case(sym_name)
         if upper_sym_name_err != .None do continue
         defer delete(upper_sym_name)
 
         strings.write_string(&buf, "\t\t{&")
+        if is_type {
+            strings.write_string(&buf, "runicPtr")
+        }
         strings.write_string(&buf, upper_sym_name)
         strings.write_string(&buf, ", \"")
         strings.write_string(&buf, sym.remap.? or_else sym_name)

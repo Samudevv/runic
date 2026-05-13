@@ -34,40 +34,28 @@ var (
 	runicAllSymbols = [][][2]any{
 		runicSymbols,
 	}
+
+	runicLibraries = map[[2]string]string{
+		{"linux", "amd64"}: "libc.so.6",
+	}
 )
 
 func LoadForeignLibrary() error {
-	var runicLibraries = map[[2]string]string{
-		{"linux", "amd64"}: "libc.so.6",
+	for _, runicPlatform := range runicPlatforms {
+		runicLibraryName, runicLibraryNameOk := runicLibraries[runicPlatform]
+		if !runicLibraryNameOk {
+			continue
+		}
+		runicLibrary, runicLibraryErr := purego.Dlopen(runicLibraryName, purego.RTLD_NOW|purego.RTLD_GLOBAL)
+		if runicLibraryErr != nil {
+			return runicLibraryErr
+		}
+		runicForeignLibrary = runicLibrary
 	}
 
-	runicRuntimePlatform := [2]string{runtime.GOOS, runtime.GOARCH}
-	runicPlatform := runicRuntimePlatform
-	runicLibraryName, runicLibraryNameOk := runicLibraries[runicPlatform]
-	if !runicLibraryNameOk {
-		runicPlatform[1] = "any"
-		runicLibraryName, runicLibraryNameOk = runicLibraries[runicPlatform]
-	}
-	if !runicLibraryNameOk {
-		runicPlatform[0] = "any"
-		runicPlatform[1] = runicRuntimePlatform[1]
-		runicLibraryName, runicLibraryNameOk = runicLibraries[runicPlatform]
-	}
-	if !runicLibraryNameOk {
-		runicPlatform[0] = "any"
-		runicPlatform[1] = "any"
-		runicLibraryName, runicLibraryNameOk = runicLibraries[runicPlatform]
-	}
-	if !runicLibraryNameOk {
+	if runicForeignLibrary == 0 {
 		return ErrNoLibraryForPlatform
 	}
-
-	runicLibrary, runicLibraryErr := purego.Dlopen(runicLibraryName, purego.RTLD_NOW|purego.RTLD_GLOBAL)
-	if runicLibraryErr != nil {
-		return runicLibraryErr
-	}
-
-	runicForeignLibrary = runicLibrary
 
 	for _, runicSomeSymbols := range runicAllSymbols {
 		if err := runicRegisterSymbols(runicSomeSymbols); err != nil {
@@ -79,7 +67,9 @@ func LoadForeignLibrary() error {
 }
 
 func UnloadForeignLibrary() error {
-	return purego.Dlclose(runicForeignLibrary)
+	err := purego.Dlclose(runicForeignLibrary)
+	runicForeignLibrary = 0
+	return err
 }
 
 /**************************************************************/
@@ -92,6 +82,13 @@ var (
 	ErrNoLibraryForPlatform = errors.New("Current platform does not have a library")
 
 	runicForeignLibrary uintptr
+
+	runicPlatforms = [][2]string{
+		{runtime.GOOS, runtime.GOARCH},
+		{runtime.GOOS, "any"},
+		{"any", runtime.GOARCH},
+		{"any", "any"},
+	}
 )
 
 func runicRegisterSymbols(runicSymbolsParam [][2]any) error {
@@ -151,4 +148,3 @@ func ConstGoString(str RunicString) string {
 
 	return unsafe.String((*byte)(unsafe.Pointer(str)), strLen)
 }
-

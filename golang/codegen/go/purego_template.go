@@ -23,10 +23,6 @@ func SetErrno(value int) {
 }
 
 var (
-	runicPtrErrno uintptr
-)
-
-var (
 	runicSymbols = [][2]any{
 		{&Puts, "puts"},
 	}
@@ -89,6 +85,10 @@ var (
 		{"any", runtime.GOARCH},
 		{"any", "any"},
 	}
+)
+
+var (
+	runicPtrErrno uintptr
 )
 
 func runicRegisterSymbols(runicSymbolsParam [][2]any) error {

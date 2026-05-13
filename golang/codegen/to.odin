@@ -95,7 +95,9 @@ generate_bindings_from_runecross :: proc(
     platforms_and_libraries := purego_generate_platforms_and_libraries(rc, rn)
     types := purego_generate_types(rs, rn)
     func_sym_decls := purego_generate_function_symbol_declarations(rs, rn)
-    type_sym_decls := purego_generate_type_symbol_declarations(rs, rn)
+    type_sym_getters := purego_generate_type_symbol_getters(rs, rn)
+    type_sym_setters := purego_generate_type_symbol_setters(rs, rn)
+    type_sym_pointers := purego_generate_type_symbol_pointers(rs, rn)
     symbol_registrations := purego_generate_symbol_registrations(rs, rn)
     symbol_variables := purego_generate_symbol_variables(rc)
 
@@ -106,8 +108,12 @@ generate_bindings_from_runecross :: proc(
         platforms_and_libraries
     file_contents_replace["type LibCType int"] = types
     file_contents_replace["\tPuts func(string)"] = func_sym_decls
-    file_contents_replace["func Errno() int {\n\treturn *(*int)(unsafe.Pointer(runicPtrErrno))\n}\n\nfunc SetErrno(value int) {\n\t*(*int)(unsafe.Pointer(runicPtrErrno)) = value\n}\n\nvar (\n\trunicPtrErrno uintptr\n)"] =
-        type_sym_decls
+    file_contents_replace["func Errno() int {\n\treturn *(*int)(unsafe.Pointer(runicPtrErrno))\n}"] =
+        type_sym_getters
+    file_contents_replace["func SetErrno(value int) {\n\t*(*int)(unsafe.Pointer(runicPtrErrno)) = value\n}\n"] =
+        type_sym_setters
+    file_contents_replace["var (\n\trunicPtrErrno uintptr\n)"] =
+        type_sym_pointers
     file_contents_replace["\t\t{&Puts, \"puts\"},"] = symbol_registrations
     file_contents_replace["\t\trunicSymbols,"] = symbol_variables
 

@@ -42,16 +42,21 @@ purego_generate_bindings_from_runestone :: proc(
     package_name := purego_generate_package_name(rn)
     types := purego_generate_types(rs, rn)
     func_sym_decls := purego_generate_function_symbol_declarations(rs, rn)
-    type_sym_decls := purego_generate_type_symbol_declarations(rs, rn)
+    type_sym_getters := purego_generate_type_symbol_getters(rs, rn)
+    type_sym_setters := purego_generate_type_symbol_setters(rs, rn)
+    type_sym_pointers := purego_generate_type_symbol_pointers(rs, rn)
     symbol_registrations := purego_generate_symbol_registrations(rs, rn)
     symbol_reg_var_name := purego_generate_symbol_registration_variable_name(
         rs.plats,
     )
+
     defer if len(build_constraints) != 0 do delete(build_constraints)
     defer delete(package_name)
     defer delete(types)
     defer delete(func_sym_decls)
-    defer delete(type_sym_decls)
+    defer delete(type_sym_getters)
+    defer delete(type_sym_setters)
+    defer delete(type_sym_pointers)
     defer delete(symbol_registrations)
     defer delete(symbol_reg_var_name)
 
@@ -73,9 +78,17 @@ purego_generate_bindings_from_runestone :: proc(
         io.write_string(wd, "\n)\n\n") or_return
     }
 
-    if len(type_sym_decls) != 0 {
-        io.write_string(wd, type_sym_decls) or_return
-        io.write_string(wd, "\n\n") or_return
+    if len(type_sym_getters) != 0 {
+        io.write_string(wd, type_sym_getters) or_return
+        io.write_string(wd, "\n") or_return
+    }
+    if len(type_sym_setters) != 0 {
+        io.write_string(wd, type_sym_setters) or_return
+        io.write_string(wd, "\n") or_return
+    }
+    if len(type_sym_pointers) != 0 {
+        io.write_string(wd, type_sym_pointers) or_return
+        io.write_string(wd, "\n") or_return
     }
 
     io.write_string(wd, "var (\n") or_return
@@ -221,19 +234,20 @@ purego_generate_function_symbol_declarations :: proc(
     strings.builder_init(&buf)
 
     has_funcs: bool
+    last_func_idx: int
 
-    for entry in rs.symbols.data {
+    for entry, idx in rs.symbols.data {
         sym := entry.value
 
         if _, is_func := sym.value.(runic.Function); is_func {
             has_funcs = true
-            break
+            last_func_idx = idx
         }
     }
 
     if !has_funcs do return strings.to_string(buf)
 
-    for entry in rs.symbols.data {
+    for entry, idx in rs.symbols.data {
         sym_name, sym := entry.key, entry.value
 
         if _, is_type := sym.value.(runic.Type); is_type do continue
@@ -247,14 +261,16 @@ purego_generate_function_symbol_declarations :: proc(
         strings.write_rune(&buf, ' ')
         purego_write_symbol(&buf, sym, rn)
 
-        strings.write_rune(&buf, '\n')
+        if idx != last_func_idx {
+            strings.write_rune(&buf, '\n')
+        }
     }
 
     return strings.to_string(buf)
 }
 
 @(private)
-purego_generate_type_symbol_declarations :: proc(
+purego_generate_type_symbol_getters :: proc(
     rs: runic.Runestone,
     rn: runic.To,
 ) -> string {
@@ -293,6 +309,29 @@ purego_generate_type_symbol_declarations :: proc(
         strings.write_string(&buf, "))\n}\n")
     }
 
+    return strings.to_string(buf)
+}
+
+@(private)
+purego_generate_type_symbol_setters :: proc(
+    rs: runic.Runestone,
+    rn: runic.To,
+) -> string {
+    buf: strings.Builder
+    strings.builder_init(&buf)
+
+    has_types: bool
+
+    for entry in rs.symbols.data {
+        sym := entry.value
+        if _, is_type := sym.value.(runic.Type); is_type {
+            has_types = true
+            break
+        }
+    }
+
+    if !has_types do return strings.to_string(buf)
+
     for entry in rs.symbols.data {
         sym_name, sym := entry.key, entry.value
 
@@ -312,6 +351,29 @@ purego_generate_type_symbol_declarations :: proc(
         strings.write_string(&buf, upper_sym_name)
         strings.write_string(&buf, ")) = value\n}\n")
     }
+
+    return strings.to_string(buf)
+}
+
+@(private)
+purego_generate_type_symbol_pointers :: proc(
+    rs: runic.Runestone,
+    rn: runic.To,
+) -> string {
+    buf: strings.Builder
+    strings.builder_init(&buf)
+
+    has_types: bool
+
+    for entry in rs.symbols.data {
+        sym := entry.value
+        if _, is_type := sym.value.(runic.Type); is_type {
+            has_types = true
+            break
+        }
+    }
+
+    if !has_types do return strings.to_string(buf)
 
     strings.write_string(&buf, "var (\n")
 

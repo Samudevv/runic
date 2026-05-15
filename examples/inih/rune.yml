@@ -2,7 +2,7 @@ version: 0
 platforms: Any Any
 from:
   language: c
-  shared: libinih.so
+  shared: ../../build/libinih.so
   headers: ini.h
   defines:
     INI_ALLOW_MULTILINE: 0

@@ -76,6 +76,7 @@ generate_bindings :: proc {
 generate_bindings_from_runecross :: proc(
     rc: runic.Runecross,
     rn: runic.To,
+    rune_file_path: string,
     wd: io.Writer,
 ) -> union {
         io.Error,
@@ -92,7 +93,11 @@ generate_bindings_from_runecross :: proc(
     rs := rc.cross[0]
     build_constraints := purego_generate_build_constraints(rs.plats)
     package_name := purego_generate_package_name(rn)
-    platforms_and_libraries := purego_generate_platforms_and_libraries(rc, rn)
+    platforms_and_libraries := purego_generate_platforms_and_libraries(
+        rc,
+        rn,
+        rune_file_path,
+    )
     types := purego_generate_types(rs, rn)
     func_sym_decls := purego_generate_function_symbol_declarations(rs, rn)
     type_sym_getters := purego_generate_type_symbol_getters(rs, rn)

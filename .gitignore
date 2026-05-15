@@ -30,7 +30,6 @@ test_data/wrapper_out*
 test_data/test_odin_to_multiple_files*.odin
 test_data/to_purego_golang_test*.go
 build/
-ols.json
 examples/olivec/olivec/
 examples/inih/banini/inih/
 examples/glew/gl/

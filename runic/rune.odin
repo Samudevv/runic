@@ -2969,6 +2969,134 @@ slashpath_join_clean :: proc(
     return cleaned_value, true
 }
 
+slashpath_rel_to_filepath :: proc(
+    base_filepath, target_slashpath: string,
+    allocator := context.allocator,
+) -> (
+    string,
+    bool,
+) #optional_ok {
+    base_filepath := base_filepath
+    target_filepath := target_slashpath
+
+    // since filepath is used, windows requires backslashes
+    when ODIN_OS == .Windows {
+        new_sep_value, was_alloc := strings.replace_all(
+            target_filepath,
+            "/",
+            "\\",
+            allocator,
+        )
+
+        if !was_alloc {
+            // Make sure that it can be deleted
+            new_sep_value = strings.clone(new_sep_value, allocator)
+        }
+
+        target_filepath = new_sep_value
+
+        defer delete(target_filepath, allocator)
+    }
+
+    rel_path, rel_err := filepath.rel(
+        base_filepath,
+        target_filepath,
+        allocator,
+    )
+    if rel_err != .None do return target_slashpath, false
+
+    when ODIN_OS == .Windows {
+        new_sep_value, was_alloc = strings.replace_all(
+            rel_path,
+            "\\",
+            "/",
+            allocator,
+        )
+
+        if !was_alloc {
+            // Make sure that it can be deleted
+            new_sep_value = strings.clone(new_sep_value, allocator)
+        }
+
+        delete(rel_path, allocator)
+        rel_path = new_sep_value
+    }
+
+    return rel_path, true
+}
+
+slashpath_rel :: proc(
+    base_path, target_path: string,
+    allocator := context.allocator,
+) -> (
+    string,
+    bool,
+) #optional_ok {
+    base_filepath := base_path
+    target_filepath := target_path
+
+    // since filepath is used, windows requires backslashes
+    when ODIN_OS == .Windows {
+        new_sep_value, was_alloc := strings.replace_all(
+            base_filepath,
+            "/",
+            "\\",
+            allocator,
+        )
+
+        if !was_alloc {
+            // Make sure that it can be deleted
+            new_sep_value = strings.clone(new_sep_value, allocator)
+        }
+
+        base_filepath = new_sep_value
+
+        new_sep_value, was_alloc = strings.replace_all(
+            target_filepath,
+            "/",
+            "\\",
+            allocator,
+        )
+
+        if !was_alloc {
+            // Make sure that it can be deleted
+            new_sep_value = strings.clone(new_sep_value, allocator)
+        }
+
+        target_filepath = new_sep_value
+
+        defer delete(target_filepath, allocator)
+        defer delete(base_filepath, allocator)
+    }
+
+    rel_path, rel_err := filepath.rel(
+        base_filepath,
+        target_filepath,
+        allocator,
+    )
+    if rel_err != .None do return target_path, false
+
+    when ODIN_OS == .Windows {
+        new_sep_value, was_alloc = strings.replace_all(
+            rel_path,
+            "\\",
+            "/",
+            allocator,
+        )
+
+        if !was_alloc {
+            // Make sure that it can be deleted
+            new_sep_value = strings.clone(new_sep_value, allocator)
+        }
+
+        delete(rel_path, allocator)
+        rel_path = new_sep_value
+    }
+
+    return rel_path, true
+}
+
+
 slashpath_is_abs :: proc(file_path: string) -> bool {
     if slashpath.is_abs(file_path) do return true
 

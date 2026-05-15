@@ -1,6 +1,6 @@
 set windows-shell := ['powershell.exe']
 
-BUILD_DIR := justfile_directory() / '..' / '..' / 'build'
+BUILD_DIR := '..' / '..' / 'build'
 ODIN_ROOT := `odin root`
 ODIN_FLAGS := (
   '-debug ' +

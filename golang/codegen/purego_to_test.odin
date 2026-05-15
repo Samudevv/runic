@@ -85,6 +85,13 @@ func.array_append = Array arr Array #Attr Ptr 1 #AttrEnd value #UInt32
 var.windows_globals = Array
 
 `
+
+    when ODIN_OS == .Windows {
+        RUNE_FILE_NAME :: "test_data\\rune.yml"
+    } else {
+        RUNE_FILE_NAME :: "test_data/rune.yml"
+    }
+
     rn := runic.To {
         language     = "golang",
         package_name = "greatwave",
@@ -131,7 +138,7 @@ var.windows_globals = Array
     if !testing.expect_value(t, os_err, nil) do return
     defer os.close(out_file)
 
-    err := generate_bindings(rc, rn, os.to_stream(out_file))
+    err := generate_bindings(rc, rn, RUNE_FILE_NAME, os.to_stream(out_file))
     if !testing.expect_value(t, err, nil) do return
 
     data, data_err := os.read_entire_file(

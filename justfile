@@ -38,7 +38,7 @@ ODIN_RELEASE_FLAGS := (
   '-define:YAML_STATIC=' + YAML_STATIC
 )
 
-BUILD_DIR := justfile_dir() / 'build'
+BUILD_DIR := '.' / 'build'
 EXE_EXT := if os_family() == 'unix' {''} else {'.exe'}
 
 default: release

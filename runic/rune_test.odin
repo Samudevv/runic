@@ -643,3 +643,26 @@ test_slashpath_join_clean :: proc(t: ^testing.T) {
         delete(joined)
     }
 }
+
+@(test)
+test_slashpath_rel_to_filepath :: proc(t: ^testing.T) {
+    when ODIN_OS == .Windows {
+        rel_path, rel_ok := slashpath_rel_to_filepath(
+            "test_data\\arm\\",
+            "test_data/arm/code/parse.go",
+        )
+        if !testing.expect(t, rel_ok) do return
+        defer delete(rel_path)
+
+        testing.expect_value(t, rel_path, "code/parse.go")
+    } else {
+        rel_path, rel_ok := slashpath_rel_to_filepath(
+            "test_data/",
+            "test_data/arm/parse.go",
+        )
+        if !testing.expect(t, rel_ok) do return
+        defer delete(rel_path)
+
+        testing.expect_value(t, rel_path, "arm/parse.go")
+    }
+}

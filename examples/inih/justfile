@@ -1,6 +1,6 @@
 set windows-shell := ['powershell.exe']
 
-BUILD_DIR := justfile_directory() / '..' / '..' / 'build'
+BUILD_DIR := '..' / '..' / 'build'
 
 CFLAGS := '-fPIC --std=c23 ' + \
 	'-DINI_ALLOW_MULTILINE=0 ' + \
@@ -16,7 +16,7 @@ CFLAGS := '-fPIC --std=c23 ' + \
 	'-DINI_SHARED_LIB'
 
 bindings:
-    "{{ BUILD_DIR / 'runic_debug' }}"
+    {{ BUILD_DIR / 'runic_debug' }}
 
 [unix]
 inih:
@@ -24,10 +24,10 @@ inih:
     cc -shared -o "{{ BUILD_DIR }}/libinih.so" "{{ BUILD_DIR }}/ini.o"
 
 build: inih bindings
-    go build -C ./banini -v -o "{{ BUILD_DIR / 'banini' }}"
+    go build -C ./banini -v -o "{{ '..' / BUILD_DIR / 'banini' }}"
 
 example: run
 
 run: build
-    "{{ BUILD_DIR / 'banini' }}"
+    {{ BUILD_DIR / 'banini' }}
 

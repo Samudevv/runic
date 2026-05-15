@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"unsafe"
 
-	ini "github.com/PucklaJ/banini/inih"
+	ini "Samudevv/banini/inih"
 )
 
 type Configuration struct {

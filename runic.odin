@@ -415,6 +415,7 @@ main :: proc() {
                 golangcdg.generate_bindings(
                     runecross,
                     to,
+                    rune_file_name,
                     os.to_stream(out_file),
                 ),
             )

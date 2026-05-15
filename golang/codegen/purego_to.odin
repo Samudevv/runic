@@ -189,15 +189,34 @@ purego_generate_package_name :: proc(rn: runic.To) -> string {
 purego_generate_platforms_and_libraries :: proc(
     rc: runic.Runecross,
     rn: runic.To,
+    rune_file_path: string,
 ) -> string {
     platform_libraries := om.make(runic.Platform, string)
     defer om.delete(platform_libraries)
+
+    allocated_strings := make([dynamic]string)
+    defer delete(allocated_strings)
+    defer for s in allocated_strings do delete(s)
 
     for entry in rc.cross {
         for plat in entry.plats {
             if !om.contains(platform_libraries, plat) {
                 if shared, ok := entry.lib.shared.?; ok {
-                    om.insert(&platform_libraries, plat, shared)
+                    lib_file_path := shared
+
+                    // If a relative path is specified for the library
+                    // consider it to be relative to the rune file path
+                    // (relative paths will be turned into absolute file paths in runic.parse_rune)
+                    if runic.slashpath_is_abs(lib_file_path) {
+                        rune_file_dir := os.dir(rune_file_path)
+                        rel_lib_file_path, rel_ok := runic.slashpath_rel_to_filepath(rune_file_dir, lib_file_path)
+                        if rel_ok {
+                            lib_file_path = rel_lib_file_path
+                            append(&allocated_strings, rel_lib_file_path)
+                        }
+                    }
+
+                    om.insert(&platform_libraries, plat, lib_file_path)
                 }
             }
         }

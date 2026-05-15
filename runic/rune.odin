@@ -3748,3 +3748,23 @@ to_needs_to_process_constant_names :: #force_inline proc(to: To) -> bool {
         len(to.add_suffix.constants) != 0 \
     )
 }
+
+create_file_for_runestone :: proc(
+    rs: Runestone,
+    rn: To,
+) -> (
+    ^os.File,
+    errors.Error,
+) {
+    platform_file_name := platform_file_name(rn.out, rs.platform)
+    defer delete(platform_file_name)
+
+    file, err := os.open(
+        platform_file_name,
+        {.Write, .Create, .Trunc},
+        {.Read_User, .Write_User, .Read_Group, .Read_Other},
+    )
+    if err != nil do return file, errors.wrap(err)
+
+    return file, nil
+}

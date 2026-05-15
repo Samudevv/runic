@@ -19,7 +19,6 @@ package golang_codegen
 import "core:fmt"
 import "core:io"
 import "core:os"
-import "core:path/slashpath"
 import "core:slice"
 import "core:strings"
 import "root:errors"
@@ -42,11 +41,11 @@ purego_generate_bindings_from_runestone :: proc(
         errors.Error,
     } {
 
-    build_constraints := purego_generate_build_constraints(rs.plats)
-    package_name := purego_generate_package_name(rn)
+    build_constraints := generate_build_constraints(rs.plats)
+    package_name := generate_package_name(rn)
     imports := purego_generate_imports(rs, rn, is_main_file)
-    constants := purego_generate_constants(rs, rn)
-    types := purego_generate_types(rs, rn)
+    constants := generate_constants(rs, rn)
+    types := generate_types(rs, rn)
     func_sym_decls := purego_generate_function_symbol_declarations(rs, rn)
     type_sym_getters := purego_generate_type_symbol_getters(rs, rn)
     type_sym_setters := purego_generate_type_symbol_setters(rs, rn)
@@ -167,76 +166,12 @@ purego_generate_bindings_from_runestone :: proc(
 }
 
 @(private)
-purego_generate_build_constraints :: proc(plats: []runic.Platform) -> string {
-    if len(plats) == 0 do return ""
-
-    expressions := make([dynamic]string)
-    defer delete(expressions)
-    defer for e in expressions do delete(e)
-
-    for plat in plats {
-        if plat.os == .Any && plat.arch == .Any do continue
-
-        buf: strings.Builder
-        strings.builder_init(&buf)
-
-        if plat.os != .Any && plat.arch != .Any {
-            strings.write_rune(&buf, '(')
-        }
-
-        if plat.os != .Any {
-            strings.write_string(&buf, runic_os_to_goos(plat.os))
-        }
-
-        if plat.arch != .Any {
-            if plat.os != .Any {
-                strings.write_string(&buf, " && ")
-            }
-            strings.write_string(&buf, runic_arch_to_goarch(plat.arch))
-        }
-
-        if plat.os != .Any && plat.arch != .Any {
-            strings.write_rune(&buf, ')')
-        }
-
-        append(&expressions, strings.to_string(buf))
-    }
-
-    if len(expressions) == 0 do return ""
-
-    buf: strings.Builder
-    strings.builder_init(&buf)
-
-    strings.write_string(&buf, "//go:build ")
-
-    for exp, idx in expressions {
-        strings.write_string(&buf, exp)
-        if idx != len(expressions) - 1 {
-            strings.write_string(&buf, " || ")
-        }
-    }
-
-    return strings.to_string(buf)
-}
-
-@(private)
-purego_generate_package_name :: proc(rn: runic.To) -> string {
-    buf: strings.Builder
-    strings.builder_init(&buf)
-
-    strings.write_string(&buf, "package ")
-    strings.write_string(&buf, rn.package_name)
-
-    return strings.to_string(buf)
-}
-
-@(private)
 purego_generate_imports :: proc(
     rs: runic.Runestone,
     rn: runic.To,
     is_main_file: bool,
 ) -> string {
-    uses_unsafe: bool = is_main_file
+    imports_unsafe: bool = is_main_file
 
     rs_externs := make([dynamic]string)
     defer delete(rs_externs)
@@ -248,45 +183,45 @@ purego_generate_imports :: proc(
             append(&rs_externs, extern.source)
         }
 
-        if !uses_unsafe {
-            if purego_uses_unsafe(extern) {
-                uses_unsafe = true
+        if !imports_unsafe {
+            if uses_unsafe(extern) {
+                imports_unsafe = true
             }
         }
     }
 
-    if !uses_unsafe {
+    if !imports_unsafe {
         for entry in rs.symbols.data {
             sym := entry.value
             if _, is_type := sym.value.(runic.Type); is_type {
-                uses_unsafe = true
+                imports_unsafe = true
                 break
             }
 
-            if purego_uses_unsafe(sym) {
-                uses_unsafe = true
+            if uses_unsafe(sym) {
+                imports_unsafe = true
                 break
             }
         }
     }
 
-    if !uses_unsafe {
+    if !imports_unsafe {
         for entry in rs.types.data {
             typ := entry.value
 
-            if purego_uses_unsafe(typ) {
-                uses_unsafe = true
+            if uses_unsafe(typ) {
+                imports_unsafe = true
                 break
             }
         }
     }
 
-    if !uses_unsafe {
+    if !imports_unsafe {
         for entry in rs.constants.data {
             const := entry.value
 
-            if purego_uses_unsafe(const.type) {
-                uses_unsafe = true
+            if uses_unsafe(const.type) {
+                imports_unsafe = true
                 break
             }
         }
@@ -300,7 +235,7 @@ purego_generate_imports :: proc(
         append(&imports, "runtime")
         append(&imports, "unsafe")
         append(&imports, "github.com/ebitengine/purego")
-    } else if uses_unsafe {
+    } else if imports_unsafe {
         append(&imports, "unsafe")
     }
 
@@ -324,7 +259,7 @@ purego_generate_imports :: proc(
     strings.write_string(&buf, "import (\n")
 
     for import_path in imports {
-        name, package_import := purego_extern_package(import_path)
+        name, package_import := extern_package(import_path)
 
         strings.write_rune(&buf, '\t')
 
@@ -336,58 +271,6 @@ purego_generate_imports :: proc(
         strings.write_rune(&buf, '"')
         strings.write_string(&buf, package_import)
         strings.write_rune(&buf, '"')
-
-        strings.write_rune(&buf, '\n')
-    }
-
-    strings.write_string(&buf, ")")
-
-    return strings.to_string(buf)
-}
-
-@(private)
-purego_generate_constants :: proc(
-    rs: runic.Runestone,
-    rn: runic.To,
-) -> string {
-    if om.length(rs.constants) == 0 do return ""
-
-    buf: strings.Builder
-    strings.builder_init(&buf)
-
-    strings.write_string(&buf, "const (\n")
-
-    for entry in rs.constants.data {
-        const_name, const := entry.key, entry.value
-
-        if const.value == nil do continue
-
-        upper_name, upper_name_err := strings.to_pascal_case(const_name)
-        if upper_name_err != .None do continue
-        defer delete(upper_name)
-
-        strings.write_rune(&buf, '\t')
-        strings.write_string(&buf, upper_name)
-        strings.write_rune(&buf, ' ')
-
-        if builtin, is_builtin := const.type.spec.(runic.Builtin);
-           !is_builtin || builtin != .Untyped {
-            purego_write_type(&buf, const.type, rn, rs.externs, true)
-            strings.write_rune(&buf, ' ')
-        }
-
-        strings.write_string(&buf, "= ")
-
-        switch v in const.value {
-        case i64:
-            strings.write_i64(&buf, v)
-        case f64:
-            strings.write_float(&buf, v, 'f', 2, 64)
-        case string:
-            strings.write_rune(&buf, '`')
-            strings.write_string(&buf, v)
-            strings.write_rune(&buf, '`')
-        }
 
         strings.write_rune(&buf, '\n')
     }
@@ -536,9 +419,9 @@ purego_generate_type_symbol_getters :: proc(
         strings.write_string(&buf, "func ")
         strings.write_string(&buf, upper_sym_name)
         strings.write_string(&buf, "() ")
-        purego_write_type(&buf, sym.value.(runic.Type), rn, rs.externs, false)
+        write_type(&buf, sym.value.(runic.Type), rn, rs.externs, false)
         strings.write_string(&buf, " {\n\treturn *(*")
-        purego_write_type(&buf, sym.value.(runic.Type), rn, rs.externs, false)
+        write_type(&buf, sym.value.(runic.Type), rn, rs.externs, false)
         strings.write_string(&buf, ")(unsafe.Pointer(runicPtr")
         strings.write_string(&buf, upper_sym_name)
         strings.write_string(&buf, "))\n}\n")
@@ -579,9 +462,9 @@ purego_generate_type_symbol_setters :: proc(
         strings.write_string(&buf, "func Set")
         strings.write_string(&buf, upper_sym_name)
         strings.write_string(&buf, "(value ")
-        purego_write_type(&buf, sym.value.(runic.Type), rn, rs.externs, false)
+        write_type(&buf, sym.value.(runic.Type), rn, rs.externs, false)
         strings.write_string(&buf, ") {\n\t*(*")
-        purego_write_type(&buf, sym.value.(runic.Type), rn, rs.externs, false)
+        write_type(&buf, sym.value.(runic.Type), rn, rs.externs, false)
         strings.write_string(&buf, ")(unsafe.Pointer(runicPtr")
         strings.write_string(&buf, upper_sym_name)
         strings.write_string(&buf, ")) = value\n}\n")
@@ -640,245 +523,10 @@ purego_write_symbol :: proc(
 ) {
     switch val in sym.value {
     case runic.Type:
-        purego_write_type(buf, val, rn, externs, true)
+        write_type(buf, val, rn, externs, true)
     case runic.Function:
-        purego_write_function(buf, val, rn, externs, true)
+        write_function(buf, val, rn, externs, true)
     }
-}
-
-@(private)
-purego_write_type :: proc(
-    buf: ^strings.Builder,
-    typ: runic.Type,
-    rn: runic.To,
-    externs: om.OrderedMap(string, runic.Extern),
-    string_able: bool,
-) {
-    for i := uint(0); i < typ.pointer_info.count; i += 1 {
-        strings.write_rune(buf, '*')
-    }
-
-    for arr in typ.array_info {
-        strings.write_rune(buf, '[')
-
-        switch size in arr.size {
-        case u64:
-            strings.write_u64(buf, size, 10)
-        case string:
-            strings.write_string(buf, size)
-        case:
-        // nil
-        }
-
-        strings.write_rune(buf, ']')
-
-        for i := uint(0); i < arr.pointer_info.count; i += 1 {
-            strings.write_rune(buf, '*')
-        }
-    }
-
-    purego_write_typespecifier(buf, typ.spec, rn, externs, string_able)
-}
-
-@(private)
-purego_write_function :: proc(
-    buf: ^strings.Builder,
-    func: runic.Function,
-    rn: runic.To,
-    externs: om.OrderedMap(string, runic.Extern),
-    string_able: bool,
-) {
-    strings.write_string(buf, "func(")
-
-    for param, idx in func.parameters {
-        strings.write_string(buf, param.name)
-        strings.write_rune(buf, ' ')
-        purego_write_type(buf, param.type, rn, externs, string_able)
-
-        if idx != len(func.parameters) - 1 {
-            strings.write_string(buf, ", ")
-        }
-    }
-
-    strings.write_rune(buf, ')')
-
-    if builtin, ok := func.return_type.spec.(runic.Builtin); ok {
-        if builtin == .Untyped {
-            return
-        }
-    }
-
-    strings.write_rune(buf, ' ')
-    purego_write_type(buf, func.return_type, rn, externs, string_able)
-}
-
-@(private)
-purego_write_typespecifier :: proc(
-    buf: ^strings.Builder,
-    spec: runic.TypeSpecifier,
-    rn: runic.To,
-    externs: om.OrderedMap(string, runic.Extern),
-    string_able: bool,
-) {
-    switch s in spec {
-    case runic.Builtin:
-        switch s {
-        case .Untyped:
-            strings.write_string(buf, "unsafe.Pointer /* untyped */")
-        case .RawPtr:
-            strings.write_string(buf, "unsafe.Pointer")
-        case .SInt8:
-            strings.write_string(buf, "int8")
-        case .SInt16:
-            strings.write_string(buf, "int16")
-        case .SInt32:
-            strings.write_string(buf, "int32")
-        case .SInt64:
-            strings.write_string(buf, "int64")
-        case .SInt128:
-            strings.write_string(buf, "[2]int64 /* int128 */")
-        case .SIntX:
-            strings.write_string(buf, "int")
-        case .UInt8:
-            strings.write_string(buf, "uint8")
-        case .UInt16:
-            strings.write_string(buf, "uint16")
-        case .UInt32:
-            strings.write_string(buf, "uint32")
-        case .UInt64:
-            strings.write_string(buf, "uint64")
-        case .UInt128:
-            strings.write_string(buf, "[2]uint64 /* uint128 */")
-        case .UIntX:
-            strings.write_string(buf, "uint")
-        case .Float32:
-            strings.write_string(buf, "float32")
-        case .Float64:
-            strings.write_string(buf, "float64")
-        case .Float128:
-            strings.write_string(buf, "[2]float64 /* float128 */")
-        case .String:
-            if string_able {
-                strings.write_string(buf, "string")
-            } else {
-                strings.write_string(buf, "RunicString")
-            }
-        case .Bool8:
-            strings.write_string(buf, "int8 /* bool8 */")
-        case .Bool16:
-            strings.write_string(buf, "int16 /* bool16 */")
-        case .Bool32:
-            strings.write_string(buf, "int32 /* bool32 */")
-        case .Bool64:
-            strings.write_string(buf, "int64 /* bool64 */")
-        case .Opaque:
-            strings.write_string(buf, "unsafe.Pointer /* opaque */")
-        }
-    case runic.Struct:
-        strings.write_string(buf, "struct {\n")
-        for member in s.members {
-            strings.write_rune(buf, '\t')
-
-            upper_member_name, upper_member_name_err := strings.to_pascal_case(
-                member.name,
-            )
-            if upper_member_name_err != .None {
-                upper_member_name = strings.clone(member.name)
-            }
-            defer delete(upper_member_name)
-
-            strings.write_string(buf, upper_member_name)
-            strings.write_rune(buf, ' ')
-            purego_write_type(buf, member.type, rn, externs, false)
-            strings.write_rune(buf, '\n')
-        }
-        strings.write_string(buf, "}")
-    case runic.Enum:
-        purego_write_typespecifier(buf, s.type, rn, externs, false)
-    case runic.Union:
-        strings.write_string(buf, "struct /* union */ {\n")
-        for member in s.members {
-            strings.write_rune(buf, '\t')
-            strings.write_string(buf, member.name)
-            strings.write_rune(buf, ' ')
-            purego_write_type(buf, member.type, rn, externs, false)
-            strings.write_rune(buf, '\n')
-        }
-        strings.write_string(buf, "}")
-    case string:
-        upper_case_name, err := strings.to_pascal_case(s)
-        if err != .None {
-            upper_case_name = strings.clone(s)
-        }
-        defer delete(upper_case_name)
-
-        strings.write_string(buf, upper_case_name)
-    case runic.Unknown:
-        strings.write_string(buf, "unsafe.Pointer /* unknown \"")
-        strings.write_string(buf, string(s))
-        strings.write_string(buf, "\" */")
-    case runic.FunctionPointer:
-        purego_write_function(buf, s^, rn, externs, false)
-    case runic.ExternType:
-        extern, extern_ok := om.get(externs, string(s))
-        if !extern_ok {
-            strings.write_string(buf, "unsafe.Pointer /* \"unknown_extern.")
-            strings.write_string(buf, string(s))
-            strings.write_string(buf, "\" */")
-            break
-        }
-
-        extern_source, extern_source_ok := rn.extern.sources[extern.source]
-        if extern_source_ok {
-            name, package_import := purego_extern_package(extern_source)
-            prefix: string = ---
-            if len(name) != 0 {
-                prefix = name
-            } else {
-                prefix = slashpath.base(package_import)
-            }
-
-            strings.write_string(buf, prefix)
-            strings.write_rune(buf, '.')
-
-            type_name: string = ---
-            remap, remap_ok := rn.extern.remaps[string(s)]
-            if remap_ok {
-                type_name = remap
-            } else {
-                type_name = string(s)
-            }
-
-            strings.write_string(buf, type_name)
-        } else {
-            purego_write_type(buf, extern, rn, externs, string_able)
-        }
-    }
-}
-
-@(private)
-purego_generate_types :: proc(rs: runic.Runestone, rn: runic.To) -> string {
-    buf: strings.Builder
-    strings.builder_init(&buf)
-
-    for entry, idx in rs.types.data {
-        typ_name, typ := entry.key, entry.value
-
-        upper_case_type_name, pascal_err := strings.to_pascal_case(typ_name)
-        if pascal_err != .None do continue
-        defer delete(upper_case_type_name)
-
-        strings.write_string(&buf, "type ")
-        strings.write_string(&buf, upper_case_type_name)
-        strings.write_rune(&buf, ' ')
-        purego_write_type(&buf, typ, rn, rs.externs, true)
-
-        if idx != om.length(rs.types) - 1 {
-            strings.write_rune(&buf, '\n')
-        }
-    }
-
-    return strings.to_string(buf)
 }
 
 @(private)
@@ -912,27 +560,6 @@ purego_generate_symbol_registrations :: proc(
     }
 
     return strings.to_string(buf)
-}
-
-@(private)
-purego_new_file_for_runestone :: proc(
-    rs: runic.Runestone,
-    rn: runic.To,
-) -> (
-    ^os.File,
-    errors.Error,
-) {
-    platform_file_name := runic.platform_file_name(rn.out, rs.platform)
-    defer delete(platform_file_name)
-
-    file, err := os.open(
-        platform_file_name,
-        {.Write, .Create, .Trunc},
-        {.Read_User, .Write_User, .Read_Group, .Read_Other},
-    )
-    if err != nil do return file, errors.wrap(err)
-
-    return file, nil
 }
 
 @(private)
@@ -977,115 +604,4 @@ purego_generate_symbol_variables :: proc(rc: runic.Runecross) -> string {
     }
 
     return strings.to_string(buf)
-}
-
-@(private)
-purego_uses_unsafe :: proc {
-    purego_type_uses_unsafe,
-    purego_function_uses_unsafe,
-    purego_symbol_uses_unsafe,
-}
-
-@(private)
-purego_type_uses_unsafe :: proc(typ: runic.Type) -> bool {
-    switch s in typ.spec {
-    case runic.Builtin:
-        switch s {
-        case .Untyped, .RawPtr, .Opaque:
-            return true
-        case .SInt8,
-             .SInt16,
-             .SInt32,
-             .SInt64,
-             .SInt128,
-             .SIntX,
-             .UInt8,
-             .UInt16,
-             .UInt32,
-             .UInt64,
-             .UInt128,
-             .UIntX,
-             .Float32,
-             .Float64,
-             .Float128,
-             .String,
-             .Bool8,
-             .Bool16,
-             .Bool32,
-             .Bool64:
-            return false
-        }
-    case runic.Struct:
-        for member in s.members {
-            if purego_type_uses_unsafe(member.type) {
-                return true
-            }
-        }
-    case runic.Union:
-        for member in s.members {
-            if purego_type_uses_unsafe(member.type) {
-                return true
-            }
-        }
-    case runic.Enum:
-        return purego_type_uses_unsafe(runic.Type{spec = s.type})
-    case string:
-        return false
-    case runic.Unknown:
-        return true
-    case runic.FunctionPointer:
-        return purego_function_uses_unsafe(s^)
-    case runic.ExternType:
-        return true
-    }
-
-    return false
-}
-
-@(private)
-purego_function_uses_unsafe :: proc(func: runic.Function) -> bool {
-    if purego_type_uses_unsafe(func.return_type) {
-        return true
-    }
-
-    for param in func.parameters {
-        if purego_type_uses_unsafe(param.type) {
-            return true
-        }
-    }
-
-    return false
-}
-
-@(private)
-purego_symbol_uses_unsafe :: proc(sym: runic.Symbol) -> bool {
-    switch s in sym.value {
-    case runic.Type:
-        return purego_type_uses_unsafe(s)
-    case runic.Function:
-        return purego_function_uses_unsafe(s)
-    }
-
-    return false
-}
-
-@(private)
-purego_extern_package :: proc(extern_source: string) -> (string, string) {
-    name_and_package, alloc_err := strings.split(extern_source, " ")
-    if alloc_err != .None do return "", ""
-    defer delete(name_and_package)
-
-    name, package_import: string = ---, ---
-
-    if len(name_and_package) == 2 {
-        name = name_and_package[0]
-        package_import = name_and_package[1]
-    } else if len(name_and_package) == 1 {
-        name = ""
-        package_import = name_and_package[0]
-    } else {
-        return "", ""
-    }
-
-    return name, package_import
 }

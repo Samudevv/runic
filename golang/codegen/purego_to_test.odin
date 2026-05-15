@@ -47,8 +47,12 @@ my_size_type = #UInt64
 Window = #Struct name #String width #UInt32 height #UInt32
 Array = #Struct len my_size_type cap my_size_type els #UInt32 #Attr Ptr 1 #AttrEnd
 
+[extern]
+FILE = "stdinc/stdio.h" #SInt32
+
 [symbols]
 func.create_window = Window #Attr Ptr 1 #AttrEnd name #String width #UInt32 height #UInt32
+func.get_window_handle = #Extern FILE #Attr Ptr 1 #AttrEnd window Window #Attr Ptr 1 #AttrEnd
 func.create_array = Array size my_size_type
 func.array_append = Array arr Array #Attr Ptr 1 #AttrEnd value #UInt32
 
@@ -76,9 +80,13 @@ Window = #Struct name #String width #UInt32 height #UInt32
 WindowWin32 = #Struct name #String width #UInt32 height #UInt32 win32Id #UIntX
 Array = #Struct len my_size_type cap my_size_type els #UInt32 #Attr Ptr 1 #AttrEnd
 
+[extern]
+FILE = "stdinc/stdio.h" #SInt32
+
 [symbols]
 func.create_window = Window #Attr Ptr 1 #AttrEnd name #String width #UInt32 height #UInt32
 func.create_window_win32 = WindowWin32 #Attr Ptr 1 #AttrEnd name #String width #UInt32 height #UInt32
+func.get_window_handle = #Extern FILE #Attr Ptr 1 #AttrEnd window Window #Attr Ptr 1 #AttrEnd
 func.create_array = Array size my_size_type
 func.array_append = Array arr Array #Attr Ptr 1 #AttrEnd value #UInt32
 
@@ -92,11 +100,20 @@ var.windows_globals = Array
         RUNE_FILE_NAME :: "test_data/rune.yml"
     }
 
+    extern_sources := make(map[string]string)
+    extern_remaps := make(map[string]string)
+    defer delete(extern_sources)
+    defer delete(extern_remaps)
+
+    extern_sources["stdinc/stdio.h"] = "operatingsystem os"
+    extern_remaps["FILE"] = "Handle"
+
     rn := runic.To {
-        language     = "golang",
+        language = "golang",
         package_name = "greatwave",
-        purego       = true,
-        out          = "test_data/to_purego_golang_test.go",
+        purego = true,
+        out = "test_data/to_purego_golang_test.go",
+        extern = {sources = extern_sources, remaps = extern_remaps},
     }
 
     linux_rd, windows_rd: strings.Reader

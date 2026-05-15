@@ -10,6 +10,10 @@ import (
 
 type LibCType int
 
+const (
+	MaxBananaLength = 123456
+)
+
 var (
 	Puts func(string)
 )

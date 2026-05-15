@@ -94,6 +94,7 @@ generate_bindings_from_runecross :: proc(
     build_constraints := purego_generate_build_constraints(rs.plats)
     package_name := purego_generate_package_name(rn)
     imports := purego_generate_imports(rs, rn, true)
+    constants := purego_generate_constants(rs, rn)
     platforms_and_libraries := purego_generate_platforms_and_libraries(
         rc,
         rn,
@@ -112,6 +113,7 @@ generate_bindings_from_runecross :: proc(
     file_contents_replace["package main"] = package_name
     file_contents_replace["import (\n\t\"errors\"\n\t\"runtime\"\n\t\"unsafe\"\n\n\t\"github.com/ebitengine/purego\"\n)"] =
         imports
+    file_contents_replace["const (\n\tMaxBananaLength = 123456\n)"] = constants
     file_contents_replace["\t\t{\"linux\", \"amd64\"}: \"libc.so.6\","] =
         platforms_and_libraries
     file_contents_replace["type LibCType int"] = types

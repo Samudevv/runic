@@ -43,6 +43,7 @@ purego_generate_bindings_from_runestone :: proc(
     build_constraints := purego_generate_build_constraints(rs.plats)
     package_name := purego_generate_package_name(rn)
     imports := purego_generate_imports(rs, rn, false)
+    constants := purego_generate_constants(rs, rn)
     types := purego_generate_types(rs, rn)
     func_sym_decls := purego_generate_function_symbol_declarations(rs, rn)
     type_sym_getters := purego_generate_type_symbol_getters(rs, rn)
@@ -56,6 +57,7 @@ purego_generate_bindings_from_runestone :: proc(
     defer if len(build_constraints) != 0 do delete(build_constraints)
     defer delete(package_name)
     defer delete(imports)
+    defer delete(constants)
     defer delete(types)
     defer delete(func_sym_decls)
     defer delete(type_sym_getters)
@@ -73,6 +75,11 @@ purego_generate_bindings_from_runestone :: proc(
 
     if len(imports) != 0 {
         io.write_string(wd, imports) or_return
+        io.write_string(wd, "\n\n") or_return
+    }
+
+    if len(constants) != 0 {
+        io.write_string(wd, constants) or_return
         io.write_string(wd, "\n\n") or_return
     }
 
@@ -300,6 +307,58 @@ purego_generate_imports :: proc(
         strings.write_rune(&buf, '"')
         strings.write_string(&buf, package_import)
         strings.write_rune(&buf, '"')
+
+        strings.write_rune(&buf, '\n')
+    }
+
+    strings.write_string(&buf, ")")
+
+    return strings.to_string(buf)
+}
+
+@(private)
+purego_generate_constants :: proc(
+    rs: runic.Runestone,
+    rn: runic.To,
+) -> string {
+    if om.length(rs.constants) == 0 do return ""
+
+    buf: strings.Builder
+    strings.builder_init(&buf)
+
+    strings.write_string(&buf, "const (\n")
+
+    for entry in rs.constants.data {
+        const_name, const := entry.key, entry.value
+
+        if const.value == nil do continue
+
+        upper_name, upper_name_err := strings.to_pascal_case(const_name)
+        if upper_name_err != .None do continue
+        defer delete(upper_name)
+
+        strings.write_rune(&buf, '\t')
+        strings.write_string(&buf, upper_name)
+        strings.write_rune(&buf, ' ')
+
+        if builtin, is_builtin := const.type.spec.(runic.Builtin);
+           !is_builtin || builtin != .Untyped {
+            purego_write_type(&buf, const.type, rn, rs.externs, true)
+            strings.write_rune(&buf, ' ')
+        }
+
+        strings.write_string(&buf, "= ")
+
+        switch v in const.value {
+        case i64:
+            strings.write_i64(&buf, v)
+        case f64:
+            strings.write_float(&buf, v, 'f', 2, 64)
+        case string:
+            strings.write_rune(&buf, '`')
+            strings.write_string(&buf, v)
+            strings.write_rune(&buf, '`')
+        }
 
         strings.write_rune(&buf, '\n')
     }

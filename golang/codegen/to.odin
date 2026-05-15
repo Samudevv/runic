@@ -18,7 +18,6 @@ package golang_codegen
 
 import "core:io"
 import "core:os"
-import "core:strings"
 import "root:errors"
 import "root:runic"
 
@@ -84,70 +83,15 @@ generate_bindings_from_runecross :: proc(
     } {
     if !rn.purego do return errors.Error(errors.message("\"to.purego\" must be true. Only purego golang bindings are supported"))
 
-    file_contents := strings.clone(purego_template)
-    defer delete(file_contents)
-
-    file_contents_replace := make(map[string]string)
-    defer delete(file_contents_replace)
-
-    rs := rc.cross[0]
-    build_constraints := purego_generate_build_constraints(rs.plats)
-    package_name := purego_generate_package_name(rn)
-    imports := purego_generate_imports(rs, rn, true)
-    constants := purego_generate_constants(rs, rn)
-    platforms_and_libraries := purego_generate_platforms_and_libraries(
-        rc,
+    purego_generate_bindings_from_runestone(
+        rc.cross[0],
+        0,
         rn,
+        rc,
         rune_file_path,
-    )
-    types := purego_generate_types(rs, rn)
-    func_sym_decls := purego_generate_function_symbol_declarations(rs, rn)
-    type_sym_getters := purego_generate_type_symbol_getters(rs, rn)
-    type_sym_setters := purego_generate_type_symbol_setters(rs, rn)
-    type_sym_pointers := purego_generate_type_symbol_pointers(rs, rn)
-    symbol_registrations := purego_generate_symbol_registrations(rs, rn)
-    symbol_variables := purego_generate_symbol_variables(rc)
-
-    defer if len(build_constraints) != 0 do delete(build_constraints)
-
-    file_contents_replace["package main"] = package_name
-    file_contents_replace["import (\n\t\"errors\"\n\t\"runtime\"\n\t\"unsafe\"\n\n\t\"github.com/ebitengine/purego\"\n)"] =
-        imports
-    file_contents_replace["const (\n\tMaxBananaLength = 123456\n)"] = constants
-    file_contents_replace["\t\t{\"linux\", \"amd64\"}: \"libc.so.6\","] =
-        platforms_and_libraries
-    file_contents_replace["type LibCType int"] = types
-    file_contents_replace["\tPuts func(string)"] = func_sym_decls
-    file_contents_replace["func Errno() int {\n\treturn *(*int)(unsafe.Pointer(runicPtrErrno))\n}"] =
-        type_sym_getters
-    file_contents_replace["func SetErrno(value int) {\n\t*(*int)(unsafe.Pointer(runicPtrErrno)) = value\n}\n"] =
-        type_sym_setters
-    file_contents_replace["var (\n\trunicPtrErrno uintptr\n)"] =
-        type_sym_pointers
-    file_contents_replace["\t\t{&Puts, \"puts\"},"] = symbol_registrations
-    file_contents_replace["\t\trunicSymbols,"] = symbol_variables
-
-    for old_str, new_str in file_contents_replace {
-        new_file_contents, was_alloc := strings.replace(
-            file_contents,
-            old_str,
-            new_str,
-            1,
-        )
-        if was_alloc {
-            delete(file_contents)
-        }
-
-        file_contents = new_file_contents
-
-        delete(new_str)
-    }
-
-    if len(build_constraints) != 0 {
-        io.write_string(wd, build_constraints) or_return
-        io.write_rune(wd, '\n') or_return
-    }
-    io.write_string(wd, file_contents) or_return
+        wd,
+        true,
+    ) or_return
 
     for rc_rs, idx in rc.cross[1:] {
         file := purego_new_file_for_runestone(rc_rs, rn) or_return
@@ -158,6 +102,7 @@ generate_bindings_from_runecross :: proc(
             idx + 1,
             rn,
             rc,
+            rune_file_path,
             os.to_stream(file),
         ) or_return
     }

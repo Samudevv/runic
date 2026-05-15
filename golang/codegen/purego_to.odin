@@ -34,7 +34,9 @@ purego_generate_bindings_from_runestone :: proc(
     rc_idx: int,
     rn: runic.To,
     rc: runic.Runecross,
+    rune_file_path: string,
     wd: io.Writer,
+    is_main_file: bool = false,
 ) -> union {
         io.Error,
         errors.Error,
@@ -42,7 +44,7 @@ purego_generate_bindings_from_runestone :: proc(
 
     build_constraints := purego_generate_build_constraints(rs.plats)
     package_name := purego_generate_package_name(rn)
-    imports := purego_generate_imports(rs, rn, false)
+    imports := purego_generate_imports(rs, rn, is_main_file)
     constants := purego_generate_constants(rs, rn)
     types := purego_generate_types(rs, rn)
     func_sym_decls := purego_generate_function_symbol_declarations(rs, rn)
@@ -53,6 +55,7 @@ purego_generate_bindings_from_runestone :: proc(
     symbol_reg_var_name := purego_generate_symbol_registration_variable_name(
         rs.plats,
     )
+    symbol_variables := purego_generate_symbol_variables(rc)
 
     defer if len(build_constraints) != 0 do delete(build_constraints)
     defer delete(package_name)
@@ -65,6 +68,7 @@ purego_generate_bindings_from_runestone :: proc(
     defer delete(type_sym_pointers)
     defer delete(symbol_registrations)
     defer delete(symbol_reg_var_name)
+    defer delete(symbol_variables)
 
     if len(build_constraints) != 0 {
         io.write_string(wd, build_constraints) or_return
@@ -114,25 +118,50 @@ purego_generate_bindings_from_runestone :: proc(
     io.write_string(wd, symbol_registrations) or_return
     io.write_string(wd, "\n\t}\n") or_return
 
+    if !is_main_file {
+        if len(rc.cross) >= 2 {
+            io.write_rune(wd, '\n') or_return
+        }
 
-    if len(rc.cross) >= 2 {
-        io.write_rune(wd, '\n') or_return
+        for rc_rs, idx in rc.cross {
+            if idx == rc_idx || idx == 0 do continue
+
+            reg_var_name := purego_generate_symbol_registration_variable_name(
+                rc_rs.plats,
+            )
+            defer delete(reg_var_name)
+
+            io.write_rune(wd, '\t') or_return
+            io.write_string(wd, reg_var_name) or_return
+            io.write_string(wd, " = [][2]any{}\n") or_return
+        }
     }
 
-    for rc_rs, idx in rc.cross {
-        if idx == rc_idx || idx == 0 do continue
-
-        reg_var_name := purego_generate_symbol_registration_variable_name(
-            rc_rs.plats,
+    if is_main_file {
+        platform_libraries := purego_generate_platforms_and_libraries(
+            rc,
+            rn,
+            rune_file_path,
         )
-        defer delete(reg_var_name)
+        defer delete(platform_libraries)
 
-        io.write_rune(wd, '\t') or_return
-        io.write_string(wd, reg_var_name) or_return
-        io.write_string(wd, " = [][2]any{}\n") or_return
+        io.write_rune(wd, '\n') or_return
+
+        io.write_string(wd, "\trunicAllSymbols = [][][2]any{\n") or_return
+        io.write_string(wd, symbol_variables) or_return
+        io.write_string(wd, "\n\t}\n\n") or_return
+
+        io.write_string(wd, "\trunicLibraries = map[[2]string]string{\n") or_return
+        io.write_string(wd, platform_libraries) or_return
+        io.write_string(wd, "\n\t}\n") or_return
     }
 
     io.write_string(wd, ")\n") or_return
+
+    if is_main_file {
+        io.write_string(wd, "\n\n") or_return
+        io.write_string(wd, purego_template) or_return
+    }
 
     return nil
 }

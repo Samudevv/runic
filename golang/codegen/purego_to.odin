@@ -370,12 +370,8 @@ purego_generate_function_symbol_declarations :: proc(
 
         if _, is_type := sym.value.(runic.Type); is_type do continue
 
-        upper_sym_name, upper_sym_name_err := strings.to_pascal_case(sym_name)
-        if upper_sym_name_err != .None do continue
-        defer delete(upper_sym_name)
-
         strings.write_rune(&buf, '\t')
-        strings.write_string(&buf, upper_sym_name)
+        strings.write_string(&buf, sym_name)
         strings.write_rune(&buf, ' ')
         purego_write_symbol(&buf, sym, rs.externs, rn)
 
@@ -412,18 +408,14 @@ purego_generate_type_symbol_getters :: proc(
 
         if _, is_type := sym.value.(runic.Type); !is_type do continue
 
-        upper_sym_name, upper_sym_name_err := strings.to_pascal_case(sym_name)
-        if upper_sym_name_err != .None do continue
-        defer delete(upper_sym_name)
-
         strings.write_string(&buf, "func ")
-        strings.write_string(&buf, upper_sym_name)
+        strings.write_string(&buf, sym_name)
         strings.write_string(&buf, "() ")
         write_type(&buf, sym.value.(runic.Type), rn, rs.externs, false)
         strings.write_string(&buf, " {\n\treturn *(*")
         write_type(&buf, sym.value.(runic.Type), rn, rs.externs, false)
         strings.write_string(&buf, ")(unsafe.Pointer(runicPtr")
-        strings.write_string(&buf, upper_sym_name)
+        strings.write_string(&buf, sym_name)
         strings.write_string(&buf, "))\n}\n")
     }
 
@@ -455,18 +447,14 @@ purego_generate_type_symbol_setters :: proc(
 
         if _, is_type := sym.value.(runic.Type); !is_type do continue
 
-        upper_sym_name, upper_sym_name_err := strings.to_pascal_case(sym_name)
-        if upper_sym_name_err != .None do continue
-        defer delete(upper_sym_name)
-
         strings.write_string(&buf, "func Set")
-        strings.write_string(&buf, upper_sym_name)
+        strings.write_string(&buf, sym_name)
         strings.write_string(&buf, "(value ")
         write_type(&buf, sym.value.(runic.Type), rn, rs.externs, false)
         strings.write_string(&buf, ") {\n\t*(*")
         write_type(&buf, sym.value.(runic.Type), rn, rs.externs, false)
         strings.write_string(&buf, ")(unsafe.Pointer(runicPtr")
-        strings.write_string(&buf, upper_sym_name)
+        strings.write_string(&buf, sym_name)
         strings.write_string(&buf, ")) = value\n}\n")
     }
 
@@ -500,12 +488,8 @@ purego_generate_type_symbol_pointers :: proc(
 
         if _, is_type := sym.value.(runic.Type); !is_type do continue
 
-        upper_sym_name, upper_sym_name_err := strings.to_pascal_case(sym_name)
-        if upper_sym_name_err != .None do continue
-        defer delete(upper_sym_name)
-
         strings.write_string(&buf, "\trunicPtr")
-        strings.write_string(&buf, upper_sym_name)
+        strings.write_string(&buf, sym_name)
         strings.write_string(&buf, " uintptr\n")
     }
 
@@ -541,15 +525,11 @@ purego_generate_symbol_registrations :: proc(
         sym_name, sym := entry.key, entry.value
         _, is_type := sym.value.(runic.Type)
 
-        upper_sym_name, upper_sym_name_err := strings.to_pascal_case(sym_name)
-        if upper_sym_name_err != .None do continue
-        defer delete(upper_sym_name)
-
         strings.write_string(&buf, "\t\t{&")
         if is_type {
             strings.write_string(&buf, "runicPtr")
         }
-        strings.write_string(&buf, upper_sym_name)
+        strings.write_string(&buf, sym_name)
         strings.write_string(&buf, ", \"")
         strings.write_string(&buf, sym.remap.? or_else sym_name)
         strings.write_string(&buf, "\"},")

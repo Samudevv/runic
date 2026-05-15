@@ -71,8 +71,14 @@ to:
     enum_type_name: true
   trim_suffix:
     types: _t
+  change_case:
+    functions: PascalCase
+    types: snake_case
+    constants: SCREAMING_SNAKE_CASE
+    variables: Ada_Case
   extern:
     trim_prefix: true
+    change_case: true
     sources:
       'SDL2/SDL_Event.h': 'vendor:sdl2'
       'SDL2/SDL_Renderer.h': 'vendor:sdl2'

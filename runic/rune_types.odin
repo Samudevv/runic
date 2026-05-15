@@ -68,6 +68,7 @@ To :: struct {
     trim_suffix:     TrimSet,
     add_prefix:      AddSet,
     add_suffix:      AddSet,
+    change_case:     ChangeCase,
     ignore_arch:     bool,
     extern:          ExternRune,
     // Odin
@@ -114,6 +115,21 @@ AddSet :: struct {
     variables: string,
     types:     string,
     constants: string,
+}
+
+Case :: enum {
+    Ada,
+    Camel,
+    Pascal,
+    Snake,
+    ScreamingSnake,
+}
+
+ChangeCase :: struct {
+    functions: Maybe(Case),
+    variables: Maybe(Case),
+    types:     Maybe(Case),
+    constants: Maybe(Case),
 }
 
 IgnoreSet :: struct {
@@ -183,4 +199,5 @@ ExternRune :: struct {
     trim_suffix: bool,
     add_prefix:  bool,
     add_suffix:  bool,
+    change_case: bool,
 }

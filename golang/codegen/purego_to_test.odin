@@ -113,6 +113,12 @@ var.windows_globals = Array
         package_name = "greatwave",
         purego = true,
         out = "test_data/to_purego_golang_test.go",
+        change_case = {
+            functions = .Pascal,
+            variables = .Pascal,
+            constants = .Pascal,
+            types = .Pascal,
+        },
         extern = {sources = extern_sources, remaps = extern_remaps},
     }
 

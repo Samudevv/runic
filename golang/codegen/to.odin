@@ -18,11 +18,11 @@ package golang_codegen
 
 import "core:io"
 import "core:os"
+import "core:path/slashpath"
 import "core:strings"
 import "root:errors"
 import om "root:ordered_map"
 import "root:runic"
-import "core:path/slashpath"
 
 GO_RESERVED :: []string {
     "break",
@@ -229,12 +229,8 @@ generate_constants :: proc(rs: runic.Runestone, rn: runic.To) -> string {
 
         if const.value == nil do continue
 
-        upper_name, upper_name_err := strings.to_pascal_case(const_name)
-        if upper_name_err != .None do continue
-        defer delete(upper_name)
-
         strings.write_rune(&buf, '\t')
-        strings.write_string(&buf, upper_name)
+        strings.write_string(&buf, const_name)
         strings.write_rune(&buf, ' ')
 
         if builtin, is_builtin := const.type.spec.(runic.Builtin);
@@ -272,12 +268,8 @@ generate_types :: proc(rs: runic.Runestone, rn: runic.To) -> string {
     for entry, idx in rs.types.data {
         typ_name, typ := entry.key, entry.value
 
-        upper_case_type_name, pascal_err := strings.to_pascal_case(typ_name)
-        if pascal_err != .None do continue
-        defer delete(upper_case_type_name)
-
         strings.write_string(&buf, "type ")
-        strings.write_string(&buf, upper_case_type_name)
+        strings.write_string(&buf, typ_name)
         strings.write_rune(&buf, ' ')
         write_type(&buf, typ, rn, rs.externs, true)
 
@@ -422,15 +414,13 @@ write_typespecifier :: proc(
         for member in s.members {
             strings.write_rune(buf, '\t')
 
-            upper_member_name, upper_member_name_err := strings.to_pascal_case(
-                member.name,
-            )
-            if upper_member_name_err != .None {
-                upper_member_name = strings.clone(member.name)
+            pascal_name, pascal_err := strings.to_pascal_case(member.name)
+            if pascal_err != .None {
+                pascal_name = strings.clone(member.name)
             }
-            defer delete(upper_member_name)
+            defer delete(pascal_name)
 
-            strings.write_string(buf, upper_member_name)
+            strings.write_string(buf, pascal_name)
             strings.write_rune(buf, ' ')
             write_type(buf, member.type, rn, externs, false)
             strings.write_rune(buf, '\n')
@@ -442,20 +432,21 @@ write_typespecifier :: proc(
         strings.write_string(buf, "struct /* union */ {\n")
         for member in s.members {
             strings.write_rune(buf, '\t')
-            strings.write_string(buf, member.name)
+
+            pascal_name, pascal_err := strings.to_pascal_case(member.name)
+            if pascal_err != .None {
+                pascal_name = strings.clone(member.name)
+            }
+            defer delete(pascal_name)
+
+            strings.write_string(buf, pascal_name)
             strings.write_rune(buf, ' ')
             write_type(buf, member.type, rn, externs, false)
             strings.write_rune(buf, '\n')
         }
         strings.write_string(buf, "}")
     case string:
-        upper_case_name, err := strings.to_pascal_case(s)
-        if err != .None {
-            upper_case_name = strings.clone(s)
-        }
-        defer delete(upper_case_name)
-
-        strings.write_string(buf, upper_case_name)
+        strings.write_string(buf, string(s))
     case runic.Unknown:
         strings.write_string(buf, "unsafe.Pointer /* unknown \"")
         strings.write_string(buf, string(s))

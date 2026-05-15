@@ -224,11 +224,17 @@ test_rune :: proc(t: ^testing.T) {
 
     testing.expect_value(t, to.trim_prefix.enum_type_name, true)
 
+    testing.expect_value(t, to.change_case.functions, Case.Pascal)
+    testing.expect_value(t, to.change_case.types, Case.Snake)
+    testing.expect_value(t, to.change_case.constants, Case.ScreamingSnake)
+    testing.expect_value(t, to.change_case.variables, Case.Ada)
+
     extern := to.extern
     testing.expect_value(t, extern.trim_prefix, true)
     testing.expect_value(t, extern.trim_suffix, false)
     testing.expect_value(t, extern.add_prefix, false)
     testing.expect_value(t, extern.add_suffix, false)
+    testing.expect_value(t, extern.change_case, true)
     testing.expect_value(t, len(extern.sources), 2)
     testing.expect_value(t, extern.sources["SDL2/SDL_Event.h"], "vendor:sdl2")
     testing.expect_value(

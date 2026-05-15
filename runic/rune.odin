@@ -2274,6 +2274,65 @@ parse_rune :: proc(
                 }
             }
 
+            if "change_case" in to {
+                #partial switch chg_case in to["change_case"] {
+                case string:
+                    t.change_case.functions = string_to_case(chg_case)
+                    t.change_case.variables = string_to_case(chg_case)
+                    t.change_case.types = string_to_case(chg_case)
+                    t.change_case.constants = string_to_case(chg_case)
+                case yaml.Mapping:
+                    str: string = ---
+                    ok: bool = ---
+
+                    if "functions" in chg_case {
+                        str, ok = chg_case["functions"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.change_case.functions\" has invalid type",
+                        ) or_return
+
+                        t.change_case.functions = string_to_case(str)
+                    }
+
+                    if "variables" in chg_case {
+                        str, ok = chg_case["variables"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.change_case.variables\" has invalid type",
+                        ) or_return
+
+                        t.change_case.variables = string_to_case(str)
+                    }
+
+                    if "types" in chg_case {
+                        str, ok = chg_case["types"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.change_case.types\" has invalid type",
+                        ) or_return
+
+                        t.change_case.types = string_to_case(str)
+                    }
+
+                    if "constants" in chg_case {
+                        str, ok = chg_case["constants"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.change_case.constants\" has invalid type",
+                        ) or_return
+
+                        t.change_case.constants = string_to_case(str)
+                    }
+                case:
+                    err = errors.message(
+                        "\"to.change_case\" has invalid type %T",
+                        chg_case,
+                    )
+                    return
+                }
+            }
+
             if ignore_arch, ok := to["ignore_arch"]; ok {
                 t.ignore_arch, ok = ignore_arch.(bool)
                 errors.wrap(
@@ -2410,6 +2469,15 @@ parse_rune :: proc(
                         errors.assert(
                             tp_ok,
                             "\"to.extern.add_suffix\" has invalid type",
+                        ) or_return
+                    }
+
+                    if change_case_value, cc_ok := extern["change_case"];
+                       cc_ok {
+                        t.extern.change_case, cc_ok = change_case_value.(bool)
+                        errors.assert(
+                            cc_ok,
+                            "\"to.extern.change_case\" has invalid type",
                         ) or_return
                     }
 
@@ -2753,6 +2821,7 @@ process_identifier :: #force_inline proc(
     ident: string,
     trim_prefix, trim_suffix: []string,
     add_pf, add_sf: string,
+    change_case: Maybe(Case),
     reserved: []string,
     valid_ident := is_valid_identifier,
     allocator := context.allocator,
@@ -2774,6 +2843,32 @@ process_identifier :: #force_inline proc(
         return ident3
     }
     delete(ident3, allocator)
+
+    if c, c_ok := change_case.?; c_ok {
+        changed_case: string = ---
+        alloc_err: runtime.Allocator_Error = ---
+
+        switch c {
+        case .Ada:
+            changed_case, alloc_err = strings.to_ada_case(ident4, allocator)
+        case .Camel:
+            changed_case, alloc_err = strings.to_camel_case(ident4, allocator)
+        case .Pascal:
+            changed_case, alloc_err = strings.to_pascal_case(ident4, allocator)
+        case .Snake:
+            changed_case, alloc_err = strings.to_snake_case(ident4, allocator)
+        case .ScreamingSnake:
+            changed_case, alloc_err = strings.to_screaming_snake_case(
+                ident4,
+                allocator,
+            )
+        }
+
+        if alloc_err == .None {
+            delete(ident4, allocator)
+            ident4 = changed_case
+        }
+    }
 
     if slice.contains(reserved, ident4) {
         ident5 := strings.concatenate({ident4, "_"}, allocator)
@@ -2797,6 +2892,7 @@ process_function_name :: proc(
         rn.trim_suffix.functions,
         rn.add_prefix.functions,
         rn.add_suffix.functions,
+        rn.change_case.functions,
         reserved,
         valid_ident,
         allocator,
@@ -2816,6 +2912,7 @@ process_variable_name :: proc(
         rn.trim_suffix.variables,
         rn.add_prefix.variables,
         rn.add_suffix.variables,
+        rn.change_case.variables,
         reserved,
         valid_ident,
         allocator,
@@ -2836,6 +2933,7 @@ process_type_name :: proc(
         {} if (extern && !rn.extern.trim_suffix) else rn.trim_suffix.types,
         {} if (extern && !rn.extern.add_prefix) else rn.add_prefix.types,
         {} if (extern && !rn.extern.add_suffix) else rn.add_suffix.types,
+        nil if (extern && !rn.extern.change_case) else rn.change_case.types,
         reserved,
         valid_ident,
         allocator,
@@ -2855,6 +2953,7 @@ process_constant_name :: proc(
         rn.trim_suffix.constants,
         rn.add_prefix.constants,
         rn.add_suffix.constants,
+        rn.change_case.constants,
         reserved,
         valid_ident,
         allocator,
@@ -3681,7 +3780,8 @@ to_needs_to_process_type_names :: #force_inline proc(to: To) -> bool {
         len(to.trim_suffix.types) != 0 ||
         len(to.add_prefix.types) != 0 ||
         len(to.add_suffix.types) != 0 ||
-        to.trim_prefix.enum_type_name \
+        to.trim_prefix.enum_type_name ||
+        to.change_case.types != nil \
     )
 }
 
@@ -3691,6 +3791,7 @@ to_needs_to_process_extern_names :: #force_inline proc(to: To) -> bool {
         (to.extern.trim_prefix &&
             (len(to.trim_prefix.types) != 0 ||
                     to.trim_prefix.enum_type_name)) ||
+        (to.extern.change_case && to.change_case.types != nil) ||
         (to.extern.trim_suffix && len(to.trim_suffix.types) != 0) ||
         (to.extern.add_prefix && len(to.add_prefix.types) != 0) ||
         (to.extern.add_suffix && len(to.add_suffix.types) != 0) \
@@ -3705,6 +3806,7 @@ to_needs_to_process_extern_enum_entry_names :: #force_inline proc(
         (to.extern.trim_prefix &&
             (len(to.trim_prefix.constants) != 0 ||
                     to.trim_prefix.enum_type_name)) ||
+        (to.extern.change_case && to.change_case.constants != nil) ||
         (to.extern.trim_suffix && len(to.trim_suffix.constants) != 0) ||
         (to.extern.add_prefix && len(to.add_prefix.constants) != 0) ||
         (to.extern.add_suffix && len(to.add_suffix.constants) != 0) \
@@ -3717,7 +3819,8 @@ to_needs_to_process_variable_names :: #force_inline proc(to: To) -> bool {
         len(to.trim_prefix.variables) != 0 ||
         len(to.trim_suffix.variables) != 0 ||
         len(to.add_prefix.variables) != 0 ||
-        len(to.add_suffix.variables) != 0 \
+        len(to.add_suffix.variables) != 0 ||
+        to.change_case.variables != nil \
     )
 }
 
@@ -3727,7 +3830,8 @@ to_needs_to_process_function_names :: #force_inline proc(to: To) -> bool {
         len(to.trim_prefix.functions) != 0 ||
         len(to.trim_suffix.functions) != 0 ||
         len(to.add_prefix.functions) != 0 ||
-        len(to.add_suffix.functions) != 0 \
+        len(to.add_suffix.functions) != 0 ||
+        to.change_case.functions != nil \
     )
 }
 
@@ -3745,7 +3849,8 @@ to_needs_to_process_constant_names :: #force_inline proc(to: To) -> bool {
         len(to.trim_prefix.constants) != 0 ||
         len(to.trim_suffix.constants) != 0 ||
         len(to.add_prefix.constants) != 0 ||
-        len(to.add_suffix.constants) != 0 \
+        len(to.add_suffix.constants) != 0 ||
+        to.change_case.constants != nil \
     )
 }
 
@@ -3767,4 +3872,29 @@ create_file_for_runestone :: proc(
     if err != nil do return file, errors.wrap(err)
 
     return file, nil
+}
+
+@(private = "file")
+string_to_case :: proc(str: string) -> Maybe(Case) {
+    lower, lower_err := strings.to_lower(str)
+    if lower_err != .None do return nil
+    defer delete(lower)
+
+    switch lower {
+    case "ada_case", "ada", "adacase":
+        return Case.Ada
+    case "camel_case", "camel", "camelcase":
+        return Case.Camel
+    case "pascal_case", "pascal", "pascalcase":
+        return Case.Pascal
+    case "snake_case", "snake", "snakecase":
+        return Case.Snake
+    case "screaming_snake_case",
+         "screaming_snake",
+         "screamingsnake",
+         "screamingsnakecase":
+        return Case.ScreamingSnake
+    }
+
+    return nil
 }

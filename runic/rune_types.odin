@@ -126,10 +126,12 @@ Case :: enum {
 }
 
 ChangeCase :: struct {
-    functions: Maybe(Case),
-    variables: Maybe(Case),
-    types:     Maybe(Case),
-    constants: Maybe(Case),
+    functions:  Maybe(Case),
+    variables:  Maybe(Case),
+    types:      Maybe(Case),
+    constants:  Maybe(Case),
+    members:    Maybe(Case),
+    parameters: Maybe(Case),
 }
 
 IgnoreSet :: struct {

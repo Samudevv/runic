@@ -228,6 +228,8 @@ test_rune :: proc(t: ^testing.T) {
     testing.expect_value(t, to.change_case.types, Case.Snake)
     testing.expect_value(t, to.change_case.constants, Case.ScreamingSnake)
     testing.expect_value(t, to.change_case.variables, Case.Ada)
+    testing.expect_value(t, to.change_case.members, Case.Camel)
+    testing.expect_value(t, to.change_case.parameters, Case.Ada)
 
     extern := to.extern
     testing.expect_value(t, extern.trim_prefix, true)

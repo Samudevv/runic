@@ -116,8 +116,10 @@ var.windows_globals = Array
         change_case = {
             functions = .Pascal,
             variables = .Pascal,
-            constants = .Pascal,
-            types = .Pascal,
+            constants = .Ada,
+            types = .Ada,
+            parameters = .ScreamingSnake,
+            members = .Pascal,
         },
         extern = {sources = extern_sources, remaps = extern_remaps},
     }

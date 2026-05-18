@@ -2281,6 +2281,8 @@ parse_rune :: proc(
                     t.change_case.variables = string_to_case(chg_case)
                     t.change_case.types = string_to_case(chg_case)
                     t.change_case.constants = string_to_case(chg_case)
+                    t.change_case.members = string_to_case(chg_case)
+                    t.change_case.parameters = string_to_case(chg_case)
                 case yaml.Mapping:
                     str: string = ---
                     ok: bool = ---
@@ -2323,6 +2325,26 @@ parse_rune :: proc(
                         ) or_return
 
                         t.change_case.constants = string_to_case(str)
+                    }
+
+                    if "members" in chg_case {
+                        str, ok = chg_case["members"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.change_case.members\" has invalid type",
+                        ) or_return
+
+                        t.change_case.members = string_to_case(str)
+                    }
+
+                    if "parameters" in chg_case {
+                        str, ok = chg_case["parameters"].(string)
+                        errors.wrap(
+                            ok,
+                            "\"to.change_case.parameters\" has invalid type",
+                        ) or_return
+
+                        t.change_case.parameters = string_to_case(str)
                     }
                 case:
                     err = errors.message(
@@ -2913,6 +2935,46 @@ process_variable_name :: proc(
         rn.add_prefix.variables,
         rn.add_suffix.variables,
         rn.change_case.variables,
+        reserved,
+        valid_ident,
+        allocator,
+    )
+}
+
+process_member_name :: proc(
+    ident: string,
+    rn: To,
+    reserved: []string = {},
+    valid_ident := is_valid_identifier,
+    allocator := context.allocator,
+) -> string {
+    return process_identifier(
+        ident,
+        nil,
+        nil,
+        "",
+        "",
+        rn.change_case.members,
+        reserved,
+        valid_ident,
+        allocator,
+    )
+}
+
+process_parameter_name :: proc(
+    ident: string,
+    rn: To,
+    reserved: []string = {},
+    valid_ident := is_valid_identifier,
+    allocator := context.allocator,
+) -> string {
+    return process_identifier(
+        ident,
+        nil,
+        nil,
+        "",
+        "",
+        rn.change_case.parameters,
         reserved,
         valid_ident,
         allocator,
@@ -3822,6 +3884,16 @@ to_needs_to_process_variable_names :: #force_inline proc(to: To) -> bool {
         len(to.add_suffix.variables) != 0 ||
         to.change_case.variables != nil \
     )
+}
+
+@(private)
+to_needs_to_process_member_names :: #force_inline proc(to: To) -> bool {
+    return to.change_case.members != nil
+}
+
+@(private)
+to_needs_to_process_parameter_names :: #force_inline proc(to: To) -> bool {
+    return to.change_case.parameters != nil
 }
 
 @(private)

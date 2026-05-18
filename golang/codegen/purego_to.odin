@@ -150,7 +150,10 @@ purego_generate_bindings_from_runestone :: proc(
         io.write_string(wd, symbol_variables) or_return
         io.write_string(wd, "\n\t}\n\n") or_return
 
-        io.write_string(wd, "\trunicLibraries = map[[2]string]string{\n") or_return
+        io.write_string(
+            wd,
+            "\trunicLibraries = map[[2]string]string{\n",
+        ) or_return
         io.write_string(wd, platform_libraries) or_return
         io.write_string(wd, "\n\t}\n") or_return
     }

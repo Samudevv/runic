@@ -753,11 +753,7 @@ lookup_type_of_import :: proc(
             fmt.aprint(
                 "package",
                 pkg,
-                "does not exist in",
-                slice.map_keys(
-                    ctx.imports^,
-                    allocator = errors.error_allocator,
-                ),
+                "does not exist in imports",
                 allocator = errors.error_allocator,
             ),
         ) or_return

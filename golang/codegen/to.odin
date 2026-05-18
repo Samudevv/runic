@@ -414,15 +414,10 @@ write_typespecifier :: proc(
         for member in s.members {
             strings.write_rune(buf, '\t')
 
-            pascal_name, pascal_err := strings.to_pascal_case(member.name)
-            if pascal_err != .None {
-                pascal_name = strings.clone(member.name)
-            }
-            defer delete(pascal_name)
-
-            strings.write_string(buf, pascal_name)
+            strings.write_string(buf, member.name)
             strings.write_rune(buf, ' ')
             write_type(buf, member.type, rn, externs, false)
+
             strings.write_rune(buf, '\n')
         }
         strings.write_string(buf, "}")
@@ -433,15 +428,10 @@ write_typespecifier :: proc(
         for member in s.members {
             strings.write_rune(buf, '\t')
 
-            pascal_name, pascal_err := strings.to_pascal_case(member.name)
-            if pascal_err != .None {
-                pascal_name = strings.clone(member.name)
-            }
-            defer delete(pascal_name)
-
-            strings.write_string(buf, pascal_name)
+            strings.write_string(buf, member.name)
             strings.write_rune(buf, ' ')
             write_type(buf, member.type, rn, externs, false)
+
             strings.write_rune(buf, '\n')
         }
         strings.write_string(buf, "}")

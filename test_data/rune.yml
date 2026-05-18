@@ -76,6 +76,8 @@ to:
     types: snake_case
     constants: SCREAMING_SNAKE_CASE
     variables: Ada_Case
+    members: camel
+    parameters: ada
   extern:
     trim_prefix: true
     change_case: true

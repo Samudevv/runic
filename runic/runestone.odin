@@ -1405,22 +1405,6 @@ to_preprocess_runestone :: proc(
         }
 
 
-        for &entry in rs.types.data {
-            type := &entry.value
-
-            #partial switch &emum in type.spec {
-            case Enum:
-                for &enum_entry in emum.entries {
-                    enum_entry.name = process_constant_name(
-                        enum_entry.name,
-                        to,
-                        reserved = reserved_keywords,
-                        allocator = rs_arena_alloc,
-                    )
-                }
-            }
-        }
-
         if to_needs_to_process_extern_enum_entry_names(to) {
             for &entry in rs.externs.data {
                 type := &entry.value
@@ -1438,6 +1422,103 @@ to_preprocess_runestone :: proc(
                 }
             }
         }
+    }
+
+    if to_needs_to_process_constant_names(to) ||
+       to_needs_to_process_member_names(to) ||
+       to_needs_to_process_parameter_names(to) {
+
+        for &entry in rs.types.data {
+            type := &entry.value
+
+            #partial switch &emum in type.spec {
+            case Enum:
+                if to_needs_to_process_constant_names(to) {
+                    for &enum_entry in emum.entries {
+                        enum_entry.name = process_constant_name(
+                            enum_entry.name,
+                            to,
+                            reserved = reserved_keywords,
+                            allocator = rs_arena_alloc,
+                        )
+                    }
+                }
+            case Struct:
+                if to_needs_to_process_member_names(to) {
+                    for &member in emum.members {
+                        member.name = process_member_name(
+                            member.name,
+                            to,
+                            reserved = reserved_keywords,
+                            allocator = rs_arena_alloc,
+                        )
+                    }
+                }
+            case Union:
+                if to_needs_to_process_member_names(to) {
+                    for &member in emum.members {
+                        member.name = process_member_name(
+                            member.name,
+                            to,
+                            reserved = reserved_keywords,
+                            allocator = rs_arena_alloc,
+                        )
+                    }
+                }
+            case FunctionPointer:
+                if to_needs_to_process_parameter_names(to) {
+                    for &param in emum.parameters {
+                        param.name = process_parameter_name(
+                            param.name,
+                            to,
+                            reserved = reserved_keywords,
+                            allocator = rs_arena_alloc,
+                        )
+                    }
+                }
+            }
+        }
+
+        for &entry in rs.externs.data {
+            type := &entry.value.type
+
+            #partial switch &s in type.spec {
+            case Struct:
+                if to_needs_to_process_member_names(to) {
+                    for &member in s.members {
+                        member.name = process_member_name(
+                            member.name,
+                            to,
+                            reserved = reserved_keywords,
+                            allocator = rs_arena_alloc,
+                        )
+                    }
+                }
+            case Union:
+                if to_needs_to_process_member_names(to) {
+                    for &member in s.members {
+                        member.name = process_member_name(
+                            member.name,
+                            to,
+                            reserved = reserved_keywords,
+                            allocator = rs_arena_alloc,
+                        )
+                    }
+                }
+            case FunctionPointer:
+                if to_needs_to_process_parameter_names(to) {
+                    for &param in s.parameters {
+                        param.name = process_parameter_name(
+                            param.name,
+                            to,
+                            reserved = reserved_keywords,
+                            allocator = rs_arena_alloc,
+                        )
+                    }
+                }
+            }
+        }
+
     }
 
     if to_needs_to_process_type_names(to) {
@@ -1560,6 +1641,23 @@ to_preprocess_runestone :: proc(
 
                 if sym.remap == nil {
                     sym.remap = name
+                }
+            }
+        }
+    }
+
+    if to_needs_to_process_parameter_names(to) {
+        for &entry in rs.symbols.data {
+            sym := &entry.value
+            #partial switch &v in sym.value {
+            case Function:
+                for &param in v.parameters {
+                    param.name = process_parameter_name(
+                        param.name,
+                        to,
+                        reserved = reserved_keywords,
+                        allocator = rs_arena_alloc,
+                    )
                 }
             }
         }

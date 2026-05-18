@@ -28,3 +28,4 @@ to:
   package: inih
   out: banini/inih/inih.go
   trim_prefix: 'ini_'
+  change_case: PascalCase

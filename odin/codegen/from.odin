@@ -173,33 +173,32 @@ evaluate_expr :: proc(
         #partial switch e.tok.kind {
         case .Integer:
             value, ok := strconv.parse_i64(e.tok.text)
-            errors.wrap(
-                ok,
-                fmt.aprintf(
+            if !ok {
+                err = fmt.aprintf(
                     "{}:{}:{}",
                     e.tok.pos.file,
                     e.tok.pos.line,
                     e.tok.pos.column,
                     allocator = errors.error_allocator,
-                ),
-                loc = loc,
-            ) or_return
-            rs = value
+                )
+                return
+            }
 
+            rs = value
             return
         case .Float:
             value, ok := strconv.parse_f64(e.tok.text)
-            errors.wrap(
-                ok,
-                fmt.aprintf(
+            if !ok {
+                err = fmt.aprintf(
                     "{}:{}:{}",
                     e.tok.pos.file,
                     e.tok.pos.line,
                     e.tok.pos.column,
                     allocator = errors.error_allocator,
-                ),
-                loc = loc,
-            ) or_return
+                )
+                return
+            }
+
             rs = value
             return
         case .String:
@@ -748,16 +747,15 @@ lookup_type_of_import :: proc(
             }
         }
 
-        errors.assert(
-            ok,
-            fmt.aprint(
-                "package",
+        if !ok {
+            err = fmt.aprint(
+                "package ",
                 pkg,
-                "does not exist in imports",
+                " does not exist in imports",
                 allocator = errors.error_allocator,
-            ),
-        ) or_return
-
+            )
+            return
+        }
 
         p: odinp.Parser
         p.flags = {.Optional_Semicolons}
@@ -796,15 +794,15 @@ lookup_type_of_import :: proc(
             delete(reserved_packages)
         }
 
-        errors.wrap(
-            ok,
-            fmt.aprintf(
+        if !ok {
+            err = fmt.aprintf(
                 "package {} at {} failed to parse",
                 pkg,
                 imp.abs_path,
                 allocator = errors.error_allocator,
-            ),
-        ) or_return
+            )
+            return
+        }
     }
 
     // TODO: Maybe hardcode some types of "core:c"

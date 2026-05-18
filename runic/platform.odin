@@ -217,42 +217,26 @@ platform_file_name :: proc(
     stem := filepath.stem(file_name)
     ext := filepath.ext(file_name)
 
-    // BONUS TODO: Do this without an allocation
-    os_str, arch_str: string = ---, ---
-    if plat.os != .Any {
-        os_str = fmt.aprint(plat.os, allocator = allocator)
-    } else {
-        os_str = ""
-    }
-    if plat.arch != .Any {
-        arch_str = fmt.aprint(plat.arch, allocator = allocator)
-    } else {
-        arch_str = ""
-    }
-
     bd: strings.Builder
-    strings.builder_init(
-        &bd,
-        len = 0,
-        cap = len(file_name) + 1 + 1 + len(os_str) + len(arch_str),
-        allocator = allocator,
-    )
+    strings.builder_init(&bd, allocator = allocator)
 
     strings.write_string(&bd, dir)
     strings.write_rune(&bd, filepath.SEPARATOR)
     strings.write_string(&bd, stem)
+
     if plat.os != .Any || plat.arch != .Any {
         strings.write_rune(&bd, '-')
         if plat.os != .Any {
-            strings.write_string(&bd, os_str)
+            fmt.sbprint(&bd, plat.os)
             if plat.arch != .Any {
                 strings.write_rune(&bd, '_')
             }
         }
         if plat.arch != .Any {
-            strings.write_string(&bd, arch_str)
+            fmt.sbprint(&bd, plat.arch)
         }
     }
+
     strings.write_string(&bd, ext)
 
     return strings.to_string(bd)

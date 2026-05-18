@@ -46,6 +46,7 @@ MAX_ARRAY_CAP = 4096 #Untyped
 my_size_type = #UInt64
 Window = #Struct name #String width #UInt32 height #UInt32
 Array = #Struct len my_size_type cap my_size_type els #UInt32 #Attr Ptr 1 #AttrEnd
+Fruit = #Enum #UInt32 Banana 1 Apple 2 Orange 3 Kiwi 4 Apricot 5 Peach 6
 
 [extern]
 FILE = "stdinc/stdio.h" #SInt32
@@ -79,6 +80,7 @@ my_size_type = #UInt64
 Window = #Struct name #String width #UInt32 height #UInt32
 WindowWin32 = #Struct name #String width #UInt32 height #UInt32 win32Id #UIntX
 Array = #Struct len my_size_type cap my_size_type els #UInt32 #Attr Ptr 1 #AttrEnd
+Fruit = #Enum #UInt32 Banana 1 Apple 2 Orange 3 Kiwi 4 Apricot 5 Peach 6
 
 [extern]
 FILE = "stdinc/stdio.h" #SInt32

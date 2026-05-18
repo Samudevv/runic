@@ -255,6 +255,37 @@ generate_constants :: proc(rs: runic.Runestone, rn: runic.To) -> string {
         strings.write_rune(&buf, '\n')
     }
 
+    for entry in rs.types.data {
+        type_name, typ := entry.key, entry.value
+
+        emum, emum_ok := typ.spec.(runic.Enum)
+        if !emum_ok do continue
+
+        strings.write_rune(&buf, '\n')
+
+        for enum_entry in emum.entries {
+            strings.write_rune(&buf, '\t')
+
+            // TODO: properly handle casing
+            strings.write_string(&buf, type_name)
+            strings.write_string(&buf, enum_entry.name)
+
+            strings.write_rune(&buf, ' ')
+            strings.write_string(&buf, type_name)
+
+            strings.write_string(&buf, " = ")
+
+            switch v in enum_entry.value {
+            case i64:
+                strings.write_i64(&buf, v)
+            case string:
+                strings.write_string(&buf, v)
+            }
+
+            strings.write_rune(&buf, '\n')
+        }
+    }
+
     strings.write_string(&buf, ")")
 
     return strings.to_string(buf)

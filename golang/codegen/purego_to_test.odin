@@ -168,18 +168,59 @@ var.windows_globals = Array
     err := generate_bindings(rc, rn, RUNE_FILE_NAME, os.to_stream(out_file))
     if !testing.expect_value(t, err, nil) do return
 
-    data, data_err := os.read_entire_file(
+    any_data, any_data_err := os.read_entire_file(
         "test_data/to_purego_golang_test.go",
         context.allocator,
     )
-    if !testing.expect_value(t, data_err, nil) do return
-    defer delete(data)
+    if !testing.expect_value(t, any_data_err, nil) do return
+    defer delete(any_data)
 
-    EXPECTED_SOURCE :: `package greatwave
+    linux_data, linux_data_err := os.read_entire_file(
+        "test_data/to_purego_golang_test-Linux.go",
+        context.allocator,
+    )
+    if !testing.expect_value(t, linux_data_err, nil) do return
+    defer delete(linux_data)
 
-func BananaIsMyFan() {
-}
-`
+    windows_data, windows_data_err := os.read_entire_file(
+        "test_data/to_purego_golang_test-Windows.go",
+        context.allocator,
+    )
+    if !testing.expect_value(t, windows_data_err, nil) do return
+    defer delete(windows_data)
 
-    diff.expect_diff_strings(t, EXPECTED_SOURCE, string(data))
+    any_exp_data, any_exp_data_err := os.read_entire_file(
+        "test_data/to_purego_golang_test_expected.go",
+        context.allocator,
+    )
+    if !testing.expect_value(t, any_exp_data_err, nil) do return
+    defer delete(any_exp_data)
+
+    linux_exp_data, linux_exp_data_err := os.read_entire_file(
+        "test_data/to_purego_golang_test_expected-Linux.go",
+        context.allocator,
+    )
+    if !testing.expect_value(t, linux_exp_data_err, nil) do return
+    defer delete(linux_exp_data)
+
+    windows_exp_data, windows_exp_data_err := os.read_entire_file(
+        "test_data/to_purego_golang_test_expected-Windows.go",
+        context.allocator,
+    )
+    if !testing.expect_value(t, windows_exp_data_err, nil) do return
+    defer delete(windows_exp_data)
+
+    diff.expect_diff_strings(t, string(any_exp_data), string(any_data), ".go")
+    diff.expect_diff_strings(
+        t,
+        string(linux_exp_data),
+        string(linux_data),
+        ".go",
+    )
+    diff.expect_diff_strings(
+        t,
+        string(windows_exp_data),
+        string(windows_data),
+        ".go",
+    )
 }

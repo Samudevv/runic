@@ -40,7 +40,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: runic-linux-x86_64
-          path: ${{ github.workspace }}/build/pacakge/*
+          path: ${{ github.workspace }}/build/package/*
           if-no-files-found: warn
           overwrite: true
           compression-level: 0
@@ -84,7 +84,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: runic-linux-aarch64
-          path: ${{ github.workspace }}/build/pacakge/*
+          path: ${{ github.workspace }}/build/package/*
           if-no-files-found: warn
           overwrite: true
           compression-level: 0
@@ -112,8 +112,9 @@ jobs:
           path: ${{ github.workspace }}/build/libclang.dll
       - name: download libclang.dll
         if: steps.cache-libclang.outputs.cache-hit != 'true'
-        run: just -f shared/libclang/justfile download-library '' 'build/'
-
+        run: |
+          mkdir build
+          just -f shared/libclang/justfile download-library "" "build"
 
       - name: test
         run: just test
@@ -131,7 +132,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: runic-windows-x86_64
-          path: ${{ github.workspace }}/build/pacakge/*
+          path: ${{ github.workspace }}/build/package/*
           if-no-files-found: warn
           overwrite: true
           compression-level: 0
@@ -150,7 +151,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           release: dev-2026-05
       - name: install llvm, sdl2, sdl2_image
-        run: brew install llvm@19 sdl2 sdl2_image
+        uses: Homebrew/actions/cache-homebrew-prefix@main
+        with:
+          install: llvm@19 sdl2 sdl2_image
 
       - name: test
         run: just test
@@ -168,7 +171,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: runic-macos-aarch64
-          path: ${{ github.workspace }}/build/pacakge/*
+          path: ${{ github.workspace }}/build/package/*
           if-no-files-found: warn
           overwrite: true
           compression-level: 0

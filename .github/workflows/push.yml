@@ -14,15 +14,15 @@ jobs:
           key: 'libclang.dll@v19.1.7'
           path: ${{ github.workspace }}/build/libclang.dll
       - uses: actions/checkout@v4
-        if: steps.cache-libclang-outputs.cache-hit != 'true'
+        if: steps.cache-libclang.outputs.cache-hit != 'true'
         with:
           repository: PucklaJ/odin-libclang
           ref: '19.1.7'
       - uses: extractions/setup-just@v3
-        if: steps.cache-libclang-outputs.cache-hit != 'true'
+        if: steps.cache-libclang.outputs.cache-hit != 'true'
         name: Install just
       - name: Download libclang.dll
-        if: steps.cache-libclang-outputs.cache-hit != 'true'
+        if: steps.cache-libclang.outputs.cache-hit != 'true'
         run: just download-library '' 'build/'
         shell: bash
       - name: Upload libclang.dll

@@ -58,12 +58,12 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           release: dev-2026-05
-      - name: Install libclang, llvm, sdl2, sdl2_image
+      - name: install libclang, llvm, sdl2, sdl2_image
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: libclang-18-dev libllvm18 libsdl2-dev libsdl2-image-dev
           version: 1
-      - name: Setup libclang and llvm symlinks
+      - name: setup libclang and llvm symlinks
         run: |
           sudo ln -rfs /usr/lib/aarch64-linux-gnu/libclang-18.so /usr/lib/aarch64-linux-gnu/libclang.so
           sudo ln -rfs /usr/lib/llvm-18/lib/libLLVM.so.1 /usr/lib/libLLVM-18.so.18.1

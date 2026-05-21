@@ -114,7 +114,7 @@ jobs:
         if: steps.cache-libclang.outputs.cache-hit != 'true'
         run: |
           mkdir build
-          just -f shared/libclang/justfile download-library "" "build"
+          just -f shared/libclang/justfile download-library "" "..\..\build"
 
       - name: test
         run: just test
@@ -154,6 +154,7 @@ jobs:
         uses: Homebrew/actions/cache-homebrew-prefix@main
         with:
           install: llvm@19 sdl2 sdl2_image
+          uninstall: true
 
       - name: test
         run: just test

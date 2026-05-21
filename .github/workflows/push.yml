@@ -150,10 +150,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           release: dev-2026-05
-      - name: install llvm, sdl2, sdl2_image
+      - name: install llvm19, sdl2, sdl2_image, libyaml
         uses: Homebrew/actions/cache-homebrew-prefix@main
         with:
-          install: llvm@19 sdl2 sdl2_image
+          install: llvm@19 sdl2 sdl2_image libyaml
           uninstall: true
 
       - name: test

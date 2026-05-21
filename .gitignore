@@ -28,7 +28,8 @@ test_data/extern_test_runestone.ini
 test_data/extern_test.odin
 test_data/wrapper_out*
 test_data/test_odin_to_multiple_files*.odin
-test_data/to_purego_golang_test*.go
+test_data/to_purego_golang_test.go
+test_data/to_purego_golang_test-*.go
 build/
 examples/olivec/olivec/
 examples/inih/banini/inih/

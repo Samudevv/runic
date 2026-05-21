@@ -117,7 +117,7 @@ package ARCH=arch(): release (make-directory BUILD_DIR / 'package')
 
     cp {{ shell("ldd build/runic | grep -v 'linux-vdso\\.\\|libm\\.\\|libc\\.\\|ld-linux-.*\\.' | cut -d' ' -f3 | xargs") }} "{{ BUILD_DIR / 'runic.AppDir' / 'usr' / 'lib' }}"
 
-    cd "{{ BUILD_DIR / 'package' }}" && ARCH={{ ARCH }} appimagetool "{{ BUILD_DIR / 'runic.AppDir' }}"
+    cd "{{ BUILD_DIR / 'package' }}" && ARCH={{ ARCH }} appimagetool '../runic.AppDir'
     chmod ugo+x "{{ BUILD_DIR / 'package' / 'runic-' + ARCH + '.AppImage' }}"
 
     rm -r "{{ BUILD_DIR / 'runic.AppDir' }}"

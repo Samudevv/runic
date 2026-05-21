@@ -188,7 +188,7 @@ jobs:
           pattern: 'runic*'
           merge-multiple: true
           path: artifacts
-      - uses: list
+      - name: list
         run: ls -lah --color=always artifacts
       - uses: ncipollo/release-action@v1
         with:

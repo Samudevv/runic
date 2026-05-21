@@ -15,7 +15,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           release: dev-2026-05
       - name: Install libclang, llvm, sdl2, sdl2_image
-        uses: awalsh128/cache-apt-pks-action@v1
+        uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: libclang-18-dev libllvm18 libsdl2-dev libsdl2-image-dev
           version: 1
@@ -59,7 +59,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           release: dev-2026-05
       - name: Install libclang, llvm, sdl2, sdl2_image
-        uses: awalsh128/cache-apt-pks-action@v1
+        uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: libclang-18-dev libllvm18 libsdl2-dev libsdl2-image-dev
           version: 1

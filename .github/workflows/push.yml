@@ -1,161 +1,195 @@
-name: Build and Test
+name: Test and Release
 on: [push]
 
 jobs:
-  download-libclang-dll:
+  linux-x86_64:
     runs-on: ubuntu-24.04
-    name: 'Download and Extract libclang.dll'
 
     steps:
-      - name: Cache libclang.dll
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: extractions/setup-just@v4
+      - uses: laytan/setup-odin@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release: dev-2026-05
+      - name: Install libclang, llvm, sdl2, sdl2_image
+        uses: awalsh128/cache-apt-pks-action@v1
+        with:
+          packages: libclang-18-dev libllvm18 libsdl2-dev libsdl2-image-dev
+          version: 1
+      - name: Setup libclang and llvm symlinks
+        run: |
+          sudo ln -rfs /usr/lib/x86_64-linux-gnu/libclang-18.so /usr/lib/x86_64-linux-gnu/libclang.so
+          sudo ln -rfs /usr/lib/llvm-18/lib/libLLVM.so.1 /usr/lib/libLLVM-18.so.18.1
+
+      - name: test
+        run: just test
+
+      - name: examples (olivec, tiled)
+        run: just example olivec example tiled
+
+      - name: build appimage
+        run: |
+          mkdir appimagetool_bin/
+          just install-appimagetool appimagetool_bin
+          export PATH=$(realpath appimagetool_bin):$PATH
+          just package
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: runic-linux-x86_64
+          path: ${{ github.workspace }}/build/pacakge/*
+          if-no-files-found: warn
+          overwrite: true
+          compression-level: 0
+
+
+  linux-arm64:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: extractions/setup-just@v4
+      - uses: laytan/setup-odin@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release: dev-2026-05
+      - name: Install libclang, llvm, sdl2, sdl2_image
+        uses: awalsh128/cache-apt-pks-action@v1
+        with:
+          packages: libclang-18-dev libllvm18 libsdl2-dev libsdl2-image-dev
+          version: 1
+      - name: Setup libclang and llvm symlinks
+        run: |
+          sudo ln -rfs /usr/lib/aarch64-linux-gnu/libclang-18.so /usr/lib/aarch64-linux-gnu/libclang.so
+          sudo ln -rfs /usr/lib/llvm-18/lib/libLLVM.so.1 /usr/lib/libLLVM-18.so.18.1
+
+      - name: test
+        run: just test
+
+      - name: examples (olivec, tiled)
+        run: just example olivec example tiled
+
+      - name: build appimage
+        run: |
+          mkdir appimagetool_bin/
+          just install-appimagetool appimagetool_bin
+          export PATH=$(realpath appimagetool_bin):$PATH
+          just package
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: runic-linux-aarch64
+          path: ${{ github.workspace }}/build/pacakge/*
+          if-no-files-found: warn
+          overwrite: true
+          compression-level: 0
+
+
+  windows-x86_64:
+    runs-on: windows-2025
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: extractions/setup-just@v4
+      - uses: laytan/setup-odin@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release: dev-2026-05
+      
+      - name: cache libclang.dll
         id: cache-libclang
         uses: actions/cache@v5
         with:
           key: 'libclang.dll@v19.1.7'
           path: ${{ github.workspace }}/build/libclang.dll
-      - uses: actions/checkout@v4
+      - name: download libclang.dll
         if: steps.cache-libclang.outputs.cache-hit != 'true'
+        run: just -f shared/libclang/justfile download-library '' 'build/'
+
+
+      - name: test
+        run: just test
+
+      - name: examples (olivec, tiled)
+        run: just example olivec example tiled
+      
+      - name: build runic
+        run: just
+      - name: build runic installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.8
         with:
-          repository: PucklaJ/odin-libclang
-          ref: '19.1.7'
-      - uses: extractions/setup-just@v3
-        if: steps.cache-libclang.outputs.cache-hit != 'true'
-        name: Install just
-      - name: Download libclang.dll
-        if: steps.cache-libclang.outputs.cache-hit != 'true'
-        run: just download-library '' 'build/'
-        shell: bash
-      - name: Upload libclang.dll
-        uses: actions/upload-artifact@v4
+          path: windows_installer.iss
+
+      - uses: actions/upload-artifact@v7
         with:
-          name: libclang.dll
-          path: ${{ github.workspace }}/build/libclang.dll
-          if-no-files-found: error
+          name: runic-windows-x86_64
+          path: ${{ github.workspace }}/build/pacakge/*
+          if-no-files-found: warn
           overwrite: true
           compression-level: 0
-          retention-days: 1
 
 
-  build-and-test:
-    runs-on: ${{ matrix.os }}
-    needs: download-libclang-dll
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, windows-2022, macos-14]
-    name: ${{ matrix.os == 'ubuntu-24.04' && 'linux-x86_64' || matrix.os == 'ubuntu-24.04-arm' && 'linux-aarch64' || matrix.os == 'macos-13' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-aarch64' || 'windows-x86_64' }}
-    env:
-      os: ${{ startsWith(matrix.os, 'ubuntu') && 'linux' || startsWith(matrix.os, 'macos') && 'macos' || 'windows' }}
-      arch: ${{ matrix.os == 'ubuntu-24.04-arm' && 'aarch64' || matrix.os == 'macos-14' && 'aarch64' || 'x86_64' }}
-      plat: ${{ matrix.os == 'ubuntu-24.04' && 'linux-x86_64' || matrix.os == 'ubuntu-24.04-arm' && 'linux-aarch64' || matrix.os == 'macos-13' && 'macos-x86_64' || matrix.os == 'macos-14' && 'macos-aarch64' || 'windows-x86_64' }}
-
+  macos-arm64:
+    runs-on: macos-14
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
-      - uses: extractions/setup-just@v3
-        name: Install just
-
-      - name: Install libclang, llvm, sdl2, sdl2_image
-        if: env.os == 'linux'
-        uses: awalsh128/cache-apt-pkgs-action@v1
-        with:
-          packages: libclang-18-dev libllvm18 libsdl2-dev libsdl2-image-dev
-          version: 1
-      - name: Setup libclang and llvm symlinks
-        if: env.os == 'linux'
-        run: |
-          sudo ln -rfs /usr/lib/${{ env.arch }}-linux-gnu/libclang-18.so /usr/lib/${{ env.arch }}-linux-gnu/libclang.so
-          sudo ln -rfs /usr/lib/llvm-18/lib/libLLVM.so.1 /usr/lib/libLLVM-18.so.18.1
-      - name: Download libclang.dll
-        if: env.os == 'windows'
-        uses: actions/download-artifact@v4
-        with:
-          name: libclang.dll
-          merge-multiple: true
-          path: build
-
-      - name: Install llvm, sdl2, sdl2_image
-        run: brew install llvm@19 sdl2 sdl2_image
-        if: env.os == 'macos'
-
+      - uses: extractions/setup-just@v4
       - uses: laytan/setup-odin@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           release: dev-2026-05
-      - uses: ilammy/msvc-dev-cmd@v1
-        if: env.os == 'windows'
+      - name: install llvm, sdl2, sdl2_image
+        run: brew install llvm@19 sdl2 sdl2_image
 
-      - name: Test
-        uses: nick-fields/retry@v3
-        with:
-          command: just test
-          timeout_minutes: 2
-          retry_wait_seconds: 1
-          max_attempts: 1
+      - name: test
+        run: just test
 
-      - name: examples (olived, tiled)
+      - name: examples (olivec, tiled)
         run: just example olivec example tiled
-
-      - name: Build runic release
+      
+      - name: build runic
         run: just
-        if: env.os == 'windows' || env.os == 'macos'
-      - name: Build runic AppImage
+      - name: create runic artifact
         run: |
-          mkdir appimagetool_bin/
-          just install-appimagetool appimagetool_bin/
-          export PATH=$(pwd)/appimagetool_bin/:$PATH
-          just package
-        if: env.os == 'linux'
-      - name: Build runic installer
-        uses: Minionguyjpro/Inno-Setup-Action@v1.2.5
-        if: env.os == 'windows'
-        with:
-          path: windows_installer.iss
-      - name: Rename runic artifact
-        run: mv build/runic build/runic.${{ env.plat }}
-        if: env.os == 'macos'
+          mkdir build/package
+          mv build/runic build/package/runic-macos-aarch64
 
-      - uses: actions/upload-artifact@v4
-        if: env.os == 'macos'
+      - uses: actions/upload-artifact@v7
         with:
-          name: runic-${{ env.plat }}
-          path: ${{ github.workspace }}/build/runic.${{ env.plat }}
+          name: runic-macos-aarch64
+          path: ${{ github.workspace }}/build/pacakge/*
           if-no-files-found: warn
           overwrite: true
           compression-level: 0
-      - uses: actions/upload-artifact@v4
-        if: env.os == 'linux'
-        with:
-          name: runic-${{ env.plat }}
-          path: ${{ github.workspace }}/build/package/*
-          if-no-files-found: warn
-          overwrite: true
-          compression-level: 0
-      - uses: actions/upload-artifact@v4
-        if: env.os == 'windows'
-        with:
-          name: runic-${{ env.plat }}
-          path: ${{ github.workspace }}/build/package/*
-          if-no-files-found: warn
-          overwrite: true
-          compression-level: 0
+
+
 
   create-release:
     runs-on: ubuntu-24.04
-    needs: build-and-test
+    needs: [ linux-x86_64, linux-arm64, windows-x86_64, macos-arm64 ]
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
+
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: 'runic*'
           merge-multiple: true
           path: artifacts
-      - name: List all artifacts
-        run: ls -la --color=always artifacts
+      - uses: list
+        run: ls -lah --color=always artifacts
       - uses: ncipollo/release-action@v1
         with:
           artifacts: 'artifacts/*'

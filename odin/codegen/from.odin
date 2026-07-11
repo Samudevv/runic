@@ -1467,8 +1467,8 @@ evaluate_implicit_selector :: proc(
             rs = runtime.Odin_OS_Type.OpenBSD
         case "NetBSD":
             rs = runtime.Odin_OS_Type.NetBSD
-        case "Haiku":
-            rs = runtime.Odin_OS_Type.Haiku
+        // case "Haiku": NOTE: not declared anymore (dev-2026-06)
+        //    rs = runtime.Odin_OS_Type.Haiku
         case "WASI":
             rs = runtime.Odin_OS_Type.WASI
         case "JS":
